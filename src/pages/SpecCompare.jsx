@@ -30,9 +30,9 @@ const SPEC_SECTIONS = {
     fields: [
       { key: "bore_diameter_mm", label: "Bore Diameter (mm)" },
       { key: "bore_diameter_tolerance", label: "Bore Tolerance" },
-      { key: "deck_height_mm", label: "Deck Height (mm)" },
+      { key: "deck_height_in", label: "Deck Height (in)" },
       { key: "deck_height_tolerance", label: "Deck Tolerance" },
-      { key: "main_bearing_clearance_mm", label: "Main Bearing Clearance (mm)" },
+      { key: "main_bearing_clearance_in", label: "Main Bearing Clearance (in)" },
       { key: "main_cap_torque_nm", label: "Main Cap Torque (Nm)" },
       { key: "main_cap_torque_sequence", label: "Main Cap Torque Sequence" },
     ]
@@ -41,22 +41,23 @@ const SPEC_SECTIONS = {
     label: "Rotating Assembly",
     fields: [
       { key: "stroke_mm", label: "Stroke (mm)" },
-      { key: "rod_length_mm", label: "Rod Length (mm)" },
+      { key: "rod_length_in", label: "Rod Length (in)" },
       { key: "rod_ratio", label: "Rod Ratio" },
-      { key: "piston_compression_height_mm", label: "Piston Compression Height (mm)" },
-      { key: "piston_to_wall_clearance_mm", label: "Piston to Wall Clearance (mm)" },
-      { key: "ring_end_gap_top_mm", label: "Ring End Gap - Top (mm)" },
-      { key: "ring_end_gap_second_mm", label: "Ring End Gap - Second (mm)" },
-      { key: "ring_end_gap_oil_mm", label: "Ring End Gap - Oil (mm)" },
-      { key: "rod_bearing_clearance_mm", label: "Rod Bearing Clearance (mm)" },
+      { key: "piston_compression_height_in", label: "Piston Compression Height (in)" },
+      { key: "piston_to_wall_clearance_in", label: "Piston to Wall Clearance (in)" },
+      { key: "ring_end_gap_top_in", label: "Ring End Gap - Top (in)" },
+      { key: "ring_end_gap_second_in", label: "Ring End Gap - Second (in)" },
+      { key: "ring_end_gap_oil_in", label: "Ring End Gap - Oil (in)" },
+      { key: "rod_bearing_clearance_in", label: "Rod Bearing Clearance (in)" },
       { key: "rod_bolt_torque_nm", label: "Rod Bolt Torque (Nm)" },
-      { key: "rod_side_clearance_mm", label: "Rod Side Clearance (mm)" },
-      { key: "crankshaft_end_play_mm", label: "Crankshaft End Play (mm)" },
+      { key: "rod_side_clearance_in", label: "Rod Side Clearance (in)" },
+      { key: "crankshaft_end_play_in", label: "Crankshaft End Play (in)" },
     ]
   },
   cylinder_head: {
     label: "Cylinder Head",
     fields: [
+      { key: "head_height_in", label: "Head Height (in)" },
       { key: "combustion_chamber_cc", label: "Combustion Chamber (cc)" },
       { key: "intake_port_cc", label: "Intake Port Volume (cc)" },
       { key: "exhaust_port_cc", label: "Exhaust Port Volume (cc)" },
@@ -64,7 +65,7 @@ const SPEC_SECTIONS = {
       { key: "exhaust_valve_diameter_mm", label: "Exhaust Valve Diameter (mm)" },
       { key: "valve_seat_angle_intake", label: "Intake Valve Seat Angle" },
       { key: "valve_seat_angle_exhaust", label: "Exhaust Valve Seat Angle" },
-      { key: "head_gasket_thickness_mm", label: "Head Gasket Thickness (mm)" },
+      { key: "head_gasket_thickness_in", label: "Head Gasket Thickness (in)" },
       { key: "head_bolt_torque_nm", label: "Head Bolt Torque (Nm)" },
       { key: "head_bolt_torque_sequence", label: "Head Bolt Torque Sequence" },
     ]
@@ -72,14 +73,14 @@ const SPEC_SECTIONS = {
   valvetrain: {
     label: "Valvetrain",
     fields: [
-      { key: "valve_stem_to_guide_clearance_intake_mm", label: "Intake Stem-to-Guide Clearance (mm)" },
-      { key: "valve_stem_to_guide_clearance_exhaust_mm", label: "Exhaust Stem-to-Guide Clearance (mm)" },
-      { key: "valve_spring_installed_height_mm", label: "Spring Installed Height (mm)" },
-      { key: "valve_spring_pressure_seat_kg", label: "Spring Pressure @ Seat (kg)" },
-      { key: "valve_spring_pressure_open_kg", label: "Spring Pressure @ Open (kg)" },
+      { key: "valve_stem_to_guide_clearance_intake_in", label: "Intake Stem-to-Guide Clearance (in)" },
+      { key: "valve_stem_to_guide_clearance_exhaust_in", label: "Exhaust Stem-to-Guide Clearance (in)" },
+      { key: "valve_spring_installed_height_in", label: "Spring Installed Height (in)" },
+      { key: "valve_spring_pressure_seat_lbs", label: "Spring Pressure @ Seat (lbs)" },
+      { key: "valve_spring_pressure_open_lbs", label: "Spring Pressure @ Open (lbs)" },
       { key: "rocker_ratio", label: "Rocker Ratio" },
-      { key: "lash_intake_mm", label: "Lash Intake (mm)" },
-      { key: "lash_exhaust_mm", label: "Lash Exhaust (mm)" },
+      { key: "lash_intake_in", label: "Lash Intake (in)" },
+      { key: "lash_exhaust_in", label: "Lash Exhaust (in)" },
     ]
   },
   camshaft: {
@@ -87,12 +88,12 @@ const SPEC_SECTIONS = {
     fields: [
       { key: "intake_duration_at_050", label: "Intake Duration @ 0.050\"" },
       { key: "exhaust_duration_at_050", label: "Exhaust Duration @ 0.050\"" },
-      { key: "intake_lift_mm", label: "Intake Lift (mm)" },
-      { key: "exhaust_lift_mm", label: "Exhaust Lift (mm)" },
+      { key: "intake_lift_in", label: "Intake Lift (in)" },
+      { key: "exhaust_lift_in", label: "Exhaust Lift (in)" },
       { key: "lobe_separation_angle", label: "Lobe Separation Angle" },
       { key: "intake_centerline", label: "Intake Centerline" },
       { key: "exhaust_centerline", label: "Exhaust Centerline" },
-      { key: "cam_bearing_clearance_mm", label: "Cam Bearing Clearance (mm)" },
+      { key: "cam_bearing_clearance_in", label: "Cam Bearing Clearance (in)" },
     ]
   },
   compression: {
@@ -100,7 +101,7 @@ const SPEC_SECTIONS = {
     fields: [
       { key: "static_compression_ratio", label: "Static Compression Ratio" },
       { key: "dynamic_compression_ratio", label: "Dynamic Compression Ratio" },
-      { key: "quench_distance_mm", label: "Quench Distance (mm)" },
+      { key: "quench_distance_in", label: "Quench Distance (in)" },
     ]
   },
   oiling: {
