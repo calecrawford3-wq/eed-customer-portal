@@ -240,9 +240,15 @@ export default function SpecSheets() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
+                          <Link to={createPageUrl(`SpecView?id=${spec.id}`)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            View
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                           <Link to={createPageUrl(`SpecEditor?id=${spec.id}`)}>
                             <Pencil className="w-4 h-4 mr-2" />
-                            Edit Specs
+                            Edit
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
@@ -285,13 +291,15 @@ export default function SpecSheets() {
                     <p className="text-sm text-slate-500 line-clamp-2 mb-4">{spec.notes}</p>
                   )}
 
-                  <Link
-                    to={createPageUrl(`SpecEditor?id=${spec.id}`)}
-                    className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
-                  >
-                    View & Edit Specifications
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={createPageUrl(`SpecView?id=${spec.id}`)}
+                      className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
+                    >
+                      View Specifications
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             );
