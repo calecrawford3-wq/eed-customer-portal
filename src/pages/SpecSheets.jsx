@@ -143,7 +143,7 @@ export default function SpecSheets() {
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+          className="bg-[#e20404] hover:bg-[#c00303] text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
           New Spec Sheet
@@ -287,7 +287,7 @@ export default function SpecSheets() {
 
                   <Link
                     to={createPageUrl(`SpecEditor?id=${spec.id}`)}
-                    className="flex items-center text-sm text-amber-600 hover:text-amber-700 font-medium"
+                    className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
                   >
                     View & Edit Specifications
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -357,7 +357,7 @@ export default function SpecSheets() {
               </Button>
               <Button
                 onClick={handleCreateSpec}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
                 disabled={!newSpecData.platform_id || createMutation.isPending}
               >
                 Create Spec Sheet

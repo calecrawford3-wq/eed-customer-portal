@@ -170,7 +170,7 @@ export default function Builds() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Engine Builds</h1>
           <p className="text-slate-500 mt-1">Track and manage individual engine builds</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-slate-900">
+        <Button onClick={() => setIsDialogOpen(true)} className="bg-[#e20404] hover:bg-[#c00303] text-white">
           <Plus className="w-4 h-4 mr-2" />
           New Build
         </Button>
@@ -292,7 +292,7 @@ export default function Builds() {
 
                   <Link
                     to={createPageUrl(`BuildDetail?id=${build.id}`)}
-                    className="flex items-center text-sm text-amber-600 hover:text-amber-700 font-medium"
+                    className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
                   >
                     View Build Details
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -421,7 +421,7 @@ export default function Builds() {
               </Button>
               <Button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
                 disabled={createMutation.isPending || !formData.build_number || !formData.platform_id}
               >
                 Create Build

@@ -179,7 +179,7 @@ export default function Platforms() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Engine Platforms</h1>
           <p className="text-slate-500 mt-1">Manage engine platform configurations</p>
         </div>
-        <Button onClick={() => openDialog()} className="bg-amber-500 hover:bg-amber-600 text-slate-900">
+        <Button onClick={() => openDialog()} className="bg-[#e20404] hover:bg-[#c00303] text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Platform
         </Button>
@@ -268,7 +268,7 @@ export default function Platforms() {
 
                 <Link
                   to={createPageUrl(`SpecSheets?platform=${platform.id}`)}
-                  className="flex items-center text-sm text-amber-600 hover:text-amber-700 font-medium"
+                  className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
                 >
                   View Specifications
                   <ChevronRight className="w-4 h-4 ml-1" />
@@ -401,7 +401,7 @@ export default function Platforms() {
               </Button>
               <Button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
                 {editingPlatform ? "Save Changes" : "Add Platform"}

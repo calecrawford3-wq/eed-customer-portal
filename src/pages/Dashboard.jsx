@@ -60,7 +60,7 @@ export default function Dashboard() {
       label: "Active Builds",
       value: activeBuilds.length,
       icon: Wrench,
-      color: "bg-amber-500",
+      color: "bg-[#e20404]",
       page: "Builds"
     },
     {
@@ -77,7 +77,7 @@ export default function Dashboard() {
   const statusColors = {
     planning: "bg-slate-100 text-slate-700",
     in_progress: "bg-blue-100 text-blue-700",
-    assembly: "bg-amber-100 text-amber-700",
+    assembly: "bg-[#e20404]/10 text-amber-700",
     testing: "bg-purple-100 text-purple-700",
     complete: "bg-emerald-100 text-emerald-700",
     shipped: "bg-slate-100 text-slate-500"
@@ -125,7 +125,7 @@ export default function Dashboard() {
               <CardTitle className="text-lg font-semibold">Recent Builds</CardTitle>
               <Link
                 to={createPageUrl("Builds")}
-                className="text-sm text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                className="text-sm text-[#e20404] hover:text-[#c00303] flex items-center gap-1"
               >
                 View all <ArrowRight className="w-4 h-4" />
               </Link>
@@ -183,7 +183,7 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             <Link
               to={createPageUrl("Platforms")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Layers className="w-5 h-5 text-blue-600" />
@@ -196,7 +196,7 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("SpecSheets")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-emerald-100 p-3 rounded-lg">
                 <FileText className="w-5 h-5 text-emerald-600" />
@@ -209,10 +209,10 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("Builds")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-amber-100 p-3 rounded-lg">
-                <Wrench className="w-5 h-5 text-amber-600" />
+              <div className="bg-[#e20404]/10 p-3 rounded-lg">
+                <Wrench className="w-5 h-5 text-[#e20404]" />
               </div>
               <div>
                 <p className="font-medium text-slate-900">Start New Build</p>
@@ -222,7 +222,7 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("Documents")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-purple-100 p-3 rounded-lg">
                 <FolderOpen className="w-5 h-5 text-purple-600" />

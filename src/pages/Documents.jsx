@@ -188,7 +188,7 @@ export default function Documents() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Technical Documents</h1>
           <p className="text-slate-500 mt-1">Manuals, diagrams, torque charts, and reference files</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-slate-900">
+        <Button onClick={() => setIsDialogOpen(true)} className="bg-[#e20404] hover:bg-[#c00303] text-white">
           <Plus className="w-4 h-4 mr-2" />
           Upload Document
         </Button>
@@ -301,7 +301,7 @@ export default function Documents() {
                   href={doc.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center text-sm text-amber-600 hover:text-amber-700 font-medium"
+                  className="inline-flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
                 >
                   <ExternalLink className="w-4 h-4 mr-1" />
                   View Document
@@ -386,7 +386,7 @@ export default function Documents() {
 
             <div className="space-y-2">
               <Label>File *</Label>
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:border-amber-300 transition-colors">
+              <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:border-[#e20404]/30 transition-colors">
                 {formData.file_url ? (
                   <div className="flex items-center justify-center gap-2">
                     <FileText className="w-5 h-5 text-emerald-500" />
@@ -480,7 +480,7 @@ export default function Documents() {
               </Button>
               <Button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
                 disabled={createMutation.isPending || !formData.file_url || !formData.platform_id}
               >
                 Upload Document

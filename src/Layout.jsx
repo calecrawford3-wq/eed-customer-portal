@@ -38,14 +38,14 @@ export default function Layout({ children, currentPageName }) {
         <div className="h-16 flex items-center px-4 border-b border-slate-800">
           {!collapsed && (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#e20404] rounded-lg flex items-center justify-center">
                 <Gauge className="w-5 h-5 text-slate-900" />
               </div>
               <span className="font-semibold text-lg tracking-tight">SpecVault</span>
             </div>
           )}
           {collapsed && (
-            <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center mx-auto">
+            <div className="w-8 h-8 bg-[#e20404] rounded-lg flex items-center justify-center mx-auto">
               <Gauge className="w-5 h-5 text-slate-900" />
             </div>
           )}
@@ -62,7 +62,7 @@ export default function Layout({ children, currentPageName }) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                   isActive
-                    ? "bg-amber-500 text-slate-900 font-medium"
+                    ? "bg-[#e20404] text-slate-900 font-medium"
                     : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >

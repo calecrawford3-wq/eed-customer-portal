@@ -283,7 +283,7 @@ export default function BuildDetail() {
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-900 gap-2"
+            className="bg-[#e20404] hover:bg-[#c00303] text-white gap-2"
             disabled={updateMutation.isPending || !hasChanges}
           >
             <Save className="w-4 h-4" />
@@ -423,7 +423,7 @@ export default function BuildDetail() {
                             if (value == null && !overridden) return null;
 
                             return (
-                              <tr key={field} className={overridden ? "bg-amber-50" : ""}>
+                              <tr key={field} className={overridden ? "bg-[#e20404]/5" : ""}>
                                 <td className="px-4 py-2 text-slate-600 border-b w-1/2">
                                   {FIELD_LABELS[field] || field}
                                 </td>
@@ -431,7 +431,7 @@ export default function BuildDetail() {
                                   <div className="flex items-center gap-2">
                                     {value ?? "-"}
                                     {overridden && (
-                                      <AlertCircle className="w-4 h-4 text-amber-500" />
+                                      <AlertCircle className="w-4 h-4 text-[#e20404]" />
                                     )}
                                   </div>
                                 </td>
@@ -455,7 +455,7 @@ export default function BuildDetail() {
               <CardTitle>Specification Overrides</CardTitle>
               <Button
                 onClick={() => setIsOverrideDialogOpen(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Override
@@ -472,11 +472,11 @@ export default function BuildDetail() {
                   {localBuild.overrides.map((override, index) => (
                     <div
                       key={index}
-                      className="flex items-start justify-between p-4 rounded-lg border border-amber-200 bg-amber-50"
+                      className="flex items-start justify-between p-4 rounded-lg border border-[#e20404]/20 bg-[#e20404]/5"
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <AlertCircle className="w-4 h-4 text-amber-600" />
+                          <AlertCircle className="w-4 h-4 text-[#e20404]" />
                           <span className="font-medium text-slate-900">
                             {allSpecPaths.find(p => p.path === override.spec_path)?.label || override.spec_path}
                           </span>
@@ -586,7 +586,7 @@ export default function BuildDetail() {
               </Button>
               <Button
                 onClick={handleAddOverride}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
                 disabled={!newOverride.spec_path || !newOverride.new_value || !newOverride.reason || !newOverride.approved_by}
               >
                 Add Override

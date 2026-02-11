@@ -279,7 +279,7 @@ export default function SpecEditor() {
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-900 gap-2"
+            className="bg-[#e20404] hover:bg-[#c00303] text-white gap-2"
             disabled={updateMutation.isPending || !hasChanges}
           >
             <Save className="w-4 h-4" />

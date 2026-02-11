@@ -322,7 +322,7 @@ export default function SpecCompare() {
                         return (
                           <tr
                             key={field.key}
-                            className={different ? "bg-amber-50" : ""}
+                            className={different ? "bg-[#e20404]/5" : ""}
                           >
                             <td className="px-4 py-3 text-sm text-slate-600 border-b">
                               {field.label}
@@ -334,7 +334,7 @@ export default function SpecCompare() {
                               <div className="flex items-center gap-2">
                                 {compareVal || <Minus className="w-4 h-4 text-slate-300" />}
                                 {different && (
-                                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                                  <AlertCircle className="w-4 h-4 text-[#e20404]" />
                                 )}
                               </div>
                             </td>
