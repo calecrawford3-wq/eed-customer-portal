@@ -176,7 +176,7 @@ export default function Documents() {
     wiring_schematic: "bg-orange-100 text-orange-700",
     parts_list: "bg-slate-100 text-slate-700",
     technical_bulletin: "bg-red-100 text-red-700",
-    internal_procedure: "bg-amber-100 text-amber-700",
+    internal_procedure: "bg-[#e20404]/10 text-[#e20404]",
     other: "bg-slate-100 text-slate-600"
   };
 

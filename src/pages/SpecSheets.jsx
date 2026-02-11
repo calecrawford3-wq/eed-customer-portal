@@ -273,7 +273,7 @@ export default function SpecSheets() {
                         spec.status === "active"
                           ? "border-emerald-200 text-emerald-700"
                           : spec.status === "draft"
-                          ? "border-amber-200 text-amber-700"
+                          ? "border-[#e20404]/20 text-[#e20404]"
                           : "border-slate-200 text-slate-500"
                       }
                     >
