@@ -50,6 +50,10 @@
 import Dashboard from './pages/Dashboard';
 import Platforms from './pages/Platforms';
 import Documents from './pages/Documents';
+import SpecSheets from './pages/SpecSheets';
+import SpecEditor from './pages/SpecEditor';
+import SpecCompare from './pages/SpecCompare';
+import Builds from './pages/Builds';
 import __Layout from './Layout.jsx';
 
 
@@ -57,6 +61,10 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "Platforms": Platforms,
     "Documents": Documents,
+    "SpecSheets": SpecSheets,
+    "SpecEditor": SpecEditor,
+    "SpecCompare": SpecCompare,
+    "Builds": Builds,
 }
 
 export const pagesConfig = {

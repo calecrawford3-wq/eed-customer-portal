@@ -1,0 +1,371 @@
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import {
+  Plus,
+  Search,
+  FileText,
+  History,
+  ChevronRight,
+  Copy,
+  GitCompare,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  CheckCircle
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+const SPEC_TYPES = [
+  { value: "stock", label: "Stock", color: "bg-slate-100 text-slate-700" },
+  { value: "stage_1", label: "Stage 1", color: "bg-blue-100 text-blue-700" },
+  { value: "stage_2", label: "Stage 2", color: "bg-purple-100 text-purple-700" },
+  { value: "stage_3", label: "Stage 3", color: "bg-red-100 text-red-700" },
+  { value: "contract", label: "Contract", color: "bg-emerald-100 text-emerald-700" },
+  { value: "custom", label: "Custom", color: "bg-amber-100 text-amber-700" },
+];
+
+export default function SpecSheets() {
+  const [search, setSearch] = useState("");
+  const [filterPlatform, setFilterPlatform] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [showVersions, setShowVersions] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newSpecData, setNewSpecData] = useState({
+    platform_id: "",
+    spec_type: "stock",
+    custom_name: ""
+  });
+
+  const queryClient = useQueryClient();
+
+  // Get platform from URL if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const platformId = params.get("platform");
+    if (platformId) {
+      setFilterPlatform(platformId);
+    }
+  }, []);
+
+  const { data: specSheets = [], isLoading } = useQuery({
+    queryKey: ["specSheets"],
+    queryFn: () => base44.entities.SpecSheet.list("-created_date", 500),
+  });
+
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.SpecSheet.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["specSheets"] });
+      setIsCreateDialogOpen(false);
+      setNewSpecData({ platform_id: "", spec_type: "stock", custom_name: "" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.SpecSheet.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["specSheets"] });
+    },
+  });
+
+  const filteredSpecs = specSheets.filter(spec => {
+    const platform = platforms.find(p => p.id === spec.platform_id);
+    const matchesSearch = search === "" ||
+      platform?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      spec.custom_name?.toLowerCase().includes(search.toLowerCase());
+    const matchesPlatform = filterPlatform === "all" || spec.platform_id === filterPlatform;
+    const matchesType = filterType === "all" || spec.spec_type === filterType;
+    const matchesVersion = showVersions || spec.is_current;
+    return matchesSearch && matchesPlatform && matchesType && matchesVersion;
+  });
+
+  const groupedSpecs = filteredSpecs.reduce((acc, spec) => {
+    const key = `${spec.platform_id}-${spec.spec_type}-${spec.custom_name || ""}`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(spec);
+    return acc;
+  }, {});
+
+  const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
+  const getSpecTypeConfig = (type) => SPEC_TYPES.find(t => t.value === type) || SPEC_TYPES[0];
+
+  const handleCreateSpec = () => {
+    createMutation.mutate({
+      ...newSpecData,
+      version: 1,
+      is_current: true,
+      status: "draft",
+      specs: {}
+    });
+  };
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Spec Sheets</h1>
+          <p className="text-slate-500 mt-1">Engine specifications and stage configurations</p>
+        </div>
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Spec Sheet
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search spec sheets..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Platforms" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Platforms</SelectItem>
+            {platforms.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {SPEC_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant={showVersions ? "default" : "outline"}
+          onClick={() => setShowVersions(!showVersions)}
+          className="gap-2"
+        >
+          <History className="w-4 h-4" />
+          {showVersions ? "Hide" : "Show"} History
+        </Button>
+      </div>
+
+      {/* Specs Grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : filteredSpecs.length === 0 ? (
+        <div className="text-center py-16">
+          <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+          <h3 className="text-lg font-medium text-slate-900">No spec sheets found</h3>
+          <p className="text-slate-500 mt-1">
+            {search || filterPlatform !== "all" || filterType !== "all"
+              ? "Try adjusting your filters"
+              : "Create your first specification sheet"}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredSpecs.map((spec) => {
+            const typeConfig = getSpecTypeConfig(spec.spec_type);
+            return (
+              <Card key={spec.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-slate-900">
+                          {getPlatformName(spec.platform_id)}
+                        </h3>
+                        {spec.is_current && (
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500">
+                        {spec.custom_name || typeConfig.label}
+                        {!spec.is_current && ` (v${spec.version})`}
+                      </p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={createPageUrl(`SpecEditor?id=${spec.id}`)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit Specs
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to={createPageUrl(`SpecCompare?base=${spec.id}`)}>
+                            <GitCompare className="w-4 h-4 mr-2" />
+                            Compare
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => deleteMutation.mutate(spec.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge className={typeConfig.color}>
+                      {typeConfig.label}
+                    </Badge>
+                    <Badge variant="outline">v{spec.version}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={
+                        spec.status === "active"
+                          ? "border-emerald-200 text-emerald-700"
+                          : spec.status === "draft"
+                          ? "border-amber-200 text-amber-700"
+                          : "border-slate-200 text-slate-500"
+                      }
+                    >
+                      {spec.status}
+                    </Badge>
+                  </div>
+
+                  {spec.notes && (
+                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">{spec.notes}</p>
+                  )}
+
+                  <Link
+                    to={createPageUrl(`SpecEditor?id=${spec.id}`)}
+                    className="flex items-center text-sm text-amber-600 hover:text-amber-700 font-medium"
+                  >
+                    View & Edit Specifications
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Spec Sheet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Engine Platform *</Label>
+              <Select
+                value={newSpecData.platform_id}
+                onValueChange={(value) => setNewSpecData({ ...newSpecData, platform_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {platforms.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Specification Type *</Label>
+              <Select
+                value={newSpecData.spec_type}
+                onValueChange={(value) => setNewSpecData({ ...newSpecData, spec_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPEC_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(newSpecData.spec_type === "contract" || newSpecData.spec_type === "custom") && (
+              <div className="space-y-2">
+                <Label>Custom Name</Label>
+                <Input
+                  value={newSpecData.custom_name}
+                  onChange={(e) => setNewSpecData({ ...newSpecData, custom_name: e.target.value })}
+                  placeholder="e.g., Team XYZ Build Spec"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateSpec}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-900"
+                disabled={!newSpecData.platform_id || createMutation.isPending}
+              >
+                Create Spec Sheet
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
