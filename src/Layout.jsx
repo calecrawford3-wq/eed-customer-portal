@@ -9,8 +9,7 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronRight,
-  Settings,
-  Search
+  Monitor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +22,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
     { name: "Engine Builds", page: "Builds", icon: Wrench },
     { name: "Documents", page: "Documents", icon: FolderOpen },
+    { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
   ];
 
   return (
