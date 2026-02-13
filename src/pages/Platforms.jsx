@@ -42,21 +42,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const CONFIGURATIONS = [
   { value: "inline-4", label: "Inline 4" },
-  { value: "inline-6", label: "Inline 6" },
-  { value: "v6", label: "V6" },
-  { value: "v8", label: "V8" },
-  { value: "v10", label: "V10" },
-  { value: "v12", label: "V12" },
-  { value: "flat-4", label: "Flat 4 (Boxer)" },
-  { value: "flat-6", label: "Flat 6 (Boxer)" },
-  { value: "rotary", label: "Rotary" },
+  { value: "inline-3", label: "Inline 3" },
+  { value: "v-twin", label: "V-Twin" },
+  { value: "parallel-twin", label: "Parallel Twin" },
+  { value: "single", label: "Single" },
 ];
 
-const INDUCTION = [
-  { value: "naturally_aspirated", label: "Naturally Aspirated" },
-  { value: "turbocharged", label: "Turbocharged" },
-  { value: "supercharged", label: "Supercharged" },
-  { value: "twin_turbo", label: "Twin Turbo" },
+const MANUFACTURERS = [
+  "Suzuki",
+  "Yamaha",
+  "Honda",
+  "Kawasaki",
 ];
 
 export default function Platforms() {
@@ -120,7 +116,8 @@ export default function Platforms() {
         year_range_end: platform.year_range_end || "",
         displacement_cc: platform.displacement_cc || "",
         configuration: platform.configuration || "",
-        forced_induction: platform.forced_induction || "naturally_aspirated",
+        valve_count: platform.valve_count || "",
+        cylinder_count: platform.cylinder_count || "",
         notes: platform.notes || "",
         status: platform.status || "active"
       });
@@ -133,7 +130,8 @@ export default function Platforms() {
         year_range_end: "",
         displacement_cc: "",
         configuration: "",
-        forced_induction: "naturally_aspirated",
+        valve_count: "",
+        cylinder_count: "",
         notes: "",
         status: "active"
       });
@@ -153,6 +151,8 @@ export default function Platforms() {
       year_range_start: formData.year_range_start ? Number(formData.year_range_start) : null,
       year_range_end: formData.year_range_end ? Number(formData.year_range_end) : null,
       displacement_cc: formData.displacement_cc ? Number(formData.displacement_cc) : null,
+      cylinder_count: formData.cylinder_count ? Number(formData.cylinder_count) : null,
+      valve_count: formData.valve_count ? Number(formData.valve_count) : null,
     };
 
     if (editingPlatform) {
@@ -257,9 +257,11 @@ export default function Platforms() {
                 </div>
 
                 <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="outline" className="text-xs">
-                    {INDUCTION.find(i => i.value === platform.forced_induction)?.label || "N/A"}
-                  </Badge>
+                  {platform.cylinder_count && (
+                    <Badge variant="outline" className="text-xs">
+                      {platform.cylinder_count} cyl / {platform.valve_count || "?"} valves
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-xs">
                     <FileText className="w-3 h-3 mr-1" />
                     {getSpecCount(platform.id)} specs
@@ -295,7 +297,7 @@ export default function Platforms() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., LS3, 2JZ-GTE"
+                  placeholder="e.g., GSX-R600, YZF-R6"
                   required
                 />
               </div>
@@ -305,7 +307,7 @@ export default function Platforms() {
                   id="manufacturer"
                   value={formData.manufacturer}
                   onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                  placeholder="e.g., GM, Toyota"
+                  placeholder="e.g., Suzuki, Yamaha"
                   required
                 />
               </div>
@@ -365,23 +367,27 @@ export default function Platforms() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Forced Induction</Label>
-              <Select
-                value={formData.forced_induction}
-                onValueChange={(value) => setFormData({ ...formData, forced_induction: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUCTION.map((ind) => (
-                    <SelectItem key={ind.value} value={ind.value}>
-                      {ind.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cylinder_count">Cylinders</Label>
+                <Input
+                  id="cylinder_count"
+                  type="number"
+                  value={formData.cylinder_count}
+                  onChange={(e) => setFormData({ ...formData, cylinder_count: e.target.value })}
+                  placeholder="4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valve_count">Total Valves</Label>
+                <Input
+                  id="valve_count"
+                  type="number"
+                  value={formData.valve_count}
+                  onChange={(e) => setFormData({ ...formData, valve_count: e.target.value })}
+                  placeholder="16"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
