@@ -66,7 +66,8 @@ export default function Platforms() {
     year_range_end: "",
     displacement_cc: "",
     configuration: "",
-    forced_induction: "naturally_aspirated",
+    valve_count: "",
+    cylinder_count: "",
     notes: "",
     status: "active"
   });
@@ -344,7 +345,7 @@ export default function Platforms() {
                   type="number"
                   value={formData.displacement_cc}
                   onChange={(e) => setFormData({ ...formData, displacement_cc: e.target.value })}
-                  placeholder="6162"
+                  placeholder="600"
                 />
               </div>
               <div className="space-y-2">
