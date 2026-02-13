@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -10,14 +10,13 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  FileText,
-  CheckCircle,
-  Clock
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,103 +33,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import { format } from "date-fns";
+import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 
 const STATUS_OPTIONS = [
-  { value: "planning", label: "Planning", color: "bg-slate-100 text-slate-700" },
-  { value: "in_progress", label: "In Progress", color: "bg-blue-100 text-blue-700" },
-  { value: "assembly", label: "Assembly", color: "bg-[#e20404]/10 text-[#e20404]" },
-  { value: "testing", label: "Testing", color: "bg-purple-100 text-purple-700" },
-  { value: "complete", label: "Complete", color: "bg-emerald-100 text-emerald-700" },
-  { value: "shipped", label: "Shipped", color: "bg-slate-100 text-slate-500" },
+  { value: "queued", label: "Queued" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "assembly", label: "Assembly" },
+  { value: "testing", label: "Testing" },
+  { value: "complete", label: "Complete" },
+  { value: "shipped", label: "Shipped" },
 ];
 
-const SPEC_SECTIONS = {
-  block: { label: "Block", fields: ["bore_diameter_mm", "bore_diameter_tolerance", "deck_height_in", "deck_height_tolerance", "main_bearing_clearance_in", "main_cap_torque_nm", "main_cap_torque_sequence"] },
-  rotating_assembly: { label: "Rotating Assembly", fields: ["stroke_mm", "rod_length_in", "rod_ratio", "piston_compression_height_in", "piston_to_wall_clearance_in", "ring_end_gap_top_in", "ring_end_gap_second_in", "ring_end_gap_oil_in", "rod_bearing_clearance_in", "rod_bolt_torque_nm", "rod_side_clearance_in", "crankshaft_end_play_in"] },
-  cylinder_head: { label: "Cylinder Head", fields: ["head_height_in", "combustion_chamber_cc", "intake_port_cc", "exhaust_port_cc", "intake_valve_diameter_mm", "exhaust_valve_diameter_mm", "valve_seat_angle_intake", "valve_seat_angle_exhaust", "head_gasket_thickness_in", "head_bolt_torque_nm", "head_bolt_torque_sequence"] },
-  valvetrain: { label: "Valvetrain", fields: ["valve_stem_to_guide_clearance_intake_in", "valve_stem_to_guide_clearance_exhaust_in", "valve_spring_installed_height_in", "valve_spring_pressure_seat_lbs", "valve_spring_pressure_open_lbs", "rocker_ratio", "lash_intake_in", "lash_exhaust_in"] },
-  camshaft: { label: "Camshaft", fields: ["intake_duration_at_050", "exhaust_duration_at_050", "intake_lift_in", "exhaust_lift_in", "lobe_separation_angle", "intake_centerline", "exhaust_centerline", "cam_bearing_clearance_in"] },
-  compression: { label: "Compression", fields: ["static_compression_ratio", "dynamic_compression_ratio", "quench_distance_in"] },
-  oiling: { label: "Oiling", fields: ["oil_pressure_idle_kpa", "oil_pressure_max_kpa", "oil_capacity_liters", "oil_weight"] },
-  fasteners: { label: "Fasteners", fields: ["flywheel_bolt_torque_nm", "harmonic_balancer_torque_nm", "intake_manifold_torque_nm", "exhaust_manifold_torque_nm", "spark_plug_torque_nm"] }
-};
-
-const FIELD_LABELS = {
-  bore_diameter_mm: "Bore Diameter (mm)",
-  bore_diameter_tolerance: "Bore Tolerance",
-  deck_height_in: "Deck Height (in)",
-  deck_height_tolerance: "Deck Tolerance",
-  main_bearing_clearance_in: "Main Bearing Clearance (in)",
-  main_cap_torque_nm: "Main Cap Torque (Nm)",
-  main_cap_torque_sequence: "Main Cap Torque Sequence",
-  stroke_mm: "Stroke (mm)",
-  rod_length_in: "Rod Length (in)",
-  rod_ratio: "Rod Ratio",
-  piston_compression_height_in: "Piston Compression Height (in)",
-  piston_to_wall_clearance_in: "Piston to Wall Clearance (in)",
-  ring_end_gap_top_in: "Ring End Gap - Top (in)",
-  ring_end_gap_second_in: "Ring End Gap - Second (in)",
-  ring_end_gap_oil_in: "Ring End Gap - Oil (in)",
-  rod_bearing_clearance_in: "Rod Bearing Clearance (in)",
-  rod_bolt_torque_nm: "Rod Bolt Torque (Nm)",
-  rod_side_clearance_in: "Rod Side Clearance (in)",
-  crankshaft_end_play_in: "Crankshaft End Play (in)",
-  head_height_in: "Head Height (in)",
-  combustion_chamber_cc: "Combustion Chamber (cc)",
-  intake_port_cc: "Intake Port Volume (cc)",
-  exhaust_port_cc: "Exhaust Port Volume (cc)",
-  intake_valve_diameter_mm: "Intake Valve Diameter (mm)",
-  exhaust_valve_diameter_mm: "Exhaust Valve Diameter (mm)",
-  valve_seat_angle_intake: "Intake Valve Seat Angle",
-  valve_seat_angle_exhaust: "Exhaust Valve Seat Angle",
-  head_gasket_thickness_in: "Head Gasket Thickness (in)",
-  head_bolt_torque_nm: "Head Bolt Torque (Nm)",
-  head_bolt_torque_sequence: "Head Bolt Torque Sequence",
-  valve_stem_to_guide_clearance_intake_in: "Intake Stem-to-Guide Clearance (in)",
-  valve_stem_to_guide_clearance_exhaust_in: "Exhaust Stem-to-Guide Clearance (in)",
-  valve_spring_installed_height_in: "Spring Installed Height (in)",
-  valve_spring_pressure_seat_lbs: "Spring Pressure @ Seat (lbs)",
-  valve_spring_pressure_open_lbs: "Spring Pressure @ Open (lbs)",
-  rocker_ratio: "Rocker Ratio",
-  lash_intake_in: "Lash Intake (in)",
-  lash_exhaust_in: "Lash Exhaust (in)",
-  intake_duration_at_050: "Intake Duration @ 0.050\"",
-  exhaust_duration_at_050: "Exhaust Duration @ 0.050\"",
-  intake_lift_in: "Intake Lift (in)",
-  exhaust_lift_in: "Exhaust Lift (in)",
-  lobe_separation_angle: "Lobe Separation Angle",
-  intake_centerline: "Intake Centerline",
-  exhaust_centerline: "Exhaust Centerline",
-  cam_bearing_clearance_in: "Cam Bearing Clearance (in)",
-  static_compression_ratio: "Static Compression Ratio",
-  dynamic_compression_ratio: "Dynamic Compression Ratio",
-  quench_distance_in: "Quench Distance (in)",
-  oil_pressure_idle_kpa: "Oil Pressure @ Idle (kPa)",
-  oil_pressure_max_kpa: "Oil Pressure @ Max (kPa)",
-  oil_capacity_liters: "Oil Capacity (L)",
-  oil_weight: "Oil Weight",
-  flywheel_bolt_torque_nm: "Flywheel Bolt Torque (Nm)",
-  harmonic_balancer_torque_nm: "Harmonic Balancer Torque (Nm)",
-  intake_manifold_torque_nm: "Intake Manifold Torque (Nm)",
-  exhaust_manifold_torque_nm: "Exhaust Manifold Torque (Nm)",
-  spark_plug_torque_nm: "Spark Plug Torque (Nm)"
-};
+const SPEC_TYPES = [
+  { value: "stock", label: "Stock" },
+  { value: "stage_1", label: "Stage 1" },
+  { value: "stage_2", label: "Stage 2" },
+  { value: "stage_3", label: "Stage 3" },
+  { value: "contract", label: "Contract" },
+  { value: "custom", label: "Custom" },
+];
 
 export default function BuildDetail() {
   const [buildId, setBuildId] = useState(null);
-  const [localBuild, setLocalBuild] = useState(null);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
-  const [newOverride, setNewOverride] = useState({
-    spec_path: "",
-    original_value: "",
-    new_value: "",
-    reason: "",
-    approved_by: ""
-  });
+  const [localChanges, setLocalChanges] = useState({});
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const printRef = useRef();
 
   const queryClient = useQueryClient();
 
@@ -152,89 +79,78 @@ export default function BuildDetail() {
 
   const { data: specSheets = [] } = useQuery({
     queryKey: ["specSheets"],
-    queryFn: () => base44.entities.SpecSheet.list("-created_date", 500),
+    queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
 
   const build = buildData?.[0];
+  const platform = platforms.find(p => p.id === build?.platform_id);
   const specSheet = specSheets.find(s => s.id === build?.spec_sheet_id);
-
-  useEffect(() => {
-    if (build) {
-      setLocalBuild({ ...build });
-    }
-  }, [build]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.EngineBuild.update(buildId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["build", buildId] });
-      setHasChanges(false);
-      toast.success("Build saved successfully");
+      setLocalChanges({});
     },
   });
 
-  const handleFieldChange = (field, value) => {
-    setLocalBuild(prev => ({ ...prev, [field]: value }));
-    setHasChanges(true);
-  };
-
   const handleSave = () => {
-    updateMutation.mutate(localBuild);
+    updateMutation.mutate(localChanges);
   };
 
-  const handleAddOverride = () => {
-    const overrides = [...(localBuild.overrides || []), {
-      ...newOverride,
-      date: new Date().toISOString().split("T")[0]
-    }];
-    setLocalBuild(prev => ({ ...prev, overrides }));
-    setHasChanges(true);
-    setIsOverrideDialogOpen(false);
-    setNewOverride({
-      spec_path: "",
-      original_value: "",
-      new_value: "",
-      reason: "",
-      approved_by: ""
-    });
+  const handleChange = (field, value) => {
+    setLocalChanges(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRemoveOverride = (index) => {
-    const overrides = localBuild.overrides.filter((_, i) => i !== index);
-    setLocalBuild(prev => ({ ...prev, overrides }));
-    setHasChanges(true);
+  const handleValveLashChange = (type, valve, value) => {
+    const fieldName = type === "intake" ? "valve_lash_intake" : "valve_lash_exhaust";
+    const current = localChanges[fieldName] || build?.[fieldName] || {};
+    setLocalChanges(prev => ({
+      ...prev,
+      [fieldName]: { ...current, [valve]: value }
+    }));
   };
 
-  const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
-  const getStatusConfig = (status) => STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
-
-  const getSpecValue = (path) => {
-    if (!specSheet?.specs) return null;
-    const [section, field] = path.split(".");
-    return specSheet.specs[section]?.[field];
+  const getValue = (field) => {
+    return localChanges[field] !== undefined ? localChanges[field] : build?.[field] || "";
   };
 
-  const getEffectiveValue = (path) => {
-    const override = localBuild?.overrides?.find(o => o.spec_path === path);
-    if (override) return override.new_value;
-    return getSpecValue(path);
+  const getValveLash = (type, valve) => {
+    const fieldName = type === "intake" ? "valve_lash_intake" : "valve_lash_exhaust";
+    const data = localChanges[fieldName] || build?.[fieldName] || {};
+    return data[valve] || "";
   };
 
-  const isOverridden = (path) => {
-    return localBuild?.overrides?.some(o => o.spec_path === path);
-  };
+  const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type;
 
   const handlePrint = () => {
-    window.print();
+    setShowPrintDialog(true);
   };
 
-  // Generate all spec paths for override dropdown
-  const allSpecPaths = Object.entries(SPEC_SECTIONS).flatMap(([sectionKey, section]) =>
-    section.fields.map(field => ({
-      path: `${sectionKey}.${field}`,
-      label: `${section.label} > ${FIELD_LABELS[field] || field}`
-    }))
-  );
+  const doPrint = () => {
+    const printContent = printRef.current;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Build Sheet - ${build?.engine_serial_number}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
 
   if (isLoading || !buildId) {
     return (
@@ -245,7 +161,7 @@ export default function BuildDetail() {
     );
   }
 
-  if (!build || !localBuild) {
+  if (!build) {
     return (
       <div className="p-8 text-center py-16">
         <AlertCircle className="w-12 h-12 mx-auto mb-4 text-slate-300" />
@@ -254,357 +170,267 @@ export default function BuildDetail() {
     );
   }
 
-  const statusConfig = getStatusConfig(localBuild.status);
+  const hasChanges = Object.keys(localChanges).length > 0;
 
   return (
-    <div className="p-8 print:p-4">
+    <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 print:mb-4">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Link to={createPageUrl("Builds")} className="print:hidden">
+          <Link to={createPageUrl("Builds")}>
             <Button variant="ghost" size="icon">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{localBuild.build_number}</h1>
-              <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {build.engine_serial_number}
+              </h1>
+              <Badge variant="outline">{STATUS_OPTIONS.find(s => s.value === build.status)?.label}</Badge>
             </div>
             <p className="text-slate-500 mt-1">
-              {getPlatformName(localBuild.platform_id)}
-              {specSheet && ` • ${specSheet.custom_name || specSheet.spec_type} v${specSheet.version}`}
+              {platform?.manufacturer} {platform?.name}
+              {build.build_number && <span className="ml-2">• Jobcard: {build.build_number}</span>}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 print:hidden">
-          <Button variant="outline" className="gap-2" onClick={handlePrint}>
-            <Printer className="w-4 h-4" />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="w-4 h-4 mr-2" />
             Print Build Sheet
           </Button>
-          <Button
-            onClick={handleSave}
-            className="bg-[#e20404] hover:bg-[#c00303] text-white gap-2"
-            disabled={updateMutation.isPending || !hasChanges}
-          >
-            <Save className="w-4 h-4" />
-            Save
-          </Button>
+          {hasChanges && (
+            <Button onClick={handleSave} className="bg-[#e20404] hover:bg-[#c00303]">
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="details" className="space-y-6">
-        <TabsList className="bg-slate-100 p-1 print:hidden">
+      <Tabs defaultValue="details">
+        <TabsList>
           <TabsTrigger value="details">Build Details</TabsTrigger>
+          <TabsTrigger value="valve_lash">Valve Lash</TabsTrigger>
           <TabsTrigger value="specs">Specifications</TabsTrigger>
-          <TabsTrigger value="overrides">
-            Overrides
-            {localBuild.overrides?.length > 0 && (
-              <Badge className="ml-2 bg-[#e20404]/10 text-[#e20404] h-5 px-1.5">
-                {localBuild.overrides.length}
-              </Badge>
-            )}
-          </TabsTrigger>
         </TabsList>
 
-        {/* Details Tab */}
-        <TabsContent value="details">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TabsContent value="details" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Build Information</CardTitle>
+                <CardTitle className="text-base">Customer & Build Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Build Number</Label>
-                    <Input
-                      value={localBuild.build_number}
-                      onChange={(e) => handleFieldChange("build_number", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Status</Label>
-                    <Select
-                      value={localBuild.status}
-                      onValueChange={(v) => handleFieldChange("status", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-500">Application</Label>
+                <div>
+                  <Label>Customer Name</Label>
                   <Input
-                    value={localBuild.application || ""}
-                    onChange={(e) => handleFieldChange("application", e.target.value)}
-                    placeholder="Vehicle/application"
+                    value={getValue("customer_name")}
+                    onChange={(e) => handleChange("customer_name", e.target.value)}
                   />
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-500">Customer Reference</Label>
+                <div>
+                  <Label>Invoice Number</Label>
                   <Input
-                    value={localBuild.customer_reference || ""}
-                    onChange={(e) => handleFieldChange("customer_reference", e.target.value)}
+                    value={getValue("invoice_number")}
+                    onChange={(e) => handleChange("invoice_number", e.target.value)}
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Target HP</Label>
-                    <Input
-                      type="number"
-                      value={localBuild.target_power_hp || ""}
-                      onChange={(e) => handleFieldChange("target_power_hp", e.target.value ? Number(e.target.value) : null)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Target RPM</Label>
-                    <Input
-                      type="number"
-                      value={localBuild.target_rpm_limit || ""}
-                      onChange={(e) => handleFieldChange("target_rpm_limit", e.target.value ? Number(e.target.value) : null)}
-                    />
-                  </div>
+                <div>
+                  <Label>Build/Jobcard #</Label>
+                  <Input
+                    value={getValue("build_number")}
+                    onChange={(e) => handleChange("build_number", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Application</Label>
+                  <Input
+                    value={getValue("application")}
+                    onChange={(e) => handleChange("application", e.target.value)}
+                  />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>Assembly Notes</CardTitle>
+                <CardTitle className="text-base">Engine Specifications</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Max RPM</Label>
+                  <Input
+                    type="number"
+                    value={getValue("max_rpm")}
+                    onChange={(e) => handleChange("max_rpm", parseInt(e.target.value) || "")}
+                  />
+                </div>
+                <div>
+                  <Label>Refresh Interval</Label>
+                  <Input
+                    value={getValue("refresh_interval")}
+                    onChange={(e) => handleChange("refresh_interval", e.target.value)}
+                    placeholder="e.g., 20 hours"
+                  />
+                </div>
+                <div>
+                  <Label>Oil Recommendation</Label>
+                  <Input
+                    value={getValue("oil_recommendation")}
+                    onChange={(e) => handleChange("oil_recommendation", e.target.value)}
+                    placeholder="e.g., Motul 300V 10W-40"
+                  />
+                </div>
+                <div>
+                  <Label>Oil Change Interval</Label>
+                  <Input
+                    value={getValue("oil_change_interval")}
+                    onChange={(e) => handleChange("oil_change_interval", e.target.value)}
+                    placeholder="e.g., Every race weekend"
+                  />
+                </div>
+                <div>
+                  <Label>Spark Plug Recommendation</Label>
+                  <Input
+                    value={getValue("spark_plug_recommendation")}
+                    onChange={(e) => handleChange("spark_plug_recommendation", e.target.value)}
+                    placeholder="e.g., NGK CR9EIA-9"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Notes & Comments</CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
-                  value={localBuild.assembly_notes || ""}
-                  onChange={(e) => handleFieldChange("assembly_notes", e.target.value)}
-                  placeholder="Assembly notes and observations..."
-                  rows={8}
+                  value={getValue("assembly_notes")}
+                  onChange={(e) => handleChange("assembly_notes", e.target.value)}
+                  placeholder="Build notes, special instructions, comments..."
+                  className="min-h-[150px]"
                 />
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Specs Tab */}
-        <TabsContent value="specs" className="print:block">
-          {!specSheet ? (
-            <div className="text-center py-16">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-              <h3 className="text-lg font-medium text-slate-900">No spec sheet assigned</h3>
-              <p className="text-slate-500 mt-1">Assign a spec sheet to view specifications</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(SPEC_SECTIONS).map(([sectionKey, section]) => {
-                const hasValues = section.fields.some(f => getSpecValue(`${sectionKey}.${f}`) != null);
-                if (!hasValues) return null;
-
-                return (
-                  <Card key={sectionKey} className="border-0 shadow-sm print:shadow-none print:border">
-                    <CardHeader className="py-3 bg-slate-50">
-                      <CardTitle className="text-base">{section.label}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {section.fields.map(field => {
-                            const path = `${sectionKey}.${field}`;
-                            const value = getEffectiveValue(path);
-                            const overridden = isOverridden(path);
-                            if (value == null && !overridden) return null;
-
-                            return (
-                              <tr key={field} className={overridden ? "bg-[#e20404]/5" : ""}>
-                                <td className="px-4 py-2 text-slate-600 border-b w-1/2">
-                                  {FIELD_LABELS[field] || field}
-                                </td>
-                                <td className="px-4 py-2 font-medium border-b">
-                                  <div className="flex items-center gap-2">
-                                    {value ?? "-"}
-                                    {overridden && (
-                                      <AlertCircle className="w-4 h-4 text-[#e20404]" />
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Overrides Tab */}
-        <TabsContent value="overrides">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Specification Overrides</CardTitle>
-              <Button
-                onClick={() => setIsOverrideDialogOpen(true)}
-                className="bg-[#e20404] hover:bg-[#c00303] text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Override
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {!localBuild.overrides?.length ? (
-                <div className="text-center py-12 text-slate-500">
-                  <CheckCircle className="w-10 h-10 mx-auto mb-2 text-emerald-400" />
-                  <p>No overrides - build follows spec sheet exactly</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {localBuild.overrides.map((override, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start justify-between p-4 rounded-lg border border-[#e20404]/20 bg-[#e20404]/5"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <AlertCircle className="w-4 h-4 text-[#e20404]" />
-                          <span className="font-medium text-slate-900">
-                            {allSpecPaths.find(p => p.path === override.spec_path)?.label || override.spec_path}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-600 mb-2">
-                          <span className="line-through text-slate-400">{override.original_value || "N/A"}</span>
-                          {" → "}
-                          <span className="font-medium">{override.new_value}</span>
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          <strong>Reason:</strong> {override.reason}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Approved by {override.approved_by} on {override.date}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-slate-400 hover:text-red-500"
-                        onClick={() => handleRemoveOverride(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+        <TabsContent value="valve_lash" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Intake Valve Lash</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-3">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                    <div key={`intake-${num}`}>
+                      <Label className="text-xs">Valve {num}</Label>
+                      <Input
+                        value={getValveLash("intake", `valve_${num}`)}
+                        onChange={(e) => handleValveLashChange("intake", `valve_${num}`, e.target.value)}
+                        placeholder="0.000"
+                        className="text-center"
+                      />
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Exhaust Valve Lash</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-3">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                    <div key={`exhaust-${num}`}>
+                      <Label className="text-xs">Valve {num}</Label>
+                      <Input
+                        value={getValveLash("exhaust", `valve_${num}`)}
+                        onChange={(e) => handleValveLashChange("exhaust", `valve_${num}`, e.target.value)}
+                        placeholder="0.000"
+                        className="text-center"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="specs" className="mt-6">
+          {specSheet ? (
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    {specSheet.custom_name || getSpecTypeLabel(specSheet.spec_type)} Spec Sheet
+                  </CardTitle>
+                  <Link to={createPageUrl(`SpecView?id=${specSheet.id}`)}>
+                    <Button variant="outline" size="sm">
+                      <FileText className="w-4 h-4 mr-2" />
+                      View Full Spec
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {specSheet.specs?.block?.bore_diameter_mm && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-slate-600">Bore Diameter</span>
+                      <span className="font-medium">{specSheet.specs.block.bore_diameter_mm} mm</span>
+                    </div>
+                  )}
+                  {specSheet.specs?.rotating_assembly?.stroke_mm && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-slate-600">Stroke</span>
+                      <span className="font-medium">{specSheet.specs.rotating_assembly.stroke_mm} mm</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+              <h3 className="text-lg font-medium text-slate-900">No spec sheet assigned</h3>
+              <p className="text-slate-500 mt-1">Assign a spec sheet to this build</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
-      {/* Override Dialog */}
-      <Dialog open={isOverrideDialogOpen} onOpenChange={setIsOverrideDialogOpen}>
-        <DialogContent className="max-w-md">
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Specification Override</DialogTitle>
+            <DialogTitle>Print Build Sheet</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Specification *</Label>
-              <Select
-                value={newOverride.spec_path}
-                onValueChange={(value) => {
-                  const originalVal = getSpecValue(value);
-                  setNewOverride({
-                    ...newOverride,
-                    spec_path: value,
-                    original_value: originalVal != null ? String(originalVal) : ""
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select specification..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allSpecPaths.map((sp) => (
-                    <SelectItem key={sp.path} value={sp.path}>{sp.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Original Value</Label>
-                <Input
-                  value={newOverride.original_value}
-                  onChange={(e) => setNewOverride({ ...newOverride, original_value: e.target.value })}
-                  placeholder="From spec sheet"
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>New Value *</Label>
-                <Input
-                  value={newOverride.new_value}
-                  onChange={(e) => setNewOverride({ ...newOverride, new_value: e.target.value })}
-                  placeholder="Override value"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Reason *</Label>
-              <Textarea
-                value={newOverride.reason}
-                onChange={(e) => setNewOverride({ ...newOverride, reason: e.target.value })}
-                placeholder="Document why this override is necessary..."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Approved By *</Label>
-              <Input
-                value={newOverride.approved_by}
-                onChange={(e) => setNewOverride({ ...newOverride, approved_by: e.target.value })}
-                placeholder="Name"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setIsOverrideDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddOverride}
-                className="bg-[#e20404] hover:bg-[#c00303] text-white"
-                disabled={!newOverride.spec_path || !newOverride.new_value || !newOverride.reason || !newOverride.approved_by}
-              >
-                Add Override
-              </Button>
-            </div>
+          <div ref={printRef}>
+            <PrintableBuildSheet
+              build={{ ...build, ...localChanges }}
+              platform={platform}
+              specSheet={specSheet}
+            />
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={doPrint} className="bg-[#e20404] hover:bg-[#c00303]">
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Print Styles */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print\\:block, .print\\:block * { visibility: visible; }
-          .print\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

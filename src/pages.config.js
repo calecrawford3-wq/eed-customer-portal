@@ -47,27 +47,27 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import Dashboard from './pages/Dashboard';
-import Platforms from './pages/Platforms';
-import Documents from './pages/Documents';
-import SpecSheets from './pages/SpecSheets';
-import SpecEditor from './pages/SpecEditor';
-import SpecCompare from './pages/SpecCompare';
-import Builds from './pages/Builds';
 import BuildDetail from './pages/BuildDetail';
+import Builds from './pages/Builds';
+import Dashboard from './pages/Dashboard';
+import Documents from './pages/Documents';
+import Platforms from './pages/Platforms';
+import SpecCompare from './pages/SpecCompare';
+import SpecEditor from './pages/SpecEditor';
+import SpecSheets from './pages/SpecSheets';
 import SpecView from './pages/SpecView';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Platforms": Platforms,
-    "Documents": Documents,
-    "SpecSheets": SpecSheets,
-    "SpecEditor": SpecEditor,
-    "SpecCompare": SpecCompare,
-    "Builds": Builds,
     "BuildDetail": BuildDetail,
+    "Builds": Builds,
+    "Dashboard": Dashboard,
+    "Documents": Documents,
+    "Platforms": Platforms,
+    "SpecCompare": SpecCompare,
+    "SpecEditor": SpecEditor,
+    "SpecSheets": SpecSheets,
     "SpecView": SpecView,
 }
 
