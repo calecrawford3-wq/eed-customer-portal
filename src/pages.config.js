@@ -56,6 +56,7 @@ import SpecCompare from './pages/SpecCompare';
 import SpecEditor from './pages/SpecEditor';
 import SpecSheets from './pages/SpecSheets';
 import SpecView from './pages/SpecView';
+import ShopDisplay from './pages/ShopDisplay';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "SpecEditor": SpecEditor,
     "SpecSheets": SpecSheets,
     "SpecView": SpecView,
+    "ShopDisplay": ShopDisplay,
 }
 
 export const pagesConfig = {
