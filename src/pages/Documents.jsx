@@ -168,6 +168,14 @@ export default function Documents() {
   });
 
   const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
+  
+  const getSelectedPlatformYearRange = (platformId) => {
+    const platform = platforms.find(p => p.id === platformId);
+    if (platform && (platform.year_range_start || platform.year_range_end)) {
+      return `${platform.year_range_start || "?"} - ${platform.year_range_end || "?"}`;
+    }
+    return null;
+  };
 
   const typeColors = {
     oem_manual: "bg-blue-100 text-blue-700",
@@ -343,10 +351,15 @@ export default function Documents() {
                   </SelectTrigger>
                   <SelectContent>
                     {platforms.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.year_range_start && `(${p.year_range_start}-${p.year_range_end || "?"})`}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.platform_id && getSelectedPlatformYearRange(formData.platform_id) && (
+                  <p className="text-xs text-slate-500">Year Range: {getSelectedPlatformYearRange(formData.platform_id)}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Document Type *</Label>

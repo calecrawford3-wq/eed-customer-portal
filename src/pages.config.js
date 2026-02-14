@@ -52,11 +52,11 @@ import Builds from './pages/Builds';
 import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
 import Platforms from './pages/Platforms';
+import ShopDisplay from './pages/ShopDisplay';
 import SpecCompare from './pages/SpecCompare';
 import SpecEditor from './pages/SpecEditor';
 import SpecSheets from './pages/SpecSheets';
 import SpecView from './pages/SpecView';
-import ShopDisplay from './pages/ShopDisplay';
 import __Layout from './Layout.jsx';
 
 
@@ -66,11 +66,11 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "Documents": Documents,
     "Platforms": Platforms,
+    "ShopDisplay": ShopDisplay,
     "SpecCompare": SpecCompare,
     "SpecEditor": SpecEditor,
     "SpecSheets": SpecSheets,
     "SpecView": SpecView,
-    "ShopDisplay": ShopDisplay,
 }
 
 export const pagesConfig = {

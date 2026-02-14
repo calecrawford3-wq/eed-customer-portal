@@ -134,6 +134,32 @@ export default function BuildDetail() {
     return data[field] || "";
   };
 
+  const handleCamChange = (field, value) => {
+    const current = localChanges.cam_info || build?.cam_info || {};
+    setLocalChanges(prev => ({
+      ...prev,
+      cam_info: { ...current, [field]: value }
+    }));
+  };
+
+  const getCamValue = (field) => {
+    const data = localChanges.cam_info || build?.cam_info || {};
+    return data[field] || "";
+  };
+
+  // Calculate Lobe Separation Angle: LSA = (Intake Centerline + Exhaust Centerline) / 2
+  // For duration at 0.050": LSA ≈ (Intake Duration + Exhaust Duration) / 4
+  const calculateLSA = () => {
+    const intakeDuration = parseFloat(getCamValue("intake_duration_at_50"));
+    const exhaustDuration = parseFloat(getCamValue("exhaust_duration_at_50"));
+    if (!isNaN(intakeDuration) && !isNaN(exhaustDuration)) {
+      return ((intakeDuration + exhaustDuration) / 4).toFixed(1);
+    }
+    return "";
+  };
+
+  const availableSpecsForEdit = specSheets.filter(s => s.platform_id === getValue("platform_id") && s.is_current);
+
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type;
 
   const handlePrint = () => {
@@ -225,6 +251,7 @@ export default function BuildDetail() {
       <Tabs defaultValue="details">
         <TabsList>
           <TabsTrigger value="details">Build Details</TabsTrigger>
+          <TabsTrigger value="cam">Cam Info</TabsTrigger>
           <TabsTrigger value="valve_lash">Valve Lash</TabsTrigger>
           <TabsTrigger value="internal">Internal Measurements</TabsTrigger>
           <TabsTrigger value="specs">Specifications</TabsTrigger>
@@ -237,6 +264,13 @@ export default function BuildDetail() {
                 <CardTitle className="text-base">Customer & Build Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <Label>Engine Serial Number</Label>
+                  <Input
+                    value={getValue("engine_serial_number")}
+                    onChange={(e) => handleChange("engine_serial_number", e.target.value)}
+                  />
+                </div>
                 <div>
                   <Label>Customer Name</Label>
                   <Input
@@ -257,6 +291,43 @@ export default function BuildDetail() {
                     value={getValue("build_number")}
                     onChange={(e) => handleChange("build_number", e.target.value)}
                   />
+                </div>
+                <div>
+                  <Label>Engine Platform</Label>
+                  <Select
+                    value={getValue("platform_id")}
+                    onValueChange={(value) => handleChange("platform_id", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select platform" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {platforms.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.manufacturer} {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Spec Sheet</Label>
+                  <Select
+                    value={getValue("spec_sheet_id") || "none"}
+                    onValueChange={(value) => handleChange("spec_sheet_id", value === "none" ? "" : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select spec sheet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Spec Sheet</SelectItem>
+                      {availableSpecsForEdit.map((spec) => (
+                        <SelectItem key={spec.id} value={spec.id}>
+                          {spec.custom_name || getSpecTypeLabel(spec.spec_type)} v{spec.version}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Application</Label>
@@ -327,6 +398,83 @@ export default function BuildDetail() {
                   placeholder="Build notes, special instructions, comments..."
                   className="min-h-[150px]"
                 />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="cam" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Intake Cam</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Lift (mm)</Label>
+                  <Input
+                    value={getCamValue("intake_lift")}
+                    onChange={(e) => handleCamChange("intake_lift", e.target.value)}
+                    placeholder="e.g., 9.5"
+                  />
+                </div>
+                <div>
+                  <Label>Duration @ 0.050" (degrees)</Label>
+                  <Input
+                    value={getCamValue("intake_duration_at_50")}
+                    onChange={(e) => handleCamChange("intake_duration_at_50", e.target.value)}
+                    placeholder="e.g., 260"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Exhaust Cam</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Lift (mm)</Label>
+                  <Input
+                    value={getCamValue("exhaust_lift")}
+                    onChange={(e) => handleCamChange("exhaust_lift", e.target.value)}
+                    placeholder="e.g., 9.0"
+                  />
+                </div>
+                <div>
+                  <Label>Duration @ 0.050" (degrees)</Label>
+                  <Input
+                    value={getCamValue("exhaust_duration_at_50")}
+                    onChange={(e) => handleCamChange("exhaust_duration_at_50", e.target.value)}
+                    placeholder="e.g., 252"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Calculated Values</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <Label className="text-slate-500 text-sm">Lobe Separation Angle (LSA)</Label>
+                    <div className="text-2xl font-bold text-slate-900 mt-1">
+                      {calculateLSA() ? `${calculateLSA()}°` : "—"}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">Calculated from duration values</p>
+                  </div>
+                  <div>
+                    <Label>Manual LSA Override</Label>
+                    <Input
+                      value={getCamValue("lobe_separation_angle")}
+                      onChange={(e) => handleCamChange("lobe_separation_angle", e.target.value)}
+                      placeholder="Enter if known"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

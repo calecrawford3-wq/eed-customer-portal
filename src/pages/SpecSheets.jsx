@@ -57,7 +57,14 @@ export default function SpecSheets() {
   const [filterType, setFilterType] = useState("all");
   const [showVersions, setShowVersions] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [duplicateSource, setDuplicateSource] = useState(null);
   const [newSpecData, setNewSpecData] = useState({
+    platform_id: "",
+    spec_type: "stock",
+    custom_name: ""
+  });
+  const [duplicateData, setDuplicateData] = useState({
     platform_id: "",
     spec_type: "stock",
     custom_name: ""
@@ -131,6 +138,36 @@ export default function SpecSheets() {
       status: "draft",
       specs: {}
     });
+  };
+
+  const handleOpenDuplicate = (spec) => {
+    setDuplicateSource(spec);
+    setDuplicateData({
+      platform_id: spec.platform_id,
+      spec_type: spec.spec_type,
+      custom_name: spec.custom_name ? `${spec.custom_name} (Copy)` : ""
+    });
+    setIsDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicateSpec = () => {
+    createMutation.mutate({
+      ...duplicateData,
+      version: 1,
+      is_current: true,
+      status: "draft",
+      specs: duplicateSource?.specs || {}
+    });
+    setIsDuplicateDialogOpen(false);
+    setDuplicateSource(null);
+  };
+
+  const getSelectedPlatformYearRange = (platformId) => {
+    const platform = platforms.find(p => p.id === platformId);
+    if (platform && (platform.year_range_start || platform.year_range_end)) {
+      return `${platform.year_range_start || "?"} - ${platform.year_range_end || "?"}`;
+    }
+    return null;
   };
 
   return (
@@ -257,6 +294,10 @@ export default function SpecSheets() {
                             Compare
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenDuplicate(spec)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => deleteMutation.mutate(spec.id)}
                           className="text-red-600"
@@ -325,10 +366,15 @@ export default function SpecSheets() {
                 </SelectTrigger>
                 <SelectContent>
                   {platforms.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} {p.year_range_start && `(${p.year_range_start}-${p.year_range_end || "?"})`}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {newSpecData.platform_id && getSelectedPlatformYearRange(newSpecData.platform_id) && (
+                <p className="text-xs text-slate-500">Year Range: {getSelectedPlatformYearRange(newSpecData.platform_id)}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -369,6 +415,76 @@ export default function SpecSheets() {
                 disabled={!newSpecData.platform_id || createMutation.isPending}
               >
                 Create Spec Sheet
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Dialog */}
+      <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Duplicate Spec Sheet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Engine Platform *</Label>
+              <Select
+                value={duplicateData.platform_id}
+                onValueChange={(value) => setDuplicateData({ ...duplicateData, platform_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {platforms.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} {p.year_range_start && `(${p.year_range_start}-${p.year_range_end || "?"})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Specification Type *</Label>
+              <Select
+                value={duplicateData.spec_type}
+                onValueChange={(value) => setDuplicateData({ ...duplicateData, spec_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPEC_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(duplicateData.spec_type === "contract" || duplicateData.spec_type === "custom") && (
+              <div className="space-y-2">
+                <Label>Custom Name</Label>
+                <Input
+                  value={duplicateData.custom_name}
+                  onChange={(e) => setDuplicateData({ ...duplicateData, custom_name: e.target.value })}
+                  placeholder="e.g., Team XYZ Build Spec"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDuplicateSpec}
+                className="bg-[#e20404] hover:bg-[#c00303] text-white"
+                disabled={!duplicateData.platform_id || createMutation.isPending}
+              >
+                Duplicate Spec Sheet
               </Button>
             </div>
           </div>
