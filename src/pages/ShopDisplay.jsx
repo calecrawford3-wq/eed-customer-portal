@@ -24,9 +24,9 @@ export default function ShopDisplay() {
     return p ? `${p.manufacturer} ${p.name}` : "—";
   };
 
-  const getQueueLabel = (position) => {
-    if (position === 1) return { label: "IN PROGRESS", bg: "bg-[#e20404]", text: "text-white" };
-    if (position === 2) return { label: "NEXT UP", bg: "bg-amber-500", text: "text-white" };
+  const getQueueLabel = (position, status) => {
+    if (status === "in_progress") return { label: "IN PROGRESS", bg: "bg-[#e20404]", text: "text-white" };
+    if (position === 1) return { label: "NEXT UP", bg: "bg-amber-500", text: "text-white" };
     return { label: `#${position}`, bg: "bg-slate-700", text: "text-white" };
   };
 
@@ -61,22 +61,22 @@ export default function ShopDisplay() {
       ) : (
         <div className="space-y-3">
           {queuedBuilds.map((build, index) => {
-            const queueInfo = getQueueLabel(build.queue_position);
-            const isFirst = index === 0;
+            const queueInfo = getQueueLabel(build.queue_position, build.status);
+            const isInProgress = build.status === "in_progress";
             
             return (
               <div
                 key={build.id}
                 className={`rounded-xl p-5 flex items-center justify-between transition-all ${
-                  isFirst 
+                  isInProgress 
                     ? "bg-slate-800 ring-2 ring-[#e20404] shadow-lg shadow-[#e20404]/20" 
                     : "bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-6">
                   {/* Position Badge */}
-                  <div className={`w-20 h-20 rounded-xl ${queueInfo.bg} flex items-center justify-center`}>
-                    <span className={`text-lg font-bold ${queueInfo.text}`}>
+                  <div className={`w-28 h-20 rounded-xl ${queueInfo.bg} flex items-center justify-center px-2`}>
+                    <span className={`text-xs font-bold ${queueInfo.text} text-center leading-tight`}>
                       {queueInfo.label}
                     </span>
                   </div>

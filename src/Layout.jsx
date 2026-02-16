@@ -35,25 +35,14 @@ export default function Layout({ children, currentPageName }) {
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-slate-800">
-          {!collapsed && (
-            <div className="flex items-center justify-center w-full">
-              <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
-                alt="Elite Engine Development" 
-                className="h-10 object-contain"
-              />
-            </div>
-          )}
-          {collapsed && (
-            <div className="flex items-center justify-center w-full">
-              <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
-                alt="Elite Engine Development" 
-                className="h-8 object-contain"
-              />
-            </div>
-          )}
+        <div className="h-16 flex items-center px-2 border-b border-slate-800">
+          <div className="flex items-center justify-center w-full">
+            <img 
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
+              alt="Elite Engine Development" 
+              className={collapsed ? "h-6 object-contain" : "h-10 object-contain max-w-full"}
+            />
+          </div>
         </div>
 
         {/* Navigation */}

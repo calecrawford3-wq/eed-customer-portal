@@ -21,6 +21,9 @@ export default function PrintableBuildSheet({ build, platform, specSheet }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <img src={LOGO_URL} alt="Elite Engine Development" style={{ height: "60px", marginBottom: "8px" }} />
+            <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>
+              ENGINE BUILD SHEET
+            </h1>
             <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
               {platform?.manufacturer} {platform?.name} • {platform?.displacement_cc}cc
             </p>
