@@ -26,7 +26,7 @@ export default function ShopDisplay() {
 
   const getQueueLabel = (position, status) => {
     if (status === "in_progress") return { label: "IN PROGRESS", bg: "bg-[#e20404]", text: "text-white" };
-    if (position === 1) return { label: "NEXT UP", bg: "bg-amber-500", text: "text-white" };
+    if (position === 2) return { label: "UP NEXT", bg: "bg-amber-500", text: "text-white" };
     return { label: `#${position}`, bg: "bg-slate-700", text: "text-white" };
   };
 
