@@ -336,6 +336,14 @@ export default function BuildDetail() {
                     onChange={(e) => handleChange("application", e.target.value)}
                   />
                 </div>
+                <div>
+                  <Label>Transmission Type</Label>
+                  <Input
+                    value={getValue("transmission_type")}
+                    onChange={(e) => handleChange("transmission_type", e.target.value)}
+                    placeholder="e.g., 01H, 14J"
+                  />
+                </div>
               </CardContent>
             </Card>
 
