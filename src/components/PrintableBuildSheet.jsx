@@ -12,15 +12,15 @@ const SPEC_TYPES = [
 export default function PrintableBuildSheet({ build, platform, specSheet }) {
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type;
 
+  const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+
   return (
     <div style={{ fontFamily: "Arial, sans-serif", padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ borderBottom: "3px solid #e20404", paddingBottom: "16px", marginBottom: "24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>
-              ENGINE BUILD SHEET
-            </h1>
+            <img src={LOGO_URL} alt="Elite Engine Development" style={{ height: "60px", marginBottom: "8px" }} />
             <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
               {platform?.manufacturer} {platform?.name} • {platform?.displacement_cc}cc
             </p>
@@ -82,6 +82,16 @@ export default function PrintableBuildSheet({ build, platform, specSheet }) {
             {build.invoice_number || "—"}
           </div>
         </div>
+        {build.transmission_type && (
+          <div>
+            <div style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", marginBottom: "4px" }}>
+              Transmission Type
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: "600" }}>
+              {build.transmission_type}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Engine Specs */}

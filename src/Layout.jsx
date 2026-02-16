@@ -37,16 +37,21 @@ export default function Layout({ children, currentPageName }) {
         {/* Logo */}
         <div className="h-16 flex items-center px-4 border-b border-slate-800">
           {!collapsed && (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#e20404] rounded-lg flex items-center justify-center">
-                <Gauge className="w-5 h-5 text-slate-900" />
-              </div>
-              <span className="font-semibold text-lg tracking-tight">SpecVault</span>
+            <div className="flex items-center justify-center w-full">
+              <img 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
+                alt="Elite Engine Development" 
+                className="h-10 object-contain"
+              />
             </div>
           )}
           {collapsed && (
-            <div className="w-8 h-8 bg-[#e20404] rounded-lg flex items-center justify-center mx-auto">
-              <Gauge className="w-5 h-5 text-slate-900" />
+            <div className="flex items-center justify-center w-full">
+              <img 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
+                alt="Elite Engine Development" 
+                className="h-8 object-contain"
+              />
             </div>
           )}
         </div>
