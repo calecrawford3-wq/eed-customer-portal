@@ -344,6 +344,14 @@ export default function BuildDetail() {
                     placeholder="e.g., 01H, 14J"
                   />
                 </div>
+                <div>
+                  <Label>Build Date</Label>
+                  <Input
+                    type="date"
+                    value={getValue("start_date")}
+                    onChange={(e) => handleChange("start_date", e.target.value)}
+                  />
+                </div>
               </CardContent>
             </Card>
 

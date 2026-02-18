@@ -32,10 +32,12 @@ export default function PrintableBuildSheet({ build, platform, specSheet }) {
             <div style={{ 
               backgroundColor: "#e20404", 
               color: "white", 
-              padding: "8px 16px", 
-              borderRadius: "4px",
+              padding: "12px 24px", 
+              borderRadius: "6px",
               fontWeight: "bold",
-              fontSize: "18px"
+              fontSize: "20px",
+              display: "inline-block",
+              boxShadow: "0 2px 4px rgba(226, 4, 4, 0.3)"
             }}>
               {specSheet ? getSpecTypeLabel(specSheet.spec_type) : "N/A"}
             </div>
