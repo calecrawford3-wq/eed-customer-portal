@@ -26,9 +26,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Simple token validation: SHA-256 of po_id + app secret isn't available, so we use a
-    // deterministic token: base64(po_id + po_number). Enough to prevent random guesses.
-    const expectedToken = btoa(`${poId}:${po.po_number}`).replace(/=/g, "");
+    // Simple token validation: deterministic token base64(po_id:po_number)
+    const raw = `${poId}:${po.po_number}`;
+    const expectedToken = btoa(raw).replace(/=/g, "");
     if (token !== expectedToken) {
       return new Response(htmlPage("Invalid Link", "This acknowledgment link is not valid.", false), {
         headers: { "Content-Type": "text/html" },
