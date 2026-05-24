@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -81,6 +82,7 @@ export default function Builds() {
     build_number: "",
     platform_id: "",
     spec_sheet_id: "",
+    customer_id: "",
     customer_name: "",
     application: "Microsprint",
     max_rpm: "",
@@ -92,6 +94,11 @@ export default function Builds() {
   const { data: builds = [], isLoading } = useQuery({
     queryKey: ["builds"],
     queryFn: () => base44.entities.EngineBuild.list("queue_position", 100),
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => base44.entities.Customer.list("-created_date", 200),
   });
 
   const { data: platforms = [] } = useQuery({
@@ -114,6 +121,7 @@ export default function Builds() {
         build_number: "",
         platform_id: "",
         spec_sheet_id: "",
+        customer_id: "",
         customer_name: "",
         application: "Microsprint",
         max_rpm: "",
@@ -233,6 +241,13 @@ export default function Builds() {
   };
 
   const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
+  const getCustomerName = (build) => {
+    if (build.customer_id) {
+      const c = customers.find(c => c.id === build.customer_id);
+      if (c) return `${c.first_name} ${c.last_name}${c.company_name ? ` (${c.company_name})` : ""}`;
+    }
+    return build.customer_name || null;
+  };
   const getSpecLabel = (id) => {
     const spec = specSheets.find(s => s.id === id);
     if (!spec) return "No Spec";
@@ -302,11 +317,14 @@ export default function Builds() {
                 />
               </div>
               <div>
-                <Label>Customer Name</Label>
-                <Input
-                  value={newBuild.customer_name}
-                  onChange={(e) => setNewBuild({ ...newBuild, customer_name: e.target.value })}
-                  placeholder="Customer name"
+                <Label>Customer</Label>
+                <CustomerSearchSelect
+                  customers={customers}
+                  value={newBuild.customer_id}
+                  onValueChange={(v) => {
+                    const c = customers.find(c => c.id === v);
+                    setNewBuild({ ...newBuild, customer_id: v, customer_name: c ? `${c.first_name} ${c.last_name}` : "" });
+                  }}
                 />
               </div>
               <div>
@@ -471,10 +489,10 @@ export default function Builds() {
                                   <span>Jobcard: {build.build_number}</span>
                                 )}
                                 <span>{getPlatformName(build.platform_id)}</span>
-                                {build.customer_name && (
+                                {getCustomerName(build) && (
                                   <>
                                     <span>•</span>
-                                    <span>{build.customer_name}</span>
+                                    <span>{getCustomerName(build)}</span>
                                   </>
                                 )}
                               </div>
@@ -576,8 +594,8 @@ export default function Builds() {
                             {build.build_number && (
                               <p className="text-xs text-slate-400">Jobcard: {build.build_number}</p>
                             )}
-                            {build.customer_name && (
-                              <p className="text-sm text-slate-600 mt-1">{build.customer_name}</p>
+                            {getCustomerName(build) && (
+                              <p className="text-sm text-slate-600 mt-1">{getCustomerName(build)}</p>
                             )}
                           </div>
                           <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>

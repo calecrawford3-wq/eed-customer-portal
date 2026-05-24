@@ -1,0 +1,275 @@
+{
+  "name": "EngineBuild",
+  "type": "object",
+  "properties": {
+    "engine_serial_number": {
+      "type": "string",
+      "description": "Engine serial number (primary identifier)"
+    },
+    "build_number": {
+      "type": "string",
+      "description": "Internal build/jobcard number"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Associated engine platform ID"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked customer record ID"
+    },
+    "spec_sheet_id": {
+      "type": "string",
+      "description": "Locked spec sheet version used for this build"
+    },
+    "spec_sheet_version": {
+      "type": "number",
+      "description": "Version number at time of assignment"
+    },
+    "queue_position": {
+      "type": "number",
+      "description": "Position in work queue (1 = in progress, 2 = next up, etc.)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "in_progress",
+        "assembly",
+        "testing",
+        "complete",
+        "shipped"
+      ],
+      "default": "queued"
+    },
+    "work_tag": {
+      "type": "string",
+      "enum": [
+        "none",
+        "cleaning",
+        "machining",
+        "waiting_on_parts",
+        "assembling",
+        "on_hold"
+      ],
+      "default": "none",
+      "description": "Current work status tag"
+    },
+    "transmission_type": {
+      "type": "string",
+      "description": "Transmission type (e.g., 01H, 14J)"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name (legacy / override)"
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "Invoice number"
+    },
+    "target_power_hp": {
+      "type": "number",
+      "description": "Target horsepower"
+    },
+    "max_rpm": {
+      "type": "number",
+      "description": "Maximum RPM limit"
+    },
+    "refresh_interval": {
+      "type": "string",
+      "description": "Recommended refresh interval (e.g., 20 hours, 500 miles)"
+    },
+    "oil_recommendation": {
+      "type": "string",
+      "description": "Recommended oil type and weight"
+    },
+    "oil_change_interval": {
+      "type": "string",
+      "description": "Oil change interval"
+    },
+    "spark_plug_recommendation": {
+      "type": "string",
+      "description": "Recommended spark plug"
+    },
+    "application": {
+      "type": "string",
+      "description": "Vehicle/application for this build (e.g., Microsprint)"
+    },
+    "cam_info": {
+      "type": "object",
+      "description": "Camshaft information",
+      "properties": {
+        "intake_lift": {
+          "type": "string"
+        },
+        "intake_duration_at_50": {
+          "type": "string"
+        },
+        "exhaust_lift": {
+          "type": "string"
+        },
+        "exhaust_duration_at_50": {
+          "type": "string"
+        },
+        "lobe_separation_angle": {
+          "type": "string"
+        }
+      }
+    },
+    "valve_lash_intake": {
+      "type": "object",
+      "description": "Individual intake valve lash measurements",
+      "properties": {
+        "valve_1": {
+          "type": "string"
+        },
+        "valve_2": {
+          "type": "string"
+        },
+        "valve_3": {
+          "type": "string"
+        },
+        "valve_4": {
+          "type": "string"
+        },
+        "valve_5": {
+          "type": "string"
+        },
+        "valve_6": {
+          "type": "string"
+        },
+        "valve_7": {
+          "type": "string"
+        },
+        "valve_8": {
+          "type": "string"
+        }
+      }
+    },
+    "valve_lash_exhaust": {
+      "type": "object",
+      "description": "Individual exhaust valve lash measurements",
+      "properties": {
+        "valve_1": {
+          "type": "string"
+        },
+        "valve_2": {
+          "type": "string"
+        },
+        "valve_3": {
+          "type": "string"
+        },
+        "valve_4": {
+          "type": "string"
+        },
+        "valve_5": {
+          "type": "string"
+        },
+        "valve_6": {
+          "type": "string"
+        },
+        "valve_7": {
+          "type": "string"
+        },
+        "valve_8": {
+          "type": "string"
+        }
+      }
+    },
+    "internal_measurements": {
+      "type": "object",
+      "description": "Internal-only measurements (not printed on build sheet)",
+      "properties": {
+        "head_original_height_in": {
+          "type": "string"
+        },
+        "head_shaved_height_in": {
+          "type": "string"
+        },
+        "main_bearing_clearance_1": {
+          "type": "string"
+        },
+        "main_bearing_clearance_2": {
+          "type": "string"
+        },
+        "main_bearing_clearance_3": {
+          "type": "string"
+        },
+        "main_bearing_clearance_4": {
+          "type": "string"
+        },
+        "main_bearing_clearance_5": {
+          "type": "string"
+        },
+        "rod_bearing_clearance_1": {
+          "type": "string"
+        },
+        "rod_bearing_clearance_2": {
+          "type": "string"
+        },
+        "rod_bearing_clearance_3": {
+          "type": "string"
+        },
+        "rod_bearing_clearance_4": {
+          "type": "string"
+        },
+        "piston_pop_up_1": {
+          "type": "string"
+        },
+        "piston_pop_up_2": {
+          "type": "string"
+        },
+        "piston_pop_up_3": {
+          "type": "string"
+        },
+        "piston_pop_up_4": {
+          "type": "string"
+        }
+      }
+    },
+    "overrides": {
+      "type": "array",
+      "description": "Documented spec overrides for this build",
+      "items": {
+        "type": "object",
+        "properties": {
+          "spec_path": {
+            "type": "string"
+          },
+          "original_value": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "assembly_notes": {
+      "type": "string",
+      "description": "General assembly notes and comments"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "completion_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "engine_serial_number",
+    "platform_id"
+  ]
+}

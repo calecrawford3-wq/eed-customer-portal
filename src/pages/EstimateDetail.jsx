@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
+import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -226,12 +227,11 @@ export default function EstimateDetail() {
           <CardContent className="space-y-3">
             <div>
               <Label>Customer *</Label>
-              <Select value={form.customer_id} onValueChange={v => setForm({...form, customer_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-                <SelectContent>
-                  {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.company_name ? ` (${c.company_name})` : ""}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <CustomerSearchSelect
+                customers={customers}
+                value={form.customer_id}
+                onValueChange={v => setForm({...form, customer_id: v})}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Issue Date</Label><Input type="date" value={form.issue_date} onChange={e => setForm({...form, issue_date: e.target.value})} /></div>
