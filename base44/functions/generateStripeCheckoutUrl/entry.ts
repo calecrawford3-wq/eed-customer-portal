@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
-    const origin = "https://checkout.stripe.com"; // Stripe hosted checkout
+    const origin = req.headers.get("origin") || "https://race-engine-specs.base44.app";
 
     const metadata = {
       base44_app_id: appId,
@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}?payment=success`,
-      cancel_url: `${req.headers.get("origin")}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}`,
+      success_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}?payment=success`,
+      cancel_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}`,
       customer_email: customerEmail,
       metadata,
     });
