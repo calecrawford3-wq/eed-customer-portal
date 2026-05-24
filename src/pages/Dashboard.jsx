@@ -118,7 +118,7 @@ export default function Dashboard() {
   const pendingRefreshes = refreshRequests.filter(r => r.status === "pending");
 
   // POs that are open (sent/acknowledged/partial)
-  const openPOs = purchaseOrders.filter(po => ["sent","acknowledged","partial"].includes(po.status));
+  const openPOs = purchaseOrders.filter(po => ["sent","acknowledged","ready","partial"].includes(po.status));
   // Received POs with no expense entry yet
   const pendingExpensePOs = purchaseOrders.filter(po =>
     (po.status === "received" || po.status === "partial") && !expenses.find(e => e.po_id === po.id)
@@ -206,7 +206,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {openPOs.slice(0, 5).map(po => {
                   const supplier = suppliers.find(s => s.id === po.supplier_id);
-                  const poStatusColors = { sent: "bg-blue-100 text-blue-700", acknowledged: "bg-purple-100 text-purple-700", partial: "bg-amber-100 text-amber-700" };
+                  const poStatusColors = { sent: "bg-blue-100 text-blue-700", acknowledged: "bg-purple-100 text-purple-700", ready: "bg-teal-100 text-teal-700", partial: "bg-amber-100 text-amber-700" };
                   return (
                     <div key={po.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                       <div className="min-w-0">
