@@ -38,12 +38,15 @@ export default function Customers() {
         return base44.entities.Customer.update(editing.id, data);
       } else {
         const newCustomer = await base44.entities.Customer.create(data);
-        // Invite customer to portal if email is present
+        // Send signup email if email is present
         if (data.email) {
           try {
-            await base44.auth.inviteUser(data.email, "user");
+            await base44.functions.invoke('sendCustomerSignupEmail', {
+              email: data.email,
+              customerName: `${data.first_name} ${data.last_name}`.trim()
+            });
           } catch (err) {
-            console.warn("Portal invite failed:", err.message);
+            console.warn("Signup email failed:", err.message);
           }
         }
         return newCustomer;
@@ -52,7 +55,7 @@ export default function Customers() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setDialogOpen(false);
-      toast.success(editing ? "Customer updated" : "Customer created & invite sent");
+      toast.success(editing ? "Customer updated" : "Customer created & signup email sent");
     },
   });
 
