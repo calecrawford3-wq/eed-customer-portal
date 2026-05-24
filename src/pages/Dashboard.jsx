@@ -73,6 +73,7 @@ export default function Dashboard() {
   const { data: purchaseOrders = [] } = useQuery({
     queryKey: ["purchaseOrders"],
     queryFn: () => base44.entities.PurchaseOrder.list("-created_date", 100),
+    staleTime: 0,
   });
 
   const { data: expenses = [] } = useQuery({
