@@ -193,11 +193,13 @@ export default function Settings() {
           <div className="space-y-4">
             {/* General SMTP */}
             <Card className="border-0 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">General SMTP (noreply — customer emails, portal invites, etc.)</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => testSmtp(false)} disabled={testingSmtp}>
-                  <Send className="w-4 h-4 mr-2" />{testingSmtp ? "Sending..." : "Send Test Email"}
-                </Button>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">General SMTP (noreply — customer emails, portal invites, etc.)</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => testSmtp(false)} disabled={testingSmtp}>
+                    <Send className="w-4 h-4 mr-2" />{testingSmtp ? "Sending..." : "Send Test Email"}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -235,14 +237,16 @@ export default function Settings() {
 
             {/* PO SMTP */}
             <Card className="border-0 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Purchase Order SMTP</CardTitle>
-                  <p className="text-sm text-slate-500 mt-1">Separate SMTP account used only when sending purchase orders to suppliers</p>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Purchase Order SMTP</CardTitle>
+                    <p className="text-sm text-slate-500 mt-1">Separate SMTP account used only when sending purchase orders to suppliers</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => testSmtp(true)} disabled={testingPoSmtp}>
+                    <Send className="w-4 h-4 mr-2" />{testingPoSmtp ? "Sending..." : "Send Test Email"}
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => testSmtp(true)} disabled={testingPoSmtp}>
-                  <Send className="w-4 h-4 mr-2" />{testingPoSmtp ? "Sending..." : "Send Test Email"}
-                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
