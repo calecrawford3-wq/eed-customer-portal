@@ -58,8 +58,55 @@
     "email_signature": {
       "type": "string"
     },
-    "zoho_api_token": {
-      "type": "string"
+    "smtp_host": {
+      "type": "string",
+      "description": "SMTP host for general emails (e.g. noreply)"
+    },
+    "smtp_port": {
+      "type": "number",
+      "default": 587,
+      "description": "SMTP port for general emails"
+    },
+    "smtp_username": {
+      "type": "string",
+      "description": "SMTP username for general emails"
+    },
+    "smtp_password": {
+      "type": "string",
+      "description": "SMTP password for general emails"
+    },
+    "smtp_from_name": {
+      "type": "string",
+      "description": "Display name for general outgoing emails"
+    },
+    "smtp_from_email": {
+      "type": "string",
+      "description": "From address for general outgoing emails (e.g. noreply@yourdomain.com)"
+    },
+    "po_smtp_host": {
+      "type": "string",
+      "description": "SMTP host for purchase order emails"
+    },
+    "po_smtp_port": {
+      "type": "number",
+      "default": 587,
+      "description": "SMTP port for purchase order emails"
+    },
+    "po_smtp_username": {
+      "type": "string",
+      "description": "SMTP username for purchase order emails"
+    },
+    "po_smtp_password": {
+      "type": "string",
+      "description": "SMTP password for purchase order emails"
+    },
+    "po_smtp_from_name": {
+      "type": "string",
+      "description": "Display name for purchase order outgoing emails"
+    },
+    "po_smtp_from_email": {
+      "type": "string",
+      "description": "From address for purchase order emails"
     }
   },
   "required": [

@@ -29,7 +29,18 @@ const defaultSettings = {
   email_from_name: "Elite Engine Development",
   email_from_address: "",
   email_signature: "Elite Engine Development\nYour High-Performance Engine Specialists",
-  zoho_api_token: "",
+  smtp_host: "",
+  smtp_port: 587,
+  smtp_username: "",
+  smtp_password: "",
+  smtp_from_name: "Elite Engine Development",
+  smtp_from_email: "",
+  po_smtp_host: "",
+  po_smtp_port: 587,
+  po_smtp_username: "",
+  po_smtp_password: "",
+  po_smtp_from_name: "Elite Engine Development",
+  po_smtp_from_email: "",
 };
 
 export default function Settings() {
@@ -151,33 +162,82 @@ export default function Settings() {
 
         {/* Email Setup */}
         <TabsContent value="email">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">Email Configuration</CardTitle>
-              <p className="text-sm text-slate-500 mt-1">Configure Zoho ZeptoMail for sending emails directly from the app</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>From Name</Label>
-                  <Input value={form.email_from_name} onChange={e => set("email_from_name", e.target.value)} />
+          <div className="space-y-4">
+            {/* General SMTP */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">General SMTP (noreply — customer emails, portal invites, etc.)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>SMTP Host</Label>
+                    <Input value={form.smtp_host} onChange={e => set("smtp_host", e.target.value)} placeholder="smtp.yourdomain.com" />
+                  </div>
+                  <div>
+                    <Label>SMTP Port</Label>
+                    <Input type="number" value={form.smtp_port} onChange={e => set("smtp_port", Number(e.target.value))} placeholder="587" />
+                  </div>
+                  <div>
+                    <Label>SMTP Username</Label>
+                    <Input value={form.smtp_username} onChange={e => set("smtp_username", e.target.value)} placeholder="noreply@yourdomain.com" />
+                  </div>
+                  <div>
+                    <Label>SMTP Password</Label>
+                    <Input type="password" value={form.smtp_password} onChange={e => set("smtp_password", e.target.value)} placeholder="••••••••" />
+                  </div>
+                  <div>
+                    <Label>From Name</Label>
+                    <Input value={form.smtp_from_name} onChange={e => set("smtp_from_name", e.target.value)} placeholder="Elite Engine Development" />
+                  </div>
+                  <div>
+                    <Label>From Email</Label>
+                    <Input type="email" value={form.smtp_from_email} onChange={e => set("smtp_from_email", e.target.value)} placeholder="noreply@yourdomain.com" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Email Signature</Label>
+                    <Textarea value={form.email_signature} onChange={e => set("email_signature", e.target.value)} rows={3} placeholder="Your email signature..." />
+                  </div>
                 </div>
-                <div>
-                  <Label>From Email Address</Label>
-                  <Input type="email" value={form.email_from_address} onChange={e => set("email_from_address", e.target.value)} placeholder="noreply@yourdomain.com" />
+              </CardContent>
+            </Card>
+
+            {/* PO SMTP */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Purchase Order SMTP</CardTitle>
+                <p className="text-sm text-slate-500 mt-1">Separate SMTP account used only when sending purchase orders to suppliers</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>SMTP Host</Label>
+                    <Input value={form.po_smtp_host} onChange={e => set("po_smtp_host", e.target.value)} placeholder="smtp.yourdomain.com" />
+                  </div>
+                  <div>
+                    <Label>SMTP Port</Label>
+                    <Input type="number" value={form.po_smtp_port} onChange={e => set("po_smtp_port", Number(e.target.value))} placeholder="587" />
+                  </div>
+                  <div>
+                    <Label>SMTP Username</Label>
+                    <Input value={form.po_smtp_username} onChange={e => set("po_smtp_username", e.target.value)} placeholder="purchasing@yourdomain.com" />
+                  </div>
+                  <div>
+                    <Label>SMTP Password</Label>
+                    <Input type="password" value={form.po_smtp_password} onChange={e => set("po_smtp_password", e.target.value)} placeholder="••••••••" />
+                  </div>
+                  <div>
+                    <Label>From Name</Label>
+                    <Input value={form.po_smtp_from_name} onChange={e => set("po_smtp_from_name", e.target.value)} placeholder="Elite Engine Development" />
+                  </div>
+                  <div>
+                    <Label>From Email</Label>
+                    <Input type="email" value={form.po_smtp_from_email} onChange={e => set("po_smtp_from_email", e.target.value)} placeholder="purchasing@yourdomain.com" />
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <Label>Zoho ZeptoMail API Token</Label>
-                  <Input type="password" value={form.zoho_api_token} onChange={e => set("zoho_api_token", e.target.value)} placeholder="Your ZeptoMail send mail token..." />
-                  <p className="text-xs text-slate-400 mt-1">Generate this from your ZeptoMail account under the Mail Agent section</p>
-                </div>
-                <div className="col-span-2">
-                  <Label>Email Signature</Label>
-                  <Textarea value={form.email_signature} onChange={e => set("email_signature", e.target.value)} rows={4} placeholder="Your email signature..." />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Document Templates */}
