@@ -1,0 +1,90 @@
+{
+  "name": "PurchaseOrder",
+  "type": "object",
+  "properties": {
+    "po_number": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Optional: linked engine build"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "acknowledged",
+        "partial",
+        "received",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expected_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "received_qty": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number"
+    },
+    "shipping_address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "po_number",
+    "supplier_id"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Optional: converted from estimate"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "partial",
+        "paid",
+        "overdue",
+        "void"
+      ],
+      "default": "draft"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "number"
+    },
+    "payment_notes": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "invoice_number",
+    "customer_id"
+  ]
+}

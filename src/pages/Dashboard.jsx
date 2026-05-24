@@ -10,7 +10,11 @@ import {
   FolderOpen,
   ArrowRight,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Receipt,
+  Package,
+  ClipboardList
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,39 +42,35 @@ export default function Dashboard() {
     queryFn: () => base44.entities.TechnicalDocument.list("-created_date", 100),
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => base44.entities.Customer.list("-created_date", 100),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => base44.entities.Invoice.list("-created_date", 100),
+  });
+
+  const { data: parts = [] } = useQuery({
+    queryKey: ["parts"],
+    queryFn: () => base44.entities.Part.list("-created_date", 100),
+  });
+
   const activeBuilds = builds.filter(b => !["complete", "shipped"].includes(b.status));
   const recentBuilds = builds.slice(0, 5);
 
   const stats = [
-    {
-      label: "Engine Platforms",
-      value: platforms.length,
-      icon: Layers,
-      color: "bg-blue-500",
-      page: "Platforms"
-    },
-    {
-      label: "Spec Sheets",
-      value: specSheets.filter(s => s.is_current).length,
-      icon: FileText,
-      color: "bg-emerald-500",
-      page: "SpecSheets"
-    },
-    {
-      label: "Active Builds",
-      value: activeBuilds.length,
-      icon: Wrench,
-      color: "bg-[#e20404]",
-      page: "Builds"
-    },
-    {
-      label: "Documents",
-      value: documents.length,
-      icon: FolderOpen,
-      color: "bg-purple-500",
-      page: "Documents"
-    },
+    { label: "Active Builds", value: activeBuilds.length, icon: Wrench, color: "bg-[#e20404]", page: "Builds" },
+    { label: "Customers", value: customers.length, icon: Users, color: "bg-blue-500", page: "Customers" },
+    { label: "Outstanding", value: `$${outstandingBalance.toLocaleString("en-US", {minimumFractionDigits: 0})}`, icon: Receipt, color: "bg-amber-500", page: "Invoices" },
+    { label: "Low Stock Parts", value: lowStockCount, icon: Package, color: lowStockCount > 0 ? "bg-red-500" : "bg-emerald-500", page: "Inventory" },
   ];
+
+  const outstandingBalance = invoices
+    .filter(i => ["sent","partial","overdue"].includes(i.status))
+    .reduce((sum, i) => sum + (i.balance_due || i.total || 0), 0);
+  const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
 
   const isLoading = loadingPlatforms || loadingSpecs || loadingBuilds || loadingDocs;
 
@@ -230,6 +230,32 @@ export default function Dashboard() {
               <div>
                 <p className="font-medium text-slate-900">Upload Document</p>
                 <p className="text-sm text-slate-500">Add manuals, diagrams, or charts</p>
+              </div>
+            </Link>
+
+            <Link
+              to={createPageUrl("Estimates")}
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+            >
+              <div className="bg-amber-100 p-3 rounded-lg">
+                <ClipboardList className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900">New Estimate</p>
+                <p className="text-sm text-slate-500">Create and send an estimate to a customer</p>
+              </div>
+            </Link>
+
+            <Link
+              to={createPageUrl("Inventory")}
+              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+            >
+              <div className="bg-slate-100 p-3 rounded-lg">
+                <Package className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900">Manage Inventory</p>
+                <p className="text-sm text-slate-500">Track parts and stock levels</p>
               </div>
             </Link>
           </CardContent>

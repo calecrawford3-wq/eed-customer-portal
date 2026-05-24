@@ -1,0 +1,83 @@
+{
+  "name": "Part",
+  "type": "object",
+  "properties": {
+    "part_number": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "block",
+        "rotating_assembly",
+        "cylinder_head",
+        "valvetrain",
+        "timing",
+        "oiling",
+        "fasteners",
+        "gaskets",
+        "seals",
+        "electrical",
+        "other"
+      ],
+      "default": "other"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "supplier_part_number": {
+      "type": "string"
+    },
+    "unit_cost": {
+      "type": "number"
+    },
+    "sell_price": {
+      "type": "number"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0
+    },
+    "reorder_point": {
+      "type": "number",
+      "default": 0
+    },
+    "reorder_quantity": {
+      "type": "number",
+      "default": 0
+    },
+    "location": {
+      "type": "string",
+      "description": "Physical storage location (e.g. Shelf A3)"
+    },
+    "platform_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Compatible engine platform IDs"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "discontinued",
+        "special_order"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "part_number"
+  ]
+}

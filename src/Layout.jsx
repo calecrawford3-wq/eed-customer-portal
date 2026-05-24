@@ -9,7 +9,13 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronRight,
-  Monitor
+  Monitor,
+  Users,
+  Receipt,
+  ClipboardList,
+  Package,
+  Truck,
+  ShoppingCart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +29,14 @@ export default function Layout({ children, currentPageName }) {
     { name: "Engine Builds", page: "Builds", icon: Wrench },
     { name: "Documents", page: "Documents", icon: FolderOpen },
     { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
+    { type: "divider" },
+    { name: "Customers", page: "Customers", icon: Users },
+    { name: "Estimates", page: "Estimates", icon: ClipboardList },
+    { name: "Invoices", page: "Invoices", icon: Receipt },
+    { type: "divider" },
+    { name: "Inventory", page: "Inventory", icon: Package },
+    { name: "Suppliers", page: "Suppliers", icon: Truck },
+    { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
   ];
 
   return (
@@ -47,7 +61,10 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-1">
-          {navigation.map((item) => {
+          {navigation.map((item, idx) => {
+            if (item.type === "divider") {
+              return !collapsed ? <div key={idx} className="border-t border-slate-700 my-2 mx-1" /> : <div key={idx} className="border-t border-slate-700 my-2" />;
+            }
             const isActive = currentPageName === item.page;
             return (
               <Link
@@ -56,12 +73,12 @@ export default function Layout({ children, currentPageName }) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                   isActive
-                    ? "bg-[#e20404] text-slate-900 font-medium"
+                    ? "bg-[#e20404] text-white font-medium"
                     : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
                 <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                {!collapsed && <span>{item.name}</span>}
+                {!collapsed && <span className="text-sm">{item.name}</span>}
               </Link>
             );
           })}
