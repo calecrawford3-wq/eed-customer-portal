@@ -133,7 +133,7 @@ export default function ShopDisplay() {
           </div>
           <div className="space-y-3">
             {readyPOs.map(po => (
-              <div key={po.id} className="bg-slate-800 rounded-xl p-5 flex items-center justify-between ring-2 ring-teal-500 shadow-lg shadow-teal-500/20">
+              <div key={po.id} className="bg-slate-800 rounded-xl p-5 flex items-center justify-between ring-2 ring-teal-500 shadow-lg">
                 <div className="flex items-center gap-6">
                   <div className="w-28 h-20 rounded-xl bg-teal-600 flex items-center justify-center">
                     <span className="text-xs font-bold text-white text-center leading-tight">READY</span>
