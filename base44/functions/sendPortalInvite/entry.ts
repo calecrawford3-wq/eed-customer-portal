@@ -41,12 +41,8 @@ Deno.serve(async (req) => {
 <p>— Elite Engine Development Team</p>
         `.trim();
 
-        await base44.asServiceRole.integrations.Core.SendEmail({
-            to: customerEmail,
-            from_name: "Elite Engine Development",
-            subject,
-            body,
-        });
+        // Invite the user to the app with role "user" — this sends a platform login invite
+        await base44.asServiceRole.users.inviteUser(customerEmail, "user");
 
         console.log(`Portal invite sent to ${customerEmail}`);
         return Response.json({ message: "Portal invite sent successfully." });
