@@ -346,11 +346,14 @@ export default function EstimateDetail() {
       
       // Generate Stripe checkout URL
       const amount = form.deposit_required ? form.deposit_amount : form.total;
+      const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
-        document_type: "estimate",
-        document_id: id,
-        amount: Math.round(amount * 100),
-        customer_email: customer.email,
+        type: "estimate",
+        documentId: id,
+        amount,
+        description: `Estimate ${form.estimate_number} - ${form.deposit_required ? "Deposit" : "Full Payment"}`,
+        publicAccessToken,
+        customerEmail: customer.email,
       });
       
       if (!stripeUrlRes?.data?.checkout_url) {
@@ -360,7 +363,6 @@ export default function EstimateDetail() {
       }
       
       // Update estimate with public access token and stripe checkout URL
-      const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const viewUrl = `${window.location.origin}/public/estimate/${publicAccessToken}`;
       
       await base44.entities.Estimate.update(id || "", {
