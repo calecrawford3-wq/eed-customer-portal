@@ -85,7 +85,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        <NavigationTracker />
         <Routes>
           {/* Public viewer routes - accessible without auth */}
           <Route path="/EstimateViewer" element={<EstimateViewer />} />
@@ -94,6 +93,7 @@ function App() {
           {/* Protected admin routes */}
           <Route path="*" element={
             <AuthProvider>
+              <NavigationTracker />
               <AuthenticatedApp />
             </AuthProvider>
           } />
