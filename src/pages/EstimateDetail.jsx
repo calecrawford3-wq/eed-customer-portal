@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -48,6 +48,7 @@ export default function EstimateDetail() {
     deposit_required: false,
     deposit_amount: 0,
     deposit_paid: false,
+    is_engine_build: false,
     payments: [],
     line_items: [{ ...emptyPart }],
     labor_items: [],
@@ -185,7 +186,52 @@ export default function EstimateDetail() {
     const updated = { ...form, status: "approved" };
     setForm(updated);
     await saveMutation.mutateAsync(updated);
-    toast.success("Estimate approved");
+
+    if (form.is_engine_build) {
+      // Auto-create engine build
+      setConvertingToBuild(true);
+      const cust = customers.find(c => c.id === form.customer_id);
+      const build = await base44.entities.EngineBuild.create({
+        engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
+        build_number: form.estimate_number,
+        customer_id: form.customer_id,
+        customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+        status: "queued",
+        work_tag: "none",
+        assembly_notes: form.notes || "",
+      });
+      await base44.entities.Estimate.update(id, { build_id: build.id });
+      setForm(f => ({ ...f, build_id: build.id }));
+      qc.invalidateQueries({ queryKey: ["builds"] });
+      setConvertingToBuild(false);
+      toast.success("Estimate approved — engine build created!");
+      navigate(`/BuildDetail?id=${build.id}`);
+    } else {
+      // Auto-create invoice
+      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+      const invoice = await base44.entities.Invoice.create({
+        invoice_number: invoiceNumber,
+        estimate_id: id,
+        customer_id: form.customer_id,
+        status: "sent",
+        issue_date: new Date().toISOString().split("T")[0],
+        line_items: form.line_items,
+        labor_items: form.labor_items || [],
+        subtotal: form.subtotal,
+        tax_rate: form.tax_rate,
+        tax_amount: form.tax_amount,
+        total: form.total,
+        amount_paid: totalDeposit > 0 ? totalDeposit : 0,
+        balance_due: Math.max(0, (form.total || 0) - totalDeposit),
+        notes: form.notes || "",
+        payments: form.payments || [],
+      });
+      await base44.entities.Estimate.update(id, { invoice_id: invoice.id });
+      setForm(f => ({ ...f, invoice_id: invoice.id }));
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Estimate approved — invoice created!");
+      navigate(`/InvoiceDetail?id=${invoice.id}`);
+    }
   };
 
   const handleConvertToBuild = async () => {
@@ -335,6 +381,13 @@ export default function EstimateDetail() {
             </Button>
           </Link>
         )}
+        {form.invoice_id && (
+          <Link to={`/InvoiceDetail?id=${form.invoice_id}`}>
+            <Button variant="outline" size="sm" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50">
+              <Receipt className="w-4 h-4 mr-1" /> View Invoice
+            </Button>
+          </Link>
+        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" size="sm" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
@@ -372,6 +425,16 @@ export default function EstimateDetail() {
                   {["draft","sent","approved","declined","expired"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center justify-between py-2 border border-slate-200 rounded-lg px-3">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Engine Build</p>
+                <p className="text-xs text-slate-400">Approval creates a build; otherwise creates an invoice</p>
+              </div>
+              <Switch
+                checked={!!form.is_engine_build}
+                onCheckedChange={v => setForm({...form, is_engine_build: v})}
+              />
             </div>
           </CardContent>
         </Card>

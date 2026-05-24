@@ -12,6 +12,15 @@
       "type": "string",
       "description": "Optional linked engine build"
     },
+    "invoice_id": {
+      "type": "string",
+      "description": "Optional linked invoice (when converted)"
+    },
+    "is_engine_build": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, approval creates an engine build. If false, approval creates an invoice."
+    },
     "status": {
       "type": "string",
       "enum": [

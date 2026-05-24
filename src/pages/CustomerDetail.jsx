@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor
 } from "lucide-react";
+import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -27,6 +28,7 @@ export default function CustomerDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [assignBuildOpen, setAssignBuildOpen] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
 
   const { data: customerArr = [] } = useQuery({
     queryKey: ["customer", id],
@@ -103,6 +105,9 @@ export default function CustomerDetail() {
         <Badge className={customer.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
           {customer.status}
         </Badge>
+        <Button variant="outline" size="sm" onClick={() => setPortalOpen(true)}>
+          <Monitor className="w-4 h-4 mr-1" /> View Portal
+        </Button>
         <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...customer }); setEditOpen(true); }}>
           <Edit className="w-4 h-4 mr-1" /> Edit
         </Button>
@@ -276,6 +281,15 @@ export default function CustomerDetail() {
           </Tabs>
         </div>
       </div>
+
+      <CustomerPortalModal
+        open={portalOpen}
+        onClose={() => setPortalOpen(false)}
+        customer={customer}
+        estimates={customerEstimates}
+        invoices={customerInvoices}
+        builds={customerBuilds}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
