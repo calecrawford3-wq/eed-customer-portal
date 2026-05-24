@@ -268,10 +268,30 @@ export default function EstimateViewer() {
           <Button variant="outline" onClick={() => setPrintMode(true)} className="flex-1">Print Estimate</Button>
           {!isApproved && est.status === "sent" && (
             <Button
-              onClick={() => base44.entities.Estimate.update(estimateId, { status: "approved" })}
+              onClick={async () => {
+                setProcessingPayment(true);
+                try {
+                  const response = await fetch("/.netlify/functions/approvePublicEstimate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ estimateId }),
+                  });
+                  if (response.ok) {
+                    toast.success("Estimate approved! We'll be in touch with next steps.");
+                    window.location.reload();
+                  } else {
+                    toast.error("Failed to approve estimate");
+                  }
+                } catch (err) {
+                  toast.error("Error approving estimate");
+                } finally {
+                  setProcessingPayment(false);
+                }
+              }}
+              disabled={processingPayment}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              Approve Estimate
+              {processingPayment ? "Approving..." : "Approve Estimate"}
             </Button>
           )}
         </div>
