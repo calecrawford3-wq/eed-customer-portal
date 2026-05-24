@@ -343,11 +343,13 @@ export default function PurchaseOrderDetail() {
                 <tr key={idx} className="border-b border-slate-100">
                   <td className="py-2 pr-2 w-44">
                     <Select value={line.part_id || ""} onValueChange={v => updateLine(idx, "part_id", v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select part" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={null}>Custom</SelectItem>
-                        {parts.map(p => <SelectItem key={p.id} value={p.id}>{p.part_number} - {p.name}</SelectItem>)}
-                      </SelectContent>
+                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select part" /></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value={null}>Custom</SelectItem>
+                       {parts
+                         .filter(p => !form.supplier_id || p.supplier_id === form.supplier_id || p.id === line.part_id)
+                         .map(p => <SelectItem key={p.id} value={p.id}>{p.part_number} - {p.name}</SelectItem>)}
+                     </SelectContent>
                     </Select>
                   </td>
                   <td className="py-2 pr-3">
