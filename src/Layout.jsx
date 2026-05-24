@@ -19,12 +19,21 @@ import {
   Settings2,
   DollarSign,
   TrendingDown,
-  BarChart2
+  BarChart2,
+  RefreshCw
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
+
+  const { data: refreshRequests = [] } = useQuery({
+    queryKey: ["refreshRequests"],
+    queryFn: () => base44.entities.RefreshRequest.list("-created_date", 50),
+  });
+  const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
 
   const navigation = [
     { name: "Dashboard", page: "Dashboard", icon: Gauge },
@@ -46,6 +55,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Expenses", page: "Expenses", icon: TrendingDown },
     { name: "Reports", page: "Reports", icon: BarChart2 },
     { type: "divider" },
+    { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
     { name: "Settings", page: "Settings", icon: Settings2 },
   ];
 
@@ -81,14 +91,24 @@ export default function Layout({ children, currentPageName }) {
                 key={item.page}
                 to={createPageUrl(item.page)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                   isActive
                     ? "bg-[#e20404] text-white font-medium"
                     : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
                 <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                {!collapsed && <span className="text-sm">{item.name}</span>}
+                {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
+                {!collapsed && item.badge && pendingRefreshCount > 0 && (
+                  <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {pendingRefreshCount}
+                  </span>
+                )}
+                {collapsed && item.badge && pendingRefreshCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                    {pendingRefreshCount}
+                  </span>
+                )}
               </Link>
             );
           })}

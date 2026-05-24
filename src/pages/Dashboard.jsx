@@ -14,7 +14,8 @@ import {
   Users,
   Receipt,
   Package,
-  ClipboardList
+  ClipboardList,
+  RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,14 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Part.list("-created_date", 100),
   });
 
+  const { data: refreshRequests = [] } = useQuery({
+    queryKey: ["refreshRequests"],
+    queryFn: () => base44.entities.RefreshRequest.list("-created_date", 50),
+  });
+
+  const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
+
+  const pendingRefreshes = refreshRequests.filter(r => r.status === "pending");
   const activeBuilds = builds.filter(b => !["complete", "shipped"].includes(b.status));
   const recentBuilds = builds.slice(0, 5);
 
@@ -115,6 +124,31 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {/* Refresh Request Alert */}
+      {pendingRefreshes.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <RefreshCw className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-amber-900">
+                {pendingRefreshes.length} Pending Refresh Request{pendingRefreshes.length !== 1 ? "s" : ""}
+              </p>
+              <p className="text-sm text-amber-700">
+                {pendingRefreshes.slice(0, 2).map(r => r.customer_name).join(", ")}
+                {pendingRefreshes.length > 2 ? ` and ${pendingRefreshes.length - 2} more` : ""}
+              </p>
+            </div>
+          </div>
+          <Link to={createPageUrl("RefreshRequests")}>
+            <button className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-1">
+              Review <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

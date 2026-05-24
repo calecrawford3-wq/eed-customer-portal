@@ -1,0 +1,47 @@
+{
+  "name": "RefreshRequest",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked customer record ID"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked engine build ID"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "build_serial": {
+      "type": "string",
+      "description": "Engine serial number for easy reference"
+    },
+    "message": {
+      "type": "string",
+      "description": "Customer's message about the refresh request"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "acknowledged",
+        "estimate_sent",
+        "completed"
+      ],
+      "default": "pending"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal notes for staff"
+    },
+    "requested_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "customer_id",
+    "build_id"
+  ]
+}

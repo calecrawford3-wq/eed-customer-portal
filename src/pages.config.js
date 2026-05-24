@@ -52,6 +52,7 @@ import CustomerDetail from './pages/CustomerDetail';
 import Expenses from './pages/Expenses';
 import Payments from './pages/Payments';
 import Reports from './pages/Reports';
+import RefreshRequests from './pages/RefreshRequests';
 import BuildDetail from './pages/BuildDetail';
 import Customers from './pages/Customers';
 import Estimates from './pages/Estimates';
@@ -99,6 +100,7 @@ export const PAGES = {
     "Expenses": Expenses,
     "Payments": Payments,
     "Reports": Reports,
+    "RefreshRequests": RefreshRequests,
 }
 
 export const pagesConfig = {
