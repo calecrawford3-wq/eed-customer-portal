@@ -40,8 +40,9 @@ Deno.serve(async (req) => {
       password: password,
       host: host,
       port: port,
-      tls: port === 465,
-      timeout: 10000,
+      ssl: port === 465,
+      tls: port !== 465,
+      timeout: 15000,
     });
 
     await client.sendAsync({
