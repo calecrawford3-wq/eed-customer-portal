@@ -19,7 +19,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -35,13 +35,23 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
+  // Role-based routing: non-admin users only see the customer portal
+  const isAdmin = user?.role === 'admin';
+
+  if (!isAdmin) {
+    return (
+      <Routes>
+        <Route path="*" element={<CustomerPortal />} />
+      </Routes>
+    );
+  }
+
+  // Admin users see the full app
   return (
     <Routes>
       <Route path="/" element={
