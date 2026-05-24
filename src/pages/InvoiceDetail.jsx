@@ -178,27 +178,28 @@ export default function InvoiceDetail() {
       `  ${l.name}${l.description ? ` - ${l.description}` : ""} | $${Number(l.price).toFixed(2)}`
     ).join("\n");
     const settings = settingsData?.[0] || {};
-    const subject = encodeURIComponent(`Invoice ${form.invoice_number} from ${settings.company_name || "Elite Engine Development"}`);
-    const body = encodeURIComponent(
-      `Dear ${customer.first_name} ${customer.last_name},\n\n` +
-      `Please find your invoice below. Payment is due by ${form.due_date || "30 days from issue"}.\n\n` +
-      `Invoice #${form.invoice_number}\n` +
-      `-------------------------------\n` +
-      (partsText ? `PARTS:\n${partsText}\n\n` : "") +
-      (laborText ? `LABOR:\n${laborText}\n\n` : "") +
-      `-------------------------------\n` +
-      `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
-      (Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}\n` : "") +
-      `Total Due: $${Number(form.total || 0).toFixed(2)}\n` +
-      (form.notes ? `\nNotes: ${form.notes}\n` : "") +
-      `\n${settings.email_signature || "Thank you for your business!\n\nElite Engine Development"}`
-    );
-    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, "_blank");
+    const subject = `Invoice ${form.invoice_number} from ${settings.company_name || "Elite Engine Development"}`;
+    const html = `
+      <p>Dear ${customer.first_name} ${customer.last_name},</p>
+      <p>Please find your invoice below. Payment is due by ${form.due_date || "30 days from issue"}.</p>
+      <h3>Invoice #${form.invoice_number}</h3>
+      <hr/>
+      ${partsText ? `<p><strong>PARTS:</strong><br/><pre>${partsText}</pre></p>` : ""}
+      ${laborText ? `<p><strong>LABOR:</strong><br/><pre>${laborText}</pre></p>` : ""}
+      <hr/>
+      <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}<br/>
+      ${Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}<br/>` : ""}
+      <strong>Total Due: $${Number(form.total || 0).toFixed(2)}</strong></p>
+      ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
+      <p>${(settings.email_signature || "Thank you for your business!\n\nElite Engine Development").replace(/\n/g, "<br/>")}</p>
+    `;
+    const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
+    if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
     await base44.entities.Invoice.update(id || "", { status: "sent" });
     qc.invalidateQueries({ queryKey: ["invoices"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
-    toast.success(`Email draft opened for ${customer.email}`);
+    toast.success(`Invoice sent to ${customer.email}`);
   };
 
   const customer = customers.find(c => c.id === form.customer_id);

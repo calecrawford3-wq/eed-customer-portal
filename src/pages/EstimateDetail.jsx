@@ -347,27 +347,29 @@ export default function EstimateDetail() {
       `  ${l.name}${l.description ? ` - ${l.description}` : ""} | $${Number(l.price).toFixed(2)}`
     ).join("\n");
     const settings = settingsData?.[0] || {};
-    const subject = encodeURIComponent(`Estimate ${form.estimate_number} from ${settings.company_name || "Elite Engine Development"}`);
     const depositLine = form.deposit_required ? `\nDeposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}\n` : "";
-    const body = encodeURIComponent(
-      `Dear ${customer.first_name} ${customer.last_name},\n\nPlease find your estimate below.\n\n` +
-      `Estimate #${form.estimate_number}\n-------------------------------\n` +
-      (partsText ? `PARTS:\n${partsText}\n\n` : "") +
-      (laborText ? `LABOR:\n${laborText}\n\n` : "") +
-      `-------------------------------\n` +
-      `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
-      (Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}\n` : "") +
-      `Total: $${Number(form.total || 0).toFixed(2)}\n` +
-      depositLine +
-      (form.notes ? `\nNotes: ${form.notes}\n` : "") +
-      `\n${settings.email_signature || "Elite Engine Development"}`
-    );
-    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, "_blank");
+    const subject = `Estimate ${form.estimate_number} from ${settings.company_name || "Elite Engine Development"}`;
+    const html = `
+      <p>Dear ${customer.first_name} ${customer.last_name},</p>
+      <p>Please find your estimate below.</p>
+      <h3>Estimate #${form.estimate_number}</h3>
+      <hr/>
+      ${partsText ? `<p><strong>PARTS:</strong><br/><pre>${partsText}</pre></p>` : ""}
+      ${laborText ? `<p><strong>LABOR:</strong><br/><pre>${laborText}</pre></p>` : ""}
+      <hr/>
+      <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}<br/>
+      ${Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}<br/>` : ""}
+      <strong>Total: $${Number(form.total || 0).toFixed(2)}</strong>${form.deposit_required ? `<br/>Deposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}` : ""}</p>
+      ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
+      <p>${(settings.email_signature || "Elite Engine Development").replace(/\n/g, "<br/>")}</p>
+    `;
+    const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
+    if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
     await base44.entities.Estimate.update(id || "", { status: "sent" });
     qc.invalidateQueries({ queryKey: ["estimates"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
-    toast.success(`Email draft opened for ${customer.email}`);
+    toast.success(`Estimate sent to ${customer.email}`);
   };
 
   const customer = customers.find(c => c.id === form.customer_id);

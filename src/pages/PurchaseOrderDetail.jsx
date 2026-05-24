@@ -111,29 +111,31 @@ export default function PurchaseOrderDetail() {
       `  ${l.part_number || "Custom"} | ${l.description} | Qty: ${l.quantity} | Unit: $${Number(l.unit_cost).toFixed(2)} | Total: $${Number(l.total).toFixed(2)}`
     ).join("\n");
 
-    const subject = encodeURIComponent(`Purchase Order ${form.po_number} from Elite Engine Development`);
-    const body = encodeURIComponent(
-      `To: ${supplier.name}${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}\n\n` +
-      `Purchase Order #${form.po_number}\n` +
-      `Order Date: ${form.order_date || ""}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}\n\n` +
-      `-------------------------------\n` +
-      `${lineItemsText}\n` +
-      `-------------------------------\n` +
-      `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
-      (Number(form.shipping_cost) > 0 ? `Shipping: $${Number(form.shipping_cost).toFixed(2)}\n` : "") +
-      `Total: $${Number(form.total || 0).toFixed(2)}\n` +
-      (form.shipping_address ? `\nShip To: ${form.shipping_address}\n` : "") +
-      (form.notes ? `\nNotes: ${form.notes}\n` : "") +
-      `\nPlease confirm receipt of this purchase order.\n\nElite Engine Development`
-    );
+    const subject = `Purchase Order ${form.po_number} from Elite Engine Development`;
+    const html = `
+      <p>To: ${supplier.name}${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}</p>
+      <h3>Purchase Order #${form.po_number}</h3>
+      <p>Order Date: ${form.order_date || ""}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}</p>
+      <hr/>
+      <pre>${lineItemsText}</pre>
+      <hr/>
+      <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}<br/>
+      ${Number(form.shipping_cost) > 0 ? `Shipping: $${Number(form.shipping_cost).toFixed(2)}<br/>` : ""}
+      <strong>Total: $${Number(form.total || 0).toFixed(2)}</strong></p>
+      ${form.shipping_address ? `<p>Ship To: ${form.shipping_address}</p>` : ""}
+      ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
+      <p>Please confirm receipt of this purchase order.</p>
+      <p>Elite Engine Development</p>
+    `;
 
-    window.open(`mailto:${supplier.email}?subject=${subject}&body=${body}`, "_blank");
+    const result = await base44.functions.invoke("sendSmtpEmail", { to: supplier.email, subject, html, usePOSmtp: true });
+    if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
 
     await base44.entities.PurchaseOrder.update(id || "", { status: "sent" });
     qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
-    toast.success(`Email draft opened for ${supplier.email}`);
+    toast.success(`PO sent to ${supplier.email}`);
   };
 
   const supplier = suppliers.find(s => s.id === form.supplier_id);
