@@ -67,7 +67,7 @@ export default function CustomerPortal() {
   }, []);
 
   // Find customer record by email
-  const { data: allCustomers = [] } = useQuery({
+  const { data: allCustomers = [], isLoading: customersLoading } = useQuery({
     queryKey: ["portal-customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 500),
     enabled: !!user,
@@ -204,6 +204,14 @@ export default function CustomerPortal() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (customersLoading && !customer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-[#e20404] rounded-full animate-spin" />
       </div>
     );
   }
