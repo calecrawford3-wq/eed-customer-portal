@@ -1,19 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
-import { useRef } from "react";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
+const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
 
 const emptyPart = {
   part_number: "", name: "", description: "", category: "other",
@@ -22,18 +22,30 @@ const emptyPart = {
   location: "", notes: "", status: "active"
 };
 
+const emptyLabor = { name: "", description: "", price: 0, category: "misc", notes: "", status: "active" };
+
 export default function Inventory() {
   const [search, setSearch] = useState("");
+  const [laborSearch, setLaborSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [showLowStock, setShowLowStock] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyPart);
+  const [partDialogOpen, setPartDialogOpen] = useState(false);
+  const [laborDialogOpen, setLaborDialogOpen] = useState(false);
+  const [editingPart, setEditingPart] = useState(null);
+  const [editingLabor, setEditingLabor] = useState(null);
+  const [partForm, setPartForm] = useState(emptyPart);
+  const [laborForm, setLaborForm] = useState(emptyLabor);
   const qc = useQueryClient();
+  const csvInputRef = useRef();
 
-  const { data: parts = [], isLoading } = useQuery({
+  const { data: parts = [], isLoading: partsLoading } = useQuery({
     queryKey: ["parts"],
     queryFn: () => base44.entities.Part.list("-created_date", 500),
+  });
+
+  const { data: laborItems = [], isLoading: laborLoading } = useQuery({
+    queryKey: ["laborItems"],
+    queryFn: () => base44.entities.LaborItem.list("-created_date", 200),
   });
 
   const { data: suppliers = [] } = useQuery({
@@ -41,29 +53,42 @@ export default function Inventory() {
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
   });
 
-  const saveMutation = useMutation({
-    mutationFn: (data) => editing
-      ? base44.entities.Part.update(editing.id, data)
+  const savePartMutation = useMutation({
+    mutationFn: (data) => editingPart
+      ? base44.entities.Part.update(editingPart.id, data)
       : base44.entities.Part.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["parts"] });
-      setDialogOpen(false);
-      toast.success(editing ? "Part updated" : "Part created");
+      setPartDialogOpen(false);
+      toast.success(editingPart ? "Part updated" : "Part created");
     },
   });
 
-  const deleteMutation = useMutation({
+  const deletePartMutation = useMutation({
     mutationFn: (id) => base44.entities.Part.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["parts"] }); toast.success("Part deleted"); },
+  });
+
+  const saveLaborMutation = useMutation({
+    mutationFn: (data) => editingLabor
+      ? base44.entities.LaborItem.update(editingLabor.id, data)
+      : base44.entities.LaborItem.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["parts"] });
-      toast.success("Part deleted");
+      qc.invalidateQueries({ queryKey: ["laborItems"] });
+      setLaborDialogOpen(false);
+      toast.success(editingLabor ? "Labor item updated" : "Labor item created");
     },
   });
 
-  const csvInputRef = useRef();
+  const deleteLaborMutation = useMutation({
+    mutationFn: (id) => base44.entities.LaborItem.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["laborItems"] }); toast.success("Labor item deleted"); },
+  });
 
-  const openNew = () => { setEditing(null); setForm(emptyPart); setDialogOpen(true); };
-  const openEdit = (p) => { setEditing(p); setForm({ ...p }); setDialogOpen(true); };
+  const openNewPart = () => { setEditingPart(null); setPartForm(emptyPart); setPartDialogOpen(true); };
+  const openEditPart = (p) => { setEditingPart(p); setPartForm({ ...p }); setPartDialogOpen(true); };
+  const openNewLabor = () => { setEditingLabor(null); setLaborForm(emptyLabor); setLaborDialogOpen(true); };
+  const openEditLabor = (l) => { setEditingLabor(l); setLaborForm({ ...l }); setLaborDialogOpen(true); };
 
   const handleCSVImport = (e) => {
     const file = e.target.files[0];
@@ -89,10 +114,7 @@ export default function Inventory() {
           location: row.location || "",
           status: "active",
         };
-        if (part.name) {
-          await base44.entities.Part.create(part);
-          imported++;
-        }
+        if (part.name) { await base44.entities.Part.create(part); imported++; }
       }
       qc.invalidateQueries({ queryKey: ["parts"] });
       toast.success(`Imported ${imported} parts`);
@@ -103,124 +125,200 @@ export default function Inventory() {
 
   const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
 
-  const filtered = parts.filter(p => {
+  const filteredParts = parts.filter(p => {
     const matchSearch = `${p.part_number} ${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCategory === "all" || p.category === filterCategory;
     const matchLow = !showLowStock || (p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0);
     return matchSearch && matchCat && matchLow;
   });
 
+  const filteredLabor = laborItems.filter(l =>
+    !laborSearch || `${l.name} ${l.description} ${l.category}`.toLowerCase().includes(laborSearch.toLowerCase())
+  );
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Inventory</h1>
-          <p className="text-slate-500 mt-1">{parts.length} parts tracked</p>
+          <p className="text-slate-500 mt-1">{parts.length} parts · {laborItems.length} labor items</p>
         </div>
-        <div className="flex gap-3">
-          {lowStockCount > 0 && (
-            <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowLowStock(!showLowStock)}>
-              <AlertTriangle className="w-4 h-4 mr-2" /> {lowStockCount} Low Stock
+      </div>
+
+      <Tabs defaultValue="parts">
+        <TabsList className="mb-6">
+          <TabsTrigger value="parts" className="flex items-center gap-2">
+            <Package className="w-4 h-4" /> Parts ({parts.length})
+          </TabsTrigger>
+          <TabsTrigger value="labor" className="flex items-center gap-2">
+            <Wrench className="w-4 h-4" /> Labor Items ({laborItems.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ─── Parts Tab ─── */}
+        <TabsContent value="parts">
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input className="pl-10" placeholder="Search parts..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace("_", " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {lowStockCount > 0 && (
+              <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowLowStock(!showLowStock)}>
+                <AlertTriangle className="w-4 h-4 mr-2" /> {lowStockCount} Low Stock
+              </Button>
+            )}
+            <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+            <Button variant="outline" onClick={() => csvInputRef.current.click()}>
+              <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
-          )}
-          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
-          <Button variant="outline" onClick={() => csvInputRef.current.click()}>
-            <Upload className="w-4 h-4 mr-2" /> Import CSV
-          </Button>
-          <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
-            <Plus className="w-4 h-4 mr-2" /> Add Part
-          </Button>
-        </div>
-      </div>
+            <Button onClick={openNewPart} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+              <Plus className="w-4 h-4 mr-2" /> Add Part
+            </Button>
+          </div>
 
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input className="pl-10" placeholder="Search parts..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="All Categories" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace("_", " ")}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-slate-400">
-          <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium">No parts found</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Part #</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Category</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Location</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">On Hand</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Cost</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Sell Price</th>
-                <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => {
-                const isLow = p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0;
-                return (
-                  <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-3 font-mono text-slate-700">{p.part_number}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-500 capitalize">{p.category?.replace("_", " ")}</td>
-                    <td className="px-4 py-3 text-slate-500">{p.location || "—"}</td>
-                    <td className={`px-4 py-3 text-right font-semibold ${isLow ? "text-amber-600" : "text-slate-900"}`}>
-                      {p.quantity_on_hand} {isLow && <AlertTriangle className="inline w-3.5 h-3.5 ml-1" />}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-600">{p.unit_cost ? `$${Number(p.unit_cost).toFixed(2)}` : "—"}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{p.sell_price ? `$${Number(p.sell_price).toFixed(2)}` : "—"}</td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge className={p.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
-                        {p.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Edit className="w-3.5 h-3.5" /></Button>
-                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </td>
+          {partsLoading ? (
+            <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+          ) : filteredParts.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-lg font-medium">No parts found</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Part #</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Category</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Location</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600">On Hand</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600">Cost</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600">Sell Price</th>
+                    <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                </thead>
+                <tbody>
+                  {filteredParts.map(p => {
+                    const isLow = p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0;
+                    return (
+                      <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono text-slate-700">{p.part_number}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                        <td className="px-4 py-3 text-slate-500 capitalize">{p.category?.replace("_", " ")}</td>
+                        <td className="px-4 py-3 text-slate-500">{p.location || "—"}</td>
+                        <td className={`px-4 py-3 text-right font-semibold ${isLow ? "text-amber-600" : "text-slate-900"}`}>
+                          {p.quantity_on_hand} {isLow && <AlertTriangle className="inline w-3.5 h-3.5 ml-1" />}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-600">{p.unit_cost ? `$${Number(p.unit_cost).toFixed(2)}` : "—"}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{p.sell_price ? `$${Number(p.sell_price).toFixed(2)}` : "—"}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge className={p.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
+                            {p.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="ghost" onClick={() => openEditPart(p)}><Edit className="w-3.5 h-3.5" /></Button>
+                            <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deletePartMutation.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {/* ─── Labor Tab ─── */}
+        <TabsContent value="labor">
+          <div className="flex gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input className="pl-10" placeholder="Search labor items..." value={laborSearch} onChange={e => setLaborSearch(e.target.value)} />
+            </div>
+            <Button onClick={openNewLabor} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+              <Plus className="w-4 h-4 mr-2" /> Add Labor Item
+            </Button>
+          </div>
+
+          {laborLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+          ) : filteredLabor.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <Wrench className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-lg font-medium">No labor items yet</p>
+              <p className="text-sm mt-1">Add standard labor items with pricing that can be used in canned jobs and estimates.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Description</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Category</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600">Price</th>
+                    <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLabor.map(l => (
+                    <tr key={l.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{l.name}</td>
+                      <td className="px-4 py-3 text-slate-500">{l.description || "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 capitalize">{l.category}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900">${Number(l.price || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge className={l.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
+                          {l.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => openEditLabor(l)}><Edit className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteLaborMutation.mutate(l.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Part Dialog */}
+      <Dialog open={partDialogOpen} onOpenChange={setPartDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Part" : "New Part"}</DialogTitle>
+            <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
-            <div><Label>Part Number *</Label><Input value={form.part_number} onChange={e => setForm({...form, part_number: e.target.value})} /></div>
-            <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+            <div><Label>Part Number *</Label><Input value={partForm.part_number} onChange={e => setPartForm({...partForm, part_number: e.target.value})} /></div>
+            <div><Label>Name *</Label><Input value={partForm.name} onChange={e => setPartForm({...partForm, name: e.target.value})} /></div>
             <div>
               <Label>Category</Label>
-              <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+              <Select value={partForm.category} onValueChange={v => setPartForm({...partForm, category: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace("_"," ")}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label>Supplier</Label>
-              <Select value={form.supplier_id || ""} onValueChange={v => setForm({...form, supplier_id: v})}>
+              <Select value={partForm.supplier_id || ""} onValueChange={v => setPartForm({...partForm, supplier_id: v})}>
                 <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={null}>None</SelectItem>
@@ -228,16 +326,16 @@ export default function Inventory() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Supplier Part #</Label><Input value={form.supplier_part_number} onChange={e => setForm({...form, supplier_part_number: e.target.value})} /></div>
-            <div><Label>Storage Location</Label><Input value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Shelf A3" /></div>
-            <div><Label>Unit Cost ($)</Label><Input type="number" value={form.unit_cost} onChange={e => setForm({...form, unit_cost: e.target.value})} /></div>
-            <div><Label>Sell Price ($)</Label><Input type="number" value={form.sell_price} onChange={e => setForm({...form, sell_price: e.target.value})} /></div>
-            <div><Label>Quantity On Hand</Label><Input type="number" value={form.quantity_on_hand} onChange={e => setForm({...form, quantity_on_hand: Number(e.target.value)})} /></div>
-            <div><Label>Reorder Point</Label><Input type="number" value={form.reorder_point} onChange={e => setForm({...form, reorder_point: Number(e.target.value)})} /></div>
-            <div><Label>Max Stock</Label><Input type="number" value={form.reorder_quantity} onChange={e => setForm({...form, reorder_quantity: Number(e.target.value)})} /></div>
+            <div><Label>Supplier Part #</Label><Input value={partForm.supplier_part_number} onChange={e => setPartForm({...partForm, supplier_part_number: e.target.value})} /></div>
+            <div><Label>Storage Location</Label><Input value={partForm.location} onChange={e => setPartForm({...partForm, location: e.target.value})} placeholder="e.g. Shelf A3" /></div>
+            <div><Label>Unit Cost ($)</Label><Input type="number" value={partForm.unit_cost} onChange={e => setPartForm({...partForm, unit_cost: e.target.value})} /></div>
+            <div><Label>Sell Price ($)</Label><Input type="number" value={partForm.sell_price} onChange={e => setPartForm({...partForm, sell_price: e.target.value})} /></div>
+            <div><Label>Quantity On Hand</Label><Input type="number" value={partForm.quantity_on_hand} onChange={e => setPartForm({...partForm, quantity_on_hand: Number(e.target.value)})} /></div>
+            <div><Label>Reorder Point</Label><Input type="number" value={partForm.reorder_point} onChange={e => setPartForm({...partForm, reorder_point: Number(e.target.value)})} /></div>
+            <div><Label>Max Stock</Label><Input type="number" value={partForm.reorder_quantity} onChange={e => setPartForm({...partForm, reorder_quantity: Number(e.target.value)})} /></div>
             <div>
               <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
+              <Select value={partForm.status} onValueChange={v => setPartForm({...partForm, status: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
@@ -246,13 +344,51 @@ export default function Inventory() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} /></div>
-            <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
+            <div className="col-span-2"><Label>Description</Label><Textarea value={partForm.description} onChange={e => setPartForm({...partForm, description: e.target.value})} rows={2} /></div>
+            <div className="col-span-2"><Label>Notes</Label><Textarea value={partForm.notes} onChange={e => setPartForm({...partForm, notes: e.target.value})} rows={2} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Part"}
+            <Button variant="outline" onClick={() => setPartDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => savePartMutation.mutate(partForm)} disabled={savePartMutation.isPending}>
+              {savePartMutation.isPending ? "Saving..." : editingPart ? "Save Changes" : "Create Part"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Labor Dialog */}
+      <Dialog open={laborDialogOpen} onOpenChange={setLaborDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingLabor ? "Edit Labor Item" : "New Labor Item"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2"><Label>Name *</Label><Input value={laborForm.name} onChange={e => setLaborForm({...laborForm, name: e.target.value})} placeholder="e.g. Engine Assembly & Dyno" /></div>
+            <div>
+              <Label>Category</Label>
+              <Select value={laborForm.category} onValueChange={v => setLaborForm({...laborForm, category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{LABOR_CATEGORIES.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Price ($) *</Label><Input type="number" value={laborForm.price} onChange={e => setLaborForm({...laborForm, price: Number(e.target.value)})} min="0" step="0.01" /></div>
+            <div>
+              <Label>Status</Label>
+              <Select value={laborForm.status} onValueChange={v => setLaborForm({...laborForm, status: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2"><Label>Description</Label><Textarea value={laborForm.description} onChange={e => setLaborForm({...laborForm, description: e.target.value})} rows={2} placeholder="Describe what this labor covers..." /></div>
+            <div className="col-span-2"><Label>Notes</Label><Textarea value={laborForm.notes} onChange={e => setLaborForm({...laborForm, notes: e.target.value})} rows={2} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLaborDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveLaborMutation.mutate(laborForm)} disabled={saveLaborMutation.isPending}>
+              {saveLaborMutation.isPending ? "Saving..." : editingLabor ? "Save Changes" : "Create Labor Item"}
             </Button>
           </DialogFooter>
         </DialogContent>

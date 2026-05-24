@@ -174,16 +174,48 @@ export default function EstimateDetail() {
     setForm({ ...form, tax_rate: rate, ...totals });
   };
 
-  const handleCannedJobSelect = (spec, platform) => {
+  const handleCannedJobSelect = async (spec, platform) => {
     setSelectedSpec(spec);
     setSelectedSpecPlatform(platform);
 
+    // Fetch current inventory prices at the moment the canned job is loaded
+    const [allParts, allLaborItems] = await Promise.all([
+      base44.entities.Part.list("-created_date", 500),
+      base44.entities.LaborItem.list("-created_date", 200),
+    ]);
+
+    const partsMap = Object.fromEntries(allParts.map(p => [p.id, p]));
+    const laborMap = Object.fromEntries(allLaborItems.map(l => [l.id, l]));
+
+    // Build line items with current sell prices from inventory
     const cannedLineItems = (spec.canned_items?.line_items || []).length > 0
-      ? spec.canned_items.line_items
+      ? spec.canned_items.line_items.map(item => {
+          const inventoryPart = item.part_id ? partsMap[item.part_id] : null;
+          const unitPrice = inventoryPart ? (Number(inventoryPart.sell_price) || 0) : 0;
+          const unitCost = inventoryPart ? (Number(inventoryPart.unit_cost) || 0) : 0;
+          const qty = Number(item.quantity) || 1;
+          return {
+            part_id: item.part_id || "",
+            part_number: item.part_number || "",
+            item_name: item.item_name || "",
+            quantity: qty,
+            unit_cost: unitCost,
+            unit_price: unitPrice,
+            total: qty * unitPrice,
+          };
+        })
       : [{ ...emptyPart }];
 
+    // Build labor items with current prices from labor catalog
     const cannedLaborItems = (spec.canned_items?.labor_items || []).length > 0
-      ? spec.canned_items.labor_items
+      ? spec.canned_items.labor_items.map(item => {
+          const inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
+          return {
+            name: item.name || "",
+            description: item.description || "",
+            price: inventoryLabor ? (Number(inventoryLabor.price) || 0) : 0,
+          };
+        })
       : [{ name: "Engine Assembly & Dyno", description: `${spec.custom_name || spec.spec_type} spec build`, price: 0 }];
 
     const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
@@ -192,6 +224,7 @@ export default function EstimateDetail() {
 
     const totals = recalc(cannedLineItems, cannedLaborItems, form.tax_rate);
     setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, notes: updatedNotes, ...totals }));
+    toast.success("Canned job loaded with current inventory prices");
   };
 
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);

@@ -1,0 +1,47 @@
+{
+  "name": "LaborItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Labor item name (e.g. Engine Assembly, Valve Lash Adjustment)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the labor"
+    },
+    "price": {
+      "type": "number",
+      "default": 0,
+      "description": "Standard price for this labor item"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "assembly",
+        "machining",
+        "cleaning",
+        "diagnostic",
+        "dyno",
+        "misc"
+      ],
+      "default": "misc",
+      "description": "Labor category"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ]
+}
