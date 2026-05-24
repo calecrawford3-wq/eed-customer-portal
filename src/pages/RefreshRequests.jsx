@@ -149,7 +149,7 @@ export default function RefreshRequests() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
                         <Button size="sm" variant="outline" onClick={() => openDetail(req)}>Manage</Button>
-                        <Link to={`/EstimateDetail?new=1`} title="Create estimate for this customer">
+                        <Link to={`/EstimateDetail?new=1&customer_id=${req.customer_id}&build_id=${req.build_id}`} title="Create estimate for this customer">
                           <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50">
                             <ClipboardList className="w-3.5 h-3.5" />
                           </Button>
@@ -205,7 +205,7 @@ export default function RefreshRequests() {
                 />
               </div>
               <div className="flex gap-2">
-                <Link to={`/EstimateDetail?new=1`} className="flex-1">
+                <Link to={`/EstimateDetail?new=1&customer_id=${selected?.customer_id}&build_id=${selected?.build_id}`} className="flex-1">
                   <Button variant="outline" className="w-full text-purple-600 border-purple-200 hover:bg-purple-50">
                     <ClipboardList className="w-4 h-4 mr-1" /> Create Estimate
                   </Button>

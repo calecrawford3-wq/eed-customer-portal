@@ -38,6 +38,8 @@ export default function EstimateDetail() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
   const isNew = params.get("new") === "1";
+  const prefillCustomerId = params.get("customer_id");
+  const prefillBuildId = params.get("build_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -108,6 +110,12 @@ export default function EstimateDetail() {
       setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
     }
   }, [settingsData, isNew]);
+
+  useEffect(() => {
+    if (isNew && prefillCustomerId) {
+      setForm(f => ({ ...f, customer_id: prefillCustomerId, build_id: prefillBuildId || "" }));
+    }
+  }, [isNew, prefillCustomerId, prefillBuildId]);
 
   const saveMutation = useMutation({
     mutationFn: (data) => id
