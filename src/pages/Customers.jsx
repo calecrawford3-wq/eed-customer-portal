@@ -33,13 +33,26 @@ export default function Customers() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editing
-      ? base44.entities.Customer.update(editing.id, data)
-      : base44.entities.Customer.create(data),
+    mutationFn: async (data) => {
+      if (editing) {
+        return base44.entities.Customer.update(editing.id, data);
+      } else {
+        const newCustomer = await base44.entities.Customer.create(data);
+        // Send portal invite if email is present
+        if (data.email) {
+          try {
+            await base44.functions.invoke("sendPortalInvite", { customer_email: data.email });
+          } catch (err) {
+            console.warn("Portal invite failed:", err.message);
+          }
+        }
+        return newCustomer;
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setDialogOpen(false);
-      toast.success(editing ? "Customer updated" : "Customer created");
+      toast.success(editing ? "Customer updated" : "Customer created & invite sent");
     },
   });
 
