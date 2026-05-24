@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -15,7 +16,8 @@ import {
   ChevronDown,
   CheckCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +76,7 @@ const SPEC_TYPES = [
 ];
 
 export default function Builds() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -238,6 +241,26 @@ export default function Builds() {
         status: "queued"
       } 
     });
+  };
+
+  const handleConvertToInvoice = async (build) => {
+    const customer = customers.find(c => c.id === build.customer_id);
+    const invoice = await base44.entities.Invoice.create({
+      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
+      customer_id: build.customer_id || "",
+      build_id: build.id,
+      status: "draft",
+      issue_date: new Date().toISOString().split("T")[0],
+      line_items: [],
+      labor_items: [],
+      payments: [],
+      tax_rate: 0,
+      amount_paid: 0,
+      balance_due: 0,
+      notes: `Engine build: ${build.engine_serial_number}${build.build_number ? ` (${build.build_number})` : ""}`,
+    });
+    toast.success("Invoice created!");
+    navigate(`/InvoiceDetail?id=${invoice.id}`);
   };
 
   const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
@@ -600,7 +623,15 @@ export default function Builds() {
                           </div>
                           <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>
                         </div>
-                        <div className="mt-3 flex justify-end">
+                        <div className="mt-3 flex justify-between items-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => handleConvertToInvoice(build)}
+                          >
+                            <Receipt className="w-3.5 h-3.5 mr-1" /> Create Invoice
+                          </Button>
                           <Link to={createPageUrl(`BuildDetail?id=${build.id}`)}>
                             <Button variant="ghost" size="sm">
                               View <ArrowRight className="w-4 h-4 ml-1" />

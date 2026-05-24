@@ -8,16 +8,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search,
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import PaymentModal from "@/components/PaymentModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
+
+const STATUS_BADGE = {
+  draft: "bg-slate-100 text-slate-600",
+  sent: "bg-blue-100 text-blue-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  declined: "bg-red-100 text-red-700",
+  expired: "bg-slate-100 text-slate-400",
+};
 
 export default function EstimateDetail() {
   const params = new URLSearchParams(window.location.search);
@@ -31,6 +44,10 @@ export default function EstimateDetail() {
     customer_id: "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
     expiry_date: "",
+    deposit_required: false,
+    deposit_amount: 0,
+    deposit_paid: false,
+    payments: [],
     line_items: [{ ...emptyPart }],
     labor_items: [],
     tax_rate: 0, notes: "", internal_notes: ""
@@ -39,6 +56,8 @@ export default function EstimateDetail() {
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
   const [poModalOpen, setPoModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [convertingToBuild, setConvertingToBuild] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -61,15 +80,19 @@ export default function EstimateDetail() {
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
   });
 
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
+  });
+
   useEffect(() => {
     if (estimate && estimate[0]) {
-      setForm({ labor_items: [], ...estimate[0] });
+      setForm({ labor_items: [], payments: [], ...estimate[0] });
     }
   }, [estimate]);
 
-  // Apply default tax rate for new estimates
   useEffect(() => {
-    if (isNew && settingsData && settingsData[0] && settingsData[0].default_tax_rate) {
+    if (isNew && settingsData?.[0]?.default_tax_rate) {
       setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
     }
   }, [settingsData, isNew]);
@@ -106,23 +129,15 @@ export default function EstimateDetail() {
   const selectPart = (part) => {
     const lines = [...form.line_items];
     lines[pickingIdx] = {
-      part_id: part.id,
-      part_number: part.part_number,
-      item_name: part.name,
-      quantity: 1,
-      unit_cost: part.unit_cost || 0,
-      unit_price: part.sell_price || 0,
+      part_id: part.id, part_number: part.part_number, item_name: part.name,
+      quantity: 1, unit_cost: part.unit_cost || 0, unit_price: part.sell_price || 0,
       total: part.sell_price || 0,
     };
     const totals = recalc(lines, form.labor_items, form.tax_rate);
     setForm({ ...form, line_items: lines, ...totals });
   };
 
-  const addLine = () => setForm(f => {
-    const lines = [...f.line_items, { ...emptyPart }];
-    return { ...f, line_items: lines };
-  });
-
+  const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
     const totals = recalc(lines, form.labor_items, form.tax_rate);
@@ -130,14 +145,12 @@ export default function EstimateDetail() {
   };
 
   const addLabor = () => setForm(f => ({ ...f, labor_items: [...(f.labor_items || []), { ...emptyLabor }] }));
-
   const updateLabor = (idx, field, value) => {
     const items = [...(form.labor_items || [])];
     items[idx] = { ...items[idx], [field]: value };
     const totals = recalc(form.line_items, items, form.tax_rate);
     setForm({ ...form, labor_items: items, ...totals });
   };
-
   const removeLabor = (idx) => {
     const items = (form.labor_items || []).filter((_, i) => i !== idx);
     const totals = recalc(form.line_items, items, form.tax_rate);
@@ -147,6 +160,61 @@ export default function EstimateDetail() {
   const updateTaxRate = (rate) => {
     const totals = recalc(form.line_items, form.labor_items || [], rate);
     setForm({ ...form, tax_rate: rate, ...totals });
+  };
+
+  const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const depositMet = !form.deposit_required || totalDeposit >= Number(form.deposit_amount || 0);
+
+  const handleRecordPayment = async (payment) => {
+    const updatedPayments = [...(form.payments || []), payment];
+    const newTotalDeposit = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const newDepositPaid = newTotalDeposit >= Number(form.deposit_amount || 0);
+    const updated = { ...form, payments: updatedPayments, deposit_paid: newDepositPaid };
+    setForm(updated);
+    await saveMutation.mutateAsync(updated);
+    toast.success("Payment recorded");
+  };
+
+  const handleApprove = async () => {
+    if (form.deposit_required && !depositMet) {
+      toast.error("Deposit must be received before approving this estimate");
+      return;
+    }
+    const updated = { ...form, status: "approved" };
+    setForm(updated);
+    await saveMutation.mutateAsync(updated);
+    toast.success("Estimate approved");
+  };
+
+  const handleConvertToBuild = async () => {
+    if (form.status !== "approved") {
+      toast.error("Estimate must be approved first");
+      return;
+    }
+    setConvertingToBuild(true);
+    const customer = customers.find(c => c.id === form.customer_id);
+    try {
+      const build = await base44.entities.EngineBuild.create({
+        engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
+        build_number: form.estimate_number,
+        customer_id: form.customer_id,
+        customer_name: customer ? `${customer.first_name} ${customer.last_name}` : "",
+        status: "queued",
+        work_tag: "none",
+        assembly_notes: form.notes || "",
+      });
+      // Link estimate to build
+      const updated = { ...form, build_id: build.id };
+      setForm(updated);
+      await base44.entities.Estimate.update(id, { build_id: build.id });
+      qc.invalidateQueries({ queryKey: ["builds"] });
+      toast.success("Engine build created! Redirecting...");
+      navigate(`/BuildDetail?id=${build.id}`);
+    } catch (e) {
+      toast.error("Failed to create build");
+    } finally {
+      setConvertingToBuild(false);
+    }
   };
 
   const sendEstimate = async () => {
@@ -162,17 +230,17 @@ export default function EstimateDetail() {
     ).join("\n");
     const settings = settingsData?.[0] || {};
     const subject = encodeURIComponent(`Estimate ${form.estimate_number} from ${settings.company_name || "Elite Engine Development"}`);
+    const depositLine = form.deposit_required ? `\nDeposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}\n` : "";
     const body = encodeURIComponent(
-      `Dear ${customer.first_name} ${customer.last_name},\n\n` +
-      `Please find your estimate below.\n\n` +
-      `Estimate #${form.estimate_number}\n` +
-      `-------------------------------\n` +
+      `Dear ${customer.first_name} ${customer.last_name},\n\nPlease find your estimate below.\n\n` +
+      `Estimate #${form.estimate_number}\n-------------------------------\n` +
       (partsText ? `PARTS:\n${partsText}\n\n` : "") +
       (laborText ? `LABOR:\n${laborText}\n\n` : "") +
       `-------------------------------\n` +
       `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
       (Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}\n` : "") +
       `Total: $${Number(form.total || 0).toFixed(2)}\n` +
+      depositLine +
       (form.notes ? `\nNotes: ${form.notes}\n` : "") +
       `\n${settings.email_signature || "Elite Engine Development"}`
     );
@@ -200,27 +268,72 @@ export default function EstimateDetail() {
         lineItems={form.line_items}
         sourceNumber={form.estimate_number}
       />
+      <PaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        balanceDue={form.deposit_required ? Math.max(0, Number(form.deposit_amount || 0) - totalDeposit) : undefined}
+        totalPaid={totalDeposit}
+        onRecord={handleRecordPayment}
+        title={form.deposit_required ? "Record Deposit Payment" : "Record Payment"}
+      />
 
+      {/* Header */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
         <Link to="/Estimates"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-900">{form.estimate_number}</h1>
         </div>
-        <Badge className={form.status === "draft" ? "bg-slate-100 text-slate-600 border-0" : form.status === "sent" ? "bg-blue-100 text-blue-700 border-0" : form.status === "approved" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-red-100 text-red-700 border-0"}>
-          {form.status}
-        </Badge>
+        <Badge className={`${STATUS_BADGE[form.status] || "bg-slate-100 text-slate-600"} border-0 capitalize`}>{form.status}</Badge>
+
+        {form.deposit_required && !depositMet && (
+          <Badge className="bg-amber-100 text-amber-700 border-0 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> Deposit Pending
+          </Badge>
+        )}
+
         <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
           <Package className="w-4 h-4 mr-1" /> Generate POs
         </Button>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="w-4 h-4 mr-1" /> Print
+        </Button>
         <Button variant="outline" size="sm" onClick={sendEstimate} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" /> {sending ? "Sending..." : "Send"}
         </Button>
+        {id && form.status !== "approved" && form.status !== "declined" && (
+          <Button
+            variant="outline" size="sm"
+            className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+            onClick={handleApprove}
+            disabled={form.deposit_required && !depositMet}
+            title={form.deposit_required && !depositMet ? "Deposit must be received first" : ""}
+          >
+            <CheckCircle className="w-4 h-4 mr-1" /> Approve
+          </Button>
+        )}
+        {form.status === "approved" && !form.build_id && (
+          <Button
+            variant="outline" size="sm"
+            className="border-purple-400 text-purple-700 hover:bg-purple-50"
+            onClick={handleConvertToBuild}
+            disabled={convertingToBuild}
+          >
+            <WrenchIcon className="w-4 h-4 mr-1" /> {convertingToBuild ? "Creating..." : "Convert to Build"}
+          </Button>
+        )}
+        {form.build_id && (
+          <Link to={`/BuildDetail?id=${form.build_id}`}>
+            <Button variant="outline" size="sm" className="border-purple-400 text-purple-700 hover:bg-purple-50">
+              <WrenchIcon className="w-4 h-4 mr-1" /> View Build
+            </Button>
+          </Link>
+        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" size="sm" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
 
+      {/* Details + Bill To */}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Estimate Details</CardTitle></CardHeader>
@@ -264,7 +377,87 @@ export default function EstimateDetail() {
         )}
       </div>
 
-      {/* Parts Line Items */}
+      {/* Deposit Section */}
+      <Card className="border-0 shadow-sm mb-6">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="w-4 h-4" /> Deposit
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Require deposit</span>
+              <Switch
+                checked={form.deposit_required}
+                onCheckedChange={v => setForm({...form, deposit_required: v})}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        {form.deposit_required && (
+          <CardContent>
+            <div className="flex items-end gap-4">
+              <div className="w-48">
+                <Label>Deposit Amount</Label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                  <Input
+                    type="number"
+                    value={form.deposit_amount}
+                    onChange={e => setForm({...form, deposit_amount: Number(e.target.value)})}
+                    className="pl-7"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="text-sm text-slate-500 mb-1">Payments Received</div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-lg font-bold ${depositMet ? "text-emerald-600" : "text-amber-600"}`}>
+                    ${totalDeposit.toFixed(2)} / ${Number(form.deposit_amount || 0).toFixed(2)}
+                  </span>
+                  {depositMet
+                    ? <Badge className="bg-emerald-100 text-emerald-700 border-0">Deposit Received</Badge>
+                    : <Badge className="bg-amber-100 text-amber-700 border-0">Awaiting Deposit</Badge>
+                  }
+                </div>
+              </div>
+              {id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => setPaymentModalOpen(true)}
+                >
+                  <DollarSign className="w-4 h-4 mr-1" /> Record Payment
+                </Button>
+              )}
+            </div>
+
+            {/* Payment Log */}
+            {(form.payments || []).length > 0 && (
+              <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Payment History</p>
+                {(form.payments || []).map((p, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-slate-100 text-slate-600 border-0 capitalize text-xs">{p.method}</Badge>
+                      {p.note && <span className="text-slate-500">{p.note}</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-400 text-xs">{p.date}</span>
+                      <span className="font-semibold text-emerald-700">${Number(p.amount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Parts */}
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
@@ -293,7 +486,7 @@ export default function EstimateDetail() {
                     <td className="py-2 pr-2">
                       <div className="flex gap-1">
                         <Input value={line.item_name} onChange={e => updateLine(idx, "item_name", e.target.value)} placeholder="Item name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from inventory" onClick={() => { setPickingIdx(idx); setPartPickerOpen(true); }}>
+                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" onClick={() => { setPickingIdx(idx); setPartPickerOpen(true); }}>
                           <Search className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -319,7 +512,7 @@ export default function EstimateDetail() {
         </CardContent>
       </Card>
 
-      {/* Labor Items */}
+      {/* Labor */}
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2"><Wrench className="w-4 h-4" /> Labor</CardTitle>
@@ -327,7 +520,7 @@ export default function EstimateDetail() {
         </CardHeader>
         <CardContent>
           {(form.labor_items || []).length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">No labor items added. Click "Add Labor" to add.</p>
+            <p className="text-slate-400 text-sm text-center py-4">No labor items added.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -341,18 +534,10 @@ export default function EstimateDetail() {
               <tbody>
                 {(form.labor_items || []).map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2">
-                      <Input value={item.name} onChange={e => updateLabor(idx, "name", e.target.value)} placeholder="Labor name..." className="border-slate-200" />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <Input value={item.description} onChange={e => updateLabor(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" />
-                    </td>
-                    <td className="py-2 px-1">
-                      <Input type="number" value={item.price} onChange={e => updateLabor(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" />
-                    </td>
-                    <td className="py-2">
-                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                    </td>
+                    <td className="py-2 pr-2"><Input value={item.name} onChange={e => updateLabor(idx, "name", e.target.value)} placeholder="Labor name..." className="border-slate-200" /></td>
+                    <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateLabor(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
+                    <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateLabor(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
+                    <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
                   </tr>
                 ))}
               </tbody>
@@ -363,7 +548,7 @@ export default function EstimateDetail() {
 
       {/* Totals */}
       <div className="flex justify-end mb-6">
-        <div className="w-64 space-y-2 text-sm">
+        <div className="w-72 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
@@ -373,6 +558,18 @@ export default function EstimateDetail() {
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between"><span className="text-slate-600">Tax</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
+          {form.deposit_required && (
+            <div className="flex justify-between text-emerald-700 font-medium border-t border-slate-100 pt-2">
+              <span>Deposit Required</span>
+              <span>${Number(form.deposit_amount || 0).toFixed(2)}</span>
+            </div>
+          )}
+          {totalDeposit > 0 && (
+            <div className="flex justify-between text-emerald-600">
+              <span>Deposit Received</span>
+              <span>-${totalDeposit.toFixed(2)}</span>
+            </div>
+          )}
         </div>
       </div>
 

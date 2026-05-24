@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import PaymentModal from "@/components/PaymentModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -44,8 +46,7 @@ export default function InvoiceDetail() {
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
   const [sending, setSending] = useState(false);
-  const [recordingPayment, setRecordingPayment] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
   const [poModalOpen, setPoModalOpen] = useState(false);
@@ -152,15 +153,14 @@ export default function InvoiceDetail() {
     setForm(f => ({ ...f, tax_rate: rate, ...totals }));
   };
 
-  const recordPayment = async () => {
-    const paid = Number(paymentAmount) + (Number(form.amount_paid) || 0);
-    const balance = (form.total || 0) - paid;
+  const handleRecordPayment = async (payment) => {
+    const updatedPayments = [...(form.payments || []), payment];
+    const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const balance = Math.max(0, (form.total || 0) - paid);
     const status = balance <= 0 ? "paid" : "partial";
-    const updated = { ...form, amount_paid: paid, balance_due: Math.max(0, balance), status };
+    const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status };
     await saveMutation.mutateAsync(updated);
     setForm(updated);
-    setRecordingPayment(false);
-    setPaymentAmount("");
     toast.success("Payment recorded");
   };
 
@@ -229,8 +229,8 @@ export default function InvoiceDetail() {
         <Button variant="outline" size="sm" onClick={sendInvoice} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Send"}
         </Button>
-        {["sent","partial","overdue"].includes(form.status) && (
-          <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700" onClick={() => setRecordingPayment(true)}>
+        {["draft","sent","partial","overdue"].includes(form.status) && (
+          <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700" onClick={() => setPaymentModalOpen(true)}>
             <DollarSign className="w-4 h-4 mr-1" /> Record Payment
           </Button>
         )}
@@ -239,19 +239,14 @@ export default function InvoiceDetail() {
         </Button>
       </div>
 
-      {recordingPayment && (
-        <Card className="border-emerald-200 bg-emerald-50 mb-6">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex-1">
-              <Label>Payment Amount</Label>
-              <Input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" className="w-48 mt-1" />
-            </div>
-            <div className="text-sm text-slate-600">Balance: ${Number(form.balance_due || form.total || 0).toFixed(2)}</div>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={recordPayment}>Record</Button>
-            <Button variant="outline" onClick={() => setRecordingPayment(false)}>Cancel</Button>
-          </CardContent>
-        </Card>
-      )}
+      <PaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        balanceDue={form.balance_due ?? form.total ?? 0}
+        totalPaid={form.amount_paid || 0}
+        onRecord={handleRecordPayment}
+        title="Record Payment"
+      />
 
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
@@ -399,6 +394,35 @@ export default function InvoiceDetail() {
           <div className="flex justify-between text-base font-bold text-[#e20404]"><span>Balance Due</span><span>${Number(form.balance_due || 0).toFixed(2)}</span></div>
         </div>
       </div>
+
+      {/* Payment History */}
+      {(form.payments || []).length > 0 && (
+        <Card className="border-0 shadow-sm mb-6">
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><DollarSign className="w-4 h-4" /> Payment History</CardTitle></CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 font-medium text-slate-600">Date</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Method</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Note</th>
+                  <th className="text-right py-2 font-medium text-slate-600">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(form.payments || []).map((p, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 text-slate-500">{p.date}</td>
+                    <td className="py-2"><Badge className="bg-slate-100 text-slate-700 border-0 capitalize text-xs">{p.method}</Badge></td>
+                    <td className="py-2 text-slate-500">{p.note || "—"}</td>
+                    <td className="py-2 text-right font-semibold text-emerald-700">${Number(p.amount).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-6">
         <div><Label>Notes for Customer</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} /></div>

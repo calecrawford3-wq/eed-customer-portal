@@ -37,7 +37,6 @@
     },
     "line_items": {
       "type": "array",
-      "description": "Parts-based line items",
       "items": {
         "type": "object",
         "properties": {
@@ -54,12 +53,10 @@
             "type": "number"
           },
           "unit_cost": {
-            "type": "number",
-            "description": "Your cost"
+            "type": "number"
           },
           "unit_price": {
-            "type": "number",
-            "description": "Sale price to customer"
+            "type": "number"
           },
           "total": {
             "type": "number"
@@ -69,7 +66,6 @@
     },
     "labor_items": {
       "type": "array",
-      "description": "Labor-only line items",
       "items": {
         "type": "object",
         "properties": {
@@ -81,6 +77,34 @@
           },
           "price": {
             "type": "number"
+          }
+        }
+      }
+    },
+    "payments": {
+      "type": "array",
+      "description": "All payment records for this invoice",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "card",
+              "check",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
           }
         }
       }
