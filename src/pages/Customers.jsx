@@ -38,10 +38,10 @@ export default function Customers() {
         return base44.entities.Customer.update(editing.id, data);
       } else {
         const newCustomer = await base44.entities.Customer.create(data);
-        // Send portal invite if email is present
+        // Invite customer to portal if email is present
         if (data.email) {
           try {
-            await base44.functions.invoke("sendPortalInvite", { customer_email: data.email });
+            await base44.users.inviteUser(data.email, "user");
           } catch (err) {
             console.warn("Portal invite failed:", err.message);
           }
