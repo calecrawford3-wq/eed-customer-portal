@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Search, Trash2, Edit, ShoppingCart, Receipt, TrendingDown, AlertCircle } from "lucide-react";
+import { Plus, Search, Trash2, Edit, ShoppingCart, Receipt, TrendingDown, AlertCircle, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIES = [
@@ -48,7 +48,57 @@ export default function Expenses() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyExpense);
   const [tab, setTab] = useState("all");
+  const [scanning, setScanning] = useState(false);
+  const receiptInputRef = useRef(null);
   const qc = useQueryClient();
+
+  const handleReceiptScan = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanning(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this receipt image and extract the expense details. Return ONLY a JSON object with these fields:
+- description: what was purchased (brief, max 80 chars)
+- vendor: store/vendor name
+- amount: total amount paid (number, no currency symbol)
+- tax_amount: tax amount if visible (number, 0 if not found)
+- date: date in YYYY-MM-DD format (use today if not found)
+- category: one of: parts_cogs, supplies, tools_equipment, shipping, utilities, rent, labor, marketing, insurance, taxes, other
+- payment_method: one of: cash, card, check, ach, other`,
+        file_urls: [file_url],
+        response_json_schema: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            vendor: { type: "string" },
+            amount: { type: "number" },
+            tax_amount: { type: "number" },
+            date: { type: "string" },
+            category: { type: "string" },
+            payment_method: { type: "string" },
+          }
+        }
+      });
+      setForm(f => ({
+        ...f,
+        description: result.description || f.description,
+        vendor: result.vendor || f.vendor,
+        amount: result.amount || f.amount,
+        tax_amount: result.tax_amount ?? f.tax_amount,
+        date: result.date || f.date,
+        category: result.category || f.category,
+        payment_method: result.payment_method || f.payment_method,
+        receipt_url: file_url,
+      }));
+      toast.success("Receipt scanned — please review the details");
+    } catch {
+      toast.error("Failed to scan receipt");
+    }
+    setScanning(false);
+    e.target.value = "";
+  };
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses"],
@@ -272,6 +322,22 @@ export default function Expenses() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editing ? "Edit Expense" : "Add Expense"}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
+            {/* Receipt Scanner */}
+            {!editing && (
+              <div>
+                <input ref={receiptInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptScan} />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-dashed border-slate-300 text-slate-600 hover:border-[#e20404] hover:text-[#e20404]"
+                  onClick={() => receiptInputRef.current?.click()}
+                  disabled={scanning}
+                >
+                  {scanning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
+                  {scanning ? "Scanning receipt..." : "Scan Receipt with AI"}
+                </Button>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Reference #</Label><Input value={form.expense_number || ""} onChange={e => setForm({ ...form, expense_number: e.target.value })} placeholder="EXP-001" /></div>
               <div><Label>Date *</Label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
