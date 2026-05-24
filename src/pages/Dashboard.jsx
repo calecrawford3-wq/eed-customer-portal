@@ -60,17 +60,17 @@ export default function Dashboard() {
   const activeBuilds = builds.filter(b => !["complete", "shipped"].includes(b.status));
   const recentBuilds = builds.slice(0, 5);
 
+  const outstandingBalance = invoices
+    .filter(i => ["sent","partial","overdue"].includes(i.status))
+    .reduce((sum, i) => sum + (i.balance_due || i.total || 0), 0);
+  const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
+
   const stats = [
     { label: "Active Builds", value: activeBuilds.length, icon: Wrench, color: "bg-[#e20404]", page: "Builds" },
     { label: "Customers", value: customers.length, icon: Users, color: "bg-blue-500", page: "Customers" },
     { label: "Outstanding", value: `$${outstandingBalance.toLocaleString("en-US", {minimumFractionDigits: 0})}`, icon: Receipt, color: "bg-amber-500", page: "Invoices" },
     { label: "Low Stock Parts", value: lowStockCount, icon: Package, color: lowStockCount > 0 ? "bg-red-500" : "bg-emerald-500", page: "Inventory" },
   ];
-
-  const outstandingBalance = invoices
-    .filter(i => ["sent","partial","overdue"].includes(i.status))
-    .reduce((sum, i) => sum + (i.balance_due || i.total || 0), 0);
-  const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
 
   const isLoading = loadingPlatforms || loadingSpecs || loadingBuilds || loadingDocs;
 
