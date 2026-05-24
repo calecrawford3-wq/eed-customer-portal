@@ -20,13 +20,21 @@ export default function EstimateViewer() {
 
   const { data: viewerData, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate-viewer", estimateId],
-    queryFn: () => base44.functions.invoke("getPublicEstimate", { estimateId }),
+    queryFn: async () => {
+      const response = await fetch("/.netlify/functions/getPublicEstimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimateId }),
+      });
+      if (!response.ok) throw new Error("Failed to fetch estimate");
+      return response.json();
+    },
     enabled: !!estimateId,
   });
 
-  const est = viewerData?.data?.estimate;
-  const customer = viewerData?.data?.customer;
-  const settings = viewerData?.data?.settings;
+  const est = viewerData?.estimate;
+  const customer = viewerData?.customer;
+  const settings = viewerData?.settings;
 
   const totalDepositReceived = (est?.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const depositRemaining = Math.max(0, (est?.deposit_amount || 0) - totalDepositReceived);

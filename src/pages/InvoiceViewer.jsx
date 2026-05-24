@@ -21,13 +21,21 @@ export default function InvoiceViewer() {
 
   const { data: viewerData, isLoading: invoiceLoading, refetch } = useQuery({
     queryKey: ["invoice-viewer", invoiceId],
-    queryFn: () => base44.functions.invoke("getPublicInvoice", { invoiceId }),
+    queryFn: async () => {
+      const response = await fetch("/.netlify/functions/getPublicInvoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      if (!response.ok) throw new Error("Failed to fetch invoice");
+      return response.json();
+    },
     enabled: !!invoiceId,
   });
 
-  const inv = viewerData?.data?.invoice;
-  const customer = viewerData?.data?.customer;
-  const settings = viewerData?.data?.settings;
+  const inv = viewerData?.invoice;
+  const customer = viewerData?.customer;
+  const settings = viewerData?.settings;
 
   const handlePayment = async () => {
     if (!paymentMethod) {
