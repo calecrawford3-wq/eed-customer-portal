@@ -105,7 +105,7 @@ export default function CustomerDetail() {
         <Badge className={customer.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
           {customer.status}
         </Badge>
-        <Button variant="outline" size="sm" onClick={() => setPortalOpen(true)}>
+        <Button variant="outline" size="sm" onClick={() => window.open('/CustomerPortal', '_blank')}>
           <Monitor className="w-4 h-4 mr-1" /> View Portal
         </Button>
         <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...customer }); setEditOpen(true); }}>

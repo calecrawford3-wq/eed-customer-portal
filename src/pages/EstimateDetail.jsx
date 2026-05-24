@@ -177,22 +177,21 @@ export default function EstimateDetail() {
   const handleCannedJobSelect = (spec, platform) => {
     setSelectedSpec(spec);
     setSelectedSpecPlatform(platform);
-    const laborItems = [];
-    if (spec.specs?.valvetrain?.lash_intake_mm) {
-      laborItems.push({ name: "Valve Lash Adjustment", description: `Intake: ${spec.specs.valvetrain.lash_intake_mm} / Exhaust: ${spec.specs.valvetrain.lash_exhaust_mm || "TBD"}`, price: 0 });
-    }
-    if (spec.specs?.cylinder_head) {
-      laborItems.push({ name: "Cylinder Head Service", description: "Head bolt torque, valve seat, gasket installation", price: 0 });
-    }
-    if (spec.specs?.rotating_assembly) {
-      laborItems.push({ name: "Rotating Assembly Build", description: `Bore: ${spec.specs.block?.bore_diameter_mm || "TBD"}mm / Stroke: ${spec.specs.rotating_assembly.stroke_mm || "TBD"}mm`, price: 0 });
-    }
-    laborItems.push({ name: "Engine Assembly & Dyno", description: `${spec.custom_name || spec.spec_type} spec build`, price: 0 });
+
+    const cannedLineItems = (spec.canned_items?.line_items || []).length > 0
+      ? spec.canned_items.line_items
+      : [{ ...emptyPart }];
+
+    const cannedLaborItems = (spec.canned_items?.labor_items || []).length > 0
+      ? spec.canned_items.labor_items
+      : [{ name: "Engine Assembly & Dyno", description: `${spec.custom_name || spec.spec_type} spec build`, price: 0 }];
+
     const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
       `Engine Build: ${spec.custom_name || spec.spec_type} — ${platform?.manufacturer || ""} ${platform?.name || ""}\n` +
       (spec.notes ? `Spec Notes: ${spec.notes}` : "");
-    const totals = recalc(form.line_items, laborItems, form.tax_rate);
-    setForm(f => ({ ...f, labor_items: laborItems, notes: updatedNotes, ...totals }));
+
+    const totals = recalc(cannedLineItems, cannedLaborItems, form.tax_rate);
+    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, notes: updatedNotes, ...totals }));
   };
 
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);

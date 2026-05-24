@@ -1,0 +1,328 @@
+{
+  "name": "SpecSheet",
+  "type": "object",
+  "properties": {
+    "platform_id": {
+      "type": "string",
+      "description": "Associated engine platform ID"
+    },
+    "spec_type": {
+      "type": "string",
+      "enum": [
+        "stock",
+        "stage_1",
+        "stage_2",
+        "stage_3",
+        "contract",
+        "custom"
+      ],
+      "description": "Specification tier"
+    },
+    "custom_name": {
+      "type": "string",
+      "description": "Custom name for contract/custom specs"
+    },
+    "version": {
+      "type": "number",
+      "description": "Version number of this spec sheet"
+    },
+    "is_current": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this is the current active version"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "canned_items": {
+      "type": "object",
+      "description": "Default line items to populate an estimate when this spec is selected as a canned job",
+      "properties": {
+        "line_items": {
+          "type": "array",
+          "description": "Parts to add to the estimate",
+          "items": {
+            "type": "object",
+            "properties": {
+              "part_id": {
+                "type": "string"
+              },
+              "part_number": {
+                "type": "string"
+              },
+              "item_name": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "unit_cost": {
+                "type": "number"
+              },
+              "unit_price": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "labor_items": {
+          "type": "array",
+          "description": "Labor items to add to the estimate",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "price": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "specs": {
+      "type": "object",
+      "description": "Structured specification data",
+      "properties": {
+        "block": {
+          "type": "object",
+          "properties": {
+            "bore_diameter_mm": {
+              "type": "number"
+            },
+            "bore_diameter_tolerance": {
+              "type": "string"
+            },
+            "deck_height_mm": {
+              "type": "number"
+            },
+            "deck_height_tolerance": {
+              "type": "string"
+            },
+            "main_bearing_clearance_mm": {
+              "type": "string"
+            },
+            "main_cap_torque_nm": {
+              "type": "number"
+            },
+            "main_cap_torque_sequence": {
+              "type": "string"
+            }
+          }
+        },
+        "rotating_assembly": {
+          "type": "object",
+          "properties": {
+            "stroke_mm": {
+              "type": "number"
+            },
+            "rod_length_mm": {
+              "type": "number"
+            },
+            "rod_ratio": {
+              "type": "number"
+            },
+            "piston_compression_height_mm": {
+              "type": "number"
+            },
+            "piston_to_wall_clearance_mm": {
+              "type": "string"
+            },
+            "ring_end_gap_top_mm": {
+              "type": "string"
+            },
+            "ring_end_gap_second_mm": {
+              "type": "string"
+            },
+            "ring_end_gap_oil_mm": {
+              "type": "string"
+            },
+            "rod_bearing_clearance_mm": {
+              "type": "string"
+            },
+            "rod_bolt_torque_nm": {
+              "type": "number"
+            },
+            "rod_side_clearance_mm": {
+              "type": "string"
+            },
+            "crankshaft_end_play_mm": {
+              "type": "string"
+            }
+          }
+        },
+        "cylinder_head": {
+          "type": "object",
+          "properties": {
+            "combustion_chamber_cc": {
+              "type": "number"
+            },
+            "intake_port_cc": {
+              "type": "number"
+            },
+            "exhaust_port_cc": {
+              "type": "number"
+            },
+            "intake_valve_diameter_mm": {
+              "type": "number"
+            },
+            "exhaust_valve_diameter_mm": {
+              "type": "number"
+            },
+            "valve_seat_angle_intake": {
+              "type": "string"
+            },
+            "valve_seat_angle_exhaust": {
+              "type": "string"
+            },
+            "head_gasket_thickness_mm": {
+              "type": "number"
+            },
+            "head_bolt_torque_nm": {
+              "type": "number"
+            },
+            "head_bolt_torque_sequence": {
+              "type": "string"
+            }
+          }
+        },
+        "valvetrain": {
+          "type": "object",
+          "properties": {
+            "valve_stem_to_guide_clearance_intake_mm": {
+              "type": "string"
+            },
+            "valve_stem_to_guide_clearance_exhaust_mm": {
+              "type": "string"
+            },
+            "valve_spring_installed_height_mm": {
+              "type": "number"
+            },
+            "valve_spring_pressure_seat_kg": {
+              "type": "number"
+            },
+            "valve_spring_pressure_open_kg": {
+              "type": "number"
+            },
+            "rocker_ratio": {
+              "type": "number"
+            },
+            "lash_intake_mm": {
+              "type": "string"
+            },
+            "lash_exhaust_mm": {
+              "type": "string"
+            }
+          }
+        },
+        "camshaft": {
+          "type": "object",
+          "properties": {
+            "intake_duration_at_050": {
+              "type": "number"
+            },
+            "exhaust_duration_at_050": {
+              "type": "number"
+            },
+            "intake_lift_mm": {
+              "type": "number"
+            },
+            "exhaust_lift_mm": {
+              "type": "number"
+            },
+            "lobe_separation_angle": {
+              "type": "number"
+            },
+            "intake_centerline": {
+              "type": "number"
+            },
+            "exhaust_centerline": {
+              "type": "number"
+            },
+            "cam_bearing_clearance_mm": {
+              "type": "string"
+            }
+          }
+        },
+        "compression": {
+          "type": "object",
+          "properties": {
+            "static_compression_ratio": {
+              "type": "number"
+            },
+            "dynamic_compression_ratio": {
+              "type": "number"
+            },
+            "quench_distance_mm": {
+              "type": "number"
+            }
+          }
+        },
+        "oiling": {
+          "type": "object",
+          "properties": {
+            "oil_pressure_idle_kpa": {
+              "type": "number"
+            },
+            "oil_pressure_max_kpa": {
+              "type": "number"
+            },
+            "oil_capacity_liters": {
+              "type": "number"
+            },
+            "oil_weight": {
+              "type": "string"
+            }
+          }
+        },
+        "fasteners": {
+          "type": "object",
+          "properties": {
+            "flywheel_bolt_torque_nm": {
+              "type": "number"
+            },
+            "harmonic_balancer_torque_nm": {
+              "type": "number"
+            },
+            "intake_manifold_torque_nm": {
+              "type": "number"
+            },
+            "exhaust_manifold_torque_nm": {
+              "type": "number"
+            },
+            "spark_plug_torque_nm": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "General notes about this spec sheet"
+    },
+    "change_log": {
+      "type": "string",
+      "description": "What changed from previous version"
+    }
+  },
+  "required": [
+    "platform_id",
+    "spec_type",
+    "version"
+  ]
+}
