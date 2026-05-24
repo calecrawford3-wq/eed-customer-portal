@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Receipt, DollarSign, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Search, Receipt, DollarSign, Clock, CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -32,6 +32,11 @@ export default function Invoices() {
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Invoice.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); toast.success("Invoice deleted"); },
   });
 
   const markPaid = useMutation({
@@ -162,6 +167,9 @@ export default function Invoices() {
                             Mark Paid
                           </Button>
                         )}
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this invoice?")) deleteMutation.mutate(inv.id); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

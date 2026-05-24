@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 
@@ -59,8 +60,46 @@ export default function Inventory() {
     },
   });
 
+  const csvInputRef = useRef();
+
   const openNew = () => { setEditing(null); setForm(emptyPart); setDialogOpen(true); };
   const openEdit = (p) => { setEditing(p); setForm({ ...p }); setDialogOpen(true); };
+
+  const handleCSVImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const lines = ev.target.result.split("\n").filter(Boolean);
+      const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(",").map(v => v.trim().replace(/"/g, ""));
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
+        const part = {
+          part_number: row.part_number || row["part #"] || row["part#"] || `IMPORT-${Date.now()}-${i}`,
+          name: row.name || row.description || "",
+          description: row.description || "",
+          category: row.category || "other",
+          unit_cost: parseFloat(row.unit_cost || row.cost || 0) || 0,
+          sell_price: parseFloat(row.sell_price || row.price || 0) || 0,
+          quantity_on_hand: parseInt(row.quantity_on_hand || row.qty || row.quantity || 0) || 0,
+          reorder_point: parseInt(row.reorder_point || 0) || 0,
+          location: row.location || "",
+          status: "active",
+        };
+        if (part.name) {
+          await base44.entities.Part.create(part);
+          imported++;
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["parts"] });
+      toast.success(`Imported ${imported} parts`);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
 
@@ -84,6 +123,10 @@ export default function Inventory() {
               <AlertTriangle className="w-4 h-4 mr-2" /> {lowStockCount} Low Stock
             </Button>
           )}
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+          <Button variant="outline" onClick={() => csvInputRef.current.click()}>
+            <Upload className="w-4 h-4 mr-2" /> Import CSV
+          </Button>
           <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> Add Part
           </Button>

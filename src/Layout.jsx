@@ -70,7 +70,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 px-3 space-y-1">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {navigation.map((item, idx) => {
             if (item.type === "divider") {
               return !collapsed ? <div key={idx} className="border-t border-slate-700 my-2 mx-1" /> : <div key={idx} className="border-t border-slate-700 my-2" />;

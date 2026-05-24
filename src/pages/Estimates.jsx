@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -40,6 +40,11 @@ export default function Estimates() {
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Estimate.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); toast.success("Estimate deleted"); },
   });
 
   const updateStatus = useMutation({
@@ -162,6 +167,9 @@ export default function Estimates() {
                             → Invoice
                           </Button>
                         )}
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this estimate?")) deleteMutation.mutate(e.id); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, ShoppingCart } from "lucide-react";
+import { Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 
@@ -21,6 +22,7 @@ const STATUS_STYLES = {
 export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const qc = useQueryClient();
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["purchaseOrders"],
@@ -30,6 +32,11 @@ export default function PurchaseOrders() {
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.PurchaseOrder.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchaseOrders"] }); toast.success("PO deleted"); },
   });
 
   const getSupplier = (id) => suppliers.find(s => s.id === id);
@@ -109,7 +116,12 @@ export default function PurchaseOrders() {
                       <Badge className={`${STATUS_STYLES[o.status]} border-0 capitalize`}>{o.status}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <Link to={`/PurchaseOrderDetail?id=${o.id}`}><Button size="sm" variant="outline">View</Button></Link>
+                      <div className="flex gap-2 justify-end">
+                        <Link to={`/PurchaseOrderDetail?id=${o.id}`}><Button size="sm" variant="outline">View</Button></Link>
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this PO?")) deleteMutation.mutate(o.id); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );

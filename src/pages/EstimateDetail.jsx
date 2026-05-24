@@ -21,6 +21,7 @@ import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
+import CannedJobPicker from "@/components/estimates/CannedJobPicker";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -61,6 +62,9 @@ export default function EstimateDetail() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [convertingToBuild, setConvertingToBuild] = useState(false);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [cannedJobOpen, setCannedJobOpen] = useState(false);
+  const [selectedSpec, setSelectedSpec] = useState(null);
+  const [selectedSpecPlatform, setSelectedSpecPlatform] = useState(null);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -86,6 +90,11 @@ export default function EstimateDetail() {
   const { data: platforms = [] } = useQuery({
     queryKey: ["platforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
+  });
+
+  const { data: specSheets = [] } = useQuery({
+    queryKey: ["specSheets"],
+    queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
 
   useEffect(() => {
@@ -163,6 +172,27 @@ export default function EstimateDetail() {
   const updateTaxRate = (rate) => {
     const totals = recalc(form.line_items, form.labor_items || [], rate);
     setForm({ ...form, tax_rate: rate, ...totals });
+  };
+
+  const handleCannedJobSelect = (spec, platform) => {
+    setSelectedSpec(spec);
+    setSelectedSpecPlatform(platform);
+    const laborItems = [];
+    if (spec.specs?.valvetrain?.lash_intake_mm) {
+      laborItems.push({ name: "Valve Lash Adjustment", description: `Intake: ${spec.specs.valvetrain.lash_intake_mm} / Exhaust: ${spec.specs.valvetrain.lash_exhaust_mm || "TBD"}`, price: 0 });
+    }
+    if (spec.specs?.cylinder_head) {
+      laborItems.push({ name: "Cylinder Head Service", description: "Head bolt torque, valve seat, gasket installation", price: 0 });
+    }
+    if (spec.specs?.rotating_assembly) {
+      laborItems.push({ name: "Rotating Assembly Build", description: `Bore: ${spec.specs.block?.bore_diameter_mm || "TBD"}mm / Stroke: ${spec.specs.rotating_assembly.stroke_mm || "TBD"}mm`, price: 0 });
+    }
+    laborItems.push({ name: "Engine Assembly & Dyno", description: `${spec.custom_name || spec.spec_type} spec build`, price: 0 });
+    const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
+      `Engine Build: ${spec.custom_name || spec.spec_type} — ${platform?.manufacturer || ""} ${platform?.name || ""}\n` +
+      (spec.notes ? `Spec Notes: ${spec.notes}` : "");
+    const totals = recalc(form.line_items, laborItems, form.tax_rate);
+    setForm(f => ({ ...f, labor_items: laborItems, notes: updatedNotes, ...totals }));
   };
 
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
@@ -304,6 +334,14 @@ export default function EstimateDetail() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
+      <CannedJobPicker
+        open={cannedJobOpen}
+        onClose={() => setCannedJobOpen(false)}
+        specSheets={specSheets}
+        platforms={platforms}
+        parts={parts}
+        onSelect={handleCannedJobSelect}
+      />
       <QuickCreateCustomerModal
         open={quickCustomerOpen}
         onClose={() => setQuickCustomerOpen(false)}
@@ -426,15 +464,31 @@ export default function EstimateDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between py-2 border border-slate-200 rounded-lg px-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">Engine Build</p>
-                <p className="text-xs text-slate-400">Approval creates a build; otherwise creates an invoice</p>
+            <div className="border border-slate-200 rounded-lg px-3 py-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Engine Build</p>
+                  <p className="text-xs text-slate-400">Approval creates a build; otherwise creates an invoice</p>
+                </div>
+                <Switch
+                  checked={!!form.is_engine_build}
+                  onCheckedChange={v => setForm({...form, is_engine_build: v})}
+                />
               </div>
-              <Switch
-                checked={!!form.is_engine_build}
-                onCheckedChange={v => setForm({...form, is_engine_build: v})}
-              />
+              {form.is_engine_build && (
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                  {selectedSpec ? (
+                    <span className="text-xs text-purple-700 font-medium">
+                      {selectedSpec.custom_name || selectedSpec.spec_type} — {selectedSpecPlatform?.manufacturer} {selectedSpecPlatform?.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">No spec sheet selected</span>
+                  )}
+                  <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 text-xs h-7" onClick={() => setCannedJobOpen(true)}>
+                    <WrenchIcon className="w-3 h-3 mr-1" /> {selectedSpec ? "Change Spec" : "Load Canned Job"}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye } from "lucide-react";
+import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
@@ -50,8 +51,46 @@ export default function Customers() {
     },
   });
 
+  const csvInputRef = useRef();
+
   const openNew = () => { setEditing(null); setForm(emptyCustomer); setDialogOpen(true); };
   const openEdit = (c) => { setEditing(c); setForm({ ...c }); setDialogOpen(true); };
+
+  const handleCSVImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const lines = ev.target.result.split("\n").filter(Boolean);
+      const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(",").map(v => v.trim().replace(/"/g, ""));
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
+        const customer = {
+          first_name: row.first_name || row["first name"] || row.firstname || "",
+          last_name: row.last_name || row["last name"] || row.lastname || "",
+          company_name: row.company_name || row.company || "",
+          email: row.email || "",
+          phone: row.phone || "",
+          address_line1: row.address_line1 || row.address || "",
+          city: row.city || "",
+          state: row.state || "",
+          zip: row.zip || row.postal_code || "",
+          status: "active",
+        };
+        if (customer.first_name || customer.email) {
+          await base44.entities.Customer.create(customer);
+          imported++;
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(`Imported ${imported} customers`);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const filtered = customers.filter(c =>
     `${c.first_name} ${c.last_name} ${c.company_name} ${c.email}`.toLowerCase().includes(search.toLowerCase())
@@ -64,9 +103,15 @@ export default function Customers() {
           <h1 className="text-3xl font-bold text-slate-900">Customers</h1>
           <p className="text-slate-500 mt-1">{customers.length} total customers</p>
         </div>
-        <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
-          <Plus className="w-4 h-4 mr-2" /> Add Customer
-        </Button>
+        <div className="flex gap-2">
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+          <Button variant="outline" onClick={() => csvInputRef.current.click()}>
+            <Upload className="w-4 h-4 mr-2" /> Import CSV
+          </Button>
+          <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+            <Plus className="w-4 h-4 mr-2" /> Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="relative mb-6">

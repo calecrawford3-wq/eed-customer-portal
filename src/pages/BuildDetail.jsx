@@ -442,6 +442,87 @@ export default function BuildDetail() {
                 />
               </CardContent>
             </Card>
+
+            {/* Spec Sheet Quick Reference */}
+            {specSheet && (
+              <Card className="border-0 shadow-sm md:col-span-2 bg-slate-50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-slate-700">
+                      Spec Reference — {specSheet.custom_name || specSheet.spec_type} v{specSheet.version}
+                      {platform && <span className="text-slate-400 font-normal ml-2 text-sm">· {platform.manufacturer} {platform.name}</span>}
+                    </CardTitle>
+                    <Link to={`/SpecView?id=${specSheet.id}`}>
+                      <Button variant="ghost" size="sm" className="text-slate-500 text-xs">
+                        <FileText className="w-3.5 h-3.5 mr-1" /> Full Spec
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    {specSheet.specs?.block?.bore_diameter_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Bore</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.block.bore_diameter_mm} mm</p>
+                        {specSheet.specs.block.bore_diameter_tolerance && <p className="text-xs text-slate-400">{specSheet.specs.block.bore_diameter_tolerance}</p>}
+                      </div>
+                    )}
+                    {specSheet.specs?.rotating_assembly?.stroke_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Stroke</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.rotating_assembly.stroke_mm} mm</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.rotating_assembly?.rod_bearing_clearance_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Rod Bearing Clearance</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.rotating_assembly.rod_bearing_clearance_mm}</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.rotating_assembly?.main_bearing_clearance_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Main Bearing Clearance</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.block?.main_bearing_clearance_mm || "—"}</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.valvetrain?.lash_intake_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Valve Lash — Intake</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.valvetrain.lash_intake_mm}</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.valvetrain?.lash_exhaust_mm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Valve Lash — Exhaust</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.valvetrain.lash_exhaust_mm}</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.cylinder_head?.head_bolt_torque_nm && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Head Bolt Torque</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.cylinder_head.head_bolt_torque_nm} Nm</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.compression?.static_compression_ratio && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Static CR</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.compression.static_compression_ratio}:1</p>
+                      </div>
+                    )}
+                    {specSheet.specs?.oiling?.oil_weight && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-xs text-slate-400 mb-0.5">Oil Weight</p>
+                        <p className="font-semibold text-slate-900">{specSheet.specs.oiling.oil_weight}</p>
+                      </div>
+                    )}
+                  </div>
+                  {specSheet.notes && (
+                    <p className="text-xs text-slate-500 mt-3 border-t border-slate-200 pt-3">{specSheet.notes}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
