@@ -299,11 +299,7 @@ export default function CustomerDetail() {
             <div><Label>First Name</Label><Input value={editForm.first_name || ""} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
             <div><Label>Last Name</Label><Input value={editForm.last_name || ""} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
             <div><Label>Company</Label><Input value={editForm.company_name || ""} onChange={e => setEditForm({ ...editForm, company_name: e.target.value })} /></div>
-            <div><Label>Contact Email</Label><Input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
-            <div className="col-span-2">
-              <Label>Portal Login Email <span className="text-slate-400 font-normal text-xs">(if different from contact email — this is the email they use to sign in)</span></Label>
-              <Input type="email" value={editForm.portal_login_email || ""} onChange={e => setEditForm({ ...editForm, portal_login_email: e.target.value })} placeholder="e.g. cale@eedpower.com" />
-            </div>
+            <div><Label>Email</Label><Input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>
             <div>
               <Label>Status</Label>

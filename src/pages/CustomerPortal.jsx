@@ -75,10 +75,11 @@ export default function CustomerPortal() {
 
   useEffect(() => {
     if (user && allCustomers.length > 0) {
-      const found = allCustomers.find(c =>
-        c.portal_login_email?.toLowerCase() === user.email?.toLowerCase() ||
-        c.email?.toLowerCase() === user.email?.toLowerCase()
-      );
+      if (user.role === "admin") {
+        // Admins can see any customer — default to first or leave unset for picker
+        return;
+      }
+      const found = allCustomers.find(c => c.email?.toLowerCase() === user.email?.toLowerCase());
       if (found) {
         setCustomer(found);
         setProfileForm({ ...found });
@@ -207,7 +208,7 @@ export default function CustomerPortal() {
     );
   }
 
-  if (!customer) {
+  if (!customer && user?.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Card className="w-full max-w-md border-0 shadow-lg">
@@ -220,6 +221,40 @@ export default function CustomerPortal() {
             <Button variant="outline" onClick={() => base44.auth.logout()}>Sign Out</Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (!customer && user?.role === "admin") {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-200">
+          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <img
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+              alt="Elite Engine Development"
+              className="h-10"
+            />
+            <span className="text-sm text-slate-500">Admin — Customer Portal Preview</span>
+          </div>
+        </header>
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Select a Customer to Preview</h2>
+          <p className="text-slate-500 mb-6">As an admin, you can view the portal as any customer.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allCustomers.filter(c => c.status === "active").sort((a, b) => a.last_name?.localeCompare(b.last_name)).map(c => (
+              <button
+                key={c.id}
+                className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-[#e20404] hover:shadow-sm transition-all"
+                onClick={() => { setCustomer(c); setProfileForm({ ...c }); }}
+              >
+                <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
+                {c.company_name && <p className="text-sm text-slate-500">{c.company_name}</p>}
+                <p className="text-xs text-slate-400 mt-1">{c.email}</p>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -246,9 +281,16 @@ export default function CustomerPortal() {
             className="h-10"
           />
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { setProfileForm({ ...customer }); setProfileOpen(true); }}>
-              <User className="w-4 h-4 mr-1" /> {customer.first_name} {customer.last_name}
-            </Button>
+            {user?.role !== "admin" && (
+              <Button variant="ghost" size="sm" onClick={() => { setProfileForm({ ...customer }); setProfileOpen(true); }}>
+                <User className="w-4 h-4 mr-1" /> {customer.first_name} {customer.last_name}
+              </Button>
+            )}
+            {user?.role === "admin" && (
+              <Button variant="outline" size="sm" onClick={() => setCustomer(null)}>
+                <User className="w-4 h-4 mr-1" /> Switch Customer
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => base44.auth.logout()}>
               <LogOut className="w-4 h-4 mr-1" /> Sign Out
             </Button>
