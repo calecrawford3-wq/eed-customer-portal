@@ -157,7 +157,7 @@ export default function PurchaseOrderDetail() {
     const result = await base44.functions.invoke("sendSmtpEmail", { to: supplier.email, subject, html, usePOSmtp: true });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
 
-    await base44.entities.PurchaseOrder.update(id || "", { status: "sent" });
+    await base44.entities.PurchaseOrder.update(poId, { status: "sent" });
     qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
