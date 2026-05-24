@@ -95,7 +95,8 @@ export default function Settings() {
       if (res?.data?.error) throw new Error(res.data.error);
       toast.success(`Test email sent to ${user.email}`);
     } catch (err) {
-      toast.error(`Test failed: ${err.message}`);
+      const msg = err?.response?.data?.error || err?.message || 'Unknown error';
+      toast.error(`Test failed: ${msg}`);
     } finally {
       usePOSmtp ? setTestingPoSmtp(false) : setTestingSmtp(false);
     }
