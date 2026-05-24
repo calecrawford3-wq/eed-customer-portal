@@ -15,7 +15,8 @@ import {
   ClipboardList,
   Package,
   Truck,
-  ShoppingCart
+  ShoppingCart,
+  Settings2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,19 +25,21 @@ export default function Layout({ children, currentPageName }) {
 
   const navigation = [
     { name: "Dashboard", page: "Dashboard", icon: Gauge },
-    { name: "Platforms", page: "Platforms", icon: Layers },
-    { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-    { name: "Engine Builds", page: "Builds", icon: Wrench },
-    { name: "Documents", page: "Documents", icon: FolderOpen },
-    { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
-    { type: "divider" },
     { name: "Customers", page: "Customers", icon: Users },
     { name: "Estimates", page: "Estimates", icon: ClipboardList },
     { name: "Invoices", page: "Invoices", icon: Receipt },
     { type: "divider" },
+    { name: "Engine Builds", page: "Builds", icon: Wrench },
+    { name: "Platforms", page: "Platforms", icon: Layers },
+    { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
+    { name: "Documents", page: "Documents", icon: FolderOpen },
+    { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
+    { type: "divider" },
     { name: "Inventory", page: "Inventory", icon: Package },
     { name: "Suppliers", page: "Suppliers", icon: Truck },
     { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
+    { type: "divider" },
+    { name: "Settings", page: "Settings", icon: Settings2 },
   ];
 
   return (

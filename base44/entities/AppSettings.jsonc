@@ -1,0 +1,68 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique settings key, e.g. 'global'"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "company_address": {
+      "type": "string"
+    },
+    "company_city": {
+      "type": "string"
+    },
+    "company_state": {
+      "type": "string"
+    },
+    "company_zip": {
+      "type": "string"
+    },
+    "company_phone": {
+      "type": "string"
+    },
+    "company_email": {
+      "type": "string"
+    },
+    "company_website": {
+      "type": "string"
+    },
+    "company_logo_url": {
+      "type": "string"
+    },
+    "default_tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "default_payment_terms": {
+      "type": "string"
+    },
+    "invoice_notes_template": {
+      "type": "string"
+    },
+    "estimate_notes_template": {
+      "type": "string"
+    },
+    "po_notes_template": {
+      "type": "string"
+    },
+    "email_from_name": {
+      "type": "string"
+    },
+    "email_from_address": {
+      "type": "string"
+    },
+    "email_signature": {
+      "type": "string"
+    },
+    "zoho_api_token": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key"
+  ]
+}

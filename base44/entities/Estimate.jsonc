@@ -33,19 +33,49 @@
     },
     "line_items": {
       "type": "array",
+      "description": "Parts-based line items",
       "items": {
         "type": "object",
         "properties": {
-          "description": {
+          "part_id": {
+            "type": "string"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "item_name": {
             "type": "string"
           },
           "quantity": {
             "type": "number"
           },
+          "unit_cost": {
+            "type": "number",
+            "description": "Your cost"
+          },
           "unit_price": {
-            "type": "number"
+            "type": "number",
+            "description": "Sale price to customer"
           },
           "total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "labor_items": {
+      "type": "array",
+      "description": "Labor-only line items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
             "type": "number"
           }
         }

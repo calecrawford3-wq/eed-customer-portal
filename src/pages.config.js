@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import Settings from './pages/Settings';
 import BuildDetail from './pages/BuildDetail';
 import Customers from './pages/Customers';
 import Estimates from './pages/Estimates';
@@ -89,6 +90,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "PurchaseOrders": PurchaseOrders,
     "PurchaseOrderDetail": PurchaseOrderDetail,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
