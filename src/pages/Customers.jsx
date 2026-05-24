@@ -41,7 +41,7 @@ export default function Customers() {
         // Invite customer to portal if email is present
         if (data.email) {
           try {
-            await base44.users.inviteUser(data.email, "user");
+            await base44.auth.inviteUser(data.email, "user");
           } catch (err) {
             console.warn("Portal invite failed:", err.message);
           }
