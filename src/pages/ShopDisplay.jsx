@@ -1,7 +1,7 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Wrench, Clock, ArrowRight } from "lucide-react";
+import { Wrench, Clock, Package } from "lucide-react";
 
 export default function ShopDisplay() {
   const { data: builds = [] } = useQuery({
@@ -14,6 +14,21 @@ export default function ShopDisplay() {
     queryKey: ["platforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
+
+  const { data: purchaseOrders = [] } = useQuery({
+    queryKey: ["purchaseOrders"],
+    queryFn: () => base44.entities.PurchaseOrder.list("-updated_date", 100),
+    refetchInterval: 10000,
+  });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: () => base44.entities.Supplier.list("-created_date", 200),
+  });
+
+  const readyPOs = purchaseOrders.filter(po => po.status === "ready");
+
+  const getSupplierName = (id) => suppliers.find(s => s.id === id)?.name || "—";
 
   const queuedBuilds = builds
     .filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status))
@@ -103,6 +118,40 @@ export default function ShopDisplay() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Ready POs Section */}
+      {readyPOs.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center">
+              <Package className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">Parts Ready for Pickup</h2>
+            <span className="bg-teal-600 text-white text-sm font-bold px-3 py-1 rounded-full">{readyPOs.length}</span>
+          </div>
+          <div className="space-y-3">
+            {readyPOs.map(po => (
+              <div key={po.id} className="bg-slate-800 rounded-xl p-5 flex items-center justify-between ring-2 ring-teal-500 shadow-lg shadow-teal-500/20">
+                <div className="flex items-center gap-6">
+                  <div className="w-28 h-20 rounded-xl bg-teal-600 flex items-center justify-center">
+                    <span className="text-xs font-bold text-white text-center leading-tight">READY</span>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white mb-1">{po.po_number}</div>
+                    <div className="text-slate-400 text-lg">{getSupplierName(po.supplier_id)}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-teal-400 text-xl font-bold">${Number(po.total || 0).toFixed(2)}</div>
+                  {po.expected_date && (
+                    <div className="text-slate-500 text-sm mt-1">Expected: {po.expected_date}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
