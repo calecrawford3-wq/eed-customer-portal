@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users } from "lucide-react";
+import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 const emptyCustomer = {
@@ -105,13 +106,18 @@ export default function Customers() {
                 {c.phone && <div className="flex items-center gap-2 text-sm text-slate-600 mb-1"><Phone className="w-3.5 h-3.5" />{c.phone}</div>}
                 {c.city && <div className="flex items-center gap-2 text-sm text-slate-600"><Building2 className="w-3.5 h-3.5" />{c.city}, {c.state}</div>}
                 <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
-                    <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(c.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                   <Link to={`/CustomerDetail?id=${c.id}`} className="flex-1">
+                     <Button size="sm" variant="outline" className="w-full">
+                       <Eye className="w-3.5 h-3.5 mr-1" /> View
+                     </Button>
+                   </Link>
+                   <Button size="sm" variant="outline" onClick={() => openEdit(c)}>
+                     <Edit className="w-3.5 h-3.5" />
+                   </Button>
+                   <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(c.id)}>
+                     <Trash2 className="w-3.5 h-3.5" />
+                   </Button>
+                 </div>
               </CardContent>
             </Card>
           ))}

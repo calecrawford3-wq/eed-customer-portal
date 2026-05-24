@@ -1,0 +1,95 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "expense_number": {
+      "type": "string",
+      "description": "Unique expense/reference number"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "parts_cogs",
+        "supplies",
+        "tools_equipment",
+        "shipping",
+        "utilities",
+        "rent",
+        "labor",
+        "marketing",
+        "insurance",
+        "taxes",
+        "other"
+      ],
+      "default": "other",
+      "description": "Expense category"
+    },
+    "description": {
+      "type": "string",
+      "description": "What was purchased or expensed"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor or supplier name"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Total expense amount"
+    },
+    "tax_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales tax paid on this expense"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of expense"
+    },
+    "po_id": {
+      "type": "string",
+      "description": "Linked purchase order ID (if auto-generated from PO)"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Optional linked engine build"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "card",
+        "check",
+        "ach",
+        "other"
+      ],
+      "default": "card"
+    },
+    "is_deductible": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is this expense tax deductible?"
+    },
+    "receipt_url": {
+      "type": "string",
+      "description": "URL to uploaded receipt"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "purchase_order"
+      ],
+      "default": "manual",
+      "description": "How this expense was created"
+    }
+  },
+  "required": [
+    "description",
+    "amount",
+    "date"
+  ]
+}

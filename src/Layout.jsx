@@ -16,7 +16,10 @@ import {
   Package,
   Truck,
   ShoppingCart,
-  Settings2
+  Settings2,
+  DollarSign,
+  TrendingDown,
+  BarChart2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +41,10 @@ export default function Layout({ children, currentPageName }) {
     { name: "Inventory", page: "Inventory", icon: Package },
     { name: "Suppliers", page: "Suppliers", icon: Truck },
     { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
+    { type: "divider" },
+    { name: "Payments", page: "Payments", icon: DollarSign },
+    { name: "Expenses", page: "Expenses", icon: TrendingDown },
+    { name: "Reports", page: "Reports", icon: BarChart2 },
     { type: "divider" },
     { name: "Settings", page: "Settings", icon: Settings2 },
   ];

@@ -20,6 +20,7 @@ import PartPickerModal from "@/components/estimates/PartPickerModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import PaymentModal from "@/components/PaymentModal";
+import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -58,6 +59,7 @@ export default function EstimateDetail() {
   const [poModalOpen, setPoModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [convertingToBuild, setConvertingToBuild] = useState(false);
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -256,6 +258,11 @@ export default function EstimateDetail() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
+      <QuickCreateCustomerModal
+        open={quickCustomerOpen}
+        onClose={() => setQuickCustomerOpen(false)}
+        onCreated={(c) => setForm(f => ({ ...f, customer_id: c.id }))}
+      />
       <PartPickerModal
         open={partPickerOpen}
         onClose={() => setPartPickerOpen(false)}
@@ -340,11 +347,18 @@ export default function EstimateDetail() {
           <CardContent className="space-y-3">
             <div>
               <Label>Customer *</Label>
-              <CustomerSearchSelect
-                customers={customers}
-                value={form.customer_id}
-                onValueChange={v => setForm({...form, customer_id: v})}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <CustomerSearchSelect
+                    customers={customers}
+                    value={form.customer_id}
+                    onValueChange={v => setForm({...form, customer_id: v})}
+                  />
+                </div>
+                <Button type="button" variant="outline" size="sm" className="shrink-0 mt-0" onClick={() => setQuickCustomerOpen(true)}>
+                  + New
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Issue Date</Label><Input type="date" value={form.issue_date} onChange={e => setForm({...form, issue_date: e.target.value})} /></div>

@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  FileText
+  FileText,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,9 +83,15 @@ export default function BuildDetail() {
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => base44.entities.Customer.list("-created_date", 200),
+  });
+
   const build = buildData?.[0];
   const platform = platforms.find(p => p.id === build?.platform_id);
   const specSheet = specSheets.find(s => s.id === build?.spec_sheet_id);
+  const linkedCustomer = customers.find(c => c.id === (build?.customer_id || localChanges.customer_id));
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.EngineBuild.update(buildId, data),
@@ -272,11 +279,30 @@ export default function BuildDetail() {
                   />
                 </div>
                 <div>
-                  <Label>Customer Name</Label>
-                  <Input
-                    value={getValue("customer_name")}
-                    onChange={(e) => handleChange("customer_name", e.target.value)}
-                  />
+                  <Label>Customer</Label>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value={getValue("customer_id") || ""}
+                      onChange={e => {
+                        const c = customers.find(c => c.id === e.target.value);
+                        handleChange("customer_id", e.target.value);
+                        if (c) handleChange("customer_name", `${c.first_name} ${c.last_name}`);
+                      }}
+                    >
+                      <option value="">— No customer —</option>
+                      {customers.map(c => (
+                        <option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.company_name ? ` (${c.company_name})` : ""}</option>
+                      ))}
+                    </select>
+                    {linkedCustomer && (
+                      <Link to={`/CustomerDetail?id=${linkedCustomer.id}`}>
+                        <Button size="sm" variant="outline" className="shrink-0 h-9" title="View Customer">
+                          <User className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label>Invoice Number</Label>
