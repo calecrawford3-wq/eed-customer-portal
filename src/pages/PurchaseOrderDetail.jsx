@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { appParams } from "@/lib/app-params";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
@@ -109,7 +110,13 @@ export default function PurchaseOrderDetail() {
     const supplier = suppliers.find(s => s.id === form.supplier_id);
     if (!supplier?.email) { toast.error("Supplier has no email address"); return; }
     setSending(true);
-    await saveMutation.mutateAsync(form);
+    const saved = await saveMutation.mutateAsync(form);
+    const poId = id || saved?.id;
+
+    // Build acknowledge URL — functions are served at /functions/<name> on the app domain
+    const token = btoa(`${poId}:${form.po_number}`).replace(/=/g, "");
+    const baseUrl = (appParams.appBaseUrl || window.location.origin).replace(/\/$/, "");
+    const ackUrl = `${baseUrl}/functions/acknowledgePO?po_id=${poId}&token=${token}`;
 
     const subject = `Purchase Order ${form.po_number} from Elite Engine Development`;
     const lineRows = (form.line_items || []).map(l =>
@@ -137,7 +144,13 @@ export default function PurchaseOrderDetail() {
       <br/>
       ${form.shipping_address ? `<p>Ship To: ${form.shipping_address}</p>` : ""}
       ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
-      <p>Please confirm receipt of this purchase order.</p>
+      <p>Please confirm receipt of this purchase order by clicking the button below:</p>
+      <div style="margin:24px 0">
+        <a href="${ackUrl}" style="display:inline-block;background:#16a34a;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none">
+          ✓ Acknowledge This Order
+        </a>
+      </div>
+      <p style="font-size:12px;color:#94a3b8">If the button doesn't work, copy and paste this link: ${ackUrl}</p>
       <p>Elite Engine Development</p>
     `;
 
