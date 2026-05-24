@@ -75,7 +75,10 @@ export default function CustomerPortal() {
 
   useEffect(() => {
     if (user && allCustomers.length > 0) {
-      const found = allCustomers.find(c => c.email?.toLowerCase() === user.email?.toLowerCase());
+      const found = allCustomers.find(c =>
+        c.portal_login_email?.toLowerCase() === user.email?.toLowerCase() ||
+        c.email?.toLowerCase() === user.email?.toLowerCase()
+      );
       if (found) {
         setCustomer(found);
         setProfileForm({ ...found });

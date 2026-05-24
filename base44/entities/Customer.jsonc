@@ -15,6 +15,11 @@
       "type": "string",
       "format": "email"
     },
+    "portal_login_email": {
+      "type": "string",
+      "format": "email",
+      "description": "The email address the customer uses to log in to the portal (if different from their contact email)"
+    },
     "phone": {
       "type": "string"
     },
