@@ -106,39 +106,34 @@ export default function PurchaseOrderDetail() {
     if (!supplier?.email) { toast.error("Supplier has no email address"); return; }
     setSending(true);
     await saveMutation.mutateAsync(form);
-    const lineItemsHtml = (form.line_items || []).map(l =>
-      `<tr><td style="padding:8px;border-bottom:1px solid #eee">${l.part_number || ""}</td><td style="padding:8px;border-bottom:1px solid #eee">${l.description}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${l.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(l.unit_cost).toFixed(2)}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(l.total).toFixed(2)}</td></tr>`
-    ).join("");
-    await base44.integrations.Core.SendEmail({
-      to: supplier.email,
-      subject: `Purchase Order ${form.po_number} from Elite Engine Development`,
-      body: `<div style="font-family:sans-serif;max-width:700px;margin:0 auto">
-        <div style="background:#e20404;padding:20px;text-align:center"><h1 style="color:white;margin:0">Elite Engine Development</h1></div>
-        <div style="padding:20px">
-          <h2>Purchase Order #${form.po_number}</h2>
-          <p>To: <strong>${supplier.name}</strong>${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}</p>
-          <p>Order Date: ${form.order_date}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}</p>
-          <table style="width:100%;border-collapse:collapse;margin:20px 0">
-            <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Part #</th><th style="padding:8px;text-align:left">Description</th><th style="padding:8px;text-align:center">Qty</th><th style="padding:8px;text-align:right">Unit Cost</th><th style="padding:8px;text-align:right">Total</th></tr></thead>
-            <tbody>${lineItemsHtml}</tbody>
-          </table>
-          <div style="text-align:right">
-            <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}</p>
-            ${Number(form.shipping_cost) > 0 ? `<p>Shipping: $${Number(form.shipping_cost).toFixed(2)}</p>` : ""}
-            <h3 style="color:#e20404">Total: $${Number(form.total || 0).toFixed(2)}</h3>
-          </div>
-          ${form.shipping_address ? `<p><strong>Ship To:</strong><br/>${form.shipping_address}</p>` : ""}
-          ${form.notes ? `<p><strong>Notes:</strong> ${form.notes}</p>` : ""}
-          <p>Please confirm receipt of this purchase order.</p>
-          <p style="color:#888;font-size:12px">Elite Engine Development</p>
-        </div>
-      </div>`
-    });
+
+    const lineItemsText = (form.line_items || []).map(l =>
+      `  ${l.part_number || "Custom"} | ${l.description} | Qty: ${l.quantity} | Unit: $${Number(l.unit_cost).toFixed(2)} | Total: $${Number(l.total).toFixed(2)}`
+    ).join("\n");
+
+    const subject = encodeURIComponent(`Purchase Order ${form.po_number} from Elite Engine Development`);
+    const body = encodeURIComponent(
+      `To: ${supplier.name}${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}\n\n` +
+      `Purchase Order #${form.po_number}\n` +
+      `Order Date: ${form.order_date || ""}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}\n\n` +
+      `-------------------------------\n` +
+      `${lineItemsText}\n` +
+      `-------------------------------\n` +
+      `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
+      (Number(form.shipping_cost) > 0 ? `Shipping: $${Number(form.shipping_cost).toFixed(2)}\n` : "") +
+      `Total: $${Number(form.total || 0).toFixed(2)}\n` +
+      (form.shipping_address ? `\nShip To: ${form.shipping_address}\n` : "") +
+      (form.notes ? `\nNotes: ${form.notes}\n` : "") +
+      `\nPlease confirm receipt of this purchase order.\n\nElite Engine Development`
+    );
+
+    window.open(`mailto:${supplier.email}?subject=${subject}&body=${body}`, "_blank");
+
     await base44.entities.PurchaseOrder.update(id || "", { status: "sent" });
     qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
-    toast.success(`Purchase order sent to ${supplier.email}`);
+    toast.success(`Email draft opened for ${supplier.email}`);
   };
 
   const supplier = suppliers.find(s => s.id === form.supplier_id);

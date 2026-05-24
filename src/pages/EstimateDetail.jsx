@@ -90,37 +90,33 @@ export default function EstimateDetail() {
     if (!customer?.email) { toast.error("Customer has no email address"); return; }
     setSending(true);
     await saveMutation.mutateAsync(form);
-    const lineItemsHtml = (form.line_items || []).map(l =>
-      `<tr><td style="padding:8px;border-bottom:1px solid #eee">${l.description}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${l.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(l.unit_price).toFixed(2)}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(l.total).toFixed(2)}</td></tr>`
-    ).join("");
-    await base44.integrations.Core.SendEmail({
-      to: customer.email,
-      subject: `Estimate ${form.estimate_number} from Elite Engine Development`,
-      body: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-        <div style="background:#e20404;padding:20px;text-align:center"><h1 style="color:white;margin:0">Elite Engine Development</h1></div>
-        <div style="padding:20px">
-          <h2>Estimate #${form.estimate_number}</h2>
-          <p>Dear ${customer.first_name} ${customer.last_name},</p>
-          <p>Please find your estimate below. This estimate is valid until ${form.expiry_date || "30 days from issue"}.</p>
-          <table style="width:100%;border-collapse:collapse;margin:20px 0">
-            <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Description</th><th style="padding:8px;text-align:center">Qty</th><th style="padding:8px;text-align:right">Unit Price</th><th style="padding:8px;text-align:right">Total</th></tr></thead>
-            <tbody>${lineItemsHtml}</tbody>
-          </table>
-          <div style="text-align:right;margin-top:10px">
-            <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}</p>
-            ${form.tax_rate > 0 ? `<p>Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}</p>` : ""}
-            <h3 style="color:#e20404">Total: $${Number(form.total || 0).toFixed(2)}</h3>
-          </div>
-          ${form.notes ? `<p><strong>Notes:</strong> ${form.notes}</p>` : ""}
-          <p>To approve or discuss this estimate, please contact us.</p>
-        </div>
-      </div>`
-    });
+
+    const lineItemsText = (form.line_items || []).map(l =>
+      `  ${l.description} | Qty: ${l.quantity} | Unit: $${Number(l.unit_price).toFixed(2)} | Total: $${Number(l.total).toFixed(2)}`
+    ).join("\n");
+
+    const subject = encodeURIComponent(`Estimate ${form.estimate_number} from Elite Engine Development`);
+    const body = encodeURIComponent(
+      `Dear ${customer.first_name} ${customer.last_name},\n\n` +
+      `Please find your estimate below. This estimate is valid until ${form.expiry_date || "30 days from issue"}.\n\n` +
+      `Estimate #${form.estimate_number}\n` +
+      `-------------------------------\n` +
+      `${lineItemsText}\n` +
+      `-------------------------------\n` +
+      `Subtotal: $${Number(form.subtotal || 0).toFixed(2)}\n` +
+      (Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}\n` : "") +
+      `Total: $${Number(form.total || 0).toFixed(2)}\n` +
+      (form.notes ? `\nNotes: ${form.notes}\n` : "") +
+      `\nTo approve or discuss this estimate, please contact us.\n\nElite Engine Development`
+    );
+
+    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, "_blank");
+
     await base44.entities.Estimate.update(id || "", { status: "sent" });
     qc.invalidateQueries({ queryKey: ["estimates"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
-    toast.success(`Estimate sent to ${customer.email}`);
+    toast.success(`Email draft opened for ${customer.email}`);
   };
 
   const customer = customers.find(c => c.id === form.customer_id);
