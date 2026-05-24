@@ -42,6 +42,7 @@ export default function PurchaseOrderDetail() {
   const [receiving, setReceiving] = useState(false);
   const [receiveMode, setReceiveMode] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
+  const [receiveCosts, setReceiveCosts] = useState({});
 
   const { data: po } = useQuery({
     queryKey: ["po", id],
@@ -110,21 +111,30 @@ export default function PurchaseOrderDetail() {
     setSending(true);
     await saveMutation.mutateAsync(form);
 
-    const lineItemsText = (form.line_items || []).map(l =>
-      `  ${l.part_number || "Custom"} | ${l.description} | Qty: ${l.quantity} | Unit: $${Number(l.unit_cost).toFixed(2)} | Total: $${Number(l.total).toFixed(2)}`
-    ).join("\n");
-
     const subject = `Purchase Order ${form.po_number} from Elite Engine Development`;
+    const lineRows = (form.line_items || []).map(l =>
+      `<tr>
+        <td style="padding:6px 12px 6px 0;border-bottom:1px solid #eee;font-family:monospace;font-size:13px">${l.part_number || "—"}</td>
+        <td style="padding:6px 12px 6px 0;border-bottom:1px solid #eee">${l.description || ""}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:center">${l.quantity}</td>
+      </tr>`
+    ).join("");
     const html = `
       <p>To: ${supplier.name}${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}</p>
       <h3>Purchase Order #${form.po_number}</h3>
       <p>Order Date: ${form.order_date || ""}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}</p>
       <hr/>
-      <pre>${lineItemsText}</pre>
-      <hr/>
-      <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}<br/>
-      ${Number(form.shipping_cost) > 0 ? `Shipping: $${Number(form.shipping_cost).toFixed(2)}<br/>` : ""}
-      <strong>Total: $${Number(form.total || 0).toFixed(2)}</strong></p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:6px 12px 6px 0;border-bottom:2px solid #ccc">Part #</th>
+            <th style="text-align:left;padding:6px 12px 6px 0;border-bottom:2px solid #ccc">Description</th>
+            <th style="text-align:center;padding:6px 0;border-bottom:2px solid #ccc">Qty</th>
+          </tr>
+        </thead>
+        <tbody>${lineRows}</tbody>
+      </table>
+      <br/>
       ${form.shipping_address ? `<p>Ship To: ${form.shipping_address}</p>` : ""}
       ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
       <p>Please confirm receipt of this purchase order.</p>
@@ -144,13 +154,15 @@ export default function PurchaseOrderDetail() {
   const supplier = suppliers.find(s => s.id === form.supplier_id);
 
   const openReceiveMode = () => {
-    // Pre-fill receive qtys with remaining qty to receive for each line
-    const initial = {};
+    const initialQtys = {};
+    const initialCosts = {};
     (form.line_items || []).forEach((line, idx) => {
       const remaining = (line.quantity || 0) - (line.received_qty || 0);
-      initial[idx] = remaining > 0 ? remaining : 0;
+      initialQtys[idx] = remaining > 0 ? remaining : 0;
+      initialCosts[idx] = line.unit_cost || 0;
     });
-    setReceiveQtys(initial);
+    setReceiveQtys(initialQtys);
+    setReceiveCosts(initialCosts);
     setReceiveMode(true);
   };
 
@@ -158,7 +170,13 @@ export default function PurchaseOrderDetail() {
     setReceiving(true);
     const updatedLines = (form.line_items || []).map((line, idx) => {
       const qtyToReceive = Number(receiveQtys[idx] || 0);
-      return { ...line, received_qty: (line.received_qty || 0) + qtyToReceive };
+      const newCost = Number(receiveCosts[idx] ?? line.unit_cost ?? 0);
+      return {
+        ...line,
+        received_qty: (line.received_qty || 0) + qtyToReceive,
+        unit_cost: newCost,
+        total: (line.quantity || 0) * newCost,
+      };
     });
 
     // Determine new PO status
@@ -166,9 +184,12 @@ export default function PurchaseOrderDetail() {
     const anyReceived = updatedLines.some(l => (l.received_qty || 0) > 0);
     const newStatus = allReceived ? "received" : anyReceived ? "partial" : form.status;
 
+    const subtotal = updatedLines.reduce((s, l) => s + (l.total || 0), 0);
     const updatedForm = {
       ...form,
       line_items: updatedLines,
+      subtotal,
+      total: subtotal + (Number(form.shipping_cost) || 0),
       status: newStatus,
       received_date: allReceived ? new Date().toISOString().split("T")[0] : form.received_date,
     };
@@ -186,6 +207,7 @@ export default function PurchaseOrderDetail() {
           inventoryUpdates.push(
             base44.entities.Part.update(line.part_id, {
               quantity_on_hand: (part.quantity_on_hand || 0) + qtyReceived,
+              unit_cost: line.unit_cost, // update cost in inventory too
             })
           );
         }
@@ -373,6 +395,7 @@ export default function PurchaseOrderDetail() {
                   <th className="text-center py-2 font-medium text-slate-600 w-24">Ordered</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-24">Already Recv'd</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-24">Receiving Now</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-28">Unit Cost</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-20">Status</th>
                 </tr>
               </thead>
@@ -398,6 +421,19 @@ export default function PurchaseOrderDetail() {
                           min="0"
                           max={remaining}
                         />
+                      </td>
+                      <td className="py-2 px-2">
+                        <div className="relative w-24 mx-auto">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                          <Input
+                            type="number"
+                            value={receiveCosts[idx] ?? line.unit_cost ?? 0}
+                            onChange={e => setReceiveCosts(c => ({ ...c, [idx]: Number(e.target.value) }))}
+                            className="text-right border-emerald-200 focus:border-emerald-400 h-8 pl-5"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
                       </td>
                       <td className="py-2 text-center">
                         {isFullyReceived ? (
