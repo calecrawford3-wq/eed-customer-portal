@@ -40,6 +40,16 @@
     "sell_price": {
       "type": "number"
     },
+    "use_markup": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, sell_price is auto-calculated from unit_cost + markup_percentage"
+    },
+    "markup_percentage": {
+      "type": "number",
+      "default": 0,
+      "description": "Markup percentage applied to unit_cost to derive sell_price (e.g. 50 = 50% markup)"
+    },
     "quantity_on_hand": {
       "type": "number",
       "default": 0

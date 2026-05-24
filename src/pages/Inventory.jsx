@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
@@ -18,8 +19,15 @@ const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno",
 const emptyPart = {
   part_number: "", name: "", description: "", category: "other",
   supplier_id: "", supplier_part_number: "", unit_cost: "", sell_price: "",
+  use_markup: false, markup_percentage: 0,
   quantity_on_hand: 0, reorder_point: 0, reorder_quantity: 0,
   location: "", notes: "", status: "active"
+};
+
+const calcSellPrice = (cost, markup) => {
+  const c = Number(cost) || 0;
+  const m = Number(markup) || 0;
+  return parseFloat((c * (1 + m / 100)).toFixed(2));
 };
 
 const emptyLabor = { name: "", description: "", price: 0, category: "misc", notes: "", status: "active" };
@@ -219,7 +227,10 @@ export default function Inventory() {
                           {p.quantity_on_hand} {isLow && <AlertTriangle className="inline w-3.5 h-3.5 ml-1" />}
                         </td>
                         <td className="px-4 py-3 text-right text-slate-600">{p.unit_cost ? `$${Number(p.unit_cost).toFixed(2)}` : "—"}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{p.sell_price ? `$${Number(p.sell_price).toFixed(2)}` : "—"}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">
+                          {p.sell_price ? `$${Number(p.sell_price).toFixed(2)}` : "—"}
+                          {p.use_markup && p.markup_percentage ? <span className="ml-1 text-xs text-blue-500">({p.markup_percentage}%)</span> : null}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <Badge className={p.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
                             {p.status}
@@ -328,8 +339,66 @@ export default function Inventory() {
             </div>
             <div><Label>Supplier Part #</Label><Input value={partForm.supplier_part_number} onChange={e => setPartForm({...partForm, supplier_part_number: e.target.value})} /></div>
             <div><Label>Storage Location</Label><Input value={partForm.location} onChange={e => setPartForm({...partForm, location: e.target.value})} placeholder="e.g. Shelf A3" /></div>
-            <div><Label>Unit Cost ($)</Label><Input type="number" value={partForm.unit_cost} onChange={e => setPartForm({...partForm, unit_cost: e.target.value})} /></div>
-            <div><Label>Sell Price ($)</Label><Input type="number" value={partForm.sell_price} onChange={e => setPartForm({...partForm, sell_price: e.target.value})} /></div>
+            <div>
+              <Label>Unit Cost ($)</Label>
+              <Input
+                type="number"
+                value={partForm.unit_cost}
+                onChange={e => {
+                  const cost = e.target.value;
+                  const updates = { unit_cost: cost };
+                  if (partForm.use_markup) updates.sell_price = calcSellPrice(cost, partForm.markup_percentage);
+                  setPartForm(f => ({...f, ...updates}));
+                }}
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Sell Price ($)</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">% Markup</span>
+                  <Switch
+                    checked={!!partForm.use_markup}
+                    onCheckedChange={v => {
+                      const updates = { use_markup: v };
+                      if (v) updates.sell_price = calcSellPrice(partForm.unit_cost, partForm.markup_percentage);
+                      setPartForm(f => ({...f, ...updates}));
+                    }}
+                  />
+                </div>
+              </div>
+              {partForm.use_markup ? (
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <Input
+                      type="number"
+                      value={partForm.markup_percentage}
+                      onChange={e => {
+                        const pct = e.target.value;
+                        setPartForm(f => ({
+                          ...f,
+                          markup_percentage: pct,
+                          sell_price: calcSellPrice(f.unit_cost, pct),
+                        }));
+                      }}
+                      min="0"
+                      step="1"
+                      placeholder="50"
+                    />
+                    <Percent className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                  <span className="text-sm text-slate-500 whitespace-nowrap">
+                    = ${calcSellPrice(partForm.unit_cost, partForm.markup_percentage).toFixed(2)}
+                  </span>
+                </div>
+              ) : (
+                <Input
+                  type="number"
+                  value={partForm.sell_price}
+                  onChange={e => setPartForm({...partForm, sell_price: e.target.value})}
+                />
+              )}
+            </div>
             <div><Label>Quantity On Hand</Label><Input type="number" value={partForm.quantity_on_hand} onChange={e => setPartForm({...partForm, quantity_on_hand: Number(e.target.value)})} /></div>
             <div><Label>Reorder Point</Label><Input type="number" value={partForm.reorder_point} onChange={e => setPartForm({...partForm, reorder_point: Number(e.target.value)})} /></div>
             <div><Label>Max Stock</Label><Input type="number" value={partForm.reorder_quantity} onChange={e => setPartForm({...partForm, reorder_quantity: Number(e.target.value)})} /></div>

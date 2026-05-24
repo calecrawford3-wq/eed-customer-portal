@@ -204,12 +204,16 @@ export default function PurchaseOrderDetail() {
       if (line.part_id && qtyReceived > 0) {
         const part = parts.find(p => p.id === line.part_id);
         if (part) {
-          inventoryUpdates.push(
-            base44.entities.Part.update(line.part_id, {
-              quantity_on_hand: (part.quantity_on_hand || 0) + qtyReceived,
-              unit_cost: line.unit_cost, // update cost in inventory too
-            })
-          );
+          const newCost = line.unit_cost;
+          const partUpdates = {
+            quantity_on_hand: (part.quantity_on_hand || 0) + qtyReceived,
+            unit_cost: newCost,
+          };
+          // Auto-update sell price if part uses markup pricing
+          if (part.use_markup && part.markup_percentage) {
+            partUpdates.sell_price = parseFloat((newCost * (1 + part.markup_percentage / 100)).toFixed(2));
+          }
+          inventoryUpdates.push(base44.entities.Part.update(line.part_id, partUpdates));
         }
       }
     }
