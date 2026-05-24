@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const signupUrl = `${new URL(req.url).origin}/`;
+    const signupUrl = `https://race-engine-specs.base44.app/login`;
 
     await base44.integrations.Core.SendEmail({
       to: email,
