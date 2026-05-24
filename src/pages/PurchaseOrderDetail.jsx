@@ -146,14 +146,20 @@ export default function PurchaseOrderDetail() {
       ${form.shipping_address ? `<p>Ship To: ${form.shipping_address}</p>` : ""}
       ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
       <p>Please use the buttons below to update the status of this order:</p>
-      <div style="margin:24px 0;display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
-        <a href="${ackUrl}" style="display:inline-block;background:#7c3aed;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          ✓ Acknowledge Order
-        </a>
-        <a href="${ackUrl.replace('acknowledgePO?', 'acknowledgePO?action=ready&')}" style="display:inline-block;background:#0d9488;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          📦 Order Ready
-        </a>
-      </div>
+      <table cellpadding="0" cellspacing="0" border="0" style="margin:24px auto">
+        <tr>
+          <td style="padding:0 8px">
+            <a href="${ackUrl}" style="display:inline-block;background:#7c3aed;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
+              &#10003; Acknowledge Order
+            </a>
+          </td>
+          <td style="padding:0 8px">
+            <a href="${ackUrl}&action=ready" style="display:inline-block;background:#0d9488;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
+              &#128230; Order Ready
+            </a>
+          </td>
+        </tr>
+      </table>
       <p style="font-size:12px;color:#94a3b8">Click "Acknowledge Order" when you confirm the order, and "Order Ready" when the items are ready for shipment or pickup.</p>
       <p>Elite Engine Development</p>
     `;
