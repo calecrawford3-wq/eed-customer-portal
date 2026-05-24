@@ -18,6 +18,7 @@
         "draft",
         "sent",
         "acknowledged",
+        "ready",
         "partial",
         "received",
         "cancelled"

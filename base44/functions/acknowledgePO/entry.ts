@@ -5,9 +5,10 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const poId = url.searchParams.get("po_id");
     const token = url.searchParams.get("token");
+    const action = url.searchParams.get("action") || "acknowledge"; // "acknowledge" or "ready"
 
     if (!poId || !token) {
-      return new Response(htmlPage("Missing Parameters", "Invalid acknowledgment link. Please contact the sender.", false), {
+      return new Response(htmlPage("Missing Parameters", "Invalid link. Please contact the sender.", false), {
         headers: { "Content-Type": "text/html" },
         status: 400,
       });
@@ -15,7 +16,6 @@ Deno.serve(async (req) => {
 
     const base44 = createClientFromRequest(req);
 
-    // Fetch the PO using service role (no user auth needed for supplier acknowledgment)
     const pos = await base44.asServiceRole.entities.PurchaseOrder.filter({ id: poId });
     const po = pos?.[0];
 
@@ -26,17 +26,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Simple token validation: deterministic token base64(po_id:po_number)
+    // Token validation: base64(po_id:po_number)
     const raw = `${poId}:${po.po_number}`;
     const expectedToken = btoa(raw).replace(/=/g, "");
     if (token !== expectedToken) {
-      return new Response(htmlPage("Invalid Link", "This acknowledgment link is not valid.", false), {
+      return new Response(htmlPage("Invalid Link", "This link is not valid.", false), {
         headers: { "Content-Type": "text/html" },
         status: 403,
       });
     }
 
-    if (po.status === "acknowledged" || po.status === "received" || po.status === "cancelled") {
+    if (action === "ready") {
+      if (po.status === "received" || po.status === "cancelled") {
+        return new Response(htmlPage("Already Processed", `Purchase Order <strong>${po.po_number}</strong> has already been processed.`, true), {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "ready" });
+      return new Response(htmlPage("Order Ready!", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been marked as <strong>ready for pickup / shipment</strong>. We have been notified.`, true), {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    // Default: acknowledge
+    if (po.status === "acknowledged" || po.status === "ready" || po.status === "received" || po.status === "cancelled") {
       return new Response(htmlPage("Already Acknowledged", `Purchase Order <strong>${po.po_number}</strong> has already been acknowledged. No further action needed.`, true), {
         headers: { "Content-Type": "text/html" },
       });
@@ -44,7 +57,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "acknowledged" });
 
-    return new Response(htmlPage("Order Acknowledged", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been successfully acknowledged. We will prepare your order accordingly.`, true), {
+    return new Response(htmlPage("Order Acknowledged", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been successfully acknowledged. We will follow up on delivery details.`, true), {
       headers: { "Content-Type": "text/html" },
     });
 

@@ -19,6 +19,7 @@ const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
   sent: "bg-blue-100 text-blue-700",
   acknowledged: "bg-purple-100 text-purple-700",
+  ready: "bg-teal-100 text-teal-700",
   partial: "bg-amber-100 text-amber-700",
   received: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
@@ -144,13 +145,16 @@ export default function PurchaseOrderDetail() {
       <br/>
       ${form.shipping_address ? `<p>Ship To: ${form.shipping_address}</p>` : ""}
       ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
-      <p>Please confirm receipt of this purchase order by clicking the button below:</p>
-      <div style="margin:24px 0">
-        <a href="${ackUrl}" style="display:inline-block;background:#16a34a;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none">
-          ✓ Acknowledge This Order
+      <p>Please use the buttons below to update the status of this order:</p>
+      <div style="margin:24px 0;display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+        <a href="${ackUrl}" style="display:inline-block;background:#7c3aed;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
+          ✓ Acknowledge Order
+        </a>
+        <a href="${ackUrl.replace('acknowledgePO?', 'acknowledgePO?action=ready&')}" style="display:inline-block;background:#0d9488;color:white;font-family:sans-serif;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
+          📦 Order Ready
         </a>
       </div>
-      <p style="font-size:12px;color:#94a3b8">If the button doesn't work, copy and paste this link: ${ackUrl}</p>
+      <p style="font-size:12px;color:#94a3b8">Click "Acknowledge Order" when you confirm the order, and "Order Ready" when the items are ready for shipment or pickup.</p>
       <p>Elite Engine Development</p>
     `;
 
@@ -288,7 +292,7 @@ export default function PurchaseOrderDetail() {
         <Button variant="outline" onClick={sendPO} disabled={sending || !form.supplier_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}
         </Button>
-        {id && ["sent","acknowledged","partial"].includes(form.status) && (
+        {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
           <Button variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50" onClick={openReceiveMode}>
             <PackageCheck className="w-4 h-4 mr-1" /> Receive Items
           </Button>
@@ -320,7 +324,7 @@ export default function PurchaseOrderDetail() {
               <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["draft","sent","acknowledged","partial","received","cancelled"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                  {["draft","sent","acknowledged","ready","partial","received","cancelled"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
