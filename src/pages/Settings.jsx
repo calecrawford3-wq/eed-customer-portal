@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Mail, Receipt, FileText, ShoppingCart, Save } from "lucide-react";
+import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 
 const defaultSettings = {
@@ -73,6 +73,33 @@ export default function Settings() {
   });
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const [testingPoSmtp, setTestingPoSmtp] = useState(false);
+
+  const testSmtp = async (usePOSmtp) => {
+    const user = await base44.auth.me();
+    if (!user?.email) { toast.error("Could not determine your email address"); return; }
+    usePOSmtp ? setTestingPoSmtp(true) : setTestingSmtp(true);
+    try {
+      // Save first so the function uses latest values
+      if (settingsData?.[0]) {
+        await base44.entities.AppSettings.update(settingsData[0].id, form);
+      }
+      const res = await base44.functions.invoke('sendSmtpEmail', {
+        to: user.email,
+        subject: `SMTP Test — ${usePOSmtp ? 'Purchase Order' : 'General'} Account`,
+        text: `This is a test email from your ${usePOSmtp ? 'Purchase Order' : 'General'} SMTP configuration in Elite Engine Development.`,
+        usePOSmtp,
+      });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success(`Test email sent to ${user.email}`);
+    } catch (err) {
+      toast.error(`Test failed: ${err.message}`);
+    } finally {
+      usePOSmtp ? setTestingPoSmtp(false) : setTestingSmtp(false);
+    }
+  };
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -165,8 +192,11 @@ export default function Settings() {
           <div className="space-y-4">
             {/* General SMTP */}
             <Card className="border-0 shadow-sm">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">General SMTP (noreply — customer emails, portal invites, etc.)</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => testSmtp(false)} disabled={testingSmtp}>
+                  <Send className="w-4 h-4 mr-2" />{testingSmtp ? "Sending..." : "Send Test Email"}
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -204,9 +234,14 @@ export default function Settings() {
 
             {/* PO SMTP */}
             <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Purchase Order SMTP</CardTitle>
-                <p className="text-sm text-slate-500 mt-1">Separate SMTP account used only when sending purchase orders to suppliers</p>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Purchase Order SMTP</CardTitle>
+                  <p className="text-sm text-slate-500 mt-1">Separate SMTP account used only when sending purchase orders to suppliers</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => testSmtp(true)} disabled={testingPoSmtp}>
+                  <Send className="w-4 h-4 mr-2" />{testingPoSmtp ? "Sending..." : "Send Test Email"}
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
