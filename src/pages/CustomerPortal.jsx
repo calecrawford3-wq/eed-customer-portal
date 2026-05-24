@@ -47,6 +47,9 @@ export default function CustomerPortal() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [customer, setCustomer] = useState(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordVerified, setPasswordVerified] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({});
   const [refreshOpen, setRefreshOpen] = useState(false);
@@ -227,6 +230,59 @@ export default function CustomerPortal() {
               We couldn't find a customer account linked to <strong>{user.email}</strong>. Please contact us to set up your portal access.
             </p>
             <Button variant="outline" onClick={() => base44.auth.logout()}>Sign Out</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Password gate for non-admin customers with a temp password set
+  if (customer && user?.role !== "admin" && customer.portal_temp_password && !passwordVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardContent className="p-8">
+            <img
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+              alt="Elite Engine Development"
+              className="h-12 mx-auto mb-6"
+            />
+            <h2 className="text-xl font-bold text-slate-900 text-center mb-1">Portal Access</h2>
+            <p className="text-slate-500 text-center text-sm mb-6">Enter your access password to continue</p>
+            <div className="space-y-3">
+              <Input
+                type="password"
+                placeholder="Access password"
+                value={passwordInput}
+                onChange={e => { setPasswordInput(e.target.value); setPasswordError(false); }}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    if (passwordInput === customer.portal_temp_password) {
+                      setPasswordVerified(true);
+                    } else {
+                      setPasswordError(true);
+                    }
+                  }
+                }}
+                className={passwordError ? "border-red-400" : ""}
+              />
+              {passwordError && <p className="text-sm text-red-500">Incorrect password. Please try again.</p>}
+              <Button
+                className="w-full bg-[#e20404] hover:bg-[#c00303] text-white"
+                onClick={() => {
+                  if (passwordInput === customer.portal_temp_password) {
+                    setPasswordVerified(true);
+                  } else {
+                    setPasswordError(true);
+                  }
+                }}
+              >
+                Continue
+              </Button>
+              <Button variant="ghost" className="w-full text-slate-400" onClick={() => base44.auth.logout()}>
+                Sign Out
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

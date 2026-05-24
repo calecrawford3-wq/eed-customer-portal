@@ -43,6 +43,10 @@
         "inactive"
       ],
       "default": "active"
+    },
+    "portal_temp_password": {
+      "type": "string",
+      "description": "Temporary password for customer portal access"
     }
   },
   "required": [
