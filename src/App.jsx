@@ -81,17 +81,31 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  // Check if we're on a public route before AuthProvider runs
+  const isPublicRoute = typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/public/') ||
+    window.location.pathname === '/public-test'
+  );
+
+  if (isPublicRoute) {
+    return (
+      <QueryClientProvider client={queryClientInstance}>
+        <Router>
+          <Routes>
+            <Route path="/public/estimate/:token" element={<EstimateViewer />} />
+            <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
+            <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
+            <Route path="*" element={<div>Not found</div>} />
+          </Routes>
+        </Router>
+        <Toaster />
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        {/* Public viewer routes - accessible without auth, completely outside AuthProvider */}
-        <Routes>
-          <Route path="/public/estimate/:token" element={<EstimateViewer />} />
-          <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
-          <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
-        </Routes>
-        
         {/* Protected admin routes with AuthProvider */}
         <AuthProvider>
           <NavigationTracker />
