@@ -1,5 +1,28 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+async function getZohoAccessToken() {
+  const clientId = Deno.env.get('ZOHO_CLIENT_ID');
+  const clientSecret = Deno.env.get('ZOHO_CLIENT_SECRET');
+  const refreshToken = Deno.env.get('ZOHO_REFRESH_TOKEN');
+
+  const response = await fetch('https://accounts.zoho.com/oauth/v2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }),
+  });
+
+  const data = await response.json();
+  if (!data.access_token) {
+    throw new Error(`Failed to get Zoho access token: ${JSON.stringify(data)}`);
+  }
+  return data.access_token;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -31,30 +54,22 @@ Deno.serve(async (req) => {
     }
 
     const accountId = Deno.env.get('ZOHO_ACCOUNT_ID');
-    const apiToken = Deno.env.get('ZOHO_API_TOKEN');
-
-    if (!accountId || !apiToken) {
-      return Response.json({ error: 'Zoho credentials not configured' }, { status: 500 });
-    }
+    const accessToken = await getZohoAccessToken();
 
     const payload = {
-      fromAddress: fromEmail,
+      fromAddress: fromName ? `${fromName} <${fromEmail}>` : fromEmail,
       toAddress: to,
       subject: subject,
       content: html || text || '',
       mailFormat: html ? 'html' : 'plaintext',
     };
 
-    if (fromName) {
-      payload.fromAddress = `${fromName} <${fromEmail}>`;
-    }
-
     const response = await fetch(
       `https://mail.zoho.com/api/accounts/${accountId}/messages`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Zoho-oauthtoken ${apiToken}`,
+          'Authorization': `Zoho-oauthtoken ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
