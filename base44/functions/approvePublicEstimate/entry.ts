@@ -3,13 +3,23 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const { estimateId } = await req.json();
+        const { publicAccessToken } = await req.json();
 
-        if (!estimateId) {
-            return Response.json({ error: 'Estimate ID is required' }, { status: 400 });
+        if (!publicAccessToken) {
+            return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
         }
 
-        const updatedEstimate = await base44.asServiceRole.entities.Estimate.update(estimateId, {
+        // Fetch estimate by token
+        const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+
+        if (!estimates || estimates.length === 0) {
+            return Response.json({ error: 'Estimate not found' }, { status: 404 });
+        }
+
+        const estimate = estimates[0];
+
+        // Update status to approved
+        const updatedEstimate = await base44.asServiceRole.entities.Estimate.update(estimate.id, {
             status: "approved"
         });
 

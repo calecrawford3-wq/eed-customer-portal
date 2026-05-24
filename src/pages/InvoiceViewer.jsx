@@ -13,24 +13,22 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function InvoiceViewer() {
   const params = new URLSearchParams(window.location.search);
-  const invoiceId = params.get("id");
+  const publicAccessToken = params.get("token");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
   const { data: viewerData, isLoading: invoiceLoading, refetch } = useQuery({
-    queryKey: ["invoice-viewer", invoiceId],
+    queryKey: ["invoice-viewer", publicAccessToken],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/getPublicInvoice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
+      const response = await base44.functions.invoke("getPublicInvoice", {
+        publicAccessToken,
       });
-      if (!response.ok) throw new Error("Failed to fetch invoice");
-      return response.json();
+      if (!response?.data) throw new Error("Failed to fetch invoice");
+      return response.data;
     },
-    enabled: !!invoiceId,
+    enabled: !!publicAccessToken,
   });
 
   const inv = viewerData?.invoice;
@@ -59,7 +57,7 @@ export default function InvoiceViewer() {
       try {
         const response = await base44.functions.invoke("createCheckoutSession", {
           type: "invoice",
-          documentId: invoiceId,
+          documentId: inv.id,
           amount: inv.balance_due,
           description: `Invoice ${inv.invoice_number} - Payment`,
         });
@@ -91,7 +89,7 @@ export default function InvoiceViewer() {
         const newBalanceDue = Math.max(0, (inv.total || 0) - newAmountPaid);
         const newStatus = newBalanceDue <= 0 ? "paid" : "partial";
 
-        await base44.entities.Invoice.update(invoiceId, {
+        await base44.asServiceRole.entities.Invoice.update(inv.id, {
           payments: updatedPayments,
           amount_paid: newAmountPaid,
           balance_due: newBalanceDue,

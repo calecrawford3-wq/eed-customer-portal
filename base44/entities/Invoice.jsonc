@@ -15,6 +15,10 @@
     "build_id": {
       "type": "string"
     },
+    "public_access_token": {
+      "type": "string",
+      "description": "Secure random token for public viewing without authentication"
+    },
     "status": {
       "type": "string",
       "enum": [

@@ -21,6 +21,10 @@
       "default": false,
       "description": "If true, approval creates an engine build. If false, approval creates an invoice."
     },
+    "public_access_token": {
+      "type": "string",
+      "description": "Secure random token for public viewing without authentication"
+    },
     "status": {
       "type": "string",
       "enum": [

@@ -13,23 +13,21 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function EstimateViewer() {
   const params = new URLSearchParams(window.location.search);
-  const estimateId = params.get("id");
+  const publicAccessToken = params.get("token");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
   const { data: viewerData, isLoading: estimateLoading } = useQuery({
-    queryKey: ["estimate-viewer", estimateId],
+    queryKey: ["estimate-viewer", publicAccessToken],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/getPublicEstimate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estimateId }),
+      const response = await base44.functions.invoke("getPublicEstimate", {
+        publicAccessToken,
       });
-      if (!response.ok) throw new Error("Failed to fetch estimate");
-      return response.json();
+      if (!response?.data) throw new Error("Failed to fetch estimate");
+      return response.data;
     },
-    enabled: !!estimateId,
+    enabled: !!publicAccessToken,
   });
 
   const est = viewerData?.estimate;
@@ -55,7 +53,7 @@ export default function EstimateViewer() {
         const amount = est.deposit_required ? depositRemaining : est.total;
         const response = await base44.functions.invoke("createCheckoutSession", {
           type: "estimate",
-          documentId: estimateId,
+          documentId: est.id,
           amount,
           description: `Estimate ${est.estimate_number} - ${est.deposit_required ? "Deposit" : "Full Payment"}`,
         });
@@ -86,7 +84,7 @@ export default function EstimateViewer() {
         const totalPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
         const newDepositPaid = !est.deposit_required || totalPaid >= (est.deposit_amount || 0);
         
-        await base44.entities.Estimate.update(estimateId, {
+        await base44.asServiceRole.entities.Estimate.update(est.id, {
           payments: updatedPayments,
           deposit_paid: newDepositPaid,
         });
@@ -271,12 +269,10 @@ export default function EstimateViewer() {
               onClick={async () => {
                 setProcessingPayment(true);
                 try {
-                  const response = await fetch("/.netlify/functions/approvePublicEstimate", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ estimateId }),
+                  const response = await base44.functions.invoke("approvePublicEstimate", {
+                    publicAccessToken,
                   });
-                  if (response.ok) {
+                  if (response?.data?.success) {
                     toast.success("Estimate approved! We'll be in touch with next steps.");
                     window.location.reload();
                   } else {
