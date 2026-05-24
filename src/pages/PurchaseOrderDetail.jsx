@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -138,6 +138,39 @@ export default function PurchaseOrderDetail() {
 
   const supplier = suppliers.find(s => s.id === form.supplier_id);
 
+  const fillLowStockItems = () => {
+    if (!form.supplier_id) {
+      toast.error("Select a supplier first");
+      return;
+    }
+    const lowStockItems = parts.filter(p =>
+      p.supplier_id === form.supplier_id &&
+      p.reorder_point > 0 &&
+      p.quantity_on_hand <= p.reorder_point
+    );
+    if (lowStockItems.length === 0) {
+      toast.info("No low stock items found for this supplier");
+      return;
+    }
+    const newLines = lowStockItems.map(p => {
+      const maxStock = p.reorder_quantity || p.reorder_point * 2;
+      const qtyToOrder = Math.max(1, maxStock - p.quantity_on_hand);
+      return {
+        part_id: p.id,
+        part_number: p.part_number,
+        description: p.name,
+        quantity: qtyToOrder,
+        unit_cost: p.unit_cost || 0,
+        total: qtyToOrder * (p.unit_cost || 0),
+        received_qty: 0,
+      };
+    });
+    const subtotal = newLines.reduce((s, l) => s + l.total, 0);
+    const total = subtotal + (Number(form.shipping_cost) || 0);
+    setForm(f => ({ ...f, line_items: newLines, subtotal, total }));
+    toast.success(`Added ${newLines.length} low stock item(s) to order`);
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
@@ -146,6 +179,9 @@ export default function PurchaseOrderDetail() {
           <h1 className="text-2xl font-bold text-slate-900">{form.po_number}</h1>
         </div>
         <Badge className={`${STATUS_STYLES[form.status]} border-0 capitalize`}>{form.status}</Badge>
+        <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={fillLowStockItems} disabled={!form.supplier_id}>
+          <AlertTriangle className="w-4 h-4 mr-1" /> Order Low Stock
+        </Button>
         <Button variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
         <Button variant="outline" onClick={sendPO} disabled={sending || !form.supplier_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}

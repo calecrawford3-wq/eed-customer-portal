@@ -234,7 +234,7 @@ export default function Inventory() {
             <div><Label>Sell Price ($)</Label><Input type="number" value={form.sell_price} onChange={e => setForm({...form, sell_price: e.target.value})} /></div>
             <div><Label>Quantity On Hand</Label><Input type="number" value={form.quantity_on_hand} onChange={e => setForm({...form, quantity_on_hand: Number(e.target.value)})} /></div>
             <div><Label>Reorder Point</Label><Input type="number" value={form.reorder_point} onChange={e => setForm({...form, reorder_point: Number(e.target.value)})} /></div>
-            <div><Label>Reorder Quantity</Label><Input type="number" value={form.reorder_quantity} onChange={e => setForm({...form, reorder_quantity: Number(e.target.value)})} /></div>
+            <div><Label>Max Stock</Label><Input type="number" value={form.reorder_quantity} onChange={e => setForm({...form, reorder_quantity: Number(e.target.value)})} /></div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
