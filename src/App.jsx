@@ -89,6 +89,7 @@ function App() {
         <Routes>
           <Route path="/public/estimate/:token" element={<EstimateViewer />} />
           <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
+          <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
         </Routes>
         
         {/* Protected admin routes with AuthProvider */}
