@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -39,6 +39,9 @@ export default function PurchaseOrderDetail() {
     shipping_cost: 0, notes: "", shipping_address: ""
   });
   const [sending, setSending] = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const [receiveMode, setReceiveMode] = useState(false);
+  const [receiveQtys, setReceiveQtys] = useState({});
 
   const { data: po } = useQuery({
     queryKey: ["po", id],
@@ -140,6 +143,64 @@ export default function PurchaseOrderDetail() {
 
   const supplier = suppliers.find(s => s.id === form.supplier_id);
 
+  const openReceiveMode = () => {
+    // Pre-fill receive qtys with remaining qty to receive for each line
+    const initial = {};
+    (form.line_items || []).forEach((line, idx) => {
+      const remaining = (line.quantity || 0) - (line.received_qty || 0);
+      initial[idx] = remaining > 0 ? remaining : 0;
+    });
+    setReceiveQtys(initial);
+    setReceiveMode(true);
+  };
+
+  const handleReceiveItems = async () => {
+    setReceiving(true);
+    const updatedLines = (form.line_items || []).map((line, idx) => {
+      const qtyToReceive = Number(receiveQtys[idx] || 0);
+      return { ...line, received_qty: (line.received_qty || 0) + qtyToReceive };
+    });
+
+    // Determine new PO status
+    const allReceived = updatedLines.every(l => (l.received_qty || 0) >= (l.quantity || 0));
+    const anyReceived = updatedLines.some(l => (l.received_qty || 0) > 0);
+    const newStatus = allReceived ? "received" : anyReceived ? "partial" : form.status;
+
+    const updatedForm = {
+      ...form,
+      line_items: updatedLines,
+      status: newStatus,
+      received_date: allReceived ? new Date().toISOString().split("T")[0] : form.received_date,
+    };
+
+    // Save PO first
+    await base44.entities.PurchaseOrder.update(id, updatedForm);
+
+    // Update inventory for each line item that has a part_id and received qty > 0
+    const inventoryUpdates = [];
+    for (const [idx, line] of updatedLines.entries()) {
+      const qtyReceived = Number(receiveQtys[idx] || 0);
+      if (line.part_id && qtyReceived > 0) {
+        const part = parts.find(p => p.id === line.part_id);
+        if (part) {
+          inventoryUpdates.push(
+            base44.entities.Part.update(line.part_id, {
+              quantity_on_hand: (part.quantity_on_hand || 0) + qtyReceived,
+            })
+          );
+        }
+      }
+    }
+    await Promise.all(inventoryUpdates);
+
+    setForm(updatedForm);
+    qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+    qc.invalidateQueries({ queryKey: ["parts"] });
+    setReceiveMode(false);
+    setReceiving(false);
+    toast.success(`Items received${inventoryUpdates.length > 0 ? ` — ${inventoryUpdates.length} inventory record(s) updated` : ""}`);
+  };
+
   const fillLowStockItems = () => {
     if (!form.supplier_id) {
       toast.error("Select a supplier first");
@@ -188,6 +249,11 @@ export default function PurchaseOrderDetail() {
         <Button variant="outline" onClick={sendPO} disabled={sending || !form.supplier_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}
         </Button>
+        {id && ["sent","acknowledged","partial"].includes(form.status) && (
+          <Button variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50" onClick={openReceiveMode}>
+            <PackageCheck className="w-4 h-4 mr-1" /> Receive Items
+          </Button>
+        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
@@ -287,6 +353,77 @@ export default function PurchaseOrderDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Receive Items Panel */}
+      {receiveMode && (
+        <Card className="border-0 shadow-sm mb-6 border-l-4 border-l-emerald-400">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2 text-emerald-700">
+              <PackageCheck className="w-4 h-4" /> Receive Items
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-slate-400" onClick={() => setReceiveMode(false)}>Cancel</Button>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-500 mb-4">Enter the quantity received for each item. Inventory will be updated automatically for linked parts.</p>
+            <table className="w-full text-sm mb-4">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 font-medium text-slate-600">Part</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-24">Ordered</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-24">Already Recv'd</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-24">Receiving Now</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-20">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(form.line_items || []).map((line, idx) => {
+                  const alreadyReceived = line.received_qty || 0;
+                  const remaining = (line.quantity || 0) - alreadyReceived;
+                  const receivingNow = Number(receiveQtys[idx] || 0);
+                  const totalAfter = alreadyReceived + receivingNow;
+                  const isFullyReceived = totalAfter >= (line.quantity || 0);
+                  return (
+                    <tr key={idx} className="border-b border-slate-100">
+                      <td className="py-2 pr-2 font-mono text-xs text-slate-500">{line.part_number || "Custom"}</td>
+                      <td className="py-2 pr-3 text-slate-700">{line.description}</td>
+                      <td className="py-2 text-center">{line.quantity}</td>
+                      <td className="py-2 text-center text-slate-500">{alreadyReceived}</td>
+                      <td className="py-2 px-2">
+                        <Input
+                          type="number"
+                          value={receiveQtys[idx] ?? remaining}
+                          onChange={e => setReceiveQtys(q => ({ ...q, [idx]: Number(e.target.value) }))}
+                          className="text-center border-emerald-200 focus:border-emerald-400 h-8 w-20 mx-auto"
+                          min="0"
+                          max={remaining}
+                        />
+                      </td>
+                      <td className="py-2 text-center">
+                        {isFullyReceived ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                        ) : (
+                          <span className="text-xs text-amber-600">{remaining - receivingNow} left</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="flex justify-end">
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleReceiveItems}
+                disabled={receiving}
+              >
+                <PackageCheck className="w-4 h-4 mr-2" />
+                {receiving ? "Processing..." : "Confirm Receipt & Update Inventory"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Special instructions, notes for supplier..." /></div>
     </div>
