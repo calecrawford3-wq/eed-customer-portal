@@ -18,25 +18,15 @@ export default function EstimateViewer() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
-  const { data: estimate, isLoading: estimateLoading } = useQuery({
+  const { data: viewerData, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate-viewer", estimateId],
-    queryFn: () => base44.entities.Estimate.filter({ id: estimateId }),
+    queryFn: () => base44.functions.invoke("getPublicEstimate", { estimateId }),
     enabled: !!estimateId,
   });
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers-viewer"],
-    queryFn: () => base44.entities.Customer.list("-created_date", 200),
-  });
-
-  const { data: settingsData } = useQuery({
-    queryKey: ["app-settings"],
-    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
-  });
-
-  const est = estimate?.[0];
-  const customer = est ? customers.find(c => c.id === est.customer_id) : null;
-  const settings = settingsData?.[0];
+  const est = viewerData?.data?.estimate;
+  const customer = viewerData?.data?.customer;
+  const settings = viewerData?.data?.settings;
 
   const totalDepositReceived = (est?.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const depositRemaining = Math.max(0, (est?.deposit_amount || 0) - totalDepositReceived);

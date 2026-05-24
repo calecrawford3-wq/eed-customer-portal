@@ -19,25 +19,15 @@ export default function InvoiceViewer() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
-  const { data: invoice, isLoading: invoiceLoading, refetch } = useQuery({
+  const { data: viewerData, isLoading: invoiceLoading, refetch } = useQuery({
     queryKey: ["invoice-viewer", invoiceId],
-    queryFn: () => base44.entities.Invoice.filter({ id: invoiceId }),
+    queryFn: () => base44.functions.invoke("getPublicInvoice", { invoiceId }),
     enabled: !!invoiceId,
   });
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers-viewer"],
-    queryFn: () => base44.entities.Customer.list("-created_date", 200),
-  });
-
-  const { data: settingsData } = useQuery({
-    queryKey: ["app-settings"],
-    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
-  });
-
-  const inv = invoice?.[0];
-  const customer = inv ? customers.find(c => c.id === inv.customer_id) : null;
-  const settings = settingsData?.[0];
+  const inv = viewerData?.data?.invoice;
+  const customer = viewerData?.data?.customer;
+  const settings = viewerData?.data?.settings;
 
   const handlePayment = async () => {
     if (!paymentMethod) {
