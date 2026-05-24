@@ -174,7 +174,7 @@ export default function InvoiceDetail() {
     setSending(true);
     await saveMutation.mutateAsync(form);
     const settings = settingsData?.[0] || {};
-    const subject = `Invoice ${form.invoice_number} — Payment Due`;
+    const subject = `Invoice ${form.invoice_number} — Action Required`;
     const viewUrl = `${window.location.origin}/InvoiceViewer?id=${id}`;
     const html = `
       <table style="font-family: Arial, sans-serif; width: 100%; max-width: 600px; margin: 0 auto;">
@@ -182,14 +182,15 @@ export default function InvoiceDetail() {
           <img src="${LOGO_URL}" alt="${settings.company_name}" style="height: 50px; margin-bottom: 16px;" />
           <h1 style="font-size: 24px; color: #1a1a1a; margin: 0 0 8px 0;">Invoice ${form.invoice_number}</h1>
           <p style="color: #666; margin: 0 0 24px 0;">${settings.company_name || "Your Company"}</p>
-          
+
           <p style="font-size: 16px; margin: 0 0 8px 0;">Hi ${customer.first_name},</p>
-          <p style="color: #666; line-height: 1.6; margin: 0 0 24px 0;">Your invoice is ready. The total amount due is <strong>$${Number(form.total || 0).toFixed(2)}</strong> and is due by ${form.due_date ? new Date(form.due_date).toLocaleDateString() : "30 days from invoice date"}.</p>
-          
+          <p style="color: #666; line-height: 1.6; margin: 0 0 8px 0;">Your invoice is ready. The total amount due is <strong>$${Number(form.total || 0).toFixed(2)}</strong>.</p>
+          <p style="color: #666; line-height: 1.6; margin: 0 0 24px 0;">Payment is due by ${form.due_date ? new Date(form.due_date).toLocaleDateString() : "30 days from invoice date"}.</p>
+
           <p style="margin: 24px 0; text-align: center;">
             <a href="${viewUrl}" style="background: #e20404; color: white; padding: 12px 32px; border-radius: 4px; text-decoration: none; font-weight: bold; display: inline-block;">View & Pay Invoice</a>
           </p>
-          
+
           <p style="color: #999; font-size: 12px; margin: 24px 0 0 0; border-top: 1px solid #ddd; padding-top: 16px;">
             ${settings.email_signature || "Thank you for your business!"}
           </p>
