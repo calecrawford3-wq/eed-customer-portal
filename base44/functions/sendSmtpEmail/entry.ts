@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { SMTPClient } from 'npm:emailjs@4.0.3';
+import nodemailer from 'npm:nodemailer@6.9.9';
 
 Deno.serve(async (req) => {
   try {
@@ -35,22 +35,25 @@ Deno.serve(async (req) => {
       return Response.json({ error: `SMTP settings not fully configured for ${usePOSmtp ? 'purchase orders' : 'general email'}` }, { status: 400 });
     }
 
-    const client = new SMTPClient({
-      user: username,
-      password: password,
+    const transporter = nodemailer.createTransport({
       host: host,
       port: port,
-      ssl: port === 465,
-      tls: port !== 465,
-      timeout: 15000,
+      secure: port === 465,
+      auth: {
+        user: username,
+        pass: password,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
-    await client.sendAsync({
-      from: fromName ? `${fromName} <${fromEmail}>` : fromEmail,
+    await transporter.sendMail({
+      from: fromName ? `"${fromName}" <${fromEmail}>` : fromEmail,
       to: to,
       subject: subject,
       text: text || '',
-      attachment: html ? [{ data: html, alternative: true }] : undefined,
+      html: html || undefined,
     });
 
     return Response.json({ success: true });
