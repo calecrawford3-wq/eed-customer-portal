@@ -74,8 +74,6 @@ const AuthenticatedApp = () => {
       ))}
       <Route path="/CustomerPortal" element={<CustomerPortal />} />
       <Route path="/RefreshRequests" element={<LayoutWrapper currentPageName="RefreshRequests"><RefreshRequests /></LayoutWrapper>} />
-      <Route path="/EstimateViewer" element={<EstimateViewer />} />
-      <Route path="/InvoiceViewer" element={<InvoiceViewer />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -85,15 +83,24 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <NavigationTracker />
+        <Routes>
+          {/* Public viewer routes - accessible without auth */}
+          <Route path="/EstimateViewer" element={<EstimateViewer />} />
+          <Route path="/InvoiceViewer" element={<InvoiceViewer />} />
+          
+          {/* Protected admin routes */}
+          <Route path="*" element={
+            <AuthProvider>
+              <AuthenticatedApp />
+            </AuthProvider>
+          } />
+        </Routes>
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
   )
 }
 
