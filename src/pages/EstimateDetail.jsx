@@ -343,29 +343,77 @@ export default function EstimateDetail() {
     setSending(true);
     await saveMutation.mutateAsync(form);
     const settings = settingsData?.[0] || {};
-    const subject = `Estimate ${form.estimate_number} — Action Required`;
+    const subject = `Your Estimate is Ready — ${form.estimate_number}`;
     const viewUrl = `${window.location.origin}/EstimateViewer?id=${id}`;
-    const depositText = form.deposit_required ? `A deposit of $${Number(form.deposit_amount || 0).toFixed(2)} is required to proceed.` : `The full amount of $${Number(form.total || 0).toFixed(2)} is due upon approval.`;
+    const depositText = form.deposit_required 
+      ? `<p style="color: #e20404; font-weight: 600; margin: 0;">Deposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}</p>`
+      : '';
     const html = `
-      <table style="font-family: Arial, sans-serif; width: 100%; max-width: 600px; margin: 0 auto;">
-        <tr><td style="padding: 20px;">
-          <img src="${LOGO_URL}" alt="${settings.company_name}" style="height: 50px; margin-bottom: 16px;" />
-          <h1 style="font-size: 24px; color: #1a1a1a; margin: 0 0 8px 0;">Estimate ${form.estimate_number}</h1>
-          <p style="color: #666; margin: 0 0 24px 0;">${settings.company_name || "Your Company"}</p>
-          
-          <p style="font-size: 16px; margin: 0 0 8px 0;">Hi ${customer.first_name},</p>
-          <p style="color: #666; line-height: 1.6; margin: 0 0 8px 0;">We've prepared an estimate for your review. The total is <strong>$${Number(form.total || 0).toFixed(2)}</strong>.</p>
-          <p style="color: #666; line-height: 1.6; margin: 0 0 24px 0;">${depositText}</p>
-          
-          <p style="margin: 24px 0; text-align: center;">
-            <a href="${viewUrl}" style="background: #e20404; color: white; padding: 12px 32px; border-radius: 4px; text-decoration: none; font-weight: bold; display: inline-block;">Review & Accept Estimate</a>
-          </p>
-          
-          <p style="color: #999; font-size: 12px; margin: 24px 0 0 0; border-top: 1px solid #ddd; padding-top: 16px;">
-            ${settings.email_signature || "Thank you for considering our services!"}
-          </p>
-        </td></tr>
-      </table>
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+            .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px 32px; text-align: center; border-bottom: 4px solid #e20404; }
+            .logo { height: 40px; margin-bottom: 20px; display: inline-block; }
+            .header-text { color: #ffffff; margin: 0; }
+            .header-title { font-size: 32px; font-weight: 700; margin: 12px 0 4px 0; }
+            .header-subtitle { font-size: 14px; color: #e20404; font-weight: 600; letter-spacing: 1px; margin: 0; }
+            .content { padding: 40px 32px; }
+            .greeting { font-size: 18px; font-weight: 600; color: #1a1a1a; margin: 0 0 16px 0; }
+            .description { font-size: 15px; color: #4a5568; line-height: 1.6; margin: 0 0 24px 0; }
+            .amount-box { background: #f8f9fa; border-left: 4px solid #e20404; padding: 20px; margin: 32px 0; border-radius: 4px; }
+            .amount-label { font-size: 12px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px 0; }
+            .amount-value { font-size: 32px; color: #1a1a1a; font-weight: 700; margin: 0; }
+            .deposit-info { color: #e20404; font-weight: 600; margin-top: 12px; font-size: 14px; }
+            .cta-button { display: inline-block; background: #e20404; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 6px; font-weight: 600; font-size: 16px; margin: 32px 0; transition: background 0.2s; }
+            .cta-button:hover { background: #c00303; }
+            .cta-wrapper { text-align: center; }
+            .footer { background: #f8f9fa; padding: 32px; border-top: 1px solid #e2e8f0; text-align: center; color: #718096; font-size: 13px; line-height: 1.6; }
+            .company-info { color: #1a1a1a; font-weight: 600; margin-bottom: 12px; }
+            .divider { border-top: 1px solid #e2e8f0; margin: 24px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="${LOGO_URL}" alt="${settings.company_name}" class="logo" />
+              <h1 class="header-title">Estimate Ready</h1>
+              <p class="header-subtitle">${form.estimate_number}</p>
+            </div>
+            
+            <div class="content">
+              <p class="greeting">Hi ${customer.first_name},</p>
+              <p class="description">Thank you for choosing us. We've prepared a detailed estimate for your project. Please review it and let us know if you have any questions.</p>
+              
+              <div class="amount-box">
+                <p class="amount-label">Total Estimate</p>
+                <p class="amount-value">$${Number(form.total || 0).toFixed(2)}</p>
+                ${depositText}
+              </div>
+              
+              <p class="description">This estimate is valid for 30 days. Once approved, we'll begin work on your project right away.</p>
+              
+              <div class="cta-wrapper">
+                <a href="${viewUrl}" class="cta-button">Review Estimate & Approve</a>
+              </div>
+              
+              <p style="font-size: 13px; color: #718096; text-align: center; margin: 24px 0 0 0;">Can't click? Copy and paste this link: <br/><span style="color: #4a5568; word-break: break-all;">${viewUrl}</span></p>
+            </div>
+            
+            <div class="footer">
+              <p class="company-info">${settings.company_name || "Elite Engine Development"}</p>
+              ${settings.company_phone ? `<p>${settings.company_phone}</p>` : ''}
+              ${settings.company_email ? `<p>${settings.company_email}</p>` : ''}
+              <div class="divider"></div>
+              <p>${settings.email_signature || "Thank you for your business!"}</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
     const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }

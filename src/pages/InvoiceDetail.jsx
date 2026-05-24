@@ -174,28 +174,75 @@ export default function InvoiceDetail() {
     setSending(true);
     await saveMutation.mutateAsync(form);
     const settings = settingsData?.[0] || {};
-    const subject = `Invoice ${form.invoice_number} — Action Required`;
+    const subject = `Invoice ${form.invoice_number} — Payment Due`;
     const viewUrl = `${window.location.origin}/InvoiceViewer?id=${id}`;
+    const dueDate = form.due_date ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "30 days from invoice date";
     const html = `
-      <table style="font-family: Arial, sans-serif; width: 100%; max-width: 600px; margin: 0 auto;">
-        <tr><td style="padding: 20px;">
-          <img src="${LOGO_URL}" alt="${settings.company_name}" style="height: 50px; margin-bottom: 16px;" />
-          <h1 style="font-size: 24px; color: #1a1a1a; margin: 0 0 8px 0;">Invoice ${form.invoice_number}</h1>
-          <p style="color: #666; margin: 0 0 24px 0;">${settings.company_name || "Your Company"}</p>
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+            .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px 32px; text-align: center; border-bottom: 4px solid #e20404; }
+            .logo { height: 40px; margin-bottom: 20px; display: inline-block; }
+            .header-text { color: #ffffff; margin: 0; }
+            .header-title { font-size: 32px; font-weight: 700; margin: 12px 0 4px 0; }
+            .header-subtitle { font-size: 14px; color: #e20404; font-weight: 600; letter-spacing: 1px; margin: 0; }
+            .content { padding: 40px 32px; }
+            .greeting { font-size: 18px; font-weight: 600; color: #1a1a1a; margin: 0 0 16px 0; }
+            .description { font-size: 15px; color: #4a5568; line-height: 1.6; margin: 0 0 24px 0; }
+            .amount-box { background: #f8f9fa; border-left: 4px solid #e20404; padding: 20px; margin: 32px 0; border-radius: 4px; }
+            .amount-label { font-size: 12px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px 0; }
+            .amount-value { font-size: 32px; color: #1a1a1a; font-weight: 700; margin: 0; }
+            .due-date { color: #4a5568; font-size: 14px; margin-top: 12px; }
+            .cta-button { display: inline-block; background: #e20404; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 6px; font-weight: 600; font-size: 16px; margin: 32px 0; transition: background 0.2s; }
+            .cta-button:hover { background: #c00303; }
+            .cta-wrapper { text-align: center; }
+            .footer { background: #f8f9fa; padding: 32px; border-top: 1px solid #e2e8f0; text-align: center; color: #718096; font-size: 13px; line-height: 1.6; }
+            .company-info { color: #1a1a1a; font-weight: 600; margin-bottom: 12px; }
+            .divider { border-top: 1px solid #e2e8f0; margin: 24px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="${LOGO_URL}" alt="${settings.company_name}" class="logo" />
+              <h1 class="header-title">Invoice</h1>
+              <p class="header-subtitle">${form.invoice_number}</p>
+            </div>
 
-          <p style="font-size: 16px; margin: 0 0 8px 0;">Hi ${customer.first_name},</p>
-          <p style="color: #666; line-height: 1.6; margin: 0 0 8px 0;">Your invoice is ready. The total amount due is <strong>$${Number(form.total || 0).toFixed(2)}</strong>.</p>
-          <p style="color: #666; line-height: 1.6; margin: 0 0 24px 0;">Payment is due by ${form.due_date ? new Date(form.due_date).toLocaleDateString() : "30 days from invoice date"}.</p>
+            <div class="content">
+              <p class="greeting">Hi ${customer.first_name},</p>
+              <p class="description">Your invoice is ready and waiting for payment. Please review the details below and submit payment at your earliest convenience.</p>
 
-          <p style="margin: 24px 0; text-align: center;">
-            <a href="${viewUrl}" style="background: #e20404; color: white; padding: 12px 32px; border-radius: 4px; text-decoration: none; font-weight: bold; display: inline-block;">View & Pay Invoice</a>
-          </p>
+              <div class="amount-box">
+                <p class="amount-label">Amount Due</p>
+                <p class="amount-value">$${Number(form.total || 0).toFixed(2)}</p>
+                <p class="due-date">Due by <strong>${dueDate}</strong></p>
+              </div>
 
-          <p style="color: #999; font-size: 12px; margin: 24px 0 0 0; border-top: 1px solid #ddd; padding-top: 16px;">
-            ${settings.email_signature || "Thank you for your business!"}
-          </p>
-        </td></tr>
-      </table>
+              <p class="description">Click the button below to view the full invoice and make a payment online using your preferred method.</p>
+
+              <div class="cta-wrapper">
+                <a href="${viewUrl}" class="cta-button">View & Pay Invoice</a>
+              </div>
+
+              <p style="font-size: 13px; color: #718096; text-align: center; margin: 24px 0 0 0;">Can't click? Copy and paste this link: <br/><span style="color: #4a5568; word-break: break-all;">${viewUrl}</span></p>
+            </div>
+
+            <div class="footer">
+              <p class="company-info">${settings.company_name || "Elite Engine Development"}</p>
+              ${settings.company_phone ? `<p>${settings.company_phone}</p>` : ''}
+              ${settings.company_email ? `<p>${settings.company_email}</p>` : ''}
+              <div class="divider"></div>
+              <p>${settings.email_signature || "Thank you for your business!"}</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
     const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
