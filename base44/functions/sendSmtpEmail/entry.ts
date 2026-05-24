@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import nodemailer from 'npm:nodemailer@6.9.9';
 
 Deno.serve(async (req) => {
   try {
@@ -16,7 +15,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'to and subject are required' }, { status: 400 });
     }
 
-    // Fetch SMTP settings from AppSettings
+    // Fetch settings to get from name/email
     const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
     const settings = settingsList[0];
 
@@ -24,37 +23,49 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'App settings not configured' }, { status: 400 });
     }
 
-    const host = usePOSmtp ? settings.po_smtp_host : settings.smtp_host;
-    const port = usePOSmtp ? (settings.po_smtp_port || 587) : (settings.smtp_port || 587);
-    const username = usePOSmtp ? settings.po_smtp_username : settings.smtp_username;
-    const password = usePOSmtp ? settings.po_smtp_password : settings.smtp_password;
     const fromName = usePOSmtp ? settings.po_smtp_from_name : settings.smtp_from_name;
     const fromEmail = usePOSmtp ? settings.po_smtp_from_email : settings.smtp_from_email;
 
-    if (!host || !username || !password || !fromEmail) {
-      return Response.json({ error: `SMTP settings not fully configured for ${usePOSmtp ? 'purchase orders' : 'general email'}` }, { status: 400 });
+    if (!fromEmail) {
+      return Response.json({ error: `From email not configured in settings` }, { status: 400 });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: host,
-      port: port,
-      secure: port === 465,
-      auth: {
-        user: username,
-        pass: password,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+    const accountId = Deno.env.get('ZOHO_ACCOUNT_ID');
+    const apiToken = Deno.env.get('ZOHO_API_TOKEN');
 
-    await transporter.sendMail({
-      from: fromName ? `"${fromName}" <${fromEmail}>` : fromEmail,
-      to: to,
+    if (!accountId || !apiToken) {
+      return Response.json({ error: 'Zoho credentials not configured' }, { status: 500 });
+    }
+
+    const payload = {
+      fromAddress: fromEmail,
+      toAddress: to,
       subject: subject,
-      text: text || '',
-      html: html || undefined,
-    });
+      content: html || text || '',
+      mailFormat: html ? 'html' : 'plaintext',
+    };
+
+    if (fromName) {
+      payload.fromAddress = `${fromName} <${fromEmail}>`;
+    }
+
+    const response = await fetch(
+      `https://mail.zoho.com/api/accounts/${accountId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Zoho-oauthtoken ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.status?.code !== 200) {
+      return Response.json({ error: result.status?.description || 'Failed to send email', details: result }, { status: 500 });
+    }
 
     return Response.json({ success: true });
   } catch (error) {
