@@ -25,6 +25,10 @@
       "type": "string",
       "description": "Secure random token for public viewing without authentication"
     },
+    "stripe_checkout_url": {
+      "type": "string",
+      "description": "Pre-generated Stripe checkout URL for public deposit/payment"
+    },
     "status": {
       "type": "string",
       "enum": [

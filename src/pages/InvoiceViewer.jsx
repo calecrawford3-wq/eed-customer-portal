@@ -49,29 +49,11 @@ export default function InvoiceViewer() {
     }
 
     if (paymentMethod === "stripe") {
-      if (window.self !== window.top) {
-        toast.error("Stripe checkout only works from a published app. Please access this link directly.");
+      if (!inv.stripe_checkout_url) {
+        toast.error("Payment link not available. Please contact support.");
         return;
       }
-      setProcessingPayment(true);
-      try {
-        const response = await base44.functions.invoke("createCheckoutSession", {
-          type: "invoice",
-          publicAccessToken,
-          amount: inv.balance_due,
-          description: `Invoice ${inv.invoice_number} - Payment`,
-        });
-        if (response?.data?.session_id) {
-          window.location.href = `https://checkout.stripe.com/pay/${response.data.session_id}`;
-        } else {
-          toast.error("Failed to create payment session");
-        }
-      } catch (err) {
-        toast.error("Payment setup failed");
-        console.error(err);
-      } finally {
-        setProcessingPayment(false);
-      }
+      window.location.href = inv.stripe_checkout_url;
       return;
     }
 

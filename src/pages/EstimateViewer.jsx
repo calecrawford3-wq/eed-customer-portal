@@ -44,30 +44,11 @@ export default function EstimateViewer() {
     }
 
     if (paymentMethod === "stripe") {
-      if (window.self !== window.top) {
-        toast.error("Stripe checkout only works from a published app. Please access this link directly.");
+      if (!est.stripe_checkout_url) {
+        toast.error("Payment link not available. Please contact support.");
         return;
       }
-      setProcessingPayment(true);
-      try {
-        const amount = est.deposit_required ? depositRemaining : est.total;
-        const response = await base44.functions.invoke("createCheckoutSession", {
-          type: "estimate",
-          publicAccessToken,
-          amount,
-          description: `Estimate ${est.estimate_number} - ${est.deposit_required ? "Deposit" : "Full Payment"}`,
-        });
-        if (response?.data?.session_id) {
-          window.location.href = `https://checkout.stripe.com/pay/${response.data.session_id}`;
-        } else {
-          toast.error("Failed to create payment session");
-        }
-      } catch (err) {
-        toast.error("Payment setup failed");
-        console.error(err);
-      } finally {
-        setProcessingPayment(false);
-      }
+      window.location.href = est.stripe_checkout_url;
       return;
     }
 
