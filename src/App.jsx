@@ -8,6 +8,8 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import CustomerPortal from './pages/CustomerPortal';
 import RefreshRequests from './pages/RefreshRequests';
+import EstimateViewer from './pages/EstimateViewer';
+import InvoiceViewer from './pages/InvoiceViewer';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -72,6 +74,8 @@ const AuthenticatedApp = () => {
       ))}
       <Route path="/CustomerPortal" element={<CustomerPortal />} />
       <Route path="/RefreshRequests" element={<LayoutWrapper currentPageName="RefreshRequests"><RefreshRequests /></LayoutWrapper>} />
+      <Route path="/EstimateViewer" element={<EstimateViewer />} />
+      <Route path="/InvoiceViewer" element={<InvoiceViewer />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
