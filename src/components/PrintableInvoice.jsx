@@ -1,0 +1,110 @@
+import React from "react";
+
+const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+
+export default function PrintableInvoice({ invoice, customer, settings }) {
+  if (!invoice || !customer) return null;
+
+  const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";
+  const dueDate = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "N/A";
+
+  const companyAddress = [settings?.company_address, settings?.company_city ? `${settings.company_city}, ${settings.company_state} ${settings.company_zip}` : null, settings?.company_phone, settings?.company_email].filter(Boolean).join(" | ");
+  const customerAddress = [customer.address_line1, customer.address_line2, customer.city ? `${customer.city}, ${customer.state} ${customer.zip}` : null, customer.phone, customer.email].filter(Boolean).join(" | ");
+
+  return (
+    <div style={{ fontFamily: "Arial, sans-serif", padding: "24px", maxWidth: "800px", margin: "0 auto", color: "#333" }}>
+      <div style={{ borderBottom: "3px solid #e20404", paddingBottom: "16px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div>
+          <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "60px", marginBottom: "8px" }} />
+          <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>INVOICE</h1>
+          <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>{settings?.company_name} | {companyAddress}</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontSize: "18px", fontWeight: "bold", color: "#e20404", marginBottom: "4px" }}>#{invoice.invoice_number}</p>
+          <p style={{ fontSize: "13px", color: "#666" }}>Date: {invoiceDate}</p>
+          <p style={{ fontSize: "13px", color: "#666" }}>Due: {dueDate}</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
+        <div>
+          <h2 style={{ fontSize: "14px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "8px" }}>Bill To</h2>
+          <p style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>{customer.first_name} {customer.last_name}</p>
+          {customer.company_name && <p style={{ fontSize: "14px", color: "#666", marginBottom: "4px" }}>{customer.company_name}</p>}
+          <p style={{ fontSize: "14px", color: "#666" }}>{customerAddress}</p>
+        </div>
+        <div style={{ backgroundColor: "#f8f8f8", padding: "16px", borderRadius: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span>Subtotal:</span>
+            <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
+          </div>
+          {Number(invoice.tax_amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span>Tax ({invoice.tax_rate}%):</span>
+              <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
+            </div>
+          )}
+          <div style={{ borderTop: "2px solid #e20404", paddingTop: "8px", marginTop: "8px", display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold" }}>
+            <span>TOTAL DUE:</span>
+            <span>${Number(invoice.total || 0).toFixed(2)}</span>
+          </div>
+          {Number(invoice.amount_paid) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#22c55e" }}>
+              <span>Paid:</span>
+              <span>-${Number(invoice.amount_paid).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(invoice.balance_due) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#e20404", borderTop: "1px solid #ddd", paddingTop: "8px" }}>
+              <span style={{ fontWeight: "bold" }}>BALANCE:</span>
+              <span style={{ fontWeight: "bold" }}>${Number(invoice.balance_due).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: "24px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f8f8f8" }}>
+              <th style={{ textAlign: "left", padding: "8px", borderBottom: "2px solid #e20404" }}>Description</th>
+              <th style={{ textAlign: "center", padding: "8px", borderBottom: "2px solid #e20404", width: "60px" }}>Qty</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "2px solid #e20404", width: "100px" }}>Unit Price</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "2px solid #e20404", width: "100px" }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(invoice.line_items || []).map((item, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.item_name} {item.part_number && `(${item.part_number})`}</td>
+                <td style={{ textAlign: "center", padding: "8px", borderBottom: "1px solid #eee" }}>{item.quantity}</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.unit_price).toFixed(2)}</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.total).toFixed(2)}</td>
+              </tr>
+            ))}
+            {(invoice.labor_items || []).map((item, idx) => (
+              <tr key={`labor-${idx}`}>
+                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.name} {item.description && `(${item.description})`}</td>
+                <td style={{ textAlign: "center", padding: "8px", borderBottom: "1px solid #eee" }}>1</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {invoice.notes && (
+        <div style={{ marginBottom: "24px", backgroundColor: "#fafafa", padding: "12px", borderRadius: "4px" }}>
+          <h3 style={{ fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "6px" }}>Notes</h3>
+          <p style={{ fontSize: "12px", lineHeight: "1.5", whiteSpace: "pre-wrap", margin: 0 }}>{invoice.notes}</p>
+        </div>
+      )}
+
+      <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #ddd", textAlign: "center", fontSize: "11px", color: "#999" }}>
+        <p>Thank you for your business!</p>
+        <p>{settings?.company_name} | {settings?.company_website}</p>
+      </div>
+    </div>
+  );
+}

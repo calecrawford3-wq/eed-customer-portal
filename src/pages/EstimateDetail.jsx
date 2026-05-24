@@ -22,6 +22,7 @@ import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import CannedJobPicker from "@/components/estimates/CannedJobPicker";
+import PrintableEstimate from "@/components/PrintableEstimate";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -67,6 +68,7 @@ export default function EstimateDetail() {
   const [cannedJobOpen, setCannedJobOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState(null);
   const [selectedSpecPlatform, setSelectedSpecPlatform] = useState(null);
+  const [printMode, setPrintMode] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -340,28 +342,30 @@ export default function EstimateDetail() {
     if (!customer?.email) { toast.error("Customer has no email address"); return; }
     setSending(true);
     await saveMutation.mutateAsync(form);
-    const partsText = (form.line_items || []).filter(l => l.item_name).map(l =>
-      `  [${l.part_number}] ${l.item_name} | Qty: ${l.quantity} | Price: $${Number(l.unit_price).toFixed(2)} | Total: $${Number(l.total).toFixed(2)}`
-    ).join("\n");
-    const laborText = (form.labor_items || []).filter(l => l.name).map(l =>
-      `  ${l.name}${l.description ? ` - ${l.description}` : ""} | $${Number(l.price).toFixed(2)}`
-    ).join("\n");
     const settings = settingsData?.[0] || {};
-    const depositLine = form.deposit_required ? `\nDeposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}\n` : "";
-    const subject = `Estimate ${form.estimate_number} from ${settings.company_name || "Elite Engine Development"}`;
+    const subject = `Estimate ${form.estimate_number} — Action Required`;
+    const viewUrl = `${window.location.origin}/EstimateViewer?id=${id}`;
+    const depositText = form.deposit_required ? `A deposit of $${Number(form.deposit_amount || 0).toFixed(2)} is required to proceed.` : `The full amount of $${Number(form.total || 0).toFixed(2)} is due upon approval.`;
     const html = `
-      <p>Dear ${customer.first_name} ${customer.last_name},</p>
-      <p>Please find your estimate below.</p>
-      <h3>Estimate #${form.estimate_number}</h3>
-      <hr/>
-      ${partsText ? `<p><strong>PARTS:</strong><br/><pre>${partsText}</pre></p>` : ""}
-      ${laborText ? `<p><strong>LABOR:</strong><br/><pre>${laborText}</pre></p>` : ""}
-      <hr/>
-      <p>Subtotal: $${Number(form.subtotal || 0).toFixed(2)}<br/>
-      ${Number(form.tax_rate) > 0 ? `Tax (${form.tax_rate}%): $${Number(form.tax_amount || 0).toFixed(2)}<br/>` : ""}
-      <strong>Total: $${Number(form.total || 0).toFixed(2)}</strong>${form.deposit_required ? `<br/>Deposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}` : ""}</p>
-      ${form.notes ? `<p>Notes: ${form.notes}</p>` : ""}
-      <p>${(settings.email_signature || "Elite Engine Development").replace(/\n/g, "<br/>")}</p>
+      <table style="font-family: Arial, sans-serif; width: 100%; max-width: 600px; margin: 0 auto;">
+        <tr><td style="padding: 20px;">
+          <img src="${LOGO_URL}" alt="${settings.company_name}" style="height: 50px; margin-bottom: 16px;" />
+          <h1 style="font-size: 24px; color: #1a1a1a; margin: 0 0 8px 0;">Estimate ${form.estimate_number}</h1>
+          <p style="color: #666; margin: 0 0 24px 0;">${settings.company_name || "Your Company"}</p>
+          
+          <p style="font-size: 16px; margin: 0 0 8px 0;">Hi ${customer.first_name},</p>
+          <p style="color: #666; line-height: 1.6; margin: 0 0 8px 0;">We've prepared an estimate for your review. The total is <strong>$${Number(form.total || 0).toFixed(2)}</strong>.</p>
+          <p style="color: #666; line-height: 1.6; margin: 0 0 24px 0;">${depositText}</p>
+          
+          <p style="margin: 24px 0; text-align: center;">
+            <a href="${viewUrl}" style="background: #e20404; color: white; padding: 12px 32px; border-radius: 4px; text-decoration: none; font-weight: bold; display: inline-block;">Review & Accept Estimate</a>
+          </p>
+          
+          <p style="color: #999; font-size: 12px; margin: 24px 0 0 0; border-top: 1px solid #ddd; padding-top: 16px;">
+            ${settings.email_signature || "Thank you for considering our services!"}
+          </p>
+        </td></tr>
+      </table>
     `;
     const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
@@ -372,7 +376,18 @@ export default function EstimateDetail() {
     toast.success(`Estimate sent to ${customer.email}`);
   };
 
+  const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+
   const customer = customers.find(c => c.id === form.customer_id);
+
+  if (printMode) {
+    return (
+      <div className="p-4">
+        <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
+        <PrintableEstimate estimate={form} customer={customer} settings={settingsData?.[0]} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -427,7 +442,7 @@ export default function EstimateDetail() {
         <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
           <Package className="w-4 h-4 mr-1" /> Generate POs
         </Button>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}>
           <Printer className="w-4 h-4 mr-1" /> Print
         </Button>
         <Button variant="outline" size="sm" onClick={sendEstimate} disabled={sending || !form.customer_id}>
