@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +13,7 @@ import PrintableEstimate from "@/components/PrintableEstimate";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 export default function EstimateViewer() {
-  const params = new URLSearchParams(window.location.search);
-  const publicAccessToken = params.get("token");
+  const { token: publicAccessToken } = useParams();
   const [paymentMethod, setPaymentMethod] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
@@ -53,7 +53,7 @@ export default function EstimateViewer() {
         const amount = est.deposit_required ? depositRemaining : est.total;
         const response = await base44.functions.invoke("createCheckoutSession", {
           type: "estimate",
-          documentId: est.id,
+          publicAccessToken,
           amount,
           description: `Estimate ${est.estimate_number} - ${est.deposit_required ? "Deposit" : "Full Payment"}`,
         });

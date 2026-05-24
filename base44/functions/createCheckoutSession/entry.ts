@@ -10,16 +10,37 @@ Deno.serve(async (req) => {
     }
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const { type, publicAccessToken, amount, description } = await req.json();
 
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (!type || !publicAccessToken || !amount || amount <= 0) {
+      return Response.json({ error: "Missing or invalid parameters" }, { status: 400 });
     }
 
-    const { type, documentId, amount, description } = await req.json();
+    // Fetch document using service role to validate token and get customer info
+    let document, customer;
+    
+    if (type === "estimate") {
+      const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+      if (!estimates || estimates.length === 0) {
+        return Response.json({ error: "Estimate not found" }, { status: 404 });
+      }
+      document = estimates[0];
+      const customers = await base44.asServiceRole.entities.Customer.filter({ id: document.customer_id });
+      customer = customers[0];
+    } else if (type === "invoice") {
+      const invoices = await base44.asServiceRole.entities.Invoice.filter({ public_access_token: publicAccessToken });
+      if (!invoices || invoices.length === 0) {
+        return Response.json({ error: "Invoice not found" }, { status: 404 });
+      }
+      document = invoices[0];
+      const customers = await base44.asServiceRole.entities.Customer.filter({ id: document.customer_id });
+      customer = customers[0];
+    } else {
+      return Response.json({ error: "Invalid document type" }, { status: 400 });
+    }
 
-    if (!type || !documentId || !amount || amount <= 0) {
-      return Response.json({ error: "Missing or invalid parameters" }, { status: 400 });
+    if (!document || !customer) {
+      return Response.json({ error: "Document or customer not found" }, { status: 404 });
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
@@ -28,8 +49,8 @@ Deno.serve(async (req) => {
     const metadata = {
       base44_app_id: appId,
       document_type: type,
-      document_id: documentId,
-      user_email: user.email,
+      document_id: document.id,
+      customer_email: customer.email,
     };
 
     const session = await stripe.checkout.sessions.create({
@@ -48,8 +69,8 @@ Deno.serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/${type === "estimate" ? "EstimateViewer" : "InvoiceViewer"}?id=${documentId}&payment=success`,
-      cancel_url: `${origin}/${type === "estimate" ? "EstimateViewer" : "InvoiceViewer"}?id=${documentId}`,
+      success_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}?payment=success`,
+      cancel_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}`,
       metadata,
     });
 

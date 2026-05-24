@@ -85,10 +85,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
+        {/* Public viewer routes - accessible without auth, completely outside AuthProvider */}
         <Routes>
-          {/* Public viewer routes - accessible without auth, completely outside AuthProvider */}
-          <Route path="/EstimateViewer" element={<EstimateViewer />} />
-          <Route path="/InvoiceViewer" element={<InvoiceViewer />} />
+          <Route path="/public/estimate/:token" element={<EstimateViewer />} />
+          <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
         </Routes>
         
         {/* Protected admin routes with AuthProvider */}
