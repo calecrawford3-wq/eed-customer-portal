@@ -80,31 +80,35 @@ const AuthenticatedApp = () => {
 };
 
 
-const PublicRoutes = () => (
-  <Routes>
-    <Route path="/public/estimate/:token" element={<EstimateViewer />} />
-    <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
-    <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
-  </Routes>
-);
-
-const ProtectedRoutes = () => (
-  <AuthProvider>
-    <NavigationTracker />
-    <Routes>
-      <Route path="*" element={<AuthenticatedApp />} />
-    </Routes>
-  </AuthProvider>
-);
-
 function App() {
+  // Check public route FIRST, before any auth infrastructure
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';
 
+  // Render public routes in complete isolation—no auth, no Router wrapping
+  if (isPublicRoute) {
+    return (
+      <QueryClientProvider client={queryClientInstance}>
+        <Routes>
+          <Route path="/public/estimate/:token" element={<EstimateViewer />} />
+          <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
+          <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
+        </Routes>
+        <Toaster />
+      </QueryClientProvider>
+    );
+  }
+
+  // All protected routes go through auth
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        {isPublicRoute ? <PublicRoutes /> : <ProtectedRoutes />}
+        <AuthProvider>
+          <NavigationTracker />
+          <Routes>
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
+        </AuthProvider>
       </Router>
       <Toaster />
     </QueryClientProvider>
