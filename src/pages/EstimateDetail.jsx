@@ -364,13 +364,26 @@ export default function EstimateDetail() {
       }
       
       // Update estimate with public access token and stripe checkout URL
-      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
-      
       await base44.entities.Estimate.update(id || "", {
         public_access_token: publicAccessToken,
         stripe_checkout_url: stripeUrlRes.data.checkout_url,
         status: "sent"
       });
+
+      // Sync snapshot to public app before sending email
+      const syncRes = await base44.functions.invoke("syncEstimateSnapshot", {
+        estimateId: id,
+        publicAccessToken,
+      });
+
+      if (syncRes?.data?.error) {
+        console.error("Snapshot sync failed:", syncRes.data.error);
+        toast.error("Failed to sync estimate to public viewer");
+        setSending(false);
+        return;
+      }
+
+      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
       
       const settings = settingsData?.[0] || {};
       const subject = `Your Estimate is Ready — ${form.estimate_number}`;
