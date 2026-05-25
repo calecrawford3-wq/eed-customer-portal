@@ -384,13 +384,14 @@ export default function EstimateDetail() {
         publicAccessToken,
       });
 
+      let snapshotError = null;
       if (syncRes?.data?.error) {
-        console.error(`[sendEstimate] Snapshot sync failed: ${syncRes.data.error}`);
-        toast.error(`Public snapshot failed: ${syncRes.data.error}`);
-        setSending(false);
-        return;
+        snapshotError = syncRes.data.error;
+        console.error(`[sendEstimate] Snapshot sync failed: ${snapshotError}`, syncRes.data.details);
+        toast.warning(`Snapshot sync warning: ${snapshotError} - Continuing with email send...`);
+      } else {
+        console.log(`[sendEstimate] Snapshot sync successful`);
       }
-      console.log(`[sendEstimate] Snapshot sync successful`);
 
       const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
       console.log(`[sendEstimate] Public viewer URL: ${viewUrl}`);

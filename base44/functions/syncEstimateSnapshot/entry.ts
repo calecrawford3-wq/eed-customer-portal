@@ -61,6 +61,16 @@ Deno.serve(async (req) => {
       company_address: appSettings.company_address,
     };
 
+    // Validate payload
+    const hasPublicToken = !!snapshot.public_access_token;
+    const hasEstimateNumber = !!snapshot.estimate_number;
+    const hasTotal = snapshot.total !== undefined && snapshot.total !== null;
+    console.log(`[syncEstimateSnapshot] Payload validation - public_access_token: ${hasPublicToken}, estimate_number: ${hasEstimateNumber}, total: ${hasTotal}`);
+
+    // Check LinkApps environment variable
+    const linkAppsSecret = Deno.env.get("LinkApps");
+    console.log(`[syncEstimateSnapshot] LinkApps env var exists: ${!!linkAppsSecret}`);
+
     console.log(`[syncEstimateSnapshot] Snapshot payload built, posting to public app...`);
 
     // Call public app's syncEstimateSnapshot function
@@ -70,7 +80,13 @@ Deno.serve(async (req) => {
     if (!syncSecret) {
       console.error(`[syncEstimateSnapshot] SYNC_SECRET not set in environment`);
       return Response.json({ 
-        error: `SYNC_SECRET not configured` 
+        error: `SYNC_SECRET not configured`,
+        details: {
+          destination_url: publicAppUrl,
+          linkApps_exists: !!linkAppsSecret,
+          payload_has_public_token: hasPublicToken,
+          payload_has_estimate_number: hasEstimateNumber,
+        }
       }, { status: 500 });
     }
 
@@ -92,14 +108,30 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       console.error(`[syncEstimateSnapshot] Public app sync failed with status ${response.status}: ${responseBody}`);
       return Response.json({ 
-        error: `Public app sync failed: ${response.status} - ${responseBody}` 
+        error: `Public app sync failed`,
+        details: {
+          destination_url: publicAppUrl,
+          response_status: response.status,
+          response_body: responseBody,
+          linkApps_exists: !!linkAppsSecret,
+          payload_has_public_token: hasPublicToken,
+          payload_has_estimate_number: hasEstimateNumber,
+        }
       }, { status: 500 });
     }
 
     console.log(`[syncEstimateSnapshot] Snapshot synced successfully`);
     return Response.json({ success: true });
   } catch (error) {
-    console.error(`[syncEstimateSnapshot] Error: ${error.message}`, error);
-    return Response.json({ error: `Snapshot sync error: ${error.message}` }, { status: 500 });
+    const linkAppsSecret = Deno.env.get("LinkApps");
+    console.error(`[syncEstimateSnapshot] Caught error: ${error.message}`, error);
+    return Response.json({ 
+      error: `Snapshot sync error: ${error.message}`,
+      details: {
+        destination_url: "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot",
+        linkApps_exists: !!linkAppsSecret,
+        error_type: error.constructor?.name,
+      }
+    }, { status: 500 });
   }
 });
