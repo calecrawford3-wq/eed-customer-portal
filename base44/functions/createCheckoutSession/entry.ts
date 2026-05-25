@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
-    const origin = req.headers.get("origin") || "http://localhost:5173";
+    const PUBLIC_VIEWER_URL = "https://elite-viewer.base44.app";
 
     const metadata = {
       base44_app_id: appId,
@@ -69,8 +69,8 @@ Deno.serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}?payment=success`,
-      cancel_url: `${origin}/public/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}`,
+      success_url: `${PUBLIC_VIEWER_URL}/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}?payment=success`,
+      cancel_url: `${PUBLIC_VIEWER_URL}/${type === "estimate" ? "estimate" : "invoice"}/${publicAccessToken}`,
       metadata,
     });
 
