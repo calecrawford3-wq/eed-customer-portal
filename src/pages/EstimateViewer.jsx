@@ -59,48 +59,39 @@ export default function EstimateViewer() {
     setApprovingError(null);
     setApprovingSuccess(false);
     try {
+      console.log("Attempting to approve estimate with token:", token);
       const response = await base44.functions.invoke("approvePublicEstimate", {
         publicAccessToken: token,
       });
+      console.log("Approve response:", response);
+      
       if (response?.data?.success) {
+        console.log("Approval successful");
         setApprovingSuccess(true);
         setData(prev => ({
           ...prev,
           estimate: { ...prev.estimate, status: "approved" }
         }));
       } else {
-        throw new Error(response?.data?.error || "Failed to approve estimate");
+        const errorMsg = response?.data?.error || "Failed to approve estimate";
+        console.error("Approval failed:", errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (err) {
-      setApprovingError(err?.message || "Failed to approve estimate");
+      const errorMsg = err?.message || err?.toString() || "Failed to approve estimate";
+      console.error("Approve error details:", { message: errorMsg, error: err, status: err?.response?.status });
+      setApprovingError(errorMsg);
     } finally {
       setApproving(false);
     }
   };
 
-  const handlePayNow = async () => {
-    if (!data?.estimate?.total || !data?.customer?.email) {
-      setPayingError("Missing payment information");
+  const handlePayNow = () => {
+    if (!data?.estimate?.stripe_checkout_url) {
+      setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
       return;
     }
-
-    setPayingError(null);
-    try {
-      const response = await base44.functions.invoke("generatePublicCheckoutUrl", {
-        publicAccessToken: token,
-        amount: data.estimate.total,
-        description: `Estimate ${data.estimate.estimate_number}`,
-        customerEmail: data.customer.email,
-      });
-
-      if (response?.data?.checkout_url) {
-        window.location.href = response.data.checkout_url;
-      } else {
-        setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
-      }
-    } catch (err) {
-      setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
-    }
+    window.location.href = data.estimate.stripe_checkout_url;
   };
 
   return (
