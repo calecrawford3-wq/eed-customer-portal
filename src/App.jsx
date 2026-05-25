@@ -87,6 +87,8 @@ function App() {
   console.log("=== APP LOADED ===");
   console.log("BUILD_VERSION:", BUILD_VERSION);
   console.log("PATHNAME:", window.location.pathname);
+  console.log("SEARCH:", window.location.search);
+  console.log("HASH:", window.location.hash);
   console.log("TIMESTAMP:", new Date().toISOString());
   
   // Check public route FIRST, before any auth infrastructure
@@ -94,10 +96,14 @@ function App() {
   const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';
 
   console.log("IS_PUBLIC_ROUTE:", isPublicRoute);
+  console.log("PATHNAME CHECK:", { pathname, startsWithPublic: pathname.startsWith('/public/'), equalsPublicTest: pathname === '/public-test' });
 
   // Render public routes in complete isolation—no auth
   if (isPublicRoute) {
-    console.log("✓ SERVING PUBLIC ROUTE - NO AUTH INFRASTRUCTURE");
+    console.log("✓ ✓ ✓ ENTERING PUBLIC ROUTE HANDLER - NO AUTH INFRASTRUCTURE");
+    console.log("Rendering public route for pathname:", pathname);
+    console.log("EstimateViewer imported:", typeof EstimateViewer);
+    console.log("InvoiceViewer imported:", typeof InvoiceViewer);
     return (
       <QueryClientProvider client={queryClientInstance}>
         <Router>
@@ -111,6 +117,8 @@ function App() {
       </QueryClientProvider>
     );
   }
+  
+  console.log("NOT a public route - proceeding to protected app with auth provider");
 
   // All protected routes go through auth
   return (
