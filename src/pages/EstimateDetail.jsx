@@ -377,20 +377,38 @@ export default function EstimateDetail() {
         status: "sent"
       });
 
-      // Sync snapshot to public app before sending email
+      // Sync snapshot to public app (non-blocking for testing)
       console.log(`[sendEstimate] Syncing estimate snapshot to public app...`);
-      const syncRes = await base44.functions.invoke("syncEstimateSnapshot", {
-        estimateId: id,
-        publicAccessToken,
-      });
-
       let snapshotError = null;
-      if (syncRes?.data?.error) {
-        snapshotError = syncRes.data.error;
-        console.error(`[sendEstimate] Snapshot sync failed: ${snapshotError}`, syncRes.data.details);
-        toast.warning(`Snapshot sync warning: ${snapshotError} - Continuing with email send...`);
-      } else {
-        console.log(`[sendEstimate] Snapshot sync successful`);
+      try {
+        const syncRes = await base44.functions.invoke("syncEstimateSnapshot", {
+          estimateId: id,
+          publicAccessToken,
+        });
+
+        if (syncRes?.data?.error) {
+          snapshotError = syncRes.data.error;
+          console.error("Snapshot sync failed full response:", syncRes.data);
+          console.error(`[sendEstimate] Snapshot sync error details:`, {
+            error: syncRes.data.error,
+            details: syncRes.data.details,
+            response_data: syncRes?.data,
+            response_status: syncRes?.status,
+          });
+          toast.error(`Snapshot sync failed: ${snapshotError} - Continuing with email anyway...`);
+        } else {
+          console.log(`[sendEstimate] Snapshot sync successful`);
+        }
+      } catch (syncError) {
+        console.error("Snapshot sync failed full response:", syncError.response?.data || syncError);
+        console.error(`[sendEstimate] Snapshot sync caught error:`, {
+          message: syncError.message,
+          response_data: syncError.response?.data,
+          response_status: syncError.response?.status,
+          full_error: syncError,
+        });
+        snapshotError = syncError.message;
+        toast.error(`Snapshot sync error: ${syncError.message} - Continuing with email anyway...`);
       }
 
       const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
