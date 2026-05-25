@@ -69,20 +69,22 @@ Deno.serve(async (req) => {
 
     // Check LinkApps environment variable
     const linkAppsSecret = Deno.env.get("LinkApps");
-    console.log(`[syncEstimateSnapshot] LinkApps env var exists: ${!!linkAppsSecret}`);
-
-    console.log(`[syncEstimateSnapshot] Snapshot payload built, posting to public app...`);
-
-    // Call public app's syncEstimateSnapshot function
-    const publicAppUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
     const syncSecret = Deno.env.get("SYNC_SECRET");
-    
+    const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
+
+    // Log all values directly without collapsed objects
+    console.log("LinkApps exists:", !!linkAppsSecret);
+    console.log("Destination URL:", destinationUrl);
+    console.log("Payload token:", snapshot?.public_access_token);
+    console.log("Payload keys:", Object.keys(snapshot || {}));
+    console.log("SYNC_SECRET exists:", !!syncSecret);
+
     if (!syncSecret) {
-      console.error(`[syncEstimateSnapshot] SYNC_SECRET not set in environment`);
+      console.error("SYNC_SECRET not set - cannot proceed with sync");
       return Response.json({ 
         error: `SYNC_SECRET not configured`,
         details: {
-          destination_url: publicAppUrl,
+          destination_url: destinationUrl,
           linkApps_exists: !!linkAppsSecret,
           payload_has_public_token: hasPublicToken,
           payload_has_estimate_number: hasEstimateNumber,
@@ -90,47 +92,58 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    console.log(`[syncEstimateSnapshot] Posting to: ${publicAppUrl}`);
+    try {
+      console.log("Starting fetch to:", destinationUrl);
+      const response = await fetch(destinationUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-sync-secret": syncSecret,
+        },
+        body: JSON.stringify(snapshot),
+      });
 
-    const response = await fetch(publicAppUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-sync-secret": syncSecret,
-      },
-      body: JSON.stringify(snapshot),
-    });
+      const responseBody = await response.text();
+      
+      console.log("Sync status:", response.status);
+      console.log("Sync response body:", responseBody);
 
-    const responseBody = await response.text();
-    console.log(`[syncEstimateSnapshot] Public app response status: ${response.status}`);
-    console.log(`[syncEstimateSnapshot] Public app response body: ${responseBody}`);
+      if (!response.ok) {
+        console.error("SYNC ERROR STATUS:", response.status);
+        console.error("SYNC ERROR BODY:", responseBody);
+        return Response.json({ 
+          error: `Public app sync failed`,
+          details: {
+            destination_url: destinationUrl,
+            response_status: response.status,
+            response_body: responseBody,
+            linkApps_exists: !!linkAppsSecret,
+            payload_has_public_token: hasPublicToken,
+            payload_has_estimate_number: hasEstimateNumber,
+          }
+        }, { status: 500 });
+      }
 
-    if (!response.ok) {
-      console.error(`[syncEstimateSnapshot] Public app sync failed with status ${response.status}: ${responseBody}`);
-      return Response.json({ 
-        error: `Public app sync failed`,
-        details: {
-          destination_url: publicAppUrl,
-          response_status: response.status,
-          response_body: responseBody,
-          linkApps_exists: !!linkAppsSecret,
-          payload_has_public_token: hasPublicToken,
-          payload_has_estimate_number: hasEstimateNumber,
-        }
-      }, { status: 500 });
+      console.log("Snapshot synced successfully");
+      return Response.json({ success: true });
+    } catch (fetchError) {
+      console.error("SYNC ERROR MESSAGE:", fetchError.message);
+      console.error("SYNC ERROR TYPE:", fetchError.constructor?.name);
+      console.error("Full error:", fetchError);
+      throw fetchError;
     }
-
-    console.log(`[syncEstimateSnapshot] Snapshot synced successfully`);
-    return Response.json({ success: true });
   } catch (error) {
     const linkAppsSecret = Deno.env.get("LinkApps");
-    console.error(`[syncEstimateSnapshot] Caught error: ${error.message}`, error);
+    console.error("CAUGHT ERROR MESSAGE:", error.message);
+    console.error("CAUGHT ERROR TYPE:", error.constructor?.name);
+    console.error("Full caught error:", error);
     return Response.json({ 
       error: `Snapshot sync error: ${error.message}`,
       details: {
         destination_url: "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot",
         linkApps_exists: !!linkAppsSecret,
         error_type: error.constructor?.name,
+        error_message: error.message,
       }
     }, { status: 500 });
   }
