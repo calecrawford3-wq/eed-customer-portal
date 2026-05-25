@@ -81,6 +81,8 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  console.log("APP LOADED PUBLIC FIX VERSION 3", window.location.pathname);
+  
   // Check public route FIRST, before any auth infrastructure
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';

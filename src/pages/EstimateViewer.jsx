@@ -96,6 +96,11 @@ export default function EstimateViewer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* Version indicator */}
+      <div className="bg-emerald-100 border-b border-emerald-300 px-6 py-2">
+        <p className="text-xs text-emerald-700 font-semibold">PUBLIC LIVE VERSION 3</p>
+      </div>
+      
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-6 py-6">
