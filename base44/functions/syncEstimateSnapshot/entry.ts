@@ -15,6 +15,8 @@ Deno.serve(async (req) => {
 
     const { estimateId, publicAccessToken } = await req.json();
 
+    console.log(`[syncEstimateSnapshot] Starting sync for estimate ${estimateId} with token ${publicAccessToken}`);
+
     if (!estimateId || !publicAccessToken) {
       return Response.json({ error: "Missing estimateId or publicAccessToken" }, { status: 400 });
     }
@@ -22,18 +24,22 @@ Deno.serve(async (req) => {
     // Fetch estimate and related data
     const estimates = await base44.entities.Estimate.filter({ id: estimateId });
     if (!estimates || estimates.length === 0) {
+      console.error(`[syncEstimateSnapshot] Estimate not found: ${estimateId}`);
       return Response.json({ error: "Estimate not found" }, { status: 404 });
     }
 
     const estimate = estimates[0];
+    console.log(`[syncEstimateSnapshot] Fetched estimate: ${estimate.estimate_number}`);
 
     // Fetch customer
     const customers = await base44.entities.Customer.filter({ id: estimate.customer_id });
     const customer = customers?.[0];
+    console.log(`[syncEstimateSnapshot] Fetched customer: ${customer?.first_name} ${customer?.last_name}`);
 
     // Fetch app settings
     const settings = await base44.entities.AppSettings.filter({ key: "global" });
     const appSettings = settings?.[0] || {};
+    console.log(`[syncEstimateSnapshot] Fetched app settings`);
 
     // Build snapshot payload
     const snapshot = {
@@ -55,6 +61,8 @@ Deno.serve(async (req) => {
       company_address: appSettings.company_address,
     };
 
+    console.log(`[syncEstimateSnapshot] Snapshot payload built, posting to public app...`);
+
     // Post to public app API
     const response = await fetch("https://elite-viewer.base44.app/api/sync-estimate-snapshot", {
       method: "POST",
@@ -64,15 +72,20 @@ Deno.serve(async (req) => {
       body: JSON.stringify(snapshot),
     });
 
+    console.log(`[syncEstimateSnapshot] Public app response status: ${response.status}`);
+
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("Public app sync failed:", errorData);
-      return Response.json({ error: "Failed to sync snapshot to public app" }, { status: 500 });
+      console.error(`[syncEstimateSnapshot] Public app sync failed with status ${response.status}: ${errorData}`);
+      return Response.json({ 
+        error: `Public app sync failed: ${response.status} - ${errorData}` 
+      }, { status: 500 });
     }
 
+    console.log(`[syncEstimateSnapshot] Snapshot synced successfully`);
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Snapshot sync error:", error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error(`[syncEstimateSnapshot] Error: ${error.message}`, error);
+    return Response.json({ error: `Snapshot sync error: ${error.message}` }, { status: 500 });
   }
 });

@@ -342,11 +342,16 @@ export default function EstimateDetail() {
     if (!customer?.email) { toast.error("Customer has no email address"); return; }
     setSending(true);
     try {
+      console.log(`[sendEstimate] Starting send for estimate ${form.estimate_number}`);
       await saveMutation.mutateAsync(form);
+      
+      // Generate public access token
+      const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      console.log(`[sendEstimate] Generated public_access_token: ${publicAccessToken}`);
       
       // Generate Stripe checkout URL
       const amount = form.deposit_required ? form.deposit_amount : form.total;
-      const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      console.log(`[sendEstimate] Generating Stripe checkout URL for amount: $${amount}`);
       const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
         type: "estimate",
         documentId: id,
@@ -357,13 +362,15 @@ export default function EstimateDetail() {
       });
       
       if (!stripeUrlRes?.data?.checkout_url) {
-        console.error("Stripe checkout URL generation failed:", stripeUrlRes);
+        console.error("[sendEstimate] Stripe checkout URL generation failed:", stripeUrlRes);
         toast.error("Failed to generate payment link");
         setSending(false);
         return;
       }
+      console.log(`[sendEstimate] Stripe checkout URL generated successfully`);
       
       // Update estimate with public access token and stripe checkout URL
+      console.log(`[sendEstimate] Updating estimate with public_access_token and stripe_checkout_url`);
       await base44.entities.Estimate.update(id || "", {
         public_access_token: publicAccessToken,
         stripe_checkout_url: stripeUrlRes.data.checkout_url,
@@ -371,22 +378,26 @@ export default function EstimateDetail() {
       });
 
       // Sync snapshot to public app before sending email
+      console.log(`[sendEstimate] Syncing estimate snapshot to public app...`);
       const syncRes = await base44.functions.invoke("syncEstimateSnapshot", {
         estimateId: id,
         publicAccessToken,
       });
 
       if (syncRes?.data?.error) {
-        console.error("Snapshot sync failed:", syncRes.data.error);
-        toast.error("Failed to sync estimate to public viewer");
+        console.error(`[sendEstimate] Snapshot sync failed: ${syncRes.data.error}`);
+        toast.error(`Public snapshot failed: ${syncRes.data.error}`);
         setSending(false);
         return;
       }
+      console.log(`[sendEstimate] Snapshot sync successful`);
 
       const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
+      console.log(`[sendEstimate] Public viewer URL: ${viewUrl}`);
       
       const settings = settingsData?.[0] || {};
       const subject = `Your Estimate is Ready — ${form.estimate_number}`;
+      console.log(`[sendEstimate] Building email - To: ${customer.email}, Subject: ${subject}, ViewUrl: ${viewUrl}`);
       const depositText = form.deposit_required 
         ? `<p style="color: #e20404; font-weight: 600; margin: 0;">Deposit Required: $${Number(form.deposit_amount || 0).toFixed(2)}</p>`
         : '';
@@ -458,8 +469,15 @@ export default function EstimateDetail() {
         </html>
       `;
       
+      console.log(`[sendEstimate] Sending SMTP email to ${customer.email}...`);
       const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
-      if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
+      if (result?.data?.error) { 
+        console.error(`[sendEstimate] SMTP send failed:`, result.data.error);
+        toast.error("Failed to send email"); 
+        setSending(false); 
+        return; 
+      }
+      console.log(`[sendEstimate] Email sent successfully to ${customer.email}`);
       
       qc.invalidateQueries({ queryKey: ["estimates"] });
       setForm(f => ({ ...f, status: "sent", public_access_token: publicAccessToken, stripe_checkout_url: stripeUrlRes.data.checkout_url }));
