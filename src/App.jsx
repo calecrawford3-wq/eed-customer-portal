@@ -80,24 +80,31 @@ const AuthenticatedApp = () => {
 };
 
 
+const PublicRoutes = () => (
+  <Routes>
+    <Route path="/public/estimate/:token" element={<EstimateViewer />} />
+    <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
+    <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
+  </Routes>
+);
+
+const ProtectedRoutes = () => (
+  <AuthProvider>
+    <NavigationTracker />
+    <Routes>
+      <Route path="*" element={<AuthenticatedApp />} />
+    </Routes>
+  </AuthProvider>
+);
+
 function App() {
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';
+
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        <Routes>
-          {/* Public routes - outside AuthProvider */}
-          <Route path="/public/estimate/:token" element={<EstimateViewer />} />
-          <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
-          <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
-          
-          {/* Protected routes - inside AuthProvider */}
-          <Route element={
-            <AuthProvider>
-              <NavigationTracker />
-              <AuthenticatedApp />
-            </AuthProvider>
-          } />
-        </Routes>
+        {isPublicRoute ? <PublicRoutes /> : <ProtectedRoutes />}
       </Router>
       <Toaster />
     </QueryClientProvider>
