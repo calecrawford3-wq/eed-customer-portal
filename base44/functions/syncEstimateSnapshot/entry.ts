@@ -67,23 +67,26 @@ Deno.serve(async (req) => {
     const hasTotal = snapshot.total !== undefined && snapshot.total !== null;
     console.log(`[syncEstimateSnapshot] Payload validation - public_access_token: ${hasPublicToken}, estimate_number: ${hasEstimateNumber}, total: ${hasTotal}`);
 
-    // Use LinkApps as the sync secret
-    const linkAppsSecret = Deno.env.get("LinkApps");
+    // Get sync credentials
+    const syncApiKey = Deno.env.get("SYNC_API_KEY");
+    const syncSecret = Deno.env.get("SYNC_SECRET");
     const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
 
-    // Log all values directly without collapsed objects
-    console.log("LinkApps exists:", !!linkAppsSecret);
+    // Log all values directly
     console.log("Destination URL:", destinationUrl);
+    console.log("SYNC_API_KEY exists:", !!syncApiKey);
+    console.log("SYNC_SECRET exists:", !!syncSecret);
     console.log("Payload token:", snapshot?.public_access_token);
     console.log("Payload keys:", Object.keys(snapshot || {}));
 
-    if (!linkAppsSecret) {
-      console.error("LinkApps secret not set - cannot proceed with sync");
+    if (!syncApiKey || !syncSecret) {
+      console.error("Missing SYNC_API_KEY or SYNC_SECRET - cannot proceed with sync");
       return Response.json({ 
-        error: `LinkApps secret not configured`,
+        error: `Sync credentials not configured`,
         details: {
           destination_url: destinationUrl,
-          linkApps_exists: !!linkAppsSecret,
+          sync_api_key_exists: !!syncApiKey,
+          sync_secret_exists: !!syncSecret,
           payload_has_public_token: hasPublicToken,
           payload_has_estimate_number: hasEstimateNumber,
         }
@@ -95,16 +98,17 @@ Deno.serve(async (req) => {
       const response = await fetch(destinationUrl, {
         method: "POST",
         headers: {
+          "Authorization": `Bearer ${syncApiKey}`,
+          "x-sync-secret": syncSecret,
           "Content-Type": "application/json",
-          "x-sync-secret": linkAppsSecret,
         },
         body: JSON.stringify(snapshot),
       });
 
       const responseBody = await response.text();
       
-      console.log("Sync status:", response.status);
-      console.log("Sync response body:", responseBody);
+      console.log("Response status:", response.status);
+      console.log("Response body:", responseBody);
 
       if (!response.ok) {
         console.error("SYNC ERROR STATUS:", response.status);
@@ -114,22 +118,29 @@ Deno.serve(async (req) => {
           destination_url: destinationUrl,
           response_status: response.status,
           response_body: responseBody,
-          linkApps_exists: !!linkAppsSecret,
+          sync_api_key_exists: !!syncApiKey,
+          sync_secret_exists: !!syncSecret,
           payload_has_public_token: hasPublicToken,
           payload_has_estimate_number: hasEstimateNumber,
         };
         
-        console.error("PUBLIC APP SYNC FAILED JSON:", JSON.stringify(errorDetails, null, 2));
+        console.error("SYNC FAILED JSON:", JSON.stringify(errorDetails, null, 2));
         
         return Response.json({ 
           error: `Public app sync failed - Status ${response.status}`,
           details: errorDetails,
-          detailsJson: JSON.stringify(errorDetails, null, 2)
         }, { status: 500 });
       }
 
+      // Build viewer app link
+      const estimateViewerLink = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
       console.log("Snapshot synced successfully");
-      return Response.json({ success: true });
+      console.log("Viewer link:", estimateViewerLink);
+      
+      return Response.json({ 
+        success: true, 
+        viewerLink: estimateViewerLink 
+      });
     } catch (fetchError) {
       console.error("SYNC ERROR MESSAGE:", fetchError.message);
       console.error("SYNC ERROR TYPE:", fetchError.constructor?.name);
@@ -137,7 +148,8 @@ Deno.serve(async (req) => {
       throw fetchError;
     }
   } catch (error) {
-    const linkAppsSecret = Deno.env.get("LinkApps");
+    const syncApiKey = Deno.env.get("SYNC_API_KEY");
+    const syncSecret = Deno.env.get("SYNC_SECRET");
     console.error("CAUGHT ERROR MESSAGE:", error.message);
     console.error("CAUGHT ERROR TYPE:", error.constructor?.name);
     console.error("Full caught error:", error);
@@ -145,7 +157,8 @@ Deno.serve(async (req) => {
       error: `Snapshot sync error: ${error.message}`,
       details: {
         destination_url: "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot",
-        linkApps_exists: !!linkAppsSecret,
+        sync_api_key_exists: !!syncApiKey,
+        sync_secret_exists: !!syncSecret,
         error_type: error.constructor?.name,
         error_message: error.message,
       }
