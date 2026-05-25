@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
       public_access_token: publicAccessToken,
       estimate_number: estimate.estimate_number,
       customer_name: customer ? `${customer.first_name} ${customer.last_name}` : "",
+      customer_email: customer?.email || "",
       status: estimate.status,
       issue_date: estimate.issue_date,
       expiry_date: estimate.expiry_date,
