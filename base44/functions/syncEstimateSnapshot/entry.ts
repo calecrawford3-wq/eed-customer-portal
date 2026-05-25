@@ -63,22 +63,36 @@ Deno.serve(async (req) => {
 
     console.log(`[syncEstimateSnapshot] Snapshot payload built, posting to public app...`);
 
-    // Post to public app API
-    const response = await fetch("https://elite-viewer.base44.app/api/sync-estimate-snapshot", {
+    // Call public app's syncEstimateSnapshot function
+    const publicAppUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
+    const syncSecret = Deno.env.get("SYNC_SECRET");
+    
+    if (!syncSecret) {
+      console.error(`[syncEstimateSnapshot] SYNC_SECRET not set in environment`);
+      return Response.json({ 
+        error: `SYNC_SECRET not configured` 
+      }, { status: 500 });
+    }
+
+    console.log(`[syncEstimateSnapshot] Posting to: ${publicAppUrl}`);
+
+    const response = await fetch(publicAppUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-sync-secret": syncSecret,
       },
       body: JSON.stringify(snapshot),
     });
 
+    const responseBody = await response.text();
     console.log(`[syncEstimateSnapshot] Public app response status: ${response.status}`);
+    console.log(`[syncEstimateSnapshot] Public app response body: ${responseBody}`);
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`[syncEstimateSnapshot] Public app sync failed with status ${response.status}: ${errorData}`);
+      console.error(`[syncEstimateSnapshot] Public app sync failed with status ${response.status}: ${responseBody}`);
       return Response.json({ 
-        error: `Public app sync failed: ${response.status} - ${errorData}` 
+        error: `Public app sync failed: ${response.status} - ${responseBody}` 
       }, { status: 500 });
     }
 
