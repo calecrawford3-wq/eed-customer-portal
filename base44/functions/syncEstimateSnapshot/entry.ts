@@ -109,16 +109,22 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         console.error("SYNC ERROR STATUS:", response.status);
         console.error("SYNC ERROR BODY:", responseBody);
+        
+        const errorDetails = {
+          destination_url: destinationUrl,
+          response_status: response.status,
+          response_body: responseBody,
+          linkApps_exists: !!linkAppsSecret,
+          payload_has_public_token: hasPublicToken,
+          payload_has_estimate_number: hasEstimateNumber,
+        };
+        
+        console.error("PUBLIC APP SYNC FAILED JSON:", JSON.stringify(errorDetails, null, 2));
+        
         return Response.json({ 
-          error: `Public app sync failed`,
-          details: {
-            destination_url: destinationUrl,
-            response_status: response.status,
-            response_body: responseBody,
-            linkApps_exists: !!linkAppsSecret,
-            payload_has_public_token: hasPublicToken,
-            payload_has_estimate_number: hasEstimateNumber,
-          }
+          error: `Public app sync failed - Status ${response.status}`,
+          details: errorDetails,
+          detailsJson: JSON.stringify(errorDetails, null, 2)
         }, { status: 500 });
       }
 
