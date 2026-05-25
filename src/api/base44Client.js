@@ -12,3 +12,13 @@ export const base44 = createClient({
   requiresAuth: false,
   appBaseUrl
 });
+
+// Public client for unauthenticated routes (no token, no auth requirements)
+export const base44Public = createClient({
+  appId,
+  token: null, // No authentication token
+  functionsVersion,
+  serverUrl: '',
+  requiresAuth: false,
+  appBaseUrl
+});

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, base44Public } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ export default function InvoiceViewer() {
   const { data: viewerData, isLoading: invoiceLoading, refetch } = useQuery({
     queryKey: ["invoice-viewer", publicAccessToken],
     queryFn: async () => {
-      const response = await base44.functions.invoke("getPublicInvoice", {
+      const response = await base44Public.functions.invoke("getPublicInvoice", {
         publicAccessToken,
       });
       if (!response?.data) throw new Error("Failed to fetch invoice");

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { base44Public } from "@/api/base44Client";
 
 const formatMoney = (value) => {
   if (value === null || value === undefined || isNaN(value)) return "$0.00";
@@ -35,7 +35,7 @@ export default function EstimateViewer({ buildVersion }) {
         setError(null);
         console.log("Fetching estimate with token:", token);
         
-        const response = await base44.functions.invoke("getPublicEstimate", {
+        const response = await base44Public.functions.invoke("getPublicEstimate", {
           publicAccessToken: token,
         });
         
@@ -65,7 +65,7 @@ export default function EstimateViewer({ buildVersion }) {
     setApprovingSuccess(false);
     try {
       console.log("Attempting to approve estimate with token:", token);
-      const response = await base44.functions.invoke("approvePublicEstimate", {
+      const response = await base44Public.functions.invoke("approvePublicEstimate", {
         publicAccessToken: token,
       });
       console.log("Approve response:", response);
