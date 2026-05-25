@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
-    const origin = req.headers.get("origin") || "https://race-engine-specs.base44.app";
+    const origin = req.headers.get("origin") || "https://elite-viewer.base44.app";
 
     const metadata = {
       base44_app_id: appId,
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/public/estimate/${publicAccessToken}?payment=success`,
-      cancel_url: `${origin}/public/estimate/${publicAccessToken}`,
+      success_url: `${origin}/estimate/${publicAccessToken}?payment=success`,
+      cancel_url: `${origin}/estimate/${publicAccessToken}`,
       customer_email: customerEmail,
       metadata,
     });
