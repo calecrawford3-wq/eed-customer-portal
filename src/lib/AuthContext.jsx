@@ -19,8 +19,6 @@ export const AuthProvider = ({ children }) => {
 
   const checkAppState = async () => {
     try {
-      console.log("🔵 AuthContext.checkAppState() called");
-      console.log("Current pathname:", window.location.pathname);
       setIsLoadingPublicSettings(true);
       setAuthError(null);
       
@@ -35,24 +33,20 @@ export const AuthProvider = ({ children }) => {
         interceptResponses: true
       });
       
-      console.log("🔵 Fetching public settings, token present:", !!appParams.token);
       try {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        console.log("✅ Public settings fetched successfully");
         setAppPublicSettings(publicSettings);
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
-          console.log("🔵 Token present, checking user auth...");
           await checkUserAuth();
         } else {
-          console.log("🔵 No token, setting unauthenticated state");
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('❌ App state check failed:', appError);
+        console.error('App state check failed:', appError);
         
         // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
@@ -95,22 +89,19 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      console.log("🔵 checkUserAuth() - calling base44.auth.me()");
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      console.log("✅ User authenticated:", currentUser.email);
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
     } catch (error) {
-      console.error('❌ User auth check failed:', error);
+      console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       
       // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
-        console.log("🔵 Auth error 401/403, setting auth_required");
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'
@@ -134,9 +125,6 @@ export const AuthProvider = ({ children }) => {
 
   const navigateToLogin = () => {
     // Use the SDK's redirectToLogin method
-    console.warn("⚠️ REDIRECT TO LOGIN TRIGGERED");
-    console.warn("Current pathname:", window.location.pathname);
-    console.warn("Stack trace:", new Error().stack);
     base44.auth.redirectToLogin(window.location.href);
   };
 

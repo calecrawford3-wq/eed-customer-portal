@@ -8,8 +8,6 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import CustomerPortal from './pages/CustomerPortal';
 import RefreshRequests from './pages/RefreshRequests';
-import EstimateViewer from './pages/EstimateViewer';
-import InvoiceViewer from './pages/InvoiceViewer';
 import DebugServiceWorker from './pages/DebugServiceWorker';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -81,44 +79,7 @@ const AuthenticatedApp = () => {
 };
 
 
-const BUILD_VERSION = "v3-deployment-" + new Date().toISOString().split('T')[0];
-
 function App() {
-  console.log("=== APP LOADED ===");
-  console.log("BUILD_VERSION:", BUILD_VERSION);
-  console.log("PATHNAME:", window.location.pathname);
-  console.log("SEARCH:", window.location.search);
-  console.log("HASH:", window.location.hash);
-  console.log("TIMESTAMP:", new Date().toISOString());
-  
-  // Check public route FIRST, before any auth infrastructure
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';
-
-  console.log("IS_PUBLIC_ROUTE:", isPublicRoute);
-  console.log("PATHNAME CHECK:", { pathname, startsWithPublic: pathname.startsWith('/public/'), equalsPublicTest: pathname === '/public-test' });
-
-  // Render public routes in complete isolation—no auth
-  if (isPublicRoute) {
-    console.log("✓ ✓ ✓ ENTERING PUBLIC ROUTE HANDLER - NO AUTH INFRASTRUCTURE");
-    console.log("Rendering public route for pathname:", pathname);
-    console.log("EstimateViewer imported:", typeof EstimateViewer);
-    console.log("InvoiceViewer imported:", typeof InvoiceViewer);
-    return (
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <Routes>
-            <Route path="/public/estimate/:token" element={<EstimateViewer buildVersion={BUILD_VERSION} />} />
-            <Route path="/public/invoice/:token" element={<InvoiceViewer buildVersion={BUILD_VERSION} />} />
-            <Route path="/public-test" element={<div style={{padding: "20px"}}><strong>PUBLIC TEST - NO AUTH</strong><br/>BUILD: {BUILD_VERSION}</div>} />
-          </Routes>
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    );
-  }
-  
-  console.log("NOT a public route - proceeding to protected app with auth provider");
 
   // All protected routes go through auth
   return (
