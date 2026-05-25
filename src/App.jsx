@@ -10,6 +10,7 @@ import CustomerPortal from './pages/CustomerPortal';
 import RefreshRequests from './pages/RefreshRequests';
 import EstimateViewer from './pages/EstimateViewer';
 import InvoiceViewer from './pages/InvoiceViewer';
+import DebugServiceWorker from './pages/DebugServiceWorker';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -80,21 +81,29 @@ const AuthenticatedApp = () => {
 };
 
 
+const BUILD_VERSION = "v3-deployment-" + new Date().toISOString().split('T')[0];
+
 function App() {
-  console.log("APP LOADED PUBLIC FIX VERSION 3", window.location.pathname);
+  console.log("=== APP LOADED ===");
+  console.log("BUILD_VERSION:", BUILD_VERSION);
+  console.log("PATHNAME:", window.location.pathname);
+  console.log("TIMESTAMP:", new Date().toISOString());
   
   // Check public route FIRST, before any auth infrastructure
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const isPublicRoute = pathname.startsWith('/public/') || pathname === '/public-test';
 
+  console.log("IS_PUBLIC_ROUTE:", isPublicRoute);
+
   // Render public routes in complete isolation—no auth, no Router wrapping
   if (isPublicRoute) {
+    console.log("✓ SERVING PUBLIC ROUTE - NO AUTH INFRASTRUCTURE");
     return (
       <QueryClientProvider client={queryClientInstance}>
         <Routes>
-          <Route path="/public/estimate/:token" element={<EstimateViewer />} />
-          <Route path="/public/invoice/:token" element={<InvoiceViewer />} />
-          <Route path="/public-test" element={<div style={{padding: "20px"}}>Public test - no auth needed</div>} />
+          <Route path="/public/estimate/:token" element={<EstimateViewer buildVersion={BUILD_VERSION} />} />
+          <Route path="/public/invoice/:token" element={<InvoiceViewer buildVersion={BUILD_VERSION} />} />
+          <Route path="/public-test" element={<div style={{padding: "20px"}}><strong>PUBLIC TEST - NO AUTH</strong><br/>BUILD: {BUILD_VERSION}</div>} />
         </Routes>
         <Toaster />
       </QueryClientProvider>
@@ -105,12 +114,17 @@ function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        <AuthProvider>
-          <NavigationTracker />
-          <Routes>
-            <Route path="*" element={<AuthenticatedApp />} />
-          </Routes>
-        </AuthProvider>
+        <Routes>
+          <Route path="/debug-sw" element={<DebugServiceWorker />} />
+          <Route path="*" element={
+            <AuthProvider>
+              <NavigationTracker />
+              <Routes>
+                <Route path="*" element={<AuthenticatedApp />} />
+              </Routes>
+            </AuthProvider>
+          } />
+        </Routes>
       </Router>
       <Toaster />
     </QueryClientProvider>

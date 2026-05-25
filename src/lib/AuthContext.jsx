@@ -125,6 +125,9 @@ export const AuthProvider = ({ children }) => {
 
   const navigateToLogin = () => {
     // Use the SDK's redirectToLogin method
+    console.warn("⚠️ REDIRECT TO LOGIN TRIGGERED");
+    console.warn("Current pathname:", window.location.pathname);
+    console.warn("Stack trace:", new Error().stack);
     base44.auth.redirectToLogin(window.location.href);
   };
 

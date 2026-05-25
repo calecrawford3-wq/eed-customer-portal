@@ -13,7 +13,7 @@ const calculateSubtotal = (lineItems = [], laborItems = []) => {
   return lineTotal + laborTotal;
 };
 
-export default function EstimateViewer() {
+export default function EstimateViewer({ buildVersion }) {
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +22,11 @@ export default function EstimateViewer() {
   const [approvingError, setApprovingError] = useState(null);
   const [approvingSuccess, setApprovingSuccess] = useState(false);
   const [payingError, setPayingError] = useState(null);
+
+  useEffect(() => {
+    console.log("EstimateViewer mounted with token:", token);
+    console.log("buildVersion:", buildVersion);
+  }, [token, buildVersion]);
 
   useEffect(() => {
     const fetchEstimate = async () => {
@@ -98,7 +103,7 @@ export default function EstimateViewer() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Version indicator */}
       <div className="bg-emerald-100 border-b border-emerald-300 px-6 py-2">
-        <p className="text-xs text-emerald-700 font-semibold">PUBLIC LIVE VERSION 3</p>
+        <p className="text-xs text-emerald-700 font-semibold">PUBLIC LIVE VERSION 3 | BUILD: {buildVersion}</p>
       </div>
       
       {/* Header */}
