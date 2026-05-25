@@ -67,9 +67,8 @@ Deno.serve(async (req) => {
     const hasTotal = snapshot.total !== undefined && snapshot.total !== null;
     console.log(`[syncEstimateSnapshot] Payload validation - public_access_token: ${hasPublicToken}, estimate_number: ${hasEstimateNumber}, total: ${hasTotal}`);
 
-    // Check LinkApps environment variable
+    // Use LinkApps as the sync secret
     const linkAppsSecret = Deno.env.get("LinkApps");
-    const syncSecret = Deno.env.get("SYNC_SECRET");
     const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
 
     // Log all values directly without collapsed objects
@@ -77,12 +76,11 @@ Deno.serve(async (req) => {
     console.log("Destination URL:", destinationUrl);
     console.log("Payload token:", snapshot?.public_access_token);
     console.log("Payload keys:", Object.keys(snapshot || {}));
-    console.log("SYNC_SECRET exists:", !!syncSecret);
 
-    if (!syncSecret) {
-      console.error("SYNC_SECRET not set - cannot proceed with sync");
+    if (!linkAppsSecret) {
+      console.error("LinkApps secret not set - cannot proceed with sync");
       return Response.json({ 
-        error: `SYNC_SECRET not configured`,
+        error: `LinkApps secret not configured`,
         details: {
           destination_url: destinationUrl,
           linkApps_exists: !!linkAppsSecret,
@@ -98,7 +96,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-sync-secret": syncSecret,
+          "x-sync-secret": linkAppsSecret,
         },
         body: JSON.stringify(snapshot),
       });
