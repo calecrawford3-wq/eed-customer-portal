@@ -18,6 +18,10 @@ export default function EstimateViewer() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [approvingError, setApprovingError] = useState(null);
+  const [approvingSuccess, setApprovingSuccess] = useState(false);
+  const [payingError, setPayingError] = useState(null);
 
   useEffect(() => {
     const fetchEstimate = async () => {
@@ -49,6 +53,55 @@ export default function EstimateViewer() {
       fetchEstimate();
     }
   }, [token]);
+
+  const handleApproveEstimate = async () => {
+    setApproving(true);
+    setApprovingError(null);
+    setApprovingSuccess(false);
+    try {
+      const response = await base44.functions.invoke("approvePublicEstimate", {
+        publicAccessToken: token,
+      });
+      if (response?.data?.success) {
+        setApprovingSuccess(true);
+        setData(prev => ({
+          ...prev,
+          estimate: { ...prev.estimate, status: "approved" }
+        }));
+      } else {
+        throw new Error(response?.data?.error || "Failed to approve estimate");
+      }
+    } catch (err) {
+      setApprovingError(err?.message || "Failed to approve estimate");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handlePayNow = async () => {
+    if (!data?.estimate?.total || !data?.customer?.email) {
+      setPayingError("Missing payment information");
+      return;
+    }
+
+    setPayingError(null);
+    try {
+      const response = await base44.functions.invoke("generatePublicCheckoutUrl", {
+        publicAccessToken: token,
+        amount: data.estimate.total,
+        description: `Estimate ${data.estimate.estimate_number}`,
+        customerEmail: data.customer.email,
+      });
+
+      if (response?.data?.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else {
+        setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
+      }
+    } catch (err) {
+      setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -218,15 +271,43 @@ export default function EstimateViewer() {
                 <span className="text-2xl font-bold text-slate-900">{formatMoney(data.estimate?.total || (calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items) + (data.estimate?.tax_amount || 0)))}</span>
               </div>
 
+              {/* Approve Success Message */}
+              {approvingSuccess && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <p className="text-emerald-700 font-semibold text-sm">✓ Estimate approved successfully.</p>
+                </div>
+              )}
+
+              {/* Approve Error Message */}
+              {approvingError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 font-semibold text-sm">Error: {approvingError}</p>
+                </div>
+              )}
+
+              {/* Pay Error Message */}
+              {payingError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 font-semibold text-sm">Error: {payingError}</p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3">
                 {data.estimate?.status === "sent" && (
-                  <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition">
-                    Approve Estimate
+                  <button 
+                    onClick={handleApproveEstimate}
+                    disabled={approving}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-2 px-4 rounded-lg transition"
+                  >
+                    {approving ? "Approving..." : "Approve Estimate"}
                   </button>
                 )}
-                {data.estimate?.stripe_checkout_url && (
-                  <button onClick={() => window.location.href = data.estimate.stripe_checkout_url} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                {!payingError && (
+                  <button 
+                    onClick={handlePayNow}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+                  >
                     Pay Now
                   </button>
                 )}
