@@ -357,6 +357,7 @@ export default function EstimateDetail() {
       });
       
       if (!stripeUrlRes?.data?.checkout_url) {
+        console.error("Stripe checkout URL generation failed:", stripeUrlRes);
         toast.error("Failed to generate payment link");
         setSending(false);
         return;

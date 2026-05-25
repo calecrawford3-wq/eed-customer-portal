@@ -52,8 +52,13 @@ Deno.serve(async (req) => {
       metadata,
     });
 
+    if (!session.url) {
+      console.error("Stripe session created but no URL returned:", session);
+      return Response.json({ error: "Failed to generate Stripe checkout URL" }, { status: 500 });
+    }
+
     return Response.json({ 
-      checkout_url: `https://checkout.stripe.com/pay/${session.id}`,
+      checkout_url: session.url,
       session_id: session.id 
     });
   } catch (error) {
