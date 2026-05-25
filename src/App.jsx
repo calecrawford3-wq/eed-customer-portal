@@ -114,17 +114,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
-        <Routes>
-          <Route path="/debug-sw" element={<DebugServiceWorker />} />
-          <Route path="*" element={
-            <AuthProvider>
-              <NavigationTracker />
-              <Routes>
-                <Route path="*" element={<AuthenticatedApp />} />
-              </Routes>
-            </AuthProvider>
-          } />
-        </Routes>
+        <AuthProvider>
+          <NavigationTracker />
+          <Routes>
+            <Route path="/debug-sw" element={<DebugServiceWorker />} />
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
+        </AuthProvider>
       </Router>
       <Toaster />
     </QueryClientProvider>
