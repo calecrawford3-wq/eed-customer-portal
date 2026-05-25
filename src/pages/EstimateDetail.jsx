@@ -364,7 +364,7 @@ export default function EstimateDetail() {
       }
       
       // Update estimate with public access token and stripe checkout URL
-      const viewUrl = `${window.location.origin}/public/estimate/${publicAccessToken}`;
+      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
       
       await base44.entities.Estimate.update(id || "", {
         public_access_token: publicAccessToken,
