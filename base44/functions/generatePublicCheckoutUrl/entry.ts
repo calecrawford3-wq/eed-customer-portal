@@ -9,10 +9,31 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
+    const base44 = createClientFromRequest(req);
     const { publicAccessToken, amount, description, customerEmail } = await req.json();
 
     if (!publicAccessToken || !amount || amount <= 0 || !description || !customerEmail) {
       return Response.json({ error: "Missing or invalid parameters" }, { status: 400 });
+    }
+
+    // Validate public token and fetch estimate (service role—no user auth needed)
+    const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+
+    if (!estimates || estimates.length === 0) {
+      return Response.json({ error: "Estimate not found" }, { status: 404 });
+    }
+
+    const estimate = estimates[0];
+
+    // Only allow checkout if estimate is approved or sent
+    if (!["sent", "approved"].includes(estimate.status)) {
+      return Response.json({ error: `Checkout not available for status "${estimate.status}"` }, { status: 400 });
+    }
+
+    // Validate amount matches deposit or total
+    const validAmount = estimate.deposit_required ? estimate.deposit_amount : estimate.total;
+    if (Math.abs(amount - validAmount) > 0.01) {
+      return Response.json({ error: "Amount does not match estimate total or deposit" }, { status: 400 });
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
@@ -21,6 +42,7 @@ Deno.serve(async (req) => {
     const metadata = {
       base44_app_id: appId,
       public_access_token: publicAccessToken,
+      estimate_id: estimate.id,
     };
 
     const session = await stripe.checkout.sessions.create({

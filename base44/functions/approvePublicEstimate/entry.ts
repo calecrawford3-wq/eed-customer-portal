@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
         }
 
-        // Fetch estimate by token
+        // Fetch estimate by token (service role—no user auth needed)
         const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
 
         if (!estimates || estimates.length === 0) {
@@ -18,12 +18,25 @@ Deno.serve(async (req) => {
 
         const estimate = estimates[0];
 
-        // Update status to approved
+        // Only allow approval if status is "sent"
+        if (estimate.status !== "sent") {
+            return Response.json({ error: `Estimate cannot be approved from status "${estimate.status}"` }, { status: 400 });
+        }
+
+        // Update status to approved only
         const updatedEstimate = await base44.asServiceRole.entities.Estimate.update(estimate.id, {
             status: "approved"
         });
 
-        return Response.json({ success: true, estimate: updatedEstimate });
+        // Return only safe public fields
+        const safeEstimate = {
+            id: updatedEstimate.id,
+            estimate_number: updatedEstimate.estimate_number,
+            status: updatedEstimate.status,
+            total: updatedEstimate.total,
+        };
+
+        return Response.json({ success: true, estimate: safeEstimate });
     } catch (error) {
         console.error("Error approving public estimate:", error);
         return Response.json({ error: error.message }, { status: 500 });
