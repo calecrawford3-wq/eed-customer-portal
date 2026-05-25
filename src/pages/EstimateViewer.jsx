@@ -2,6 +2,17 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 
+const formatMoney = (value) => {
+  if (value === null || value === undefined || isNaN(value)) return "$0.00";
+  return `$${parseFloat(value).toFixed(2)}`;
+};
+
+const calculateSubtotal = (lineItems = [], laborItems = []) => {
+  const lineTotal = lineItems.reduce((sum, item) => sum + (item.total || item.quantity * item.unit_price || 0), 0);
+  const laborTotal = laborItems.reduce((sum, item) => sum + (item.price || 0), 0);
+  return lineTotal + laborTotal;
+};
+
 export default function EstimateViewer() {
   const { token } = useParams();
   const [data, setData] = useState(null);
@@ -80,31 +91,35 @@ export default function EstimateViewer() {
 
         {!loading && !error && data && (
           <div className="space-y-6">
+            {/* Debug: Show actual data structure */}
+            <details className="text-xs text-slate-500">
+              <summary className="cursor-pointer">Debug: View raw data</summary>
+              <pre className="mt-2 bg-slate-100 p-2 rounded overflow-auto max-h-64">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </details>
+
             {/* Header */}
             <div className="bg-white rounded-lg border border-slate-200 p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  {data.company_logo_url && (
-                    <img src={data.company_logo_url} alt="Company" className="h-12 mb-4" />
-                  )}
-                  {data.company_name && <h2 className="text-lg font-semibold text-slate-900">{data.company_name}</h2>}
-                  {data.company_address && <p className="text-sm text-slate-600">{data.company_address}</p>}
+                  <h2 className="text-lg font-semibold text-slate-900">Estimate</h2>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">{data.estimate_number}</p>
-                  <p className="text-sm text-slate-500">Estimate</p>
+                  <p className="text-2xl font-bold text-slate-900">{data.estimate_number || "N/A"}</p>
+                  <p className="text-sm text-slate-500">Reference</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm border-t border-slate-200 pt-4">
                 <div>
                   <p className="text-slate-500 font-semibold">Customer</p>
-                  <p className="text-slate-900">{data.customer_name}</p>
+                  <p className="text-slate-900">{data.customer_name || "N/A"}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-slate-500 font-semibold">Status</p>
                   <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700">
-                    {data.status?.charAt(0).toUpperCase() + data.status?.slice(1)}
+                    {data.status ? data.status.charAt(0).toUpperCase() + data.status.slice(1) : "N/A"}
                   </span>
                 </div>
               </div>
@@ -142,10 +157,10 @@ export default function EstimateViewer() {
                   <tbody>
                     {data.line_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
-                        <td className="py-3 text-slate-900">{item.item_name}</td>
-                        <td className="text-center py-3 text-slate-600">{item.quantity}</td>
-                        <td className="text-right py-3 text-slate-600">${item.unit_price?.toFixed(2)}</td>
-                        <td className="text-right py-3 text-slate-900 font-semibold">${item.total?.toFixed(2)}</td>
+                        <td className="py-3 text-slate-900">{item.item_name || item.part_number || "Item"}</td>
+                        <td className="text-center py-3 text-slate-600">{item.quantity || 0}</td>
+                        <td className="text-right py-3 text-slate-600">{formatMoney(item.unit_price)}</td>
+                        <td className="text-right py-3 text-slate-900 font-semibold">{formatMoney(item.total)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -167,8 +182,8 @@ export default function EstimateViewer() {
                   <tbody>
                     {data.labor_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
-                        <td className="py-3 text-slate-900">{item.name}</td>
-                        <td className="text-right py-3 text-slate-900 font-semibold">${item.price?.toFixed(2)}</td>
+                        <td className="py-3 text-slate-900">{item.name || "Labor"}</td>
+                        <td className="text-right py-3 text-slate-900 font-semibold">{formatMoney(item.price)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -181,24 +196,24 @@ export default function EstimateViewer() {
               <div className="space-y-2 mb-6 pb-6 border-b border-slate-200">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Subtotal</span>
-                  <span className="text-slate-900 font-semibold">${data.subtotal?.toFixed(2)}</span>
+                  <span className="text-slate-900 font-semibold">{formatMoney(data.subtotal || calculateSubtotal(data.line_items, data.labor_items))}</span>
                 </div>
-                {data.tax_amount > 0 && (
+                {(data.tax_amount || 0) > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Tax ({data.tax_rate}%)</span>
-                    <span className="text-slate-900 font-semibold">${data.tax_amount?.toFixed(2)}</span>
+                    <span className="text-slate-600">Tax {data.tax_rate ? `(${data.tax_rate}%)` : ""}</span>
+                    <span className="text-slate-900 font-semibold">{formatMoney(data.tax_amount)}</span>
                   </div>
                 )}
-                {data.deposit_amount > 0 && (
+                {(data.deposit_amount || 0) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600">Deposit Required</span>
-                    <span className="text-slate-900 font-semibold">${data.deposit_amount?.toFixed(2)}</span>
+                    <span className="text-slate-900 font-semibold">{formatMoney(data.deposit_amount)}</span>
                   </div>
                 )}
               </div>
               <div className="flex justify-between items-center mb-6">
                 <span className="text-lg font-semibold text-slate-900">Total</span>
-                <span className="text-2xl font-bold text-slate-900">${data.total?.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-slate-900">{formatMoney(data.total || (calculateSubtotal(data.line_items, data.labor_items) + (data.tax_amount || 0)))}</span>
               </div>
 
               {/* Action Buttons */}
