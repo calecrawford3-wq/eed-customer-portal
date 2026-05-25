@@ -79,14 +79,150 @@ export default function EstimateViewer() {
         )}
 
         {!loading && !error && data && (
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <p className="text-slate-600">Estimate data loaded successfully.</p>
-            <details className="text-xs text-slate-500 mt-4">
-              <summary className="cursor-pointer">Show data</summary>
-              <pre className="mt-2 bg-slate-100 p-2 rounded overflow-auto max-h-64">
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            </details>
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  {data.company_logo_url && (
+                    <img src={data.company_logo_url} alt="Company" className="h-12 mb-4" />
+                  )}
+                  {data.company_name && <h2 className="text-lg font-semibold text-slate-900">{data.company_name}</h2>}
+                  {data.company_address && <p className="text-sm text-slate-600">{data.company_address}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-slate-900">{data.estimate_number}</p>
+                  <p className="text-sm text-slate-500">Estimate</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-500 font-semibold">Customer</p>
+                  <p className="text-slate-900">{data.customer_name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-slate-500 font-semibold">Status</p>
+                  <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+                    {data.status?.charAt(0).toUpperCase() + data.status?.slice(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dates and Details */}
+            <div className="grid grid-cols-2 gap-4">
+              {data.issue_date && (
+                <div className="bg-white rounded-lg border border-slate-200 p-4">
+                  <p className="text-xs text-slate-500 font-semibold">Issue Date</p>
+                  <p className="text-slate-900">{new Date(data.issue_date).toLocaleDateString()}</p>
+                </div>
+              )}
+              {data.expiry_date && (
+                <div className="bg-white rounded-lg border border-slate-200 p-4">
+                  <p className="text-xs text-slate-500 font-semibold">Expiration Date</p>
+                  <p className="text-slate-900">{new Date(data.expiry_date).toLocaleDateString()}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Line Items */}
+            {data.line_items && data.line_items.length > 0 && (
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-4">Items</h3>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-2 text-slate-600 font-semibold">Description</th>
+                      <th className="text-center py-2 text-slate-600 font-semibold">Qty</th>
+                      <th className="text-right py-2 text-slate-600 font-semibold">Unit Price</th>
+                      <th className="text-right py-2 text-slate-600 font-semibold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.line_items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-slate-100">
+                        <td className="py-3 text-slate-900">{item.item_name}</td>
+                        <td className="text-center py-3 text-slate-600">{item.quantity}</td>
+                        <td className="text-right py-3 text-slate-600">${item.unit_price?.toFixed(2)}</td>
+                        <td className="text-right py-3 text-slate-900 font-semibold">${item.total?.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Labor Items */}
+            {data.labor_items && data.labor_items.length > 0 && (
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-4">Labor</h3>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-2 text-slate-600 font-semibold">Description</th>
+                      <th className="text-right py-2 text-slate-600 font-semibold">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.labor_items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-slate-100">
+                        <td className="py-3 text-slate-900">{item.name}</td>
+                        <td className="text-right py-3 text-slate-900 font-semibold">${item.price?.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Financial Summary */}
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="space-y-2 mb-6 pb-6 border-b border-slate-200">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Subtotal</span>
+                  <span className="text-slate-900 font-semibold">${data.subtotal?.toFixed(2)}</span>
+                </div>
+                {data.tax_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Tax ({data.tax_rate}%)</span>
+                    <span className="text-slate-900 font-semibold">${data.tax_amount?.toFixed(2)}</span>
+                  </div>
+                )}
+                {data.deposit_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Deposit Required</span>
+                    <span className="text-slate-900 font-semibold">${data.deposit_amount?.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-lg font-semibold text-slate-900">Total</span>
+                <span className="text-2xl font-bold text-slate-900">${data.total?.toFixed(2)}</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                {data.status === "sent" && (
+                  <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    Approve Estimate
+                  </button>
+                )}
+                {data.stripe_checkout_url && (
+                  <button onClick={() => window.location.href = data.stripe_checkout_url} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    Pay Now
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Notes */}
+            {data.notes && (
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-3">Notes</h3>
+                <p className="text-slate-600 text-sm whitespace-pre-line">{data.notes}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
