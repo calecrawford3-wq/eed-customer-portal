@@ -95,16 +95,18 @@ function App() {
 
   console.log("IS_PUBLIC_ROUTE:", isPublicRoute);
 
-  // Render public routes in complete isolation—no auth, no Router wrapping
+  // Render public routes in complete isolation—no auth
   if (isPublicRoute) {
     console.log("✓ SERVING PUBLIC ROUTE - NO AUTH INFRASTRUCTURE");
     return (
       <QueryClientProvider client={queryClientInstance}>
-        <Routes>
-          <Route path="/public/estimate/:token" element={<EstimateViewer buildVersion={BUILD_VERSION} />} />
-          <Route path="/public/invoice/:token" element={<InvoiceViewer buildVersion={BUILD_VERSION} />} />
-          <Route path="/public-test" element={<div style={{padding: "20px"}}><strong>PUBLIC TEST - NO AUTH</strong><br/>BUILD: {BUILD_VERSION}</div>} />
-        </Routes>
+        <Router>
+          <Routes>
+            <Route path="/public/estimate/:token" element={<EstimateViewer buildVersion={BUILD_VERSION} />} />
+            <Route path="/public/invoice/:token" element={<InvoiceViewer buildVersion={BUILD_VERSION} />} />
+            <Route path="/public-test" element={<div style={{padding: "20px"}}><strong>PUBLIC TEST - NO AUTH</strong><br/>BUILD: {BUILD_VERSION}</div>} />
+          </Routes>
+        </Router>
         <Toaster />
       </QueryClientProvider>
     );
