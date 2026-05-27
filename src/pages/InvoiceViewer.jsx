@@ -34,6 +34,8 @@ export default function InvoiceViewer() {
   const inv = viewerData?.invoice;
   const customer = viewerData?.customer;
   const settings = viewerData?.settings;
+  const customerEngine = viewerData?.customerEngine;
+  const platform = viewerData?.platform;
 
   const handlePayment = async () => {
     if (!paymentMethod) {
@@ -116,7 +118,7 @@ export default function InvoiceViewer() {
     return (
       <div className="p-4">
         <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back</button>
-        <PrintableInvoice invoice={inv} customer={customer} settings={settings} />
+        <PrintableInvoice invoice={inv} customer={customer} settings={settings} customerEngine={customerEngine} platform={platform} />
       </div>
     );
   }
@@ -147,6 +149,32 @@ export default function InvoiceViewer() {
             {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
             {customer.address_line1 && <p className="text-slate-600">{customer.address_line1}</p>}
             {customer.city && <p className="text-slate-600">{customer.city}, {customer.state} {customer.zip}</p>}
+
+            {customerEngine && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-6 text-sm">
+                {customerEngine.eed_id && (
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">EED ID</p>
+                    <p className="font-mono font-bold text-[#e20404]">{customerEngine.eed_id}</p>
+                  </div>
+                )}
+                {customerEngine.engine_serial_number && (
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Serial #</p>
+                    <p className="font-semibold text-slate-900">{customerEngine.engine_serial_number}</p>
+                  </div>
+                )}
+                {platform && (
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Platform</p>
+                    <p className="font-semibold text-slate-900">
+                      {platform.manufacturer} {platform.name}
+                      {platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

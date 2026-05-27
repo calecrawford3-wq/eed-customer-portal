@@ -179,6 +179,32 @@ export default function EstimateViewer({ buildVersion }) {
                   </span>
                 </div>
               </div>
+
+              {data.customerEngine && (
+                <div className="mt-4 border-t border-slate-200 pt-4 flex flex-wrap gap-6 text-sm">
+                  {data.customerEngine.eed_id && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">EED ID</p>
+                      <p className="font-mono font-bold text-[#e20404]">{data.customerEngine.eed_id}</p>
+                    </div>
+                  )}
+                  {data.customerEngine.engine_serial_number && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Serial #</p>
+                      <p className="font-semibold text-slate-900">{data.customerEngine.engine_serial_number}</p>
+                    </div>
+                  )}
+                  {data.platform && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Platform</p>
+                      <p className="font-semibold text-slate-900">
+                        {data.platform.manufacturer} {data.platform.name}
+                        {data.platform.year_range_start ? ` (${data.platform.year_range_start}${data.platform.year_range_end ? `–${data.platform.year_range_end}` : "+"})` : ""}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Dates and Details */}

@@ -24,10 +24,24 @@ Deno.serve(async (req) => {
     // Fetch app settings
     const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
 
+    // Fetch engine info if linked
+    let customerEngine = null;
+    let platform = null;
+    if (inv.customer_engine_id) {
+      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: inv.customer_engine_id });
+      customerEngine = engines?.[0] || null;
+      if (customerEngine?.platform_id) {
+        const platforms = await base44.asServiceRole.entities.EnginePlatform.filter({ id: customerEngine.platform_id });
+        platform = platforms?.[0] || null;
+      }
+    }
+
     return Response.json({
       invoice: inv,
       customer: customer?.[0] || null,
       settings: settings?.[0] || null,
+      customerEngine,
+      platform,
     });
   } catch (error) {
     console.error('Error fetching invoice:', error);

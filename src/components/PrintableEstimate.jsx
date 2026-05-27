@@ -2,7 +2,7 @@ import React from "react";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
-export default function PrintableEstimate({ estimate, customer, settings }) {
+export default function PrintableEstimate({ estimate, customer, settings, customerEngine, platform }) {
   if (!estimate || !customer) return null;
 
   const issueDate = estimate.issue_date ? new Date(estimate.issue_date).toLocaleDateString() : "N/A";
@@ -28,6 +28,14 @@ export default function PrintableEstimate({ estimate, customer, settings }) {
           <p style={{ fontSize: "13px", color: "#666" }}>Expires: {expiryDate}</p>
         </div>
       </div>
+
+      {customerEngine && (
+        <div style={{ backgroundColor: "#f8f8f8", padding: "12px 16px", borderRadius: "6px", marginBottom: "16px", display: "flex", gap: "32px", fontSize: "13px", borderLeft: "3px solid #e20404" }}>
+          {customerEngine.eed_id && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>EED ID</span><br /><strong style={{ fontFamily: "monospace", color: "#e20404" }}>{customerEngine.eed_id}</strong></div>}
+          {customerEngine.engine_serial_number && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
+          {platform && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Platform</span><br /><strong>{platform.manufacturer} {platform.name}{platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}</strong></div>}
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <div>

@@ -24,6 +24,18 @@ Deno.serve(async (req) => {
     // Fetch app settings (service role)
     const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
 
+    // Fetch engine info if linked
+    let customerEngine = null;
+    let platform = null;
+    if (est.customer_engine_id) {
+      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: est.customer_engine_id });
+      customerEngine = engines?.[0] || null;
+      if (customerEngine?.platform_id) {
+        const platforms = await base44.asServiceRole.entities.EnginePlatform.filter({ id: customerEngine.platform_id });
+        platform = platforms?.[0] || null;
+      }
+    }
+
     // Return only safe public fields
     const safeEstimate = {
       id: est.id,
@@ -74,6 +86,8 @@ Deno.serve(async (req) => {
       estimate: safeEstimate,
       customer: safeCustomer,
       settings: safeSettings,
+      customerEngine: customerEngine ? { eed_id: customerEngine.eed_id, engine_serial_number: customerEngine.engine_serial_number } : null,
+      platform: platform ? { name: platform.name, manufacturer: platform.manufacturer, year_range_start: platform.year_range_start, year_range_end: platform.year_range_end } : null,
     });
   } catch (error) {
     console.error('Error fetching estimate:', error);

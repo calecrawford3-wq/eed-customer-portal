@@ -82,6 +82,12 @@ export default function InvoiceDetail() {
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
 
+  const { data: customerEngines = [] } = useQuery({
+    queryKey: ["customerEngines", form.customer_id],
+    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: form.customer_id }),
+    enabled: !!form.customer_id,
+  });
+
   useEffect(() => {
     if (invoice && invoice[0]) setForm({ labor_items: [], ...invoice[0] });
   }, [invoice]);
@@ -262,12 +268,14 @@ export default function InvoiceDetail() {
   const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
   const customer = customers.find(c => c.id === form.customer_id);
+  const selectedEngine = customerEngines.find(e => e.id === form.customer_engine_id);
+  const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
 
   if (printMode) {
     return (
       <div className="p-4">
         <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
-        <PrintableInvoice invoice={form} customer={customer} settings={settingsData?.[0]} />
+        <PrintableInvoice invoice={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
       </div>
     );
   }
@@ -375,6 +383,13 @@ export default function InvoiceDetail() {
               {customer.address_line1 && <p className="text-slate-600">{customer.address_line1}</p>}
               {customer.city && <p className="text-slate-600">{customer.city}, {customer.state} {customer.zip}</p>}
               {customer.email && <p className="text-slate-600">{customer.email}</p>}
+              {selectedEngine && (
+                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-4 text-sm">
+                  {selectedEngine.eed_id && <div><p className="text-xs text-slate-400 uppercase">EED ID</p><p className="font-mono font-bold text-[#e20404]">{selectedEngine.eed_id}</p></div>}
+                  {selectedEngine.engine_serial_number && <div><p className="text-xs text-slate-400 uppercase">Serial #</p><p className="font-semibold">{selectedEngine.engine_serial_number}</p></div>}
+                  {selectedEnginePlatform && <div><p className="text-xs text-slate-400 uppercase">Platform</p><p className="font-semibold">{selectedEnginePlatform.manufacturer} {selectedEnginePlatform.name}{selectedEnginePlatform.year_range_start ? ` (${selectedEnginePlatform.year_range_start}${selectedEnginePlatform.year_range_end ? `–${selectedEnginePlatform.year_range_end}` : "+"})` : ""}</p></div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
