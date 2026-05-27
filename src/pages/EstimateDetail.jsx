@@ -581,11 +581,7 @@ export default function EstimateDetail() {
     return (
       <div className="p-4">
         <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300 print:hidden">← Back to Edit</button>
-        {customer ? (
-          <PrintableEstimate estimate={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
-        ) : (
-          <div className="text-slate-500 text-center py-12">Loading customer data...</div>
-        )}
+        <PrintableEstimate estimate={form} customer={customer || { first_name: "", last_name: "" }} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
       </div>
     );
   }

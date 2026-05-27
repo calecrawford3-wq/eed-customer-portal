@@ -3,7 +3,7 @@ import React from "react";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 export default function PrintableEstimate({ estimate, customer, settings, customerEngine, platform }) {
-  if (!estimate || !customer) return null;
+  if (!estimate) return null;
 
   const issueDate = estimate.issue_date ? new Date(estimate.issue_date).toLocaleDateString() : "N/A";
   const expiryDate = estimate.expiry_date ? new Date(estimate.expiry_date).toLocaleDateString() : "N/A";
