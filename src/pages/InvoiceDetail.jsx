@@ -368,7 +368,7 @@ export default function InvoiceDetail() {
               <EngineSelector
                 customerId={form.customer_id}
                 value={form.customer_engine_id || ""}
-                onChange={v => setForm({...form, customer_engine_id: v})}
+                onChange={(v) => setForm({...form, customer_engine_id: v})}
                 platforms={platforms}
               />
             )}

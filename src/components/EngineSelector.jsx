@@ -66,7 +66,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       setAddOpen(false);
       setNewEngine({ engine_serial_number: "", platform_id: "", notes: "" });
-      onChange(created.id);
+      onChange(created.id, created);
       toast.success(`Engine ${created.eed_id} registered`);
     },
     onError: (err) => toast.error(err.message),
@@ -93,7 +93,10 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
     <div className="space-y-1">
       <Label>Engine (EED)</Label>
       <div className="flex gap-2">
-        <Select value={value || ""} onValueChange={onChange}>
+        <Select value={value || ""} onValueChange={(id) => {
+          const eng = engines.find(e => e.id === id);
+          onChange(id, eng);
+        }}>
           <SelectTrigger className="flex-1">
             <SelectValue placeholder="Select engine...">
               {selected && (
@@ -140,7 +143,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => onChange("")}
+            onClick={() => onChange("", null)}
             className="shrink-0 text-slate-400"
           >
             Clear

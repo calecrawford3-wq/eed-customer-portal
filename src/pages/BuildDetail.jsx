@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
+import EngineSelector from "@/components/EngineSelector";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued" },
@@ -304,6 +305,21 @@ export default function BuildDetail() {
                     )}
                   </div>
                 </div>
+                {getValue("customer_id") && (
+                  <EngineSelector
+                    customerId={getValue("customer_id")}
+                    value={getValue("customer_engine_id") || ""}
+                    onChange={(engineId, engine) => {
+                      handleChange("customer_engine_id", engineId);
+                      if (engine) {
+                        if (engine.eed_id) handleChange("eed_id", engine.eed_id);
+                        if (engine.engine_serial_number) handleChange("engine_serial_number", engine.engine_serial_number);
+                        if (engine.platform_id) handleChange("platform_id", engine.platform_id);
+                      }
+                    }}
+                    platforms={platforms}
+                  />
+                )}
                 <div>
                   <Label>Invoice Number</Label>
                   <Input
