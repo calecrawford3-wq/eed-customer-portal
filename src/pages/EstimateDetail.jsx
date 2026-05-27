@@ -580,8 +580,12 @@ export default function EstimateDetail() {
   if (printMode) {
     return (
       <div className="p-4">
-        <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
-        <PrintableEstimate estimate={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
+        <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300 print:hidden">← Back to Edit</button>
+        {customer ? (
+          <PrintableEstimate estimate={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
+        ) : (
+          <div className="text-slate-500 text-center py-12">Loading customer data...</div>
+        )}
       </div>
     );
   }
