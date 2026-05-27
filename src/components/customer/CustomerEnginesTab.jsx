@@ -1,0 +1,317 @@
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Link } from "react-router-dom";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench } from "lucide-react";
+import { toast } from "sonner";
+
+function getPlatformLabel(platform) {
+  if (!platform) return "Unknown";
+  const years = platform.year_range_start
+    ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})`
+    : "";
+  return `${platform.manufacturer} ${platform.name}${years}`;
+}
+
+const STATUS_COLORS = {
+  queued: "bg-slate-100 text-slate-600",
+  in_progress: "bg-blue-100 text-blue-700",
+  assembly: "bg-purple-100 text-purple-700",
+  testing: "bg-amber-100 text-amber-700",
+  complete: "bg-emerald-100 text-emerald-700",
+  shipped: "bg-teal-100 text-teal-700",
+};
+
+export default function CustomerEnginesTab({ customerId, customer, platforms = [] }) {
+  const qc = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const [expandedEngine, setExpandedEngine] = useState(null);
+  const [newEngine, setNewEngine] = useState({ engine_serial_number: "", platform_id: "", notes: "" });
+
+  const { data: engines = [] } = useQuery({
+    queryKey: ["customer-engines", customerId],
+    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: customerId }),
+    enabled: !!customerId,
+  });
+
+  const { data: allBuilds = [] } = useQuery({
+    queryKey: ["builds"],
+    queryFn: () => base44.entities.EngineBuild.list("-created_date", 500),
+  });
+
+  const { data: allInvoices = [] } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => base44.entities.Invoice.list("-created_date", 500),
+  });
+
+  const { data: allEngines = [] } = useQuery({
+    queryKey: ["all-engines-for-eed"],
+    queryFn: () => base44.entities.CustomerEngine.list("-created_date", 1000),
+    enabled: addOpen,
+  });
+
+  const getNextEedId = () => {
+    const nums = allEngines
+      .map(e => e.eed_id?.match(/^EED(\d+)$/)?.[1])
+      .filter(Boolean)
+      .map(Number);
+    const max = nums.length > 0 ? Math.max(...nums) : 1039;
+    return `EED${max + 1}`;
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (data) => {
+      const sameSerial = allEngines.find(e =>
+        e.engine_serial_number === data.engine_serial_number && e.customer_id !== customerId
+      );
+      if (sameSerial) {
+        throw new Error(`Serial ${data.engine_serial_number} already registered as ${sameSerial.eed_id}`);
+      }
+      const existForCustomer = engines.find(e => e.engine_serial_number === data.engine_serial_number);
+      if (existForCustomer) {
+        throw new Error(`Serial already registered as ${existForCustomer.eed_id} for this customer`);
+      }
+      return base44.entities.CustomerEngine.create(data);
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
+      qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
+      setAddOpen(false);
+      setNewEngine({ engine_serial_number: "", platform_id: "", notes: "" });
+      toast.success(`Engine ${created.eed_id} registered`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleAdd = () => {
+    if (!newEngine.engine_serial_number || !newEngine.platform_id) {
+      toast.error("Serial number and platform are required");
+      return;
+    }
+    createMutation.mutate({
+      ...newEngine,
+      customer_id: customerId,
+      eed_id: getNextEedId(),
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-sm text-slate-500">Registered engines for this customer</span>
+        <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add Engine
+        </Button>
+      </div>
+
+      {engines.length === 0 ? (
+        <div className="text-center py-10 text-slate-400">
+          <Cpu className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p>No engines registered</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {engines.map(engine => {
+            const platform = platforms.find(p => p.id === engine.platform_id);
+            const engineBuilds = allBuilds
+              .filter(b => b.engine_serial_number === engine.engine_serial_number)
+              .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+            const mostRecentBuild = engineBuilds[0];
+            const pastBuilds = engineBuilds.slice(1);
+            const isExpanded = expandedEngine === engine.id;
+
+            // Invoices linked to any build of this engine
+            const engineInvoices = allInvoices.filter(inv =>
+              engineBuilds.some(b => b.id === inv.build_id) ||
+              inv.customer_engine_id === engine.id
+            );
+
+            return (
+              <Card key={engine.id} className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setExpandedEngine(isExpanded ? null : engine.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Cpu className="w-5 h-5 text-[#e20404]" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-[#e20404]">{engine.eed_id}</span>
+                          <span className="text-sm text-slate-600">{engine.engine_serial_number}</span>
+                        </div>
+                        <p className="text-xs text-slate-400">{getPlatformLabel(platform)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {mostRecentBuild && (
+                        <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[mostRecentBuild.status] || "bg-slate-100 text-slate-600"}`}>
+                          {mostRecentBuild.status?.replace("_", " ")}
+                        </Badge>
+                      )}
+                      {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-4 border-t border-slate-100 pt-4 space-y-4">
+                      {/* Most recent build */}
+                      {mostRecentBuild ? (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Current / Most Recent Build</p>
+                          <div className="bg-slate-50 rounded-lg p-3 flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{mostRecentBuild.build_number || mostRecentBuild.engine_serial_number}</p>
+                              <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-500">
+                                {mostRecentBuild.max_rpm && <span>Max RPM: {mostRecentBuild.max_rpm.toLocaleString()}</span>}
+                                {mostRecentBuild.oil_recommendation && <span>· Oil: {mostRecentBuild.oil_recommendation}</span>}
+                                {mostRecentBuild.refresh_interval && <span>· Refresh: {mostRecentBuild.refresh_interval}</span>}
+                                {mostRecentBuild.application && <span>· App: {mostRecentBuild.application}</span>}
+                              </div>
+                              {mostRecentBuild.completion_date && (
+                                <p className="text-xs text-slate-400 mt-1">Completed: {mostRecentBuild.completion_date}</p>
+                              )}
+                            </div>
+                            <Link to={`/BuildDetail?id=${mostRecentBuild.id}`}>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-slate-400">
+                          <Wrench className="w-6 h-6 mx-auto mb-1 opacity-40" />
+                          <p className="text-xs">No builds yet</p>
+                        </div>
+                      )}
+
+                      {/* Past builds */}
+                      {pastBuilds.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Past Builds ({pastBuilds.length})</p>
+                          <div className="space-y-1">
+                            {pastBuilds.map(b => (
+                              <div key={b.id} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg">
+                                <div>
+                                  <span className="text-sm font-medium">{b.build_number || b.engine_serial_number}</span>
+                                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status] || "bg-slate-100 text-slate-600"}`}>
+                                    {b.status?.replace("_", " ")}
+                                  </span>
+                                  {b.completion_date && <span className="ml-2 text-xs text-slate-400">{b.completion_date}</span>}
+                                </div>
+                                <Link to={`/BuildDetail?id=${b.id}`}>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500">
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Button>
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Linked invoices */}
+                      {engineInvoices.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Linked Invoices ({engineInvoices.length})</p>
+                          <div className="space-y-1">
+                            {engineInvoices.map(inv => (
+                              <div key={inv.id} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg">
+                                <div>
+                                  <span className="text-sm font-medium">{inv.invoice_number}</span>
+                                  <span className="ml-2 text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</span>
+                                  <Badge className={`ml-2 text-xs border-0 capitalize ${inv.status === "paid" ? "bg-emerald-100 text-emerald-700" : inv.status === "partial" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                                    {inv.status}
+                                  </Badge>
+                                </div>
+                                <Link to={`/InvoiceDetail?id=${inv.id}`}>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500">
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Button>
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add Engine Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-[#e20404]" /> Register New Engine
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Engine Serial Number *</Label>
+              <Input
+                value={newEngine.engine_serial_number}
+                onChange={e => setNewEngine({ ...newEngine, engine_serial_number: e.target.value })}
+                placeholder="e.g. T708-123456"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Engine Platform *</Label>
+              <Select value={newEngine.platform_id} onValueChange={v => setNewEngine({ ...newEngine, platform_id: v })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select platform..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {platforms.filter(p => p.status !== "archived").map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {getPlatformLabel(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Input
+                value={newEngine.notes}
+                onChange={e => setNewEngine({ ...newEngine, notes: e.target.value })}
+                placeholder="Optional notes..."
+                className="mt-1"
+              />
+            </div>
+            {addOpen && allEngines.length >= 0 && (
+              <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                <span className="text-slate-500">Next EED ID: </span>
+                <span className="font-mono font-bold text-[#e20404]">{getNextEedId()}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#e20404] hover:bg-[#c00303] text-white"
+              onClick={handleAdd}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Registering..." : "Register Engine"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

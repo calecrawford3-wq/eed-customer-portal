@@ -6,6 +6,14 @@
       "type": "string",
       "description": "Engine serial number (primary identifier)"
     },
+    "eed_id": {
+      "type": "string",
+      "description": "EED ID linked to this engine serial number (e.g. EED1040)"
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Reference to CustomerEngine record"
+    },
     "build_number": {
       "type": "string",
       "description": "Internal build/jobcard number"

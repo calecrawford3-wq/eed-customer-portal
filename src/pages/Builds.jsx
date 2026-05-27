@@ -82,6 +82,7 @@ export default function Builds() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newBuild, setNewBuild] = useState({
     engine_serial_number: "",
+    eed_id: "",
     build_number: "",
     platform_id: "",
     spec_sheet_id: "",
@@ -121,6 +122,7 @@ export default function Builds() {
       setShowCreateDialog(false);
       setNewBuild({
         engine_serial_number: "",
+        eed_id: "",
         build_number: "",
         platform_id: "",
         spec_sheet_id: "",
@@ -150,6 +152,7 @@ export default function Builds() {
     const selectedSpec = specSheets.find(s => s.id === newBuild.spec_sheet_id);
     createMutation.mutate({
       ...newBuild,
+      eed_id: newBuild.eed_id || undefined,
       queue_position: maxPosition + 1,
       status: "queued",
       work_tag: "none",
@@ -263,7 +266,13 @@ export default function Builds() {
     navigate(`/InvoiceDetail?id=${invoice.id}`);
   };
 
-  const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
+  const getPlatformLabel = (pid) => {
+    const p = platforms.find(pl => pl.id === pid);
+    if (!p) return "Unknown";
+    const years = p.year_range_start ? ` (${p.year_range_start}${p.year_range_end ? `–${p.year_range_end}` : "+"})` : "";
+    return `${p.manufacturer} ${p.name}${years}`;
+  };
+  const getPlatformName = getPlatformLabel;
   const getCustomerName = (build) => {
     if (build.customer_id) {
       const c = customers.find(c => c.id === build.customer_id);
@@ -351,6 +360,15 @@ export default function Builds() {
                 />
               </div>
               <div>
+                <Label>EED ID</Label>
+                <Input
+                  value={newBuild.eed_id || ""}
+                  onChange={(e) => setNewBuild({ ...newBuild, eed_id: e.target.value })}
+                  placeholder="e.g. EED1040"
+                  className="font-mono"
+                />
+              </div>
+              <div>
                 <Label>Engine Platform *</Label>
                 <Select
                   value={newBuild.platform_id}
@@ -360,11 +378,16 @@ export default function Builds() {
                     <SelectValue placeholder="Select platform" />
                   </SelectTrigger>
                   <SelectContent>
-                    {platforms.map((platform) => (
-                      <SelectItem key={platform.id} value={platform.id}>
-                        {platform.manufacturer} {platform.name}
-                      </SelectItem>
-                    ))}
+                    {platforms.map((platform) => {
+                      const years = platform.year_range_start
+                        ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})`
+                        : "";
+                      return (
+                        <SelectItem key={platform.id} value={platform.id}>
+                          {platform.manufacturer} {platform.name}{years}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -502,6 +525,7 @@ export default function Builds() {
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-bold text-lg">{build.engine_serial_number}</h3>
+                                {build.eed_id && <span className="font-mono text-sm text-[#e20404] font-semibold">{build.eed_id}</span>}
                                 <Badge className={queueInfo.color}>{queueInfo.label}</Badge>
                                 {build.work_tag && build.work_tag !== "none" && (
                                   <Badge className={workTagInfo.color}>{workTagInfo.label}</Badge>
@@ -511,7 +535,7 @@ export default function Builds() {
                                 {build.build_number && (
                                   <span>Jobcard: {build.build_number}</span>
                                 )}
-                                <span>{getPlatformName(build.platform_id)}</span>
+                                <span>{getPlatformLabel(build.platform_id)}</span>
                                 {getCustomerName(build) && (
                                   <>
                                     <span>•</span>
@@ -612,8 +636,11 @@ export default function Builds() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="font-bold">{build.engine_serial_number}</h3>
-                            <p className="text-sm text-slate-500">{getPlatformName(build.platform_id)}</p>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold">{build.engine_serial_number}</h3>
+                              {build.eed_id && <span className="font-mono text-xs text-[#e20404] font-semibold">{build.eed_id}</span>}
+                            </div>
+                            <p className="text-sm text-slate-500">{getPlatformLabel(build.platform_id)}</p>
                             {build.build_number && (
                               <p className="text-xs text-slate-400">Jobcard: {build.build_number}</p>
                             )}

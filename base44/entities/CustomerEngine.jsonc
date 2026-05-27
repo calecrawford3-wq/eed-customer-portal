@@ -1,0 +1,31 @@
+{
+  "name": "CustomerEngine",
+  "type": "object",
+  "properties": {
+    "eed_id": {
+      "type": "string",
+      "description": "Unique EED ID (e.g. EED1040) \u2014 linked to one engine serial number"
+    },
+    "engine_serial_number": {
+      "type": "string",
+      "description": "Physical engine serial number"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Owning customer"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "eed_id",
+    "engine_serial_number",
+    "customer_id",
+    "platform_id"
+  ]
+}

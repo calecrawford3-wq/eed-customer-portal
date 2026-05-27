@@ -15,6 +15,10 @@
     "build_id": {
       "type": "string"
     },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Optional: linked CustomerEngine record"
+    },
     "public_access_token": {
       "type": "string",
       "description": "Secure random token for public viewing without authentication"

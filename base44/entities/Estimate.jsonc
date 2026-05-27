@@ -8,6 +8,10 @@
     "customer_id": {
       "type": "string"
     },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Optional: linked CustomerEngine record"
+    },
     "build_id": {
       "type": "string",
       "description": "Optional linked engine build"
@@ -50,18 +54,15 @@
     },
     "deposit_required": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether a deposit is required before approval"
+      "default": false
     },
     "deposit_amount": {
       "type": "number",
-      "default": 0,
-      "description": "Required deposit amount"
+      "default": 0
     },
     "deposit_paid": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the deposit has been received"
+      "default": false
     },
     "line_items": {
       "type": "array",
@@ -111,7 +112,6 @@
     },
     "payments": {
       "type": "array",
-      "description": "Payment records applied to this estimate (deposits, etc.)",
       "items": {
         "type": "object",
         "properties": {

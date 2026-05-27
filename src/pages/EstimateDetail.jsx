@@ -23,6 +23,7 @@ import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import CannedJobPicker from "@/components/estimates/CannedJobPicker";
 import PrintableEstimate from "@/components/PrintableEstimate";
+import EngineSelector from "@/components/EngineSelector";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -260,9 +261,63 @@ export default function EstimateDetail() {
     await saveMutation.mutateAsync(updated);
 
     if (form.is_engine_build) {
-      // Auto-create engine build
+      // Auto-create engine build, prefilling from previous build for this engine
       setConvertingToBuild(true);
       const cust = customers.find(c => c.id === form.customer_id);
+
+      // Find previous builds for this engine to prefill data
+      let prevBuildData = {};
+      if (form.customer_engine_id) {
+        try {
+          const engineRec = await base44.entities.CustomerEngine.filter({ id: form.customer_engine_id });
+          const eng = engineRec[0];
+          if (eng) {
+            // Find last completed build with same serial
+            const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
+            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+            if (lastBuild) {
+              prevBuildData = {
+                valve_lash_intake: lastBuild.valve_lash_intake,
+                valve_lash_exhaust: lastBuild.valve_lash_exhaust,
+                internal_measurements: lastBuild.internal_measurements,
+                cam_info: lastBuild.cam_info,
+                max_rpm: lastBuild.max_rpm,
+                oil_recommendation: lastBuild.oil_recommendation,
+                oil_change_interval: lastBuild.oil_change_interval,
+                spark_plug_recommendation: lastBuild.spark_plug_recommendation,
+                refresh_interval: lastBuild.refresh_interval,
+                application: lastBuild.application,
+                transmission_type: lastBuild.transmission_type,
+                spec_sheet_id: lastBuild.spec_sheet_id,
+              };
+            }
+            const build = await base44.entities.EngineBuild.create({
+              engine_serial_number: eng.engine_serial_number,
+              eed_id: eng.eed_id,
+              customer_engine_id: eng.id,
+              platform_id: eng.platform_id,
+              build_number: form.estimate_number,
+              customer_id: form.customer_id,
+              customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+              status: "queued",
+              work_tag: "none",
+              assembly_notes: form.notes || "",
+              ...prevBuildData,
+            });
+            await base44.entities.Estimate.update(id, { build_id: build.id });
+            setForm(f => ({ ...f, build_id: build.id }));
+            qc.invalidateQueries({ queryKey: ["builds"] });
+            setConvertingToBuild(false);
+            toast.success("Estimate approved — engine build created with previous build data!");
+            navigate(`/BuildDetail?id=${build.id}`);
+            return;
+          }
+        } catch (e) {
+          console.error("Error prefilling from previous build", e);
+        }
+      }
+
+      // Fallback: no engine selected
       const build = await base44.entities.EngineBuild.create({
         engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
         build_number: form.estimate_number,
@@ -285,6 +340,7 @@ export default function EstimateDetail() {
         invoice_number: invoiceNumber,
         estimate_id: id,
         customer_id: form.customer_id,
+        customer_engine_id: form.customer_engine_id || "",
         status: "sent",
         issue_date: new Date().toISOString().split("T")[0],
         line_items: form.line_items,
@@ -654,6 +710,14 @@ export default function EstimateDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {form.customer_id && (
+              <EngineSelector
+                customerId={form.customer_id}
+                value={form.customer_engine_id || ""}
+                onChange={v => setForm({...form, customer_engine_id: v})}
+                platforms={platforms}
+              />
+            )}
             <div className="border border-slate-200 rounded-lg px-3 py-2 space-y-2">
               <div className="flex items-center justify-between">
                 <div>

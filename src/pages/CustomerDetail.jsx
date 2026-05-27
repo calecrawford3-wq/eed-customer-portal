@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu
 } from "lucide-react";
 import CustomerPortalModal from "@/components/CustomerPortalModal";
+import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -174,12 +175,17 @@ export default function CustomerDetail() {
 
         {/* Tabs for related records */}
         <div className="lg:col-span-2">
-          <Tabs defaultValue="builds">
+          <Tabs defaultValue="engines">
             <TabsList className="mb-4">
+              <TabsTrigger value="engines">Engines</TabsTrigger>
               <TabsTrigger value="builds">Builds ({customerBuilds.length})</TabsTrigger>
               <TabsTrigger value="estimates">Estimates ({customerEstimates.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({customerInvoices.length})</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="engines">
+              <CustomerEnginesTab customerId={id} customer={customer} platforms={platforms} />
+            </TabsContent>
 
             <TabsContent value="builds">
               <div className="flex justify-between items-center mb-3">

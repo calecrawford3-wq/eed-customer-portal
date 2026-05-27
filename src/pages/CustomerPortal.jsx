@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Receipt, ClipboardList, Wrench, DollarSign, Download, RefreshCw,
-  User, LogOut, CheckCircle, Clock, ChevronRight, FileText, AlertTriangle
+  User, LogOut, CheckCircle, Clock, ChevronRight, FileText, AlertTriangle, Cpu
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
@@ -105,6 +105,12 @@ export default function CustomerPortal() {
   const { data: builds = [] } = useQuery({
     queryKey: ["portal-builds", customer?.id],
     queryFn: () => base44.entities.EngineBuild.filter({ customer_id: customer.id }),
+    enabled: !!customer,
+  });
+
+  const { data: customerEngines = [] } = useQuery({
+    queryKey: ["portal-engines", customer?.id],
+    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: customer.id }),
     enabled: !!customer,
   });
 
@@ -407,13 +413,123 @@ export default function CustomerPortal() {
           </Card>
         </div>
 
-        <Tabs defaultValue="builds">
+        <Tabs defaultValue="engines">
           <TabsList className="mb-6">
+            <TabsTrigger value="engines">My Engines ({customerEngines.length})</TabsTrigger>
             <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
             <TabsTrigger value="estimates">Estimates ({estimates.length})</TabsTrigger>
             <TabsTrigger value="tax">Tax Statement</TabsTrigger>
           </TabsList>
+
+          {/* ─── My Engines ─── */}
+          <TabsContent value="engines">
+            {customerEngines.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">
+                <Cpu className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p>No engines registered</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {customerEngines.map(engine => {
+                  const platform = platforms.find(p => p.id === engine.platform_id);
+                  const engineBuilds = builds
+                    .filter(b => b.engine_serial_number === engine.engine_serial_number)
+                    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+                  const engineInvoices = invoices.filter(inv =>
+                    engineBuilds.some(b => b.id === inv.build_id) ||
+                    inv.customer_engine_id === engine.id
+                  );
+                  return (
+                    <Card key={engine.id} className="border-0 shadow-sm bg-white">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono font-bold text-[#e20404] text-lg">{engine.eed_id}</span>
+                              <span className="text-slate-600">{engine.engine_serial_number}</span>
+                            </div>
+                            <p className="text-sm text-slate-500">
+                              {platform ? `${platform.manufacturer} ${platform.name}` : ""}
+                              {platform?.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Builds for this engine - show build sheet only */}
+                        {engineBuilds.length > 0 && (
+                          <div className="border-t border-slate-100 pt-4 mb-4">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Build History</p>
+                            <div className="space-y-2">
+                              {engineBuilds.map(b => {
+                                const progress = BUILD_PROGRESS[b.status] || 0;
+                                const isActive = !["complete", "shipped"].includes(b.status);
+                                return (
+                                  <div key={b.id} className="bg-slate-50 rounded-lg p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div>
+                                        <span className="text-sm font-medium">{b.build_number || b.engine_serial_number}</span>
+                                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status] || "bg-slate-100 text-slate-600"}`}>
+                                          {b.status?.replace("_", " ")}
+                                        </span>
+                                        {b.completion_date && <span className="ml-2 text-xs text-slate-400">{b.completion_date}</span>}
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs"
+                                        onClick={() => handlePrintBuildSheet(b)}
+                                      >
+                                        <Download className="w-3 h-3 mr-1" /> Build Sheet
+                                      </Button>
+                                    </div>
+                                    {isActive && (
+                                      <div>
+                                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                          <div className="h-full bg-[#e20404] rounded-full" style={{ width: `${progress}%` }} />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {(b.max_rpm || b.oil_recommendation || b.refresh_interval) && (
+                                      <div className="mt-2 grid grid-cols-3 gap-2">
+                                        {b.max_rpm && <div><p className="text-xs text-slate-400">Max RPM</p><p className="text-xs font-semibold">{b.max_rpm.toLocaleString()}</p></div>}
+                                        {b.oil_recommendation && <div><p className="text-xs text-slate-400">Oil</p><p className="text-xs font-semibold">{b.oil_recommendation}</p></div>}
+                                        {b.refresh_interval && <div><p className="text-xs text-slate-400">Refresh At</p><p className="text-xs font-semibold">{b.refresh_interval}</p></div>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Linked invoices */}
+                        {engineInvoices.length > 0 && (
+                          <div className="border-t border-slate-100 pt-4">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Invoices for this Engine</p>
+                            <div className="space-y-1">
+                              {engineInvoices.map(inv => (
+                                <div key={inv.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                                  <div>
+                                    <span className="text-sm font-medium">{inv.invoice_number}</span>
+                                    <span className="ml-2 text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</span>
+                                  </div>
+                                  <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
+                                    {inv.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
 
           {/* ─── Builds ─── */}
           <TabsContent value="builds">

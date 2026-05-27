@@ -18,6 +18,7 @@ import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import PrintableInvoice from "@/components/PrintableInvoice";
+import EngineSelector from "@/components/EngineSelector";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -74,6 +75,11 @@ export default function InvoiceDetail() {
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
+  });
+
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
 
   useEffect(() => {
@@ -350,6 +356,14 @@ export default function InvoiceDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {form.customer_id && (
+              <EngineSelector
+                customerId={form.customer_id}
+                value={form.customer_engine_id || ""}
+                onChange={v => setForm({...form, customer_engine_id: v})}
+                platforms={platforms}
+              />
+            )}
           </CardContent>
         </Card>
         {customer && (
