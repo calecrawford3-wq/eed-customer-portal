@@ -341,14 +341,6 @@ export default function Builds() {
                 />
               </div>
               <div>
-                <Label>Build/Jobcard #</Label>
-                <Input
-                  value={newBuild.build_number}
-                  onChange={(e) => setNewBuild({ ...newBuild, build_number: e.target.value })}
-                  placeholder="e.g., JC-2024-001"
-                />
-              </div>
-              <div>
                 <Label>Customer</Label>
                 <CustomerSearchSelect
                   customers={customers}
@@ -532,9 +524,6 @@ export default function Builds() {
                                 )}
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                                {build.build_number && (
-                                  <span>Jobcard: {build.build_number}</span>
-                                )}
                                 <span>{getPlatformLabel(build.platform_id)}</span>
                                 {getCustomerName(build) && (
                                   <>
@@ -641,9 +630,7 @@ export default function Builds() {
                               {build.eed_id && <span className="font-mono text-xs text-[#e20404] font-semibold">{build.eed_id}</span>}
                             </div>
                             <p className="text-sm text-slate-500">{getPlatformLabel(build.platform_id)}</p>
-                            {build.build_number && (
-                              <p className="text-xs text-slate-400">Jobcard: {build.build_number}</p>
-                            )}
+
                             {getCustomerName(build) && (
                               <p className="text-sm text-slate-600 mt-1">{getCustomerName(build)}</p>
                             )}

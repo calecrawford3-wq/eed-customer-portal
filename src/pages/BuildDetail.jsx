@@ -237,7 +237,7 @@ export default function BuildDetail() {
             </div>
             <p className="text-slate-500 mt-1">
               {platform?.manufacturer} {platform?.name}
-              {build.build_number && <span className="ml-2">• Jobcard: {build.build_number}</span>}
+              {build.eed_id && <span className="ml-2 font-mono text-[#e20404] font-semibold">• {build.eed_id}</span>}
             </p>
           </div>
         </div>
@@ -312,10 +312,12 @@ export default function BuildDetail() {
                   />
                 </div>
                 <div>
-                  <Label>Build/Jobcard #</Label>
+                  <Label>EED ID</Label>
                   <Input
-                    value={getValue("build_number")}
-                    onChange={(e) => handleChange("build_number", e.target.value)}
+                    value={getValue("eed_id")}
+                    onChange={(e) => handleChange("eed_id", e.target.value)}
+                    placeholder="e.g., EED1040"
+                    className="font-mono"
                   />
                 </div>
                 <div>
