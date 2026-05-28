@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -70,7 +71,16 @@ export default function BuildDetail() {
 
   const { data: buildData, isLoading } = useQuery({
     queryKey: ["build", buildId],
-    queryFn: () => base44.entities.EngineBuild.filter({ id: buildId }),
+    queryFn: async () => {
+      const builds = await base44.entities.EngineBuild.filter({ id: buildId });
+      // Sync engine stage when build loads
+      if (builds?.[0]?.customer_engine_id) {
+        syncCustomerEngineStage(builds[0].customer_engine_id).catch(e => 
+          console.warn("Failed to sync stage on load:", e)
+        );
+      }
+      return builds;
+    },
     enabled: !!buildId,
   });
 

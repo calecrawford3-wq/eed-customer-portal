@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +107,12 @@ export default function EstimateDetail() {
 
   const { data: customerEngines = [] } = useQuery({
     queryKey: ["customerEngines", form.customer_id],
-    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: form.customer_id }),
+    queryFn: async () => {
+      const engines = await base44.entities.CustomerEngine.filter({ customer_id: form.customer_id });
+      // Sync stage for all engines in this list
+      engines?.forEach(eng => syncCustomerEngineStage(eng.id).catch(() => {}));
+      return engines;
+    },
     enabled: !!form.customer_id,
   });
 
@@ -140,6 +146,12 @@ export default function EstimateDetail() {
   useEffect(() => {
     if (estimate && estimate[0]) {
       setForm({ labor_items: [], machining_items: [], payments: [], ...estimate[0] });
+      // Sync engine stage when estimate loads
+      if (estimate[0].customer_engine_id) {
+        syncCustomerEngineStage(estimate[0].customer_engine_id).catch(e => 
+          console.warn("Failed to sync stage on load:", e)
+        );
+      }
     }
   }, [estimate]);
 
