@@ -323,6 +323,17 @@ export default function EstimateDetail() {
     setForm(updated);
     await saveMutation.mutateAsync(updated);
 
+    // Update CustomerEngine current_stage if engine and spec sheet are linked
+    if (form.customer_engine_id && selectedSpecSheetForEngine?.spec_type) {
+      try {
+        await base44.entities.CustomerEngine.update(form.customer_engine_id, {
+          current_stage: selectedSpecSheetForEngine.spec_type
+        });
+      } catch (e) {
+        console.warn("Failed to update CustomerEngine stage:", e);
+      }
+    }
+
     if (form.is_engine_build) {
       // Auto-create engine build, prefilling from previous build for this engine
       setConvertingToBuild(true);
