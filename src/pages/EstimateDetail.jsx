@@ -323,17 +323,6 @@ export default function EstimateDetail() {
     setForm(updated);
     await saveMutation.mutateAsync(updated);
 
-    // Update CustomerEngine current_stage if engine and spec sheet are linked
-    if (form.customer_engine_id && selectedSpecSheetForEngine?.spec_type) {
-      try {
-        await base44.entities.CustomerEngine.update(form.customer_engine_id, {
-          current_stage: selectedSpecSheetForEngine.spec_type
-        });
-      } catch (e) {
-        console.warn("Failed to update CustomerEngine stage:", e);
-      }
-    }
-
     if (form.is_engine_build) {
       // Auto-create engine build, prefilling from previous build for this engine
       setConvertingToBuild(true);
@@ -364,6 +353,17 @@ export default function EstimateDetail() {
                 transmission_type: lastBuild.transmission_type,
                 spec_sheet_id: lastBuild.spec_sheet_id,
               };
+              // Update stage based on most recent build's spec sheet
+              if (lastBuild.spec_sheet_id) {
+                try {
+                  const specs = await base44.entities.SpecSheet.filter({ id: lastBuild.spec_sheet_id });
+                  if (specs?.[0]?.spec_type) {
+                    await base44.entities.CustomerEngine.update(eng.id, { current_stage: specs[0].spec_type });
+                  }
+                } catch (e) {
+                  console.warn("Failed to update stage from build spec sheet:", e);
+                }
+              }
             }
             const build = await base44.entities.EngineBuild.create({
               engine_serial_number: eng.engine_serial_number,
