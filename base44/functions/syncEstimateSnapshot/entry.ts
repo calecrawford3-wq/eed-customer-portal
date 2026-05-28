@@ -66,6 +66,28 @@ Deno.serve(async (req) => {
               enginePlatform = `${platform.manufacturer} ${platform.name}${platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}`;
             }
           }
+
+          // If no stage set on engine, check most recent build's spec sheet
+          if (!buildStage && engine.engine_serial_number) {
+            try {
+              const builds = await base44.entities.EngineBuild.filter({ 
+                engine_serial_number: engine.engine_serial_number 
+              });
+              if (builds && builds.length > 0) {
+                const mostRecentBuild = builds.sort((a, b) => 
+                  new Date(b.created_date || 0) - new Date(a.created_date || 0)
+                )[0];
+                if (mostRecentBuild?.spec_sheet_id) {
+                  const specs = await base44.entities.SpecSheet.filter({ id: mostRecentBuild.spec_sheet_id });
+                  if (specs?.[0]?.spec_type) {
+                    buildStage = specs[0].spec_type;
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn(`[syncEstimateSnapshot] Could not fetch stage from recent build: ${e.message}`);
+            }
+          }
         }
       } catch (e) {
         console.warn(`[syncEstimateSnapshot] Could not fetch engine details: ${e.message}`);
