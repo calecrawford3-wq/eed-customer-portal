@@ -99,13 +99,21 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
         }}>
           <SelectTrigger className="flex-1">
             <SelectValue placeholder="Select engine...">
-              {selected && (
-                <span className="flex items-center gap-2">
-                  <Cpu className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="font-mono font-bold text-[#e20404]">{selected.eed_id}</span>
-                  <span className="text-slate-500 text-xs">— {selected.engine_serial_number}</span>
-                </span>
-              )}
+              {selected && (() => {
+                const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
+                return (
+                  <span className="flex items-center gap-2">
+                    <Cpu className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-mono font-bold text-[#e20404]">{selected.eed_id}</span>
+                    <span className="text-slate-500 text-xs">— {selected.engine_serial_number}</span>
+                    {selected.current_stage && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">
+                        {STAGE_LABELS[selected.current_stage] || selected.current_stage}
+                      </span>
+                    )}
+                  </span>
+                );
+              })()}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -117,12 +125,18 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
             )}
             {engines.map(e => {
               const p = platforms.find(pl => pl.id === e.platform_id);
+              const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
               return (
                 <SelectItem key={e.id} value={e.id}>
                   <span className="flex items-center gap-2">
                     <span className="font-mono font-bold text-[#e20404]">{e.eed_id}</span>
                     <span className="text-slate-500">— {e.engine_serial_number}</span>
                     {p && <span className="text-xs text-slate-400">{p.manufacturer} {p.name}</span>}
+                    {e.current_stage && e.current_stage !== "stock" && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">
+                        {STAGE_LABELS[e.current_stage] || e.current_stage}
+                      </span>
+                    )}
                   </span>
                 </SelectItem>
               );

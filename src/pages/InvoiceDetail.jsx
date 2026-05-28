@@ -321,10 +321,20 @@ export default function InvoiceDetail() {
   const customer = customers.find(c => c.id === form.customer_id);
   const selectedEngine = customerEngines.find(e => e.id === form.customer_engine_id);
   const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
-  // Find spec sheet linked via build_id if available
-  const linkedBuildSpecSheetId = form.build_id ? null : null; // resolved via engine builds if needed
-  const selectedSpecSheet = form.spec_sheet_id ? specSheets.find(s => s.id === form.spec_sheet_id) : null;
   const STAGE_LABELS_INV = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
+
+  // Resolve spec sheet: prefer explicitly set spec_sheet_id, else find current spec for engine's stage+platform
+  const selectedSpecSheet = (() => {
+    if (form.spec_sheet_id) return specSheets.find(s => s.id === form.spec_sheet_id) || null;
+    if (selectedEngine?.current_stage && selectedEngine?.platform_id) {
+      return specSheets.find(s =>
+        s.platform_id === selectedEngine.platform_id &&
+        s.spec_type === selectedEngine.current_stage &&
+        s.is_current
+      ) || null;
+    }
+    return null;
+  })();
 
   if (printMode) {
     return (
