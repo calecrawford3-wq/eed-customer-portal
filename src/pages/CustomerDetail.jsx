@@ -17,6 +17,7 @@ import {
   ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu
 } from "lucide-react";
 import CustomerPortalModal from "@/components/CustomerPortalModal";
+import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
 import { toast } from "sonner";
 
@@ -311,7 +312,7 @@ export default function CustomerDetail() {
             <div><Label>Last Name</Label><Input value={editForm.last_name || ""} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
             <div><Label>Company</Label><Input value={editForm.company_name || ""} onChange={e => setEditForm({ ...editForm, company_name: e.target.value })} /></div>
             <div><Label>Email</Label><Input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
-            <div><Label>Phone</Label><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+            <div><Label>Phone</Label><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: formatPhone(e.target.value) })} placeholder="(999) 999-9999" /></div>
             <div>
               <Label>Status</Label>
               <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
