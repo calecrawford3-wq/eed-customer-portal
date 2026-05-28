@@ -6,26 +6,39 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
+    // Extract and validate sync_secret from query parameters
+    const url = new URL(req.url);
+    const syncSecret = url.searchParams.get("sync_secret");
+    const expectedSecret = Deno.env.get("SYNC_SECRET");
+
+    if (!syncSecret || syncSecret !== expectedSecret) {
+      return Response.json({ error: "Forbidden: Invalid sync_secret" }, { status: 403 });
+    }
+
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const { estimateId, estimateNumber, publicAccessToken, amount, method, date, note, stripeSessionId } = await req.json();
 
-    if (!user || user.role !== "admin") {
-      return Response.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+    if (!amount || amount === undefined || amount === null) {
+      return Response.json({ error: "Missing amount" }, { status: 400 });
     }
 
-    const { estimateId, amount, method, date, note } = await req.json();
-
-    if (!estimateId || amount === undefined || amount === null) {
-      return Response.json({ error: "Missing estimateId or amount" }, { status: 400 });
+    // Find estimate by ID, estimate_number, or public_access_token
+    let estimate;
+    if (estimateId) {
+      const estimates = await base44.asServiceRole.entities.Estimate.filter({ id: estimateId });
+      estimate = estimates?.[0];
+    } else if (estimateNumber) {
+      const estimates = await base44.asServiceRole.entities.Estimate.filter({ estimate_number: estimateNumber });
+      estimate = estimates?.[0];
+    } else if (publicAccessToken) {
+      const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+      estimate = estimates?.[0];
     }
 
-    // Fetch the estimate
-    const estimates = await base44.entities.Estimate.filter({ id: estimateId });
-    if (!estimates || estimates.length === 0) {
+    if (!estimate) {
       return Response.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    const estimate = estimates[0];
     console.log(`[recordEstimatePayment] Recording payment of $${amount} for estimate ${estimate.estimate_number}`);
 
     // Add payment to the payments array
