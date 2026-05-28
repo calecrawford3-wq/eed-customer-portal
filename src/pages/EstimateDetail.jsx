@@ -494,7 +494,7 @@ export default function EstimateDetail() {
               .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px 32px; text-align: center; border-bottom: 4px solid #e20404; }
               .logo { height: 40px; margin-bottom: 20px; display: inline-block; }
               .header-text { color: #ffffff; margin: 0; }
-              .header-title { font-size: 32px; font-weight: 700; margin: 12px 0 4px 0; }
+              .header-title { font-size: 32px; font-weight: 700; margin: 12px 0 4px 0; color: #ffffff; }
               .header-subtitle { font-size: 14px; color: #e20404; font-weight: 600; letter-spacing: 1px; margin: 0; }
               .content { padding: 40px 32px; }
               .greeting { font-size: 18px; font-weight: 600; color: #1a1a1a; margin: 0 0 16px 0; }
