@@ -136,7 +136,7 @@ export default function InvoiceDetail() {
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
     const subtotal = partTotal + laborTotal + machiningTotal;
-    const tax_amount = subtotal * (Number(taxRate) / 100);
+    const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
     const total = subtotal + tax_amount;
     const balance_due = total - (Number(amountPaid) || 0);
     return { subtotal, tax_amount, total, balance_due };
@@ -613,7 +613,7 @@ export default function InvoiceDetail() {
             <span className="text-slate-600">Tax Rate (%)</span>
             <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" />
           </div>
-          {Number(form.tax_rate) > 0 && <div className="flex justify-between"><span className="text-slate-600">Tax</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
+          {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span>${Number(form.total || 0).toFixed(2)}</span></div>
           {Number(form.amount_paid) > 0 && <div className="flex justify-between text-emerald-600"><span>Paid</span><span>-${Number(form.amount_paid).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold text-[#e20404]"><span>Balance Due</span><span>${Number(form.balance_due || 0).toFixed(2)}</span></div>
