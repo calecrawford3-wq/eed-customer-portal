@@ -156,7 +156,7 @@
       "type": "number",
       "default": 0
     },
-    "balance_due": {
+    "amount_due": {
       "type": "number"
     },
     "payment_notes": {

@@ -172,6 +172,13 @@
     "total": {
       "type": "number"
     },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "amount_due": {
+      "type": "number"
+    },
     "notes": {
       "type": "string"
     },
