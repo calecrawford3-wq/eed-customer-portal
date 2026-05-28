@@ -580,7 +580,10 @@ export default function EstimateDetail() {
   if (printMode) {
     return (
       <div className="p-4">
-        <button onClick={() => setPrintMode(false)} className="mb-4 px-4 py-2 bg-slate-200 rounded hover:bg-slate-300 print:hidden">← Back to Edit</button>
+        <div className="flex items-center gap-3 mb-4 print:hidden">
+          <button onClick={() => setPrintMode(false)} className="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
+          <button onClick={() => window.print()} className="px-4 py-2 bg-[#e20404] text-white rounded hover:bg-[#c00303] font-semibold">🖨 Print Estimate</button>
+        </div>
         <PrintableEstimate estimate={form} customer={customer || { first_name: "", last_name: "" }} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
       </div>
     );
@@ -640,7 +643,7 @@ export default function EstimateDetail() {
           <Package className="w-4 h-4 mr-1" /> Generate POs
         </Button>
         <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}>
-          <Printer className="w-4 h-4 mr-1" /> Print
+          <Printer className="w-4 h-4 mr-1" /> View
         </Button>
         <Button variant="outline" size="sm" onClick={sendEstimate} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" /> {sending ? "Sending..." : "Send"}
