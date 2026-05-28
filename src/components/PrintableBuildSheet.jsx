@@ -37,6 +37,9 @@ export default function PrintableBuildSheet({ build, platform, specSheet }) {
               fontWeight: "bold",
               fontSize: "20px",
               display: "inline-block",
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact",
+              colorAdjust: "exact",
               boxShadow: "0 2px 4px rgba(226, 4, 4, 0.3)"
             }}>
               {specSheet ? getSpecTypeLabel(specSheet.spec_type) : "N/A"}
@@ -73,10 +76,10 @@ export default function PrintableBuildSheet({ build, platform, specSheet }) {
         </div>
         <div>
           <div style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", marginBottom: "4px" }}>
-            Build/Jobcard #
+            EED ID
           </div>
-          <div style={{ fontSize: "16px", fontWeight: "600" }}>
-            {build.build_number || "—"}
+          <div style={{ fontSize: "16px", fontWeight: "600", fontFamily: "monospace", color: "#e20404" }}>
+            {build.eed_id || "—"}
           </div>
         </div>
         <div>

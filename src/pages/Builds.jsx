@@ -47,6 +47,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import EngineSelector from "@/components/EngineSelector";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -83,6 +84,7 @@ export default function Builds() {
   const [newBuild, setNewBuild] = useState({
     engine_serial_number: "",
     eed_id: "",
+    customer_engine_id: "",
     build_number: "",
     platform_id: "",
     spec_sheet_id: "",
@@ -123,6 +125,7 @@ export default function Builds() {
       setNewBuild({
         engine_serial_number: "",
         eed_id: "",
+        customer_engine_id: "",
         build_number: "",
         platform_id: "",
         spec_sheet_id: "",
@@ -347,10 +350,26 @@ export default function Builds() {
                   value={newBuild.customer_id}
                   onValueChange={(v) => {
                     const c = customers.find(c => c.id === v);
-                    setNewBuild({ ...newBuild, customer_id: v, customer_name: c ? `${c.first_name} ${c.last_name}` : "" });
+                    setNewBuild({ ...newBuild, customer_id: v, customer_name: c ? `${c.first_name} ${c.last_name}` : "", customer_engine_id: "", eed_id: "", engine_serial_number: "" });
                   }}
                 />
               </div>
+              {newBuild.customer_id && (
+                <EngineSelector
+                  customerId={newBuild.customer_id}
+                  value={newBuild.customer_engine_id || ""}
+                  onChange={(engineId, engine) => {
+                    const updates = { customer_engine_id: engineId };
+                    if (engine) {
+                      if (engine.eed_id) updates.eed_id = engine.eed_id;
+                      if (engine.engine_serial_number) updates.engine_serial_number = engine.engine_serial_number;
+                      if (engine.platform_id) updates.platform_id = engine.platform_id;
+                    }
+                    setNewBuild(prev => ({ ...prev, ...updates }));
+                  }}
+                  platforms={platforms}
+                />
+              )}
               <div>
                 <Label>EED ID</Label>
                 <Input

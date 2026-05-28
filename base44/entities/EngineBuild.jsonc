@@ -105,22 +105,23 @@
     },
     "cam_info": {
       "type": "object",
-      "description": "Camshaft information",
+      "description": "Camshaft advance/retard information",
       "properties": {
-        "intake_lift": {
-          "type": "string"
+        "intake_direction": {
+          "type": "string",
+          "description": "advanced or retarded"
         },
-        "intake_duration_at_50": {
-          "type": "string"
+        "intake_degrees": {
+          "type": "number",
+          "description": "Degrees advanced or retarded (1-6)"
         },
-        "exhaust_lift": {
-          "type": "string"
+        "exhaust_direction": {
+          "type": "string",
+          "description": "advanced or retarded"
         },
-        "exhaust_duration_at_50": {
-          "type": "string"
-        },
-        "lobe_separation_angle": {
-          "type": "string"
+        "exhaust_degrees": {
+          "type": "number",
+          "description": "Degrees advanced or retarded (1-6)"
         }
       }
     },

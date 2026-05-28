@@ -90,8 +90,10 @@ export default function BuildDetail() {
   });
 
   const build = buildData?.[0];
-  const platform = platforms.find(p => p.id === build?.platform_id);
-  const specSheet = specSheets.find(s => s.id === build?.spec_sheet_id);
+  const effectivePlatformId = localChanges.platform_id ?? build?.platform_id;
+  const effectiveSpecSheetId = localChanges.spec_sheet_id ?? build?.spec_sheet_id;
+  const platform = platforms.find(p => p.id === effectivePlatformId);
+  const specSheet = specSheets.find(s => s.id === effectiveSpecSheetId);
   const linkedCustomer = customers.find(c => c.id === (build?.customer_id || localChanges.customer_id));
 
   const updateMutation = useMutation({
@@ -152,18 +154,40 @@ export default function BuildDetail() {
 
   const getCamValue = (field) => {
     const data = localChanges.cam_info || build?.cam_info || {};
-    return data[field] || "";
+    return data[field] !== undefined ? data[field] : (build?.cam_info?.[field] ?? "");
   };
 
-  // Calculate Lobe Separation Angle: LSA = (Intake Centerline + Exhaust Centerline) / 2
-  // For duration at 0.050": LSA ≈ (Intake Duration + Exhaust Duration) / 4
+  // Get stock centerlines from the linked spec sheet's camshaft specs
+  const stockIntakeCenterline = specSheet?.specs?.camshaft?.intake_centerline ?? null;
+  const stockExhaustCenterline = specSheet?.specs?.camshaft?.exhaust_centerline ?? null;
+
+  // Calculate effective centerlines after advance/retard adjustments
+  // Advanced = moves centerline later = add degrees
+  // Retarded = moves centerline earlier = subtract degrees
+  const calculateEffectiveCenterline = (stockCenterline, direction, degrees) => {
+    if (stockCenterline === null || stockCenterline === undefined || stockCenterline === "") return null;
+    const stock = parseFloat(stockCenterline);
+    const deg = parseFloat(degrees) || 0;
+    if (isNaN(stock)) return null;
+    if (direction === "advanced") return stock + deg;
+    if (direction === "retarded") return stock - deg;
+    return stock;
+  };
+
+  // LSA = |intakeCenterline - exhaustCenterline| / 2 ... actually
+  // LSA = (intakeCL + exhaustCL) / 2 when both are measured as centerline degrees from TDC
+  // Per user: LSA = subtract the two centerlines, always positive
   const calculateLSA = () => {
-    const intakeDuration = parseFloat(getCamValue("intake_duration_at_50"));
-    const exhaustDuration = parseFloat(getCamValue("exhaust_duration_at_50"));
-    if (!isNaN(intakeDuration) && !isNaN(exhaustDuration)) {
-      return ((intakeDuration + exhaustDuration) / 4).toFixed(1);
-    }
-    return "";
+    const intakeDir = getCamValue("intake_direction");
+    const intakeDeg = getCamValue("intake_degrees");
+    const exhaustDir = getCamValue("exhaust_direction");
+    const exhaustDeg = getCamValue("exhaust_degrees");
+
+    const effectiveIntake = calculateEffectiveCenterline(stockIntakeCenterline, intakeDir, intakeDeg);
+    const effectiveExhaust = calculateEffectiveCenterline(stockExhaustCenterline, exhaustDir, exhaustDeg);
+
+    if (effectiveIntake === null || effectiveExhaust === null) return null;
+    return Math.abs(effectiveIntake - effectiveExhaust).toFixed(1);
   };
 
   const availableSpecsForEdit = specSheets.filter(s => s.platform_id === getValue("platform_id") && s.is_current);
@@ -183,7 +207,7 @@ export default function BuildDetail() {
           <title>Build Sheet - ${build?.engine_serial_number}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; }
+            body { font-family: Arial, sans-serif; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
           </style>
         </head>
         <body>
@@ -546,76 +570,182 @@ export default function BuildDetail() {
 
         <TabsContent value="cam" className="mt-6">
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Stock Centerline Reference */}
+            {(stockIntakeCenterline !== null || stockExhaustCenterline !== null) && (
+              <Card className="border-0 shadow-sm md:col-span-2 bg-slate-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-slate-600">Stock Cam Centerlines (from Spec Sheet)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-8">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-0.5">Intake Centerline</p>
+                      <p className="text-xl font-bold text-slate-900">{stockIntakeCenterline !== null ? `${stockIntakeCenterline}°` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-0.5">Exhaust Centerline</p>
+                      <p className="text-xl font-bold text-slate-900">{stockExhaustCenterline !== null ? `${stockExhaustCenterline}°` : "—"}</p>
+                    </div>
+                  </div>
+                  {!specSheet && (
+                    <p className="text-xs text-slate-400 mt-2">Assign a spec sheet to see stock centerlines.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+            {(!stockIntakeCenterline && !stockExhaustCenterline) && (
+              <Card className="border-0 shadow-sm md:col-span-2 bg-slate-50">
+                <CardContent className="py-3">
+                  <p className="text-sm text-slate-400">
+                    {specSheet ? "No cam centerlines set in this spec sheet. Add them in the Camshaft section of the Spec Editor." : "Assign a spec sheet to see stock cam centerlines."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Intake Cam */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base">Intake Cam</CardTitle>
+                <CardTitle className="text-base">Intake Cam Timing</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div>
-                  <Label>Lift (mm)</Label>
-                  <Input
-                    value={getCamValue("intake_lift")}
-                    onChange={(e) => handleCamChange("intake_lift", e.target.value)}
-                    placeholder="e.g., 9.5"
-                  />
+                  <Label className="mb-2 block">Direction</Label>
+                  <div className="flex gap-3">
+                    {["advanced", "retarded"].map(dir => (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() => handleCamChange("intake_direction", getCamValue("intake_direction") === dir ? "" : dir)}
+                        className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-semibold capitalize transition-all ${
+                          getCamValue("intake_direction") === dir
+                            ? "border-[#e20404] bg-[#e20404] text-white"
+                            : "border-slate-200 text-slate-600 hover:border-slate-400"
+                        }`}
+                      >
+                        {dir}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <Label>Duration @ 0.050" (degrees)</Label>
-                  <Input
-                    value={getCamValue("intake_duration_at_50")}
-                    onChange={(e) => handleCamChange("intake_duration_at_50", e.target.value)}
-                    placeholder="e.g., 260"
-                  />
+                  <Label className="mb-2 block">Degrees</Label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5, 6].map(deg => (
+                      <button
+                        key={deg}
+                        type="button"
+                        onClick={() => handleCamChange("intake_degrees", getCamValue("intake_degrees") === deg ? "" : deg)}
+                        className={`flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all ${
+                          getCamValue("intake_degrees") === deg
+                            ? "border-[#e20404] bg-[#e20404] text-white"
+                            : "border-slate-200 text-slate-600 hover:border-slate-400"
+                        }`}
+                      >
+                        {deg}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                {stockIntakeCenterline !== null && getCamValue("intake_direction") && getCamValue("intake_degrees") && (
+                  <div className="bg-blue-50 rounded-lg p-3 text-sm">
+                    <span className="text-slate-500">Effective Intake Centerline: </span>
+                    <span className="font-bold text-slate-900">
+                      {calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"))}°
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Exhaust Cam */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base">Exhaust Cam</CardTitle>
+                <CardTitle className="text-base">Exhaust Cam Timing</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div>
-                  <Label>Lift (mm)</Label>
-                  <Input
-                    value={getCamValue("exhaust_lift")}
-                    onChange={(e) => handleCamChange("exhaust_lift", e.target.value)}
-                    placeholder="e.g., 9.0"
-                  />
+                  <Label className="mb-2 block">Direction</Label>
+                  <div className="flex gap-3">
+                    {["advanced", "retarded"].map(dir => (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() => handleCamChange("exhaust_direction", getCamValue("exhaust_direction") === dir ? "" : dir)}
+                        className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-semibold capitalize transition-all ${
+                          getCamValue("exhaust_direction") === dir
+                            ? "border-[#e20404] bg-[#e20404] text-white"
+                            : "border-slate-200 text-slate-600 hover:border-slate-400"
+                        }`}
+                      >
+                        {dir}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <Label>Duration @ 0.050" (degrees)</Label>
-                  <Input
-                    value={getCamValue("exhaust_duration_at_50")}
-                    onChange={(e) => handleCamChange("exhaust_duration_at_50", e.target.value)}
-                    placeholder="e.g., 252"
-                  />
+                  <Label className="mb-2 block">Degrees</Label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5, 6].map(deg => (
+                      <button
+                        key={deg}
+                        type="button"
+                        onClick={() => handleCamChange("exhaust_degrees", getCamValue("exhaust_degrees") === deg ? "" : deg)}
+                        className={`flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all ${
+                          getCamValue("exhaust_degrees") === deg
+                            ? "border-[#e20404] bg-[#e20404] text-white"
+                            : "border-slate-200 text-slate-600 hover:border-slate-400"
+                        }`}
+                      >
+                        {deg}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                {stockExhaustCenterline !== null && getCamValue("exhaust_direction") && getCamValue("exhaust_degrees") && (
+                  <div className="bg-blue-50 rounded-lg p-3 text-sm">
+                    <span className="text-slate-500">Effective Exhaust Centerline: </span>
+                    <span className="font-bold text-slate-900">
+                      {calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"))}°
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Calculated LSA */}
             <Card className="border-0 shadow-sm md:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Calculated Values</CardTitle>
+                <CardTitle className="text-base">Calculated Lobe Separation Angle</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <Label className="text-slate-500 text-sm">Lobe Separation Angle (LSA)</Label>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">
-                      {calculateLSA() ? `${calculateLSA()}°` : "—"}
+                {calculateLSA() !== null ? (
+                  <div className="flex items-center gap-8">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">LSA</p>
+                      <div className="text-4xl font-bold text-[#e20404]">{calculateLSA()}°</div>
+                      <p className="text-xs text-slate-400 mt-2">
+                        |{calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"))} − {calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"))}|
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">Calculated from duration values</p>
+                    <div className="text-sm text-slate-500 space-y-1">
+                      <p>Stock Intake CL: <span className="font-semibold text-slate-700">{stockIntakeCenterline ?? "—"}°</span></p>
+                      <p>Intake Adjustment: <span className="font-semibold text-slate-700">{getCamValue("intake_direction") ? `${getCamValue("intake_direction")} ${getCamValue("intake_degrees")}°` : "None"}</span></p>
+                      <p>Effective Intake CL: <span className="font-semibold text-slate-700">{calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees")) ?? "—"}°</span></p>
+                      <p className="mt-2">Stock Exhaust CL: <span className="font-semibold text-slate-700">{stockExhaustCenterline ?? "—"}°</span></p>
+                      <p>Exhaust Adjustment: <span className="font-semibold text-slate-700">{getCamValue("exhaust_direction") ? `${getCamValue("exhaust_direction")} ${getCamValue("exhaust_degrees")}°` : "None"}</span></p>
+                      <p>Effective Exhaust CL: <span className="font-semibold text-slate-700">{calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees")) ?? "—"}°</span></p>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Manual LSA Override</Label>
-                    <Input
-                      value={getCamValue("lobe_separation_angle")}
-                      onChange={(e) => handleCamChange("lobe_separation_angle", e.target.value)}
-                      placeholder="Enter if known"
-                    />
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-slate-400 text-sm">
+                    {!specSheet
+                      ? "Assign a spec sheet with cam centerlines to calculate LSA."
+                      : !stockIntakeCenterline || !stockExhaustCenterline
+                        ? "Set intake and exhaust stock centerlines in the spec sheet's Camshaft section."
+                        : "Select direction and degrees for both cams above to calculate LSA."}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
