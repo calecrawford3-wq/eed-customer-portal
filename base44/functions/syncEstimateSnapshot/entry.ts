@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
       line_items: estimate.line_items || [],
       labor_items: estimate.labor_items || [],
       machining_items: estimate.machining_items || [],
+      machining_items: estimate.machining_items || [],
       subtotal: estimate.subtotal,
       tax_amount: estimate.tax_amount,
       tax_rate: estimate.tax_rate,
