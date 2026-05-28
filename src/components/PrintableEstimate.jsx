@@ -123,6 +123,7 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
       <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #ddd", textAlign: "center", fontSize: "11px", color: "#999" }}>
         <p>Thank you for considering our services!</p>
         <p>{settings?.company_name} | {settings?.company_website}</p>
+        <p style={{ marginTop: "4px" }}>Terms &amp; Conditions: <a href="https://www.eliteenginedevelopment.com/legal" style={{ color: "#999" }}>https://www.eliteenginedevelopment.com/legal</a></p>
       </div>
     </div>
   );
