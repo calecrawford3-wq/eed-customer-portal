@@ -127,7 +127,18 @@ export default function SpecSheets() {
     return acc;
   }, {});
 
-  const getPlatformName = (id) => platforms.find(p => p.id === id)?.name || "Unknown";
+  const getPlatformLabel = (p) => {
+    if (!p) return "Unknown";
+    let label = p.name;
+    if (p.year_range_start || p.year_range_end) {
+      label += ` (${p.year_range_start || "?"}–${p.year_range_end || "present"})`;
+    }
+    return label;
+  };
+  const getPlatformName = (id) => {
+    const p = platforms.find(pl => pl.id === id);
+    return getPlatformLabel(p);
+  };
   const getSpecTypeConfig = (type) => SPEC_TYPES.find(t => t.value === type) || SPEC_TYPES[0];
 
   const handleCreateSpec = () => {
@@ -205,7 +216,7 @@ export default function SpecSheets() {
           <SelectContent>
             <SelectItem value="all">All Platforms</SelectItem>
             {platforms.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>{getPlatformLabel(p)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
