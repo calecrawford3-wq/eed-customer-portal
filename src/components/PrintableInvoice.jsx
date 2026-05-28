@@ -2,7 +2,9 @@ import React from "react";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
-export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform }) {
+const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
+
+export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform, specSheet }) {
   if (!invoice || !customer) return null;
 
   const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";
@@ -27,10 +29,12 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
       </div>
 
       {customerEngine && (
-        <div style={{ backgroundColor: "#f8f8f8", padding: "12px 16px", borderRadius: "6px", marginBottom: "16px", display: "flex", gap: "32px", fontSize: "13px", borderLeft: "3px solid #e20404" }}>
+        <div style={{ backgroundColor: "#f8f8f8", padding: "12px 16px", borderRadius: "6px", marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "32px", fontSize: "13px", borderLeft: "3px solid #e20404" }}>
           {customerEngine.eed_id && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>EED ID</span><br /><strong style={{ fontFamily: "monospace", color: "#e20404" }}>{customerEngine.eed_id}</strong></div>}
           {customerEngine.engine_serial_number && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
           {platform && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Platform</span><br /><strong>{platform.manufacturer} {platform.name}{platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}</strong></div>}
+          {customerEngine.current_stage && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Stage</span><br /><strong>{STAGE_LABELS[customerEngine.current_stage] || customerEngine.current_stage}</strong></div>}
+          {specSheet && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Spec</span><br /><strong>{specSheet.custom_name || STAGE_LABELS[specSheet.spec_type] || specSheet.spec_type}</strong></div>}
         </div>
       )}
 

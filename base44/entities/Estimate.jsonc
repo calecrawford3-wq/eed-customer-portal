@@ -20,6 +20,10 @@
       "type": "string",
       "description": "Optional linked invoice (when converted)"
     },
+    "spec_sheet_id": {
+      "type": "string",
+      "description": "Spec sheet used for this estimate (set when canned job is loaded)"
+    },
     "is_engine_build": {
       "type": "boolean",
       "default": false,

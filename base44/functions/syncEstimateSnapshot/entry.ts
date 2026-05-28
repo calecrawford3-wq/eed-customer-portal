@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
     let enginePlatform = null;
     let eedEngineId = null;
     let buildStage = null;
+    let specSheetName = null;
+
+    const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
     if (estimate.customer_engine_id) {
       try {
@@ -69,7 +72,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If build is linked, get stage from build's spec sheet (overrides engine stage)
+    // If build is linked, get stage and spec sheet from build
     if (estimate.build_id) {
       try {
         const builds = await base44.entities.EngineBuild.filter({ id: estimate.build_id });
@@ -80,7 +83,11 @@ Deno.serve(async (req) => {
           if (build.spec_sheet_id) {
             const specs = await base44.entities.SpecSheet.filter({ id: build.spec_sheet_id });
             const spec = specs?.[0];
-            if (spec?.spec_type) buildStage = spec.spec_type;
+            if (spec) {
+              if (spec.spec_type) buildStage = spec.spec_type;
+              // Name without version (customer-facing)
+              specSheetName = spec.custom_name || STAGE_LABELS[spec.spec_type] || spec.spec_type;
+            }
           }
         }
       } catch (e) {
@@ -88,7 +95,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
+    // Also check if estimate itself has a spec sheet linked (via spec_sheet_id on estimate, fallback)
+    if (!specSheetName && estimate.spec_sheet_id) {
+      try {
+        const specs = await base44.entities.SpecSheet.filter({ id: estimate.spec_sheet_id });
+        const spec = specs?.[0];
+        if (spec) {
+          if (!buildStage && spec.spec_type) buildStage = spec.spec_type;
+          specSheetName = spec.custom_name || STAGE_LABELS[spec.spec_type] || spec.spec_type;
+        }
+      } catch (e) {
+        console.warn(`[syncEstimateSnapshot] Could not fetch estimate spec sheet: ${e.message}`);
+      }
+    }
+
+    console.log(`[syncEstimateSnapshot] Engine data - Serial: ${engineSerial}, EED: ${eedEngineId}, Stage: ${buildStage}, Spec: ${specSheetName}`);
 
     // Build snapshot payload
     const snapshot = {
@@ -100,19 +121,26 @@ Deno.serve(async (req) => {
       issue_date: estimate.issue_date,
       expiry_date: estimate.expiry_date,
       line_items: estimate.line_items || [],
+      labor_items: estimate.labor_items || [],
       subtotal: estimate.subtotal,
       tax_amount: estimate.tax_amount,
       tax_rate: estimate.tax_rate,
       total: estimate.total,
+      deposit_required: estimate.deposit_required || false,
+      deposit_amount: estimate.deposit_amount || 0,
+      notes: estimate.notes || "",
       stripe_checkout_url: estimate.stripe_checkout_url,
       company_name: appSettings.company_name,
       company_logo_url: appSettings.company_logo_url,
       company_phone: appSettings.company_phone,
       company_address: appSettings.company_address,
-      engine_serial_number: engineSerial || "N/A",
-      engine_platform: enginePlatform || "N/A",
-      eed_engine_id: eedEngineId || "N/A",
-      build_stage: buildStage ? (STAGE_LABELS[buildStage] || buildStage) : "N/A",
+      // Engine fields - sent to viewer (no spec version)
+      engine_serial_number: engineSerial || null,
+      engine_platform: enginePlatform || null,
+      eed_engine_id: eedEngineId || null,
+      eed_id: eedEngineId || null,
+      build_stage: buildStage ? (STAGE_LABELS[buildStage] || buildStage) : null,
+      spec_sheet_name: specSheetName || null,
     };
 
     // Validate payload

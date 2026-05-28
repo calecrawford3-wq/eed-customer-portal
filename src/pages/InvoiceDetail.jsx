@@ -88,6 +88,11 @@ export default function InvoiceDetail() {
     enabled: !!form.customer_id,
   });
 
+  const { data: specSheets = [] } = useQuery({
+    queryKey: ["specSheets"],
+    queryFn: () => base44.entities.SpecSheet.list("-created_date", 200),
+  });
+
   useEffect(() => {
     if (invoice && invoice[0]) setForm({ labor_items: [], ...invoice[0] });
   }, [invoice]);
@@ -270,6 +275,10 @@ export default function InvoiceDetail() {
   const customer = customers.find(c => c.id === form.customer_id);
   const selectedEngine = customerEngines.find(e => e.id === form.customer_engine_id);
   const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
+  // Find spec sheet linked via build_id if available
+  const linkedBuildSpecSheetId = form.build_id ? null : null; // resolved via engine builds if needed
+  const selectedSpecSheet = form.spec_sheet_id ? specSheets.find(s => s.id === form.spec_sheet_id) : null;
+  const STAGE_LABELS_INV = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
   if (printMode) {
     return (
@@ -278,7 +287,7 @@ export default function InvoiceDetail() {
           <button onClick={() => setPrintMode(false)} className="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
           <button onClick={() => { document.title = `Invoice ${form.invoice_number}`; window.print(); }} className="px-4 py-2 bg-[#e20404] text-white rounded hover:bg-[#c00303] font-semibold">🖨 Print Invoice</button>
         </div>
-        <PrintableInvoice invoice={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
+        <PrintableInvoice invoice={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} specSheet={selectedSpecSheet} />
       </div>
     );
   }
@@ -391,7 +400,8 @@ export default function InvoiceDetail() {
                   {selectedEngine.eed_id && <div><p className="text-xs text-slate-400 uppercase">EED ID</p><p className="font-mono font-bold text-[#e20404]">{selectedEngine.eed_id}</p></div>}
                   {selectedEngine.engine_serial_number && <div><p className="text-xs text-slate-400 uppercase">Serial #</p><p className="font-semibold">{selectedEngine.engine_serial_number}</p></div>}
                   {selectedEnginePlatform && <div><p className="text-xs text-slate-400 uppercase">Platform</p><p className="font-semibold">{selectedEnginePlatform.manufacturer} {selectedEnginePlatform.name}{selectedEnginePlatform.year_range_start ? ` (${selectedEnginePlatform.year_range_start}${selectedEnginePlatform.year_range_end ? `–${selectedEnginePlatform.year_range_end}` : "+"})` : ""}</p></div>}
-                  {selectedEngine.current_stage && <div><p className="text-xs text-slate-400 uppercase">Stage</p><p className="font-semibold capitalize">{{"stock":"Stock","stage_1":"Stage 1","stage_2":"Stage 2","stage_3":"Stage 3","contract":"Contract","custom":"Custom"}[selectedEngine.current_stage] || selectedEngine.current_stage}</p></div>}
+                  {selectedEngine.current_stage && <div><p className="text-xs text-slate-400 uppercase">Stage</p><p className="font-semibold">{STAGE_LABELS_INV[selectedEngine.current_stage] || selectedEngine.current_stage}</p></div>}
+                  {selectedSpecSheet && <div><p className="text-xs text-slate-400 uppercase">Spec Sheet</p><p className="font-semibold text-purple-700">{selectedSpecSheet.custom_name || STAGE_LABELS_INV[selectedSpecSheet.spec_type] || selectedSpecSheet.spec_type} <span className="text-slate-400 text-xs">v{selectedSpecSheet.version}</span></p></div>}
                 </div>
               )}
             </CardContent>
