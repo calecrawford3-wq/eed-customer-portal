@@ -276,7 +276,7 @@ export default function InvoiceDetail() {
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4 print:hidden">
           <button onClick={() => setPrintMode(false)} className="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
-          <button onClick={() => window.print()} className="px-4 py-2 bg-[#e20404] text-white rounded hover:bg-[#c00303] font-semibold">🖨 Print Invoice</button>
+          <button onClick={() => { document.title = `Invoice ${form.invoice_number}`; window.print(); }} className="px-4 py-2 bg-[#e20404] text-white rounded hover:bg-[#c00303] font-semibold">🖨 Print Invoice</button>
         </div>
         <PrintableInvoice invoice={form} customer={customer} settings={settingsData?.[0]} customerEngine={selectedEngine} platform={selectedEnginePlatform} />
       </div>

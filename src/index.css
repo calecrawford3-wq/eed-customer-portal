@@ -86,3 +86,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  /* Hide everything except the printable document */
+  aside,
+  nav,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    margin-left: 0 !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Remove browser header/footer (URL, date, page number) */
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
