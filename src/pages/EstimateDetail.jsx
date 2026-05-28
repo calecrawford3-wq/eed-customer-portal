@@ -120,6 +120,13 @@ export default function EstimateDetail() {
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
 
+  // Fetch builds for the selected engine to find the most recent spec sheet used
+  const { data: engineBuilds = [] } = useQuery({
+    queryKey: ["engineBuildsForEngine", form.customer_engine_id],
+    queryFn: () => base44.entities.EngineBuild.filter({ customer_engine_id: form.customer_engine_id }),
+    enabled: !!form.customer_engine_id,
+  });
+
   const { data: laborCatalog = [] } = useQuery({
     queryKey: ["laborItems"],
     queryFn: () => base44.entities.LaborItem.list("-created_date", 200),
@@ -629,9 +636,17 @@ export default function EstimateDetail() {
   const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
   const STAGE_LABELS_EST = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
-  // Resolve spec sheet: prefer explicitly set spec_sheet_id, else find current spec for engine's stage+platform
+  // Resolve spec sheet: prefer explicitly set spec_sheet_id on estimate,
+  // then most recent build's spec_sheet_id, then fall back to engine's current_stage match
   const selectedSpecSheetForEngine = (() => {
     if (form.spec_sheet_id) return allSpecSheets.find(s => s.id === form.spec_sheet_id) || null;
+    if (engineBuilds.length > 0) {
+      const mostRecentBuild = [...engineBuilds].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+      if (mostRecentBuild?.spec_sheet_id) {
+        const found = allSpecSheets.find(s => s.id === mostRecentBuild.spec_sheet_id);
+        if (found) return found;
+      }
+    }
     if (selectedEngine?.current_stage && selectedEngine?.platform_id) {
       return allSpecSheets.find(s =>
         s.platform_id === selectedEngine.platform_id &&

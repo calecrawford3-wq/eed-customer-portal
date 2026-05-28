@@ -22,7 +22,7 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
         <div>
           <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "60px", marginBottom: "8px" }} />
           <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>ESTIMATE</h1>
-          <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>{settings?.company_name} | {companyAddress}</p>
+          <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>{settings?.company_name}</p>
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "18px", fontWeight: "bold", color: "#e20404", marginBottom: "4px" }}>#{estimate.estimate_number}</p>
