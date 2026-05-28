@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
       tax_rate: estimate.tax_rate,
       total: estimate.total,
       deposit_required: estimate.deposit_required || false,
-      deposit_amount: estimate.deposit_amount || 0,
+      deposit_amount: estimate.deposit_amount ?? null,
       deposit_paid: estimate.deposit_paid || false,
       notes: estimate.notes || "",
       stripe_checkout_url: estimate.stripe_checkout_url,
