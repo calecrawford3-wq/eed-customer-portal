@@ -22,6 +22,7 @@ import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import CannedJobPicker from "@/components/estimates/CannedJobPicker";
+import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import PrintableEstimate from "@/components/PrintableEstimate";
 import EngineSelector from "@/components/EngineSelector";
 
@@ -72,6 +73,10 @@ export default function EstimateDetail() {
   const [selectedSpec, setSelectedSpec] = useState(null);
   const [selectedSpecPlatform, setSelectedSpecPlatform] = useState(null);
   const [printMode, setPrintMode] = useState(false);
+  const [laborPickerOpen, setLaborPickerOpen] = useState(false);
+  const [laborPickingIdx, setLaborPickingIdx] = useState(null);
+  const [machiningPickerOpen, setMachiningPickerOpen] = useState(false);
+  const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -113,6 +118,16 @@ export default function EstimateDetail() {
   const { data: specSheets = [] } = useQuery({
     queryKey: ["specSheets"],
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
+  });
+
+  const { data: laborCatalog = [] } = useQuery({
+    queryKey: ["laborItems"],
+    queryFn: () => base44.entities.LaborItem.list("-created_date", 200),
+  });
+
+  const { data: machiningCatalog = [] } = useQuery({
+    queryKey: ["machiningItems"],
+    queryFn: () => base44.entities.MachiningItem.list("-created_date", 200),
   });
 
   useEffect(() => {
@@ -179,6 +194,20 @@ export default function EstimateDetail() {
     const lines = form.line_items.filter((_, i) => i !== idx);
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate);
     setForm({ ...form, line_items: lines, ...totals });
+  };
+
+  const selectLaborFromCatalog = (item) => {
+    const items = [...(form.labor_items || [])];
+    items[laborPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate);
+    setForm({ ...form, labor_items: items, ...totals });
+  };
+
+  const selectMachiningFromCatalog = (item) => {
+    const items = [...(form.machining_items || [])];
+    items[machiningPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate);
+    setForm({ ...form, machining_items: items, ...totals });
   };
 
   const addLabor = () => setForm(f => ({ ...f, labor_items: [...(f.labor_items || []), { ...emptyLabor }] }));
@@ -615,6 +644,20 @@ export default function EstimateDetail() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
+      <LaborMachiningPickerModal
+        open={laborPickerOpen}
+        onClose={() => setLaborPickerOpen(false)}
+        items={laborCatalog}
+        type="labor"
+        onSelect={(item) => selectLaborFromCatalog(item)}
+      />
+      <LaborMachiningPickerModal
+        open={machiningPickerOpen}
+        onClose={() => setMachiningPickerOpen(false)}
+        items={machiningCatalog}
+        type="machining"
+        onSelect={(item) => selectMachiningFromCatalog(item)}
+      />
       <CannedJobPicker
         open={cannedJobOpen}
         onClose={() => setCannedJobOpen(false)}
@@ -963,7 +1006,12 @@ export default function EstimateDetail() {
               <tbody>
                 {(form.labor_items || []).map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2"><Input value={item.name} onChange={e => updateLabor(idx, "name", e.target.value)} placeholder="Labor name..." className="border-slate-200" /></td>
+                    <td className="py-2 pr-2">
+                      <div className="flex gap-1">
+                        <Input value={item.name} onChange={e => updateLabor(idx, "name", e.target.value)} placeholder="Labor name..." className="border-slate-200" />
+                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </td>
                     <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateLabor(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
                     <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateLabor(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
                     <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
@@ -997,7 +1045,12 @@ export default function EstimateDetail() {
               <tbody>
                 {(form.machining_items || []).map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2"><Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" /></td>
+                    <td className="py-2 pr-2">
+                      <div className="flex gap-1">
+                        <Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" />
+                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </td>
                     <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
                     <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
                     <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
