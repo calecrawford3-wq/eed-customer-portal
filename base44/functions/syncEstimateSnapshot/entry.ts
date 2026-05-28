@@ -150,8 +150,6 @@ Deno.serve(async (req) => {
       tax_amount: estimate.tax_amount,
       tax_rate: estimate.tax_rate,
       total: estimate.total,
-      amount_paid: estimate.amount_paid || 0,
-      amount_due: estimate.amount_due || 0,
       deposit_required: estimate.deposit_required || false,
       deposit_amount: estimate.deposit_amount ?? null,
       deposit_paid: estimate.deposit_paid || false,
@@ -179,7 +177,7 @@ Deno.serve(async (req) => {
     // Get sync credentials
     const syncSecret = Deno.env.get("SYNC_SECRET");
     const syncApiKey = Deno.env.get("SYNC_API_KEY");
-    const destinationUrl = "https://race-engine-specs.base44.app/api/functions/syncEstimateSnapshot";
+    const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
 
     // Verify secrets exist
     console.log("SYNC_SECRET exists:", !!syncSecret);
@@ -225,7 +223,7 @@ Deno.serve(async (req) => {
       }
 
       // Build viewer app link
-      const estimateViewerLink = `https://race-engine-specs.base44.app/estimate/${publicAccessToken}`;
+      const estimateViewerLink = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
       console.log("Snapshot synced successfully");
       console.log("Viewer link:", estimateViewerLink);
       
