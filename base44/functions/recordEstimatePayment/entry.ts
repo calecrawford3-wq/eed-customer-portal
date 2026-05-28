@@ -50,19 +50,22 @@ Deno.serve(async (req) => {
       note: note || ""
     });
 
+    // Calculate total amount paid
+    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
     // Check if deposit is now fully paid
     let depositPaid = estimate.deposit_paid || false;
     if (estimate.deposit_required && estimate.deposit_amount) {
-      const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
       if (totalPaid >= estimate.deposit_amount) {
         depositPaid = true;
       }
     }
 
     // Update estimate
-    await base44.entities.Estimate.update(estimateId, {
+    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
       payments: payments,
-      deposit_paid: depositPaid
+      deposit_paid: depositPaid,
+      amount_paid: totalPaid
     });
 
     console.log(`[recordEstimatePayment] Payment recorded successfully`);
