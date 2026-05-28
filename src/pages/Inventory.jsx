@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
+const MACHINING_CATEGORIES = ["block","head","rotating_assembly","valvetrain","other"];
 
 const emptyPart = {
   part_number: "", name: "", description: "", category: "other",
@@ -31,18 +32,23 @@ const calcSellPrice = (cost, markup) => {
 };
 
 const emptyLabor = { name: "", description: "", price: 0, category: "misc", notes: "", status: "active" };
+const emptyMachining = { name: "", description: "", price: 0, category: "other", notes: "", status: "active" };
 
 export default function Inventory() {
   const [search, setSearch] = useState("");
   const [laborSearch, setLaborSearch] = useState("");
+  const [machiningSearch, setMachiningSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [showLowStock, setShowLowStock] = useState(false);
   const [partDialogOpen, setPartDialogOpen] = useState(false);
   const [laborDialogOpen, setLaborDialogOpen] = useState(false);
+  const [machiningDialogOpen, setMachiningDialogOpen] = useState(false);
   const [editingPart, setEditingPart] = useState(null);
   const [editingLabor, setEditingLabor] = useState(null);
+  const [editingMachining, setEditingMachining] = useState(null);
   const [partForm, setPartForm] = useState(emptyPart);
   const [laborForm, setLaborForm] = useState(emptyLabor);
+  const [machiningForm, setMachiningForm] = useState(emptyMachining);
   const qc = useQueryClient();
   const csvInputRef = useRef();
 
@@ -59,6 +65,11 @@ export default function Inventory() {
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
+  });
+
+  const { data: machiningItems = [], isLoading: machiningLoading } = useQuery({
+    queryKey: ["machiningItems"],
+    queryFn: () => base44.entities.MachiningItem.list("-created_date", 200),
   });
 
   const savePartMutation = useMutation({
@@ -93,10 +104,28 @@ export default function Inventory() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["laborItems"] }); toast.success("Labor item deleted"); },
   });
 
+  const saveMachiningMutation = useMutation({
+    mutationFn: (data) => editingMachining
+      ? base44.entities.MachiningItem.update(editingMachining.id, data)
+      : base44.entities.MachiningItem.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machiningItems"] });
+      setMachiningDialogOpen(false);
+      toast.success(editingMachining ? "Machining item updated" : "Machining item created");
+    },
+  });
+
+  const deleteMachiningMutation = useMutation({
+    mutationFn: (id) => base44.entities.MachiningItem.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["machiningItems"] }); toast.success("Machining item deleted"); },
+  });
+
   const openNewPart = () => { setEditingPart(null); setPartForm(emptyPart); setPartDialogOpen(true); };
   const openEditPart = (p) => { setEditingPart(p); setPartForm({ ...p }); setPartDialogOpen(true); };
   const openNewLabor = () => { setEditingLabor(null); setLaborForm(emptyLabor); setLaborDialogOpen(true); };
   const openEditLabor = (l) => { setEditingLabor(l); setLaborForm({ ...l }); setLaborDialogOpen(true); };
+  const openNewMachining = () => { setEditingMachining(null); setMachiningForm(emptyMachining); setMachiningDialogOpen(true); };
+  const openEditMachining = (m) => { setEditingMachining(m); setMachiningForm({ ...m }); setMachiningDialogOpen(true); };
 
   const handleCSVImport = (e) => {
     const file = e.target.files[0];
@@ -144,12 +173,16 @@ export default function Inventory() {
     !laborSearch || `${l.name} ${l.description} ${l.category}`.toLowerCase().includes(laborSearch.toLowerCase())
   );
 
+  const filteredMachining = machiningItems.filter(m =>
+    !machiningSearch || `${m.name} ${m.description} ${m.category}`.toLowerCase().includes(machiningSearch.toLowerCase())
+  );
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Inventory</h1>
-          <p className="text-slate-500 mt-1">{parts.length} parts · {laborItems.length} labor items</p>
+          <p className="text-slate-500 mt-1">{parts.length} parts · {laborItems.length} labor items · {machiningItems.length} machining items</p>
         </div>
       </div>
 
@@ -160,6 +193,9 @@ export default function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="labor" className="flex items-center gap-2">
             <Wrench className="w-4 h-4" /> Labor Items ({laborItems.length})
+          </TabsTrigger>
+          <TabsTrigger value="machining" className="flex items-center gap-2">
+            <Cog className="w-4 h-4" /> Machining ({machiningItems.length})
           </TabsTrigger>
         </TabsList>
 
@@ -309,7 +345,104 @@ export default function Inventory() {
             </div>
           )}
         </TabsContent>
+
+        {/* ─── Machining Tab ─── */}
+        <TabsContent value="machining">
+          <div className="flex gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input className="pl-10" placeholder="Search machining items..." value={machiningSearch} onChange={e => setMachiningSearch(e.target.value)} />
+            </div>
+            <Button onClick={openNewMachining} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+              <Plus className="w-4 h-4 mr-2" /> Add Machining Item
+            </Button>
+          </div>
+
+          {machiningLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+          ) : filteredMachining.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <Cog className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-lg font-medium">No machining items yet</p>
+              <p className="text-sm mt-1">Add standard machining operations with pricing that can be used in estimates and invoices.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Description</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Category</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600">Price</th>
+                    <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMachining.map(m => (
+                    <tr key={m.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
+                      <td className="px-4 py-3 text-slate-500">{m.description || "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 capitalize">{m.category?.replace("_", " ")}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900">${Number(m.price || 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge className={m.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
+                          {m.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => openEditMachining(m)}><Edit className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMachiningMutation.mutate(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Machining Dialog */}
+      <Dialog open={machiningDialogOpen} onOpenChange={setMachiningDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingMachining ? "Edit Machining Item" : "New Machining Item"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2"><Label>Name *</Label><Input value={machiningForm.name} onChange={e => setMachiningForm({...machiningForm, name: e.target.value})} placeholder="e.g. Bore & Hone, Head Surface" /></div>
+            <div>
+              <Label>Category</Label>
+              <Select value={machiningForm.category} onValueChange={v => setMachiningForm({...machiningForm, category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{MACHINING_CATEGORIES.map(c => <SelectItem key={c} value={c} className="capitalize">{c.replace("_"," ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Price ($) *</Label><Input type="number" value={machiningForm.price} onChange={e => setMachiningForm({...machiningForm, price: Number(e.target.value)})} min="0" step="0.01" /></div>
+            <div>
+              <Label>Status</Label>
+              <Select value={machiningForm.status} onValueChange={v => setMachiningForm({...machiningForm, status: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2"><Label>Description</Label><Textarea value={machiningForm.description} onChange={e => setMachiningForm({...machiningForm, description: e.target.value})} rows={2} placeholder="Describe what this machining operation covers..." /></div>
+            <div className="col-span-2"><Label>Notes</Label><Textarea value={machiningForm.notes} onChange={e => setMachiningForm({...machiningForm, notes: e.target.value})} rows={2} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMachiningDialogOpen(false)}>Cancel</Button>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMachiningMutation.mutate(machiningForm)} disabled={saveMachiningMutation.isPending}>
+              {saveMachiningMutation.isPending ? "Saving..." : editingMachining ? "Save Changes" : "Create Machining Item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Part Dialog */}
       <Dialog open={partDialogOpen} onOpenChange={setPartDialogOpen}>

@@ -1,0 +1,46 @@
+{
+  "name": "MachiningItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Machining item name (e.g. Bore & Hone, Head Surface, Line Hone)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the machining operation"
+    },
+    "price": {
+      "type": "number",
+      "default": 0,
+      "description": "Standard price for this machining operation"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "block",
+        "head",
+        "rotating_assembly",
+        "valvetrain",
+        "other"
+      ],
+      "default": "other",
+      "description": "Machining category"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ]
+}

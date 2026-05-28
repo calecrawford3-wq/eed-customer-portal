@@ -105,9 +105,27 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
                 <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.total).toFixed(2)}</td>
               </tr>
             ))}
+            {(estimate.labor_items || []).length > 0 && (
+              <tr>
+                <td colSpan={4} style={{ padding: "8px 8px 4px", fontWeight: "bold", fontSize: "11px", textTransform: "uppercase", color: "#666", letterSpacing: "0.5px", borderBottom: "1px solid #e20404", backgroundColor: "#fafafa" }}>Labor</td>
+              </tr>
+            )}
             {(estimate.labor_items || []).map((item, idx) => (
               <tr key={`labor-${idx}`}>
-                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.name} {item.description && `(${item.description})`}</td>
+                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.name} {item.description && `— ${item.description}`}</td>
+                <td style={{ textAlign: "center", padding: "8px", borderBottom: "1px solid #eee" }}>1</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>
+                <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>
+              </tr>
+            ))}
+            {(estimate.machining_items || []).length > 0 && (
+              <tr>
+                <td colSpan={4} style={{ padding: "8px 8px 4px", fontWeight: "bold", fontSize: "11px", textTransform: "uppercase", color: "#666", letterSpacing: "0.5px", borderBottom: "1px solid #e20404", backgroundColor: "#fafafa" }}>Machining</td>
+              </tr>
+            )}
+            {(estimate.machining_items || []).map((item, idx) => (
+              <tr key={`machining-${idx}`}>
+                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.name} {item.description && `— ${item.description}`}</td>
                 <td style={{ textAlign: "center", padding: "8px", borderBottom: "1px solid #eee" }}>1</td>
                 <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>
                 <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.price).toFixed(2)}</td>

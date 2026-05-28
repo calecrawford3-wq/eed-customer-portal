@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import EngineSelector from "@/components/EngineSelector";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
+const emptyMachining = { name: "", description: "", price: 0 };
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -46,6 +47,7 @@ export default function InvoiceDetail() {
     due_date: "",
     line_items: [{ ...emptyPart }],
     labor_items: [],
+    machining_items: [],
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
   const [sending, setSending] = useState(false);
@@ -94,7 +96,7 @@ export default function InvoiceDetail() {
   });
 
   useEffect(() => {
-    if (invoice && invoice[0]) setForm({ labor_items: [], ...invoice[0] });
+    if (invoice && invoice[0]) setForm({ labor_items: [], machining_items: [], ...invoice[0] });
   }, [invoice]);
 
   useEffect(() => {
@@ -114,10 +116,11 @@ export default function InvoiceDetail() {
     },
   });
 
-  const recalc = (lineItems, laborItems, taxRate, amountPaid) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
-    const subtotal = partTotal + laborTotal;
+    const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
+    const subtotal = partTotal + laborTotal + machiningTotal;
     const tax_amount = subtotal * (Number(taxRate) / 100);
     const total = subtotal + tax_amount;
     const balance_due = total - (Number(amountPaid) || 0);
@@ -130,7 +133,7 @@ export default function InvoiceDetail() {
     if (field === "quantity" || field === "unit_price") {
       lines[idx].total = (Number(lines[idx].quantity) || 0) * (Number(lines[idx].unit_price) || 0);
     }
-    const totals = recalc(lines, form.labor_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -145,14 +148,14 @@ export default function InvoiceDetail() {
       unit_price: part.sell_price || 0,
       total: part.sell_price || 0,
     };
-    const totals = recalc(lines, form.labor_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
-    const totals = recalc(lines, form.labor_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -160,17 +163,30 @@ export default function InvoiceDetail() {
   const updateLabor = (idx, field, value) => {
     const items = [...(form.labor_items || [])];
     items[idx] = { ...items[idx], [field]: value };
-    const totals = recalc(form.line_items, items, form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
   const removeLabor = (idx) => {
     const items = (form.labor_items || []).filter((_, i) => i !== idx);
-    const totals = recalc(form.line_items, items, form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
 
+  const addMachining = () => setForm(f => ({ ...f, machining_items: [...(f.machining_items || []), { ...emptyMachining }] }));
+  const updateMachining = (idx, field, value) => {
+    const items = [...(form.machining_items || [])];
+    items[idx] = { ...items[idx], [field]: value };
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid);
+    setForm(f => ({ ...f, machining_items: items, ...totals }));
+  };
+  const removeMachining = (idx) => {
+    const items = (form.machining_items || []).filter((_, i) => i !== idx);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid);
+    setForm(f => ({ ...f, machining_items: items, ...totals }));
+  };
+
   const updateTaxRate = (rate) => {
-    const totals = recalc(form.line_items, form.labor_items || [], rate, form.amount_paid);
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.amount_paid);
     setForm(f => ({ ...f, tax_rate: rate, ...totals }));
   };
 
@@ -179,7 +195,8 @@ export default function InvoiceDetail() {
     const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const balance = Math.max(0, (form.total || 0) - paid);
     const status = balance <= 0 ? "paid" : "partial";
-    const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status };
+    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid);
+    const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
     await saveMutation.mutateAsync(updated);
     setForm(updated);
     toast.success("Payment recorded");
@@ -498,11 +515,46 @@ export default function InvoiceDetail() {
         </CardContent>
       </Card>
 
+      {/* Machining */}
+      <Card className="border-0 shadow-sm mb-6">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2"><Cog className="w-4 h-4" /> Machining</CardTitle>
+          <Button size="sm" variant="outline" onClick={addMachining}><Plus className="w-4 h-4 mr-1" /> Add Machining</Button>
+        </CardHeader>
+        <CardContent>
+          {(form.machining_items || []).length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-4">No machining items added.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                  <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(form.machining_items || []).map((item, idx) => (
+                  <tr key={idx} className="border-b border-slate-100">
+                    <td className="py-2 pr-2"><Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" /></td>
+                    <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
+                    <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
+                    <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Totals */}
       <div className="flex justify-end mb-6">
         <div className="w-64 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-slate-600">Tax Rate (%)</span>

@@ -114,6 +114,24 @@
         }
       }
     },
+    "machining_items": {
+      "type": "array",
+      "description": "Machining operations on this estimate",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "payments": {
       "type": "array",
       "items": {

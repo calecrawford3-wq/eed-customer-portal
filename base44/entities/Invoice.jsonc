@@ -93,6 +93,24 @@
         }
       }
     },
+    "machining_items": {
+      "type": "array",
+      "description": "Machining operations charged on this invoice",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "payments": {
       "type": "array",
       "description": "All payment records for this invoice",
