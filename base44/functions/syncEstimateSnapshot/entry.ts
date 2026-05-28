@@ -41,6 +41,55 @@ Deno.serve(async (req) => {
     const appSettings = settings?.[0] || {};
     console.log(`[syncEstimateSnapshot] Fetched app settings`);
 
+    // Fetch engine details if linked
+    let engineSerial = null;
+    let enginePlatform = null;
+    let eedEngineId = null;
+    let buildStage = null;
+
+    if (estimate.customer_engine_id) {
+      try {
+        const engines = await base44.entities.CustomerEngine.filter({ id: estimate.customer_engine_id });
+        const engine = engines?.[0];
+        if (engine) {
+          engineSerial = engine.engine_serial_number || null;
+          eedEngineId = engine.eed_id || null;
+          buildStage = engine.current_stage || null;
+
+          if (engine.platform_id) {
+            const platforms = await base44.entities.EnginePlatform.filter({ id: engine.platform_id });
+            const platform = platforms?.[0];
+            if (platform) {
+              enginePlatform = `${platform.manufacturer} ${platform.name}${platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}`;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[syncEstimateSnapshot] Could not fetch engine details: ${e.message}`);
+      }
+    }
+
+    // If build is linked, get stage from build's spec sheet (overrides engine stage)
+    if (estimate.build_id) {
+      try {
+        const builds = await base44.entities.EngineBuild.filter({ id: estimate.build_id });
+        const build = builds?.[0];
+        if (build) {
+          if (!engineSerial) engineSerial = build.engine_serial_number || null;
+          if (!eedEngineId) eedEngineId = build.eed_id || null;
+          if (build.spec_sheet_id) {
+            const specs = await base44.entities.SpecSheet.filter({ id: build.spec_sheet_id });
+            const spec = specs?.[0];
+            if (spec?.spec_type) buildStage = spec.spec_type;
+          }
+        }
+      } catch (e) {
+        console.warn(`[syncEstimateSnapshot] Could not fetch build details: ${e.message}`);
+      }
+    }
+
+    const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
+
     // Build snapshot payload
     const snapshot = {
       public_access_token: publicAccessToken,
@@ -60,6 +109,10 @@ Deno.serve(async (req) => {
       company_logo_url: appSettings.company_logo_url,
       company_phone: appSettings.company_phone,
       company_address: appSettings.company_address,
+      engine_serial_number: engineSerial || "N/A",
+      engine_platform: enginePlatform || "N/A",
+      eed_engine_id: eedEngineId || "N/A",
+      build_stage: buildStage ? (STAGE_LABELS[buildStage] || buildStage) : "N/A",
     };
 
     // Validate payload

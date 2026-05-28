@@ -29,6 +29,24 @@ const STATUS_COLORS = {
   shipped: "bg-teal-100 text-teal-700",
 };
 
+const STAGE_COLORS = {
+  stock: "bg-slate-100 text-slate-700",
+  stage_1: "bg-blue-100 text-blue-700",
+  stage_2: "bg-purple-100 text-purple-700",
+  stage_3: "bg-red-100 text-red-700",
+  contract: "bg-emerald-100 text-emerald-700",
+  custom: "bg-amber-100 text-amber-700",
+};
+
+const STAGE_LABELS = {
+  stock: "Stock",
+  stage_1: "Stage 1",
+  stage_2: "Stage 2",
+  stage_3: "Stage 3",
+  contract: "Contract",
+  custom: "Custom",
+};
+
 export default function CustomerEnginesTab({ customerId, customer, platforms = [] }) {
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -151,6 +169,11 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {engine.current_stage && (
+                        <Badge className={`text-xs border-0 ${STAGE_COLORS[engine.current_stage] || "bg-slate-100 text-slate-600"}`}>
+                          {STAGE_LABELS[engine.current_stage] || engine.current_stage}
+                        </Badge>
+                      )}
                       {mostRecentBuild && (
                         <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[mostRecentBuild.status] || "bg-slate-100 text-slate-600"}`}>
                           {mostRecentBuild.status?.replace("_", " ")}

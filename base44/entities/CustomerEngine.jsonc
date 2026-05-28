@@ -18,6 +18,18 @@
       "type": "string",
       "description": "Engine platform"
     },
+    "current_stage": {
+      "type": "string",
+      "enum": [
+        "stock",
+        "stage_1",
+        "stage_2",
+        "stage_3",
+        "contract",
+        "custom"
+      ],
+      "description": "Current build stage assigned to this engine \u2014 updated automatically when a build is marked complete"
+    },
     "notes": {
       "type": "string"
     }
