@@ -92,7 +92,11 @@ Deno.serve(async (req) => {
       note: body.note || `Stripe Payment - ${stripeSessionId || stripePaymentIntent || "N/A"}`,
       date: paidAt || new Date().toISOString().split("T")[0]
     };
-    console.log(`[recordEstimatePayment] STEP 7: Payment record created:`, JSON.stringify(newPayment));
+    console.log(`[recordEstimatePayment] STEP 7: Payment record created:`);
+    console.log(`  - Amount: $${newPayment.amount}`);
+    console.log(`  - Method: ${newPayment.method}`);
+    console.log(`  - Date: ${newPayment.date}`);
+    console.log(`  - Note: ${newPayment.note}`);
 
     // STEP 7: Update Estimate with new payment
     console.log(`[recordEstimatePayment] STEP 8: Updating Estimate`);
