@@ -6,14 +6,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
-    // Extract and validate sync_secret from query parameters
-    const url = new URL(req.url);
-    const syncSecret = url.searchParams.get("sync_secret");
+    // Extract and validate sync_secret from x-sync-secret header
+    const incomingSecret = req.headers.get("x-sync-secret");
     const expectedSecret = Deno.env.get("SYNC_SECRET");
 
-    if (!syncSecret || syncSecret !== expectedSecret) {
+    console.log(`[recordEstimatePayment] SYNC_SECRET exists: ${!!expectedSecret}`);
+    console.log(`[recordEstimatePayment] x-sync-secret header exists: ${!!incomingSecret}`);
+    
+    if (!incomingSecret || incomingSecret !== expectedSecret) {
+      console.log(`[recordEstimatePayment] Secret mismatch - access denied`);
       return Response.json({ error: "Forbidden: Invalid sync_secret" }, { status: 403 });
     }
+    
+    console.log(`[recordEstimatePayment] Secret validation passed`);
 
     const base44 = createClientFromRequest(req);
     const { estimateId, estimateNumber, publicAccessToken, amount, method, date, note, stripeSessionId } = await req.json();
