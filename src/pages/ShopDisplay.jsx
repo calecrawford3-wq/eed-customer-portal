@@ -32,7 +32,7 @@ export default function ShopDisplay() {
 
   const queuedBuilds = builds
     .filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status))
-    .sort((a, b) => (a.queue_position || 999) - (b.queue_position || 999));
+    .sort((a, b) => (a.queue_position || Infinity) - (b.queue_position || Infinity));
 
   const getPlatformName = (id) => {
     const p = platforms.find(p => p.id === id);
@@ -41,8 +41,11 @@ export default function ShopDisplay() {
 
   const getQueueLabel = (position, status) => {
     if (status === "in_progress") return { label: "IN PROGRESS", bg: "bg-[#e20404]", text: "text-white" };
-    if (position === 2) return { label: "UP NEXT", bg: "bg-amber-500", text: "text-white" };
-    return { label: `#${position}`, bg: "bg-slate-700", text: "text-white" };
+    if (position != null) {
+      if (position === 1) return { label: "UP NEXT", bg: "bg-amber-500", text: "text-white" };
+      return { label: `#${position}`, bg: "bg-slate-700", text: "text-white" };
+    }
+    return { label: "QUEUED", bg: "bg-slate-600", text: "text-white" };
   };
 
   return (
