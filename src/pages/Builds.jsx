@@ -505,8 +505,8 @@ export default function Builds() {
                 Work Queue ({queuedBuilds.length})
               </h2>
               <div className="space-y-3">
-                {queuedBuilds.map((build) => {
-                  const queueInfo = getQueueLabel(build.queue_position, build.status);
+                {queuedBuilds.map((build, index) => {
+                  const queueInfo = getQueueLabel(build.queue_position || index + 1, build.status);
                   const statusInfo = STATUS_OPTIONS.find(s => s.value === build.status);
                   const workTagInfo = getWorkTagConfig(build.work_tag);
                   const isInProgress = build.status === "in_progress";
