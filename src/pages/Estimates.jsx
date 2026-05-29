@@ -129,14 +129,16 @@ export default function Estimates() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Estimate #</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Customer</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Total</th>
-                <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
+                 <th className="text-left px-4 py-3 font-medium text-slate-600">Estimate #</th>
+                 <th className="text-left px-4 py-3 font-medium text-slate-600">Customer</th>
+                 <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
+                 <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
+                 <th className="text-right px-4 py-3 font-medium text-slate-600">Total</th>
+                 <th className="text-right px-4 py-3 font-medium text-slate-600">Paid</th>
+                 <th className="text-right px-4 py-3 font-medium text-slate-600">Due</th>
+                 <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
+                 <th className="px-4 py-3"></th>
+               </tr>
             </thead>
             <tbody>
               {filtered.map(e => {
@@ -154,6 +156,19 @@ export default function Estimates() {
                     <td className="px-4 py-3 text-slate-500">{e.issue_date ? format(new Date(e.issue_date), "MMM d, yyyy") : "—"}</td>
                     <td className="px-4 py-3 text-slate-500">{e.expiry_date ? format(new Date(e.expiry_date), "MMM d, yyyy") : "—"}</td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">${(e.total || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-emerald-700 font-semibold">${(e.amount_paid || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}</span>
+                      {e.deposit_required && e.deposit_amount > 0 && (
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {e.deposit_paid ? `✓ Dep: $${e.deposit_amount.toFixed(2)}` : `Dep: $${e.deposit_amount.toFixed(2)}`}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`font-semibold ${(e.amount_due || 0) > 0 ? "text-red-600" : "text-emerald-700"}`}>
+                        ${(Math.max(0, (e.total || 0) - (e.amount_paid || 0))).toLocaleString("en-US", {minimumFractionDigits: 2})}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <Badge className={`${STATUS_STYLES[e.status]} border-0 capitalize`}>
                         <StatusIcon className="w-3 h-3 mr-1" />{e.status}
