@@ -63,24 +63,24 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
             <span>TOTAL ESTIMATE:</span>
             <span>${Number(estimate.total || 0).toFixed(2)}</span>
           </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#22c55e", fontWeight: "600" }}>
+            <span>Amount Paid:</span>
+            <span>${Number(estimate.amount_paid || 0).toFixed(2)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", borderTop: "1px solid #ddd", paddingTop: "8px", marginBottom: "4px", color: "#dc2626", fontWeight: "bold" }}>
+            <span>Amount Due:</span>
+            <span>${Math.max(0, Number(estimate.total || 0) - Number(estimate.amount_paid || 0)).toFixed(2)}</span>
+          </div>
           {estimate.deposit_required && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", borderTop: "1px solid #ddd", paddingTop: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #ddd", fontSize: "13px" }}>
                 <span>Deposit Required:</span>
-                <span style={{ fontWeight: "bold" }}>${Number(estimate.deposit_amount || 0).toFixed(2)}</span>
+                <span>${Number(estimate.deposit_amount || 0).toFixed(2)}</span>
               </div>
-              {totalDepositReceived > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", color: "#22c55e" }}>
-                  <span>Deposit Paid:</span>
-                  <span>-${totalDepositReceived.toFixed(2)}</span>
-                </div>
-              )}
-              {depositRemaining > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#e20404" }}>
-                  <span style={{ fontWeight: "bold" }}>DUE NOW:</span>
-                  <span style={{ fontWeight: "bold" }}>${depositRemaining.toFixed(2)}</span>
-                </div>
-              )}
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "13px", color: estimate.deposit_paid ? "#22c55e" : "#ea580c" }}>
+                <span>Deposit Status:</span>
+                <span>{estimate.deposit_paid ? "✓ Received" : "Awaiting"}</span>
+              </div>
             </>
           )}
         </div>

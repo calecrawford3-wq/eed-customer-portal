@@ -1125,16 +1125,18 @@ export default function EstimateDetail() {
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
+          <div className="flex justify-between text-emerald-600 font-medium"><span>Amount Paid</span><span>${Number(form.amount_paid || 0).toFixed(2)}</span></div>
+          <div className="flex justify-between text-red-600 font-medium border-t border-slate-100 pt-2"><span>Amount Due</span><span>${Math.max(0, Number(form.total || 0) - Number(form.amount_paid || 0)).toFixed(2)}</span></div>
           {form.deposit_required && (
-            <div className="flex justify-between text-emerald-700 font-medium border-t border-slate-100 pt-2">
+            <div className="flex justify-between text-slate-600 text-sm border-t border-slate-100 pt-2">
               <span>Deposit Required</span>
               <span>${Number(form.deposit_amount || 0).toFixed(2)}</span>
             </div>
           )}
-          {totalDeposit > 0 && (
-            <div className="flex justify-between text-emerald-600">
-              <span>Deposit Received</span>
-              <span>-${totalDeposit.toFixed(2)}</span>
+          {form.deposit_required && (
+            <div className={`flex justify-between text-sm ${form.deposit_paid ? "text-emerald-600" : "text-amber-600"}`}>
+              <span>Deposit Status</span>
+              <span>{form.deposit_paid ? "✓ Received" : "Awaiting"}</span>
             </div>
           )}
         </div>
