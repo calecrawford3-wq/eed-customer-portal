@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu, Send
 } from "lucide-react";
 import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
@@ -33,6 +33,7 @@ export default function CustomerDetail() {
   const [portalOpen, setPortalOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   const { data: customerArr = [] } = useQuery({
     queryKey: ["customer", id],
@@ -80,6 +81,27 @@ export default function CustomerDetail() {
     },
   });
 
+  const handleSendPortalInvite = async () => {
+    if (!customer?.email) {
+      toast.error("Customer has no email address");
+      return;
+    }
+    setSendingInvite(true);
+    try {
+      await base44.functions.invoke("sendPortalInvite", {
+        customerId: id,
+        customerEmail: customer.email,
+        customerName: `${customer.first_name} ${customer.last_name}`,
+      });
+      toast.success(`Portal invite sent to ${customer.email}`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send portal invite");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
   const customerBuilds = builds.filter(b => b.customer_id === id);
   const customerEstimates = estimates.filter(e => e.customer_id === id);
   const customerInvoices = invoices.filter(i => i.customer_id === id);
@@ -111,6 +133,9 @@ export default function CustomerDetail() {
         </Badge>
         <Button variant="outline" size="sm" onClick={() => window.open('/CustomerPortal', '_blank')}>
           <Monitor className="w-4 h-4 mr-1" /> View Portal
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSendPortalInvite} disabled={sendingInvite}>
+          <Send className="w-4 h-4 mr-1" /> {sendingInvite ? "Sending..." : "Send Invite"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => { setTempPassword(customer.portal_temp_password || ""); setPasswordOpen(true); }}>
           <KeyRound className="w-4 h-4 mr-1" /> Portal Password
