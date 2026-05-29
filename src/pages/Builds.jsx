@@ -311,7 +311,7 @@ export default function Builds() {
 
   const queuedBuilds = filteredBuilds
     .filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status))
-    .sort((a, b) => (a.queue_position || 999) - (b.queue_position || 999));
+    .sort((a, b) => (a.queue_position || Infinity) - (b.queue_position || Infinity));
 
   const completedBuilds = filteredBuilds
     .filter(b => ["complete", "shipped"].includes(b.status))
