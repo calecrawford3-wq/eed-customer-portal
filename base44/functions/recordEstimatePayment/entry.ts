@@ -20,8 +20,6 @@ Deno.serve(async (req) => {
     
     console.log(`[recordEstimatePayment] Secret validation passed`);
 
-    // Use service-role client for entity access (no request-based auth)
-    const base44 = createClientFromRequest(req);
     const { publicAccessToken, amount, amount_paid, method, date, note, stripeSessionId } = await req.json();
 
     // Accept either amount or amount_paid
@@ -35,6 +33,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Missing publicAccessToken" }, { status: 400 });
     }
 
+    console.log(`[recordEstimatePayment] About to use service-role Estimate lookup`);
+    const base44 = createClientFromRequest(req);
     const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
     const estimate = estimates?.[0];
 
