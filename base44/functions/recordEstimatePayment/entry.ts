@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
-    // Extract and validate sync_secret from x-sync-secret header
+    // Validate x-sync-secret header
     const incomingSecret = req.headers.get("x-sync-secret");
     const expectedSecret = Deno.env.get("SYNC_SECRET");
 
@@ -20,36 +20,34 @@ Deno.serve(async (req) => {
     
     console.log(`[recordEstimatePayment] Secret validation passed`);
 
+    // Use service-role client for entity access (no request-based auth)
     const base44 = createClientFromRequest(req);
-    const { estimateId, estimateNumber, publicAccessToken, amount, method, date, note, stripeSessionId } = await req.json();
+    const { publicAccessToken, amount, amount_paid, method, date, note, stripeSessionId } = await req.json();
 
-    if (!amount || amount === undefined || amount === null) {
-      return Response.json({ error: "Missing amount" }, { status: 400 });
+    // Accept either amount or amount_paid
+    const paymentAmount = amount || amount_paid;
+    if (!paymentAmount || paymentAmount === undefined || paymentAmount === null) {
+      return Response.json({ error: "Missing amount or amount_paid" }, { status: 400 });
     }
 
-    // Find estimate by ID, estimate_number, or public_access_token
-    let estimate;
-    if (estimateId) {
-      const estimates = await base44.asServiceRole.entities.Estimate.filter({ id: estimateId });
-      estimate = estimates?.[0];
-    } else if (estimateNumber) {
-      const estimates = await base44.asServiceRole.entities.Estimate.filter({ estimate_number: estimateNumber });
-      estimate = estimates?.[0];
-    } else if (publicAccessToken) {
-      const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
-      estimate = estimates?.[0];
+    // Find estimate by public_access_token
+    if (!publicAccessToken) {
+      return Response.json({ error: "Missing publicAccessToken" }, { status: 400 });
     }
+
+    const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+    const estimate = estimates?.[0];
 
     if (!estimate) {
       return Response.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    console.log(`[recordEstimatePayment] Recording payment of $${amount} for estimate ${estimate.estimate_number}`);
+    console.log(`[recordEstimatePayment] Recording payment of $${paymentAmount} for estimate ${estimate.estimate_number}`);
 
     // Add payment to the payments array
     const payments = estimate.payments || [];
     payments.push({
-      amount: amount,
+      amount: paymentAmount,
       method: method || "card",
       date: date || new Date().toISOString().split("T")[0],
       note: note || ""
@@ -66,7 +64,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update estimate
+    // Update estimate using service-role access
     await base44.asServiceRole.entities.Estimate.update(estimate.id, {
       payments: payments,
       deposit_paid: depositPaid,
@@ -77,7 +75,9 @@ Deno.serve(async (req) => {
 
     return Response.json({ 
       success: true,
-      deposit_paid: depositPaid
+      estimate_id: estimate.id,
+      deposit_paid: depositPaid,
+      amount_paid: totalPaid
     });
   } catch (error) {
     console.error(`[recordEstimatePayment] Error: ${error.message}`);
