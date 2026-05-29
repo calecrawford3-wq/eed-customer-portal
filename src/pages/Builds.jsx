@@ -290,10 +290,11 @@ export default function Builds() {
   };
 
   const getQueueLabel = (position, status) => {
-    if (status === "in_progress") return { label: "In Progress", color: "bg-blue-500 text-white" };
-    if (position === 1) return { label: "Next Up", color: "bg-amber-500 text-white" };
-    return { label: `#${position} in Queue`, color: "bg-slate-200 text-slate-700" };
-  };
+     if (status === "in_progress") return { label: "In Progress", color: "bg-blue-500 text-white" };
+     if (position === 1) return { label: "Next Up", color: "bg-amber-500 text-white" };
+     if (!position) return { label: "Unqueued", color: "bg-slate-100 text-slate-600" };
+     return { label: `#${position} in Queue`, color: "bg-slate-200 text-slate-700" };
+   };
 
   const getWorkTagConfig = (tag) => WORK_TAGS.find(t => t.value === tag) || WORK_TAGS[0];
 
