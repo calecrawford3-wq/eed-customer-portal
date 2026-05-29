@@ -35,10 +35,22 @@ Deno.serve(async (req) => {
 
     console.log(`[recordEstimatePayment] About to use service-role Estimate lookup`);
     const base44 = createClientFromRequest(req);
-    const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+    
+    let estimates;
+    try {
+      console.log(`[recordEstimatePayment] Calling base44.asServiceRole.entities.Estimate.filter with token: ${publicAccessToken}`);
+      estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
+      console.log(`[recordEstimatePayment] Filter successful, found ${estimates?.length || 0} estimates`);
+    } catch (filterError) {
+      console.error(`[recordEstimatePayment] Entity filter error: ${filterError.message}`);
+      console.error(`[recordEstimatePayment] Error details:`, JSON.stringify(filterError, null, 2));
+      throw filterError;
+    }
+
     const estimate = estimates?.[0];
 
     if (!estimate) {
+      console.error(`[recordEstimatePayment] No estimate found with token: ${publicAccessToken}`);
       return Response.json({ error: "Estimate not found" }, { status: 404 });
     }
 
