@@ -20,79 +20,39 @@ Deno.serve(async (req) => {
     
     console.log(`[recordEstimatePayment] Secret validation passed`);
 
-    const { publicAccessToken, amount, amount_paid, method, date, note, stripeSessionId } = await req.json();
-
-    // Accept either amount or amount_paid
-    const paymentAmount = amount || amount_paid;
-    if (!paymentAmount || paymentAmount === undefined || paymentAmount === null) {
-      return Response.json({ error: "Missing amount or amount_paid" }, { status: 400 });
-    }
-
-    // Find estimate by public_access_token
-    if (!publicAccessToken) {
-      return Response.json({ error: "Missing publicAccessToken" }, { status: 400 });
-    }
-
-    console.log(`[recordEstimatePayment] About to use service-role Estimate lookup`);
+    // SERVICE ROLE ACCESS TEST
+    console.log(`[recordEstimatePayment] SERVICE ROLE TEST START`);
     const base44 = createClientFromRequest(req);
     
-    let estimates;
     try {
-      console.log(`[recordEstimatePayment] Calling base44.asServiceRole.entities.Estimate.filter with token: ${publicAccessToken}`);
-      estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
-      console.log(`[recordEstimatePayment] Filter successful, found ${estimates?.length || 0} estimates`);
-    } catch (filterError) {
-      console.error(`[recordEstimatePayment] Entity filter error: ${filterError.message}`);
-      console.error(`[recordEstimatePayment] Error details:`, JSON.stringify(filterError, null, 2));
-      throw filterError;
+      const testEstimates = await base44.asServiceRole.entities.Estimate.list(1);
+      console.log(`[recordEstimatePayment] SERVICE ROLE TEST - Success: true`);
+      console.log(`[recordEstimatePayment] SERVICE ROLE TEST - Estimates returned: ${testEstimates?.length || 0}`);
+      
+      return Response.json({
+        test: "SERVICE_ROLE_ACCESS_TEST",
+        success: true,
+        estimatesReturned: testEstimates?.length || 0,
+        message: "Service-role access to Estimate entity succeeded"
+      });
+    } catch (testError) {
+      console.error(`[recordEstimatePayment] SERVICE ROLE TEST - Success: false`);
+      console.error(`[recordEstimatePayment] SERVICE ROLE TEST - Error message: ${testError.message}`);
+      console.error(`[recordEstimatePayment] SERVICE ROLE TEST - Error status: ${testError.status}`);
+      console.error(`[recordEstimatePayment] SERVICE ROLE TEST - Error data:`, JSON.stringify(testError, null, 2));
+      
+      return Response.json({
+        test: "SERVICE_ROLE_ACCESS_TEST",
+        success: false,
+        errorMessage: testError.message,
+        errorStatus: testError.status,
+        errorData: testError.toString(),
+        message: "Service-role access to Estimate entity FAILED"
+      }, { status: 500 });
     }
 
-    const estimate = estimates?.[0];
-
-    if (!estimate) {
-      console.error(`[recordEstimatePayment] No estimate found with token: ${publicAccessToken}`);
-      return Response.json({ error: "Estimate not found" }, { status: 404 });
-    }
-
-    console.log(`[recordEstimatePayment] Recording payment of $${paymentAmount} for estimate ${estimate.estimate_number}`);
-
-    // Add payment to the payments array
-    const payments = estimate.payments || [];
-    payments.push({
-      amount: paymentAmount,
-      method: method || "card",
-      date: date || new Date().toISOString().split("T")[0],
-      note: note || ""
-    });
-
-    // Calculate total amount paid
-    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-    // Check if deposit is now fully paid
-    let depositPaid = estimate.deposit_paid || false;
-    if (estimate.deposit_required && estimate.deposit_amount) {
-      if (totalPaid >= estimate.deposit_amount) {
-        depositPaid = true;
-      }
-    }
-
-    // Update estimate using service-role access
-    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
-      payments: payments,
-      deposit_paid: depositPaid,
-      amount_paid: totalPaid
-    });
-
-    console.log(`[recordEstimatePayment] Payment recorded successfully`);
-
-    return Response.json({ 
-      success: true,
-      estimate_id: estimate.id,
-      deposit_paid: depositPaid,
-      amount_paid: totalPaid
-    });
   } catch (error) {
-    console.error(`[recordEstimatePayment] Error: ${error.message}`);
+    console.error(`[recordEstimatePayment] Outer error: ${error.message}`);
     return Response.json({ 
       error: error.message 
     }, { status: 500 });
