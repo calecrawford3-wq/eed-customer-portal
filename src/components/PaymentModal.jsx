@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,10 @@ const METHOD_CONFIG = {
 };
 
 export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onRecord, title = "Record Payment" }) {
-   const [amount, setAmount] = useState("");
-   const [method, setMethod] = useState("cash");
-   const [note, setNote] = useState("");
-   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-
-   useEffect(() => {
-     if (open) {
-       setMethod("cash");
-     }
-   }, [open]);
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("cash");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
   const handleRecord = () => {
     if (!amount || Number(amount) <= 0) return;
