@@ -320,10 +320,79 @@ export default function EstimateDetail() {
     const updatedPayments = [...(form.payments || []), payment];
     const newTotalDeposit = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const newDepositPaid = newTotalDeposit >= Number(form.deposit_amount || 0);
-    const updated = { ...form, payments: updatedPayments, deposit_paid: newDepositPaid };
+    const updated = { ...form, payments: updatedPayments, deposit_paid: newDepositPaid, amount_paid: newTotalDeposit };
     setForm(updated);
     await saveMutation.mutateAsync(updated);
     toast.success("Payment recorded");
+
+    // Auto-create engine build if deposit is met and this is an engine build estimate
+    if (form.is_engine_build && newDepositPaid && !form.build_id) {
+      try {
+        const cust = customers.find(c => c.id === form.customer_id);
+        let prevBuildData = {};
+        
+        if (form.customer_engine_id) {
+          const engineRec = await base44.entities.CustomerEngine.filter({ id: form.customer_engine_id });
+          const eng = engineRec[0];
+          if (eng) {
+            const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
+            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+            if (lastBuild) {
+              prevBuildData = {
+                valve_lash_intake: lastBuild.valve_lash_intake,
+                valve_lash_exhaust: lastBuild.valve_lash_exhaust,
+                internal_measurements: lastBuild.internal_measurements,
+                cam_info: lastBuild.cam_info,
+                max_rpm: lastBuild.max_rpm,
+                oil_recommendation: lastBuild.oil_recommendation,
+                oil_change_interval: lastBuild.oil_change_interval,
+                spark_plug_recommendation: lastBuild.spark_plug_recommendation,
+                refresh_interval: lastBuild.refresh_interval,
+                application: lastBuild.application,
+                transmission_type: lastBuild.transmission_type,
+                spec_sheet_id: lastBuild.spec_sheet_id,
+              };
+            }
+            const build = await base44.entities.EngineBuild.create({
+              engine_serial_number: eng.engine_serial_number,
+              eed_id: eng.eed_id,
+              customer_engine_id: eng.id,
+              platform_id: eng.platform_id,
+              build_number: form.estimate_number,
+              customer_id: form.customer_id,
+              customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+              status: "queued",
+              work_tag: "none",
+              assembly_notes: form.notes || "",
+              ...prevBuildData,
+            });
+            await base44.entities.Estimate.update(id, { build_id: build.id });
+            setForm(f => ({ ...f, build_id: build.id }));
+            qc.invalidateQueries({ queryKey: ["builds"] });
+            toast.success("Deposit received — engine build created and queued!");
+            return;
+          }
+        }
+
+        // Fallback: no engine selected
+        const build = await base44.entities.EngineBuild.create({
+          engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
+          build_number: form.estimate_number,
+          customer_id: form.customer_id,
+          customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+          status: "queued",
+          work_tag: "none",
+          assembly_notes: form.notes || "",
+        });
+        await base44.entities.Estimate.update(id, { build_id: build.id });
+        setForm(f => ({ ...f, build_id: build.id }));
+        qc.invalidateQueries({ queryKey: ["builds"] });
+        toast.success("Deposit received — engine build created and queued!");
+      } catch (e) {
+        console.error("Failed to auto-create build on payment:", e);
+        toast.error("Payment recorded but failed to create build");
+      }
+    }
   };
 
   const handleApprove = async () => {
