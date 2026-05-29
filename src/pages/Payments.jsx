@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle } from "lucide-react";
+import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 const METHOD_CONFIG = {
@@ -26,6 +26,7 @@ export default function Payments() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // { type: 'invoice'|'estimate', record, paymentIdx }
   const [editForm, setEditForm] = useState({});
+  const [expandedPayment, setExpandedPayment] = useState(null);
   const qc = useQueryClient();
 
   const { data: invoices = [] } = useQuery({
@@ -162,50 +163,99 @@ export default function Payments() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Date</th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Customer</th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Reference</th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Method</th>
-                <th className="text-left py-3 px-4 font-medium text-slate-600">Note</th>
-                <th className="text-right py-3 px-4 font-medium text-slate-600">Amount</th>
-                <th className="py-3 px-4 w-16"></th>
-              </tr>
+                 <th className="py-3 px-4 w-8"></th>
+                 <th className="text-left py-3 px-4 font-medium text-slate-600">Date</th>
+                 <th className="text-left py-3 px-4 font-medium text-slate-600">Customer</th>
+                 <th className="text-left py-3 px-4 font-medium text-slate-600">Reference</th>
+                 <th className="text-left py-3 px-4 font-medium text-slate-600">Type</th>
+                 <th className="text-left py-3 px-4 font-medium text-slate-600">Method</th>
+                 <th className="text-right py-3 px-4 font-medium text-slate-600">Amount</th>
+                 <th className="py-3 px-4 w-16"></th>
+               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{p.date || "—"}</td>
-                  <td className="py-3 px-4 font-medium">
-                    {p._customer ? `${p._customer.first_name} ${p._customer.last_name}` : "Unknown"}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1">
-                      <span>{p._ref}</span>
-                      <Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
-                        <ExternalLink className="w-3 h-3 text-slate-400 hover:text-[#e20404]" />
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge className={`border-0 text-xs capitalize ${p._type === "invoice" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
-                      {p._type}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge className={`border-0 text-xs capitalize ${METHOD_CONFIG[p.method]?.color || "bg-slate-100 text-slate-600"}`}>
-                      {METHOD_CONFIG[p.method]?.label || p.method}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4 text-slate-500">{p.note || "—"}</td>
-                  <td className="py-3 px-4 text-right font-bold text-emerald-700">${Number(p.amount || 0).toFixed(2)}</td>
-                  <td className="py-3 px-4">
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((p, i) => {
+                const isExpanded = expandedPayment === `${i}-${p.date}-${p.amount}`;
+                return (
+                  <React.Fragment key={i}>
+                    <tr className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3 px-4">
+                        <button onClick={() => setExpandedPayment(isExpanded ? null : `${i}-${p.date}-${p.amount}`)} className="hover:bg-slate-200 rounded p-1">
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{p.date || "—"}</td>
+                      <td className="py-3 px-4">
+                        {p._customer ? (
+                          <Link to={`/CustomerDetail?id=${p._customer.id}`} className="font-medium hover:text-[#e20404] underline">
+                            {p._customer.first_name} {p._customer.last_name}
+                          </Link>
+                        ) : (
+                          <span className="font-medium">Unknown</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          <span>{p._ref}</span>
+                          <Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
+                            <ExternalLink className="w-3 h-3 text-slate-400 hover:text-[#e20404]" />
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={`border-0 text-xs capitalize ${p._type === "invoice" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                          {p._type}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-700">${Number(p.amount || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4">
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <td colSpan={8} className="py-4 px-6">
+                          <div className="grid grid-cols-2 gap-6 max-w-2xl">
+                            <div>
+                              <p className="text-xs font-semibold text-slate-600 uppercase">Payment Method</p>
+                              <p className="text-sm text-slate-700 mt-1">{METHOD_CONFIG[p.method]?.label || p.method}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-slate-600 uppercase">Amount</p>
+                              <p className="text-sm font-bold text-emerald-700 mt-1">${Number(p.amount || 0).toFixed(2)}</p>
+                            </div>
+                            {p.note && (
+                              <div className="col-span-2">
+                                <p className="text-xs font-semibold text-slate-600 uppercase">Note</p>
+                                <p className="text-sm text-slate-700 mt-1">{p.note}</p>
+                              </div>
+                            )}
+                            <div className="col-span-2">
+                              <p className="text-xs font-semibold text-slate-600 uppercase mb-2">Quick Links</p>
+                              <div className="flex gap-2">
+                                {p._customer && (
+                                  <Link to={`/CustomerDetail?id=${p._customer.id}`}>
+                                    <Button size="sm" variant="outline" className="text-xs">
+                                      → {p._customer.first_name} {p._customer.last_name}
+                                    </Button>
+                                  </Link>
+                                )}
+                                <Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
+                                  <Button size="sm" variant="outline" className="text-xs">
+                                    → {p._type === "invoice" ? "Invoice" : "Estimate"} {p._ref}
+                                  </Button>
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
             <tfoot className="bg-slate-50 border-t border-slate-200">
               <tr>
