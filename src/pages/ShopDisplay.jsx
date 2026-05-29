@@ -78,8 +78,8 @@ export default function ShopDisplay() {
         </div>
       ) : (
         <div className="space-y-3">
-          {queuedBuilds.map((build, index) => {
-            const queueInfo = getQueueLabel(build.queue_position, build.status);
+           {queuedBuilds.map((build, index) => {
+             const queueInfo = getQueueLabel(build.queue_position || index + 1, build.status);
             const isInProgress = build.status === "in_progress";
             
             return (
