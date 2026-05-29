@@ -326,7 +326,7 @@ export default function EstimateDetail() {
     toast.success("Payment recorded");
 
     // Auto-create engine build if deposit is met and this is an engine build estimate
-    if (form.is_engine_build && newDepositPaid && !form.build_id) {
+    if (updated.is_engine_build && newDepositPaid && !updated.build_id) {
       try {
         const cust = customers.find(c => c.id === form.customer_id);
         let prevBuildData = {};
