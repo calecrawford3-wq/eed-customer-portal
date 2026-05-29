@@ -1039,6 +1039,19 @@ export default function EstimateDetail() {
                     <div className="flex items-center gap-3">
                       <span className="text-slate-400 text-xs">{p.date}</span>
                       <span className="font-semibold text-emerald-700">${Number(p.amount).toFixed(2)}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-600 px-2"
+                        onClick={() => {
+                          const updatedPayments = form.payments.filter((_, idx) => idx !== i);
+                          const newTotal = updatedPayments.reduce((s, pay) => s + (pay.amount || 0), 0);
+                          const newDepositPaid = newTotal >= Number(form.deposit_amount || 0);
+                          setForm({ ...form, payments: updatedPayments, deposit_paid: newDepositPaid, amount_paid: newTotal });
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
