@@ -291,8 +291,10 @@ export default function Builds() {
 
   const getQueueLabel = (position, status) => {
      if (status === "in_progress") return { label: "In Progress", color: "bg-blue-500 text-white" };
-     if (position === 1) return { label: "Next Up", color: "bg-amber-500 text-white" };
-     if (position) return { label: `#${position} in Queue`, color: "bg-slate-200 text-slate-700" };
+     if (position != null) {
+       if (position === 1) return { label: "Next Up", color: "bg-amber-500 text-white" };
+       return { label: `#${position} in Queue`, color: "bg-slate-200 text-slate-700" };
+     }
      return { label: "Unqueued", color: "bg-slate-100 text-slate-600" };
    };
 
