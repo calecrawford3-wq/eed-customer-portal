@@ -59,6 +59,14 @@
         }
       }
     },
+    "kit_cost_override": {
+      "type": "number",
+      "description": "Optional manual kit cost override. When set, used instead of the summed component cost."
+    },
+    "kit_price_override": {
+      "type": "number",
+      "description": "Optional manual kit sell price override. When set, used instead of the summed component price."
+    },
     "notes": {
       "type": "string"
     },

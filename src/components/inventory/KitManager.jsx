@@ -15,7 +15,8 @@ const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","ti
 
 const emptyKit = {
   part_number: "", name: "", description: "", category: "gaskets",
-  components: [], notes: "", status: "active"
+  components: [], kit_cost_override: null, kit_price_override: null,
+  notes: "", status: "active"
 };
 
 export default function KitManager() {
@@ -88,8 +89,12 @@ export default function KitManager() {
     setForm(f => ({ ...f, components: (f.components || []).filter((_, i) => i !== idx) }));
   };
 
-  const kitTotalCost = (form.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
-  const kitTotalPrice = (form.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+  const sumCost = (form.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
+  const sumPrice = (form.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+  const hasCostOverride = form.kit_cost_override !== null && form.kit_cost_override !== "" && !isNaN(Number(form.kit_cost_override));
+  const hasPriceOverride = form.kit_price_override !== null && form.kit_price_override !== "" && !isNaN(Number(form.kit_price_override));
+  const kitTotalCost = hasCostOverride ? Number(form.kit_cost_override) : sumCost;
+  const kitTotalPrice = hasPriceOverride ? Number(form.kit_price_override) : sumPrice;
 
   return (
     <div>
@@ -127,15 +132,25 @@ export default function KitManager() {
             </thead>
             <tbody>
               {filtered.map(k => {
-                const cost = (k.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
-                const price = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+                const sumCost = (k.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
+                const sumPrice = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+                const hasCostOv = k.kit_cost_override !== null && k.kit_cost_override !== undefined && !isNaN(Number(k.kit_cost_override));
+                const hasPriceOv = k.kit_price_override !== null && k.kit_price_override !== undefined && !isNaN(Number(k.kit_price_override));
+                const cost = hasCostOv ? Number(k.kit_cost_override) : sumCost;
+                const price = hasPriceOv ? Number(k.kit_price_override) : sumPrice;
                 return (
                   <tr key={k.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-4 py-3 font-mono text-slate-700">{k.part_number}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">{k.name}</td>
                     <td className="px-4 py-3 text-slate-500">{(k.components || []).length} item{(k.components || []).length === 1 ? "" : "s"}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">${cost.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900">${price.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">
+                      ${cost.toFixed(2)}
+                      {hasCostOv && <span className="ml-1 text-[10px] text-amber-600 align-top">override</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                      ${price.toFixed(2)}
+                      {hasPriceOv && <span className="ml-1 text-[10px] text-amber-600 align-top">override</span>}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <Badge className={k.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
                         {k.status}
@@ -248,6 +263,31 @@ export default function KitManager() {
                 </div>
               )}
               <p className="text-xs text-slate-400 mt-2">When this kit is added to an estimate or invoice, each component above becomes its own line item with its own part number and price.</p>
+
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                  <Label>Kit Cost Override</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder={`Auto (${sumCost.toFixed(2)})`}
+                    value={form.kit_cost_override ?? ""}
+                    onChange={e => setForm({ ...form, kit_cost_override: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Leave blank to use summed component cost ({sumCost.toFixed(2)}).</p>
+                </div>
+                <div>
+                  <Label>Kit Price Override</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder={`Auto (${sumPrice.toFixed(2)})`}
+                    value={form.kit_price_override ?? ""}
+                    onChange={e => setForm({ ...form, kit_price_override: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Leave blank to use summed component price ({sumPrice.toFixed(2)}).</p>
+                </div>
+              </div>
             </div>
 
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
