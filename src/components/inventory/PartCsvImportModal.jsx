@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -119,8 +119,28 @@ export default function PartCsvImportModal({ open, onClose }) {
   const [selected, setSelected] = useState(new Set());
   const [importedCount, setImportedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
+  const [selectedPlatformIds, setSelectedPlatformIds] = useState(new Set());
+  const [platformSearch, setPlatformSearch] = useState("");
   const fileRef = useRef();
   const qc = useQueryClient();
+
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["enginePlatforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-name", 200),
+  });
+
+  const filteredPlatforms = useMemo(() => {
+    const q = platformSearch.toLowerCase().trim();
+    const sorted = [...platforms].sort((a, b) =>
+      `${a.manufacturer} ${a.name}`.localeCompare(`${b.manufacturer} ${b.name}`)
+    );
+    if (!q) return sorted;
+    return sorted.filter((p) =>
+      `${p.manufacturer} ${p.name} ${p.year_range_start ?? ""}-${p.year_range_end ?? ""}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [platforms, platformSearch]);
 
   const reset = () => {
     setStep("upload");
@@ -131,6 +151,8 @@ export default function PartCsvImportModal({ open, onClose }) {
     setSelected(new Set());
     setImportedCount(0);
     setFailedCount(0);
+    setSelectedPlatformIds(new Set());
+    setPlatformSearch("");
   };
 
   const handleFile = (e) => {
@@ -192,6 +214,9 @@ export default function PartCsvImportModal({ open, onClose }) {
             if (f.required) return;
             if (r[f.key] !== undefined) part[f.key] = r[f.key];
           });
+          if (selectedPlatformIds.size > 0) {
+            part.platform_ids = Array.from(selectedPlatformIds);
+          }
           return part;
         });
         try {
@@ -350,6 +375,71 @@ export default function PartCsvImportModal({ open, onClose }) {
         {/* Step: Review */}
         {step === "review" && (
           <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Platform assignment */}
+            <div className="mb-3 p-3 border rounded-lg bg-slate-50/60">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    Assign to engine platforms
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Tag all imported parts as compatible with the selected platforms (year/make/model).
+                  </p>
+                </div>
+                {selectedPlatformIds.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedPlatformIds(new Set())}
+                  >
+                    Clear ({selectedPlatformIds.size})
+                  </Button>
+                )}
+              </div>
+              <Input
+                placeholder="Search platforms by make / model / year..."
+                value={platformSearch}
+                onChange={(e) => setPlatformSearch(e.target.value)}
+                className="mb-2 h-8"
+              />
+              <div className="max-h-32 overflow-y-auto grid grid-cols-2 gap-1.5 pr-1">
+                {filteredPlatforms.length === 0 && (
+                  <p className="text-xs text-slate-400 col-span-2 py-2 text-center">
+                    No platforms found.
+                  </p>
+                )}
+                {filteredPlatforms.map((p) => {
+                  const checked = selectedPlatformIds.has(p.id);
+                  const years =
+                    p.year_range_start || p.year_range_end
+                      ? `${p.year_range_start ?? ""}${p.year_range_end ? `–${p.year_range_end}` : ""}`
+                      : "";
+                  return (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-pointer text-xs ${
+                        checked ? "border-[#e20404] bg-[#e20404]/5" : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() =>
+                          setSelectedPlatformIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(p.id)) next.delete(p.id);
+                            else next.add(p.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span className="font-medium text-slate-700">{p.manufacturer}</span>
+                      <span className="text-slate-500">{p.name}</span>
+                      {years && <span className="text-slate-400">{years}</span>}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-slate-500">
                 Select which rows to import. {selected.size} selected · {validRows.length} valid · {rows.length - validRows.length} skipped (missing required)
