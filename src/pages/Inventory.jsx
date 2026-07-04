@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 
@@ -23,7 +24,7 @@ const emptyPart = {
   supplier_id: "", supplier_part_number: "", unit_cost: "", sell_price: "",
   use_markup: false, markup_percentage: 0,
   quantity_on_hand: 0, reorder_point: 0, reorder_quantity: 0,
-  location: "", notes: "", status: "active"
+  location: "", notes: "", status: "active", platform_ids: []
 };
 
 const calcSellPrice = (cost, markup) => {
@@ -67,6 +68,27 @@ export default function Inventory() {
     queryKey: ["suppliers"],
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
   });
+
+  const { data: enginePlatforms = [] } = useQuery({
+    queryKey: ["enginePlatforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-name", 200),
+  });
+
+  const sortedPlatforms = [...enginePlatforms].sort((a, b) =>
+    `${a.manufacturer} ${a.name}`.localeCompare(`${b.manufacturer} ${b.name}`)
+  );
+
+  const togglePlatform = (platformId) => {
+    setPartForm((f) => {
+      const current = Array.isArray(f.platform_ids) ? f.platform_ids : [];
+      return {
+        ...f,
+        platform_ids: current.includes(platformId)
+          ? current.filter((id) => id !== platformId)
+          : [...current, platformId],
+      };
+    });
+  };
 
   const { data: machiningItems = [], isLoading: machiningLoading } = useQuery({
     queryKey: ["machiningItems"],
@@ -209,6 +231,7 @@ export default function Inventory() {
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Part #</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Category</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Platforms</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Location</th>
                     <th className="text-right px-4 py-3 font-medium text-slate-600">On Hand</th>
                     <th className="text-right px-4 py-3 font-medium text-slate-600">Cost</th>
@@ -225,6 +248,22 @@ export default function Inventory() {
                         <td className="px-4 py-3 font-mono text-slate-700">{p.part_number}</td>
                         <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
                         <td className="px-4 py-3 text-slate-500 capitalize">{p.category?.replace("_", " ")}</td>
+                        <td className="px-4 py-3">
+                          {(p.platform_ids || []).length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {(p.platform_ids || []).map((pid) => {
+                                const plat = enginePlatforms.find((x) => x.id === pid);
+                                return (
+                                  <Badge key={pid} className="bg-blue-50 text-blue-700 border-0 text-xs">
+                                    {plat ? `${plat.manufacturer} ${plat.name}` : "Unknown"}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-slate-500">{p.location || "—"}</td>
                         <td className={`px-4 py-3 text-right font-semibold ${isLow ? "text-amber-600" : "text-slate-900"}`}>
                           {p.quantity_on_hand} {isLow && <AlertTriangle className="inline w-3.5 h-3.5 ml-1" />}
@@ -512,6 +551,32 @@ export default function Inventory() {
                   <SelectItem value="special_order">Special Order</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>Compatible Engine Platforms</Label>
+              <p className="text-xs text-slate-400 mb-2">Tag this part as compatible with one or more engine platforms (year/make/model).</p>
+              <div className="max-h-36 overflow-y-auto grid grid-cols-2 gap-1.5 p-2 border rounded-lg bg-slate-50">
+                {sortedPlatforms.length === 0 && (
+                  <p className="text-xs text-slate-400 col-span-2 py-2 text-center">No engine platforms configured.</p>
+                )}
+                {sortedPlatforms.map(p => {
+                  const checked = (partForm.platform_ids || []).includes(p.id);
+                  const years = p.year_range_start || p.year_range_end
+                    ? `${p.year_range_start ?? ""}${p.year_range_end ? `–${p.year_range_end}` : ""}`
+                    : "";
+                  return (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-pointer text-xs ${checked ? "border-[#e20404] bg-[#e20404]/5" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                    >
+                      <Checkbox checked={checked} onCheckedChange={() => togglePlatform(p.id)} />
+                      <span className="font-medium text-slate-700">{p.manufacturer}</span>
+                      <span className="text-slate-500">{p.name}</span>
+                      {years && <span className="text-slate-400">{years}</span>}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
             <div className="col-span-2"><Label>Description</Label><Textarea value={partForm.description} onChange={e => setPartForm({...partForm, description: e.target.value})} rows={2} /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={partForm.notes} onChange={e => setPartForm({...partForm, notes: e.target.value})} rows={2} /></div>
