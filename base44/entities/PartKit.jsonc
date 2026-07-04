@@ -67,6 +67,13 @@
       "type": "number",
       "description": "Optional manual kit sell price override. When set, used instead of the summed component price."
     },
+    "platform_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Compatible engine platform IDs"
+    },
     "notes": {
       "type": "string"
     },

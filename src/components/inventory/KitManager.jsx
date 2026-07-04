@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Trash2, Edit, Package } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,7 +17,7 @@ const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","ti
 const emptyKit = {
   part_number: "", name: "", description: "", category: "gaskets",
   components: [], kit_cost_override: null, kit_price_override: null,
-  notes: "", status: "active"
+  platform_ids: [], notes: "", status: "active"
 };
 
 export default function KitManager() {
@@ -37,6 +38,27 @@ export default function KitManager() {
     queryKey: ["parts"],
     queryFn: () => base44.entities.Part.list("-created_date", 500),
   });
+
+  const { data: enginePlatforms = [] } = useQuery({
+    queryKey: ["enginePlatforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200),
+  });
+
+  const sortedPlatforms = [...enginePlatforms].sort((a, b) =>
+    `${a.manufacturer} ${a.name}`.localeCompare(`${b.manufacturer} ${b.name}`)
+  );
+
+  const togglePlatform = (platformId) => {
+    setForm(f => {
+      const current = Array.isArray(f.platform_ids) ? f.platform_ids : [];
+      return {
+        ...f,
+        platform_ids: current.includes(platformId)
+          ? current.filter(id => id !== platformId)
+          : [...current, platformId],
+      };
+    });
+  };
 
   const saveMutation = useMutation({
     mutationFn: (data) => editing
@@ -124,6 +146,7 @@ export default function KitManager() {
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Kit Part #</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Components</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">Platforms</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Kit Cost</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Kit Price</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
@@ -143,6 +166,17 @@ export default function KitManager() {
                     <td className="px-4 py-3 font-mono text-slate-700">{k.part_number}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">{k.name}</td>
                     <td className="px-4 py-3 text-slate-500">{(k.components || []).length} item{(k.components || []).length === 1 ? "" : "s"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(k.platform_ids || []).slice(0, 3).map(pid => {
+                          const p = enginePlatforms.find(ep => ep.id === pid);
+                          if (!p) return null;
+                          return <Badge key={pid} className="bg-blue-50 text-blue-700 border-0 text-xs">{p.manufacturer} {p.name}</Badge>;
+                        })}
+                        {(k.platform_ids || []).length > 3 && <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">+{k.platform_ids.length - 3}</Badge>}
+                        {(!k.platform_ids || k.platform_ids.length === 0) && <span className="text-xs text-slate-400">—</span>}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right text-slate-600">
                       ${cost.toFixed(2)}
                       {hasCostOv && <span className="ml-1 text-[10px] text-amber-600 align-top">override</span>}
@@ -286,6 +320,29 @@ export default function KitManager() {
                     onChange={e => setForm({ ...form, kit_price_override: e.target.value === "" ? null : Number(e.target.value) })}
                   />
                   <p className="text-xs text-slate-400 mt-1">Leave blank to use summed component price ({sumPrice.toFixed(2)}).</p>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <Label>Compatible Engine Platforms</Label>
+                <div className="mt-1 border rounded-lg p-3 bg-slate-50 max-h-44 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {sortedPlatforms.length === 0 ? (
+                    <p className="text-sm text-slate-400 col-span-2">No engine platforms defined yet.</p>
+                  ) : sortedPlatforms.map(p => {
+                    const checked = Array.isArray(form.platform_ids) && form.platform_ids.includes(p.id);
+                    const yearLabel = p.year_range_start || p.year_range_end
+                      ? `${p.year_range_start || "?"}${p.year_range_end ? `–${p.year_range_end}` : "+"}`
+                      : "";
+                    return (
+                      <label key={p.id} className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-white">
+                        <Checkbox checked={checked} onCheckedChange={() => togglePlatform(p.id)} className="mt-0.5" />
+                        <div className="text-sm leading-tight">
+                          <div className="font-medium text-slate-800">{p.manufacturer} {p.name}</div>
+                          {yearLabel && <div className="text-xs text-slate-500">{yearLabel}</div>}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </div>
