@@ -253,9 +253,12 @@ export default function Inventory() {
                             <div className="flex flex-wrap gap-1">
                               {(p.platform_ids || []).map((pid) => {
                                 const plat = enginePlatforms.find((x) => x.id === pid);
+                                const years = plat && (plat.year_range_start || plat.year_range_end)
+                                  ? `${plat.year_range_start ?? ""}${plat.year_range_end ? `–${plat.year_range_end}` : ""}`
+                                  : "";
                                 return (
                                   <Badge key={pid} className="bg-blue-50 text-blue-700 border-0 text-xs">
-                                    {plat ? `${plat.manufacturer} ${plat.name}` : "Unknown"}
+                                    {plat ? `${plat.manufacturer} ${plat.name}${years ? ` ${years}` : ""}` : "Unknown"}
                                   </Badge>
                                 );
                               })}
