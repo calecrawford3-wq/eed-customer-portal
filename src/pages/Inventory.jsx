@@ -75,6 +75,22 @@ export default function Inventory() {
     queryFn: () => base44.entities.EnginePlatform.list("-name", 200),
   });
 
+  const { data: partKits = [] } = useQuery({
+    queryKey: ["partKits"],
+    queryFn: () => base44.entities.PartKit.list("-created_date", 200),
+  });
+
+  // Map part_id -> array of kit names that include this part as a component
+  const partKitsMap = {};
+  partKits.forEach(k => {
+    (k.components || []).forEach(c => {
+      if (c.part_id) {
+        if (!partKitsMap[c.part_id]) partKitsMap[c.part_id] = [];
+        partKitsMap[c.part_id].push(k.name);
+      }
+    });
+  });
+
   const sortedPlatforms = [...enginePlatforms].sort((a, b) =>
     `${a.manufacturer} ${a.name}`.localeCompare(`${b.manufacturer} ${b.name}`)
   );
@@ -250,7 +266,18 @@ export default function Inventory() {
                     return (
                       <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="px-4 py-3 font-mono text-slate-700">{p.part_number}</td>
-                        <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {p.name}
+                          {partKitsMap[p.id]?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {partKitsMap[p.id].map(kn => (
+                                <Badge key={kn} className="bg-purple-50 text-purple-700 border-0 text-[10px] inline-flex items-center">
+                                  <Boxes className="w-2.5 h-2.5 mr-0.5" />{kn}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-slate-500 capitalize">{p.category?.replace("_", " ")}</td>
                         <td className="px-4 py-3">
                           {(p.platform_ids || []).length > 0 ? (
