@@ -9,15 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Package } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Package, ShoppingBag, PackageCheck } from "lucide-react";
+import OrderKitModal from "./OrderKitModal";
+import RestockKitModal from "./RestockKitModal";
 import { toast } from "sonner";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 
 const emptyKit = {
-  part_number: "", name: "", description: "", category: "gaskets",
-  components: [], kit_cost_override: null, kit_price_override: null,
-  platform_ids: [], notes: "", status: "active"
+part_number: "", name: "", description: "", category: "gaskets",
+components: [], kit_cost_override: null, kit_price_override: null,
+supplier_id: "", platform_ids: [], notes: "", status: "active"
 };
 
 export default function KitManager() {
@@ -27,6 +29,8 @@ export default function KitManager() {
   const [form, setForm] = useState(emptyKit);
   const [partSearch, setPartSearch] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [orderKit, setOrderKit] = useState(null);
+  const [restockKit, setRestockKit] = useState(null);
   const qc = useQueryClient();
 
   const { data: kits = [], isLoading } = useQuery({
@@ -42,6 +46,11 @@ export default function KitManager() {
   const { data: enginePlatforms = [] } = useQuery({
     queryKey: ["enginePlatforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200),
+  });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: () => base44.entities.Supplier.list("-created_date", 200),
   });
 
   const sortedPlatforms = [...enginePlatforms].sort((a, b) =>
@@ -145,7 +154,9 @@ export default function KitManager() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Kit Part #</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">Vendor</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Components</th>
+                <th className="text-center px-4 py-3 font-medium text-slate-600">Kits in Stock</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Platforms</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Kit Cost</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Kit Price</th>
@@ -165,7 +176,25 @@ export default function KitManager() {
                   <tr key={k.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-4 py-3 font-mono text-slate-700">{k.part_number}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">{k.name}</td>
+                    <td className="px-4 py-3 text-slate-600 text-xs">
+                      {k.supplier_id ? (suppliers.find(s => s.id === k.supplier_id)?.name || "—") : <span className="text-slate-400">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-500">{(k.components || []).length} item{(k.components || []).length === 1 ? "" : "s"}</td>
+                    <td className="px-4 py-3 text-center">
+                      {(() => {
+                        const comps = k.components || [];
+                        if (!comps.length) return <span className="text-slate-400">—</span>;
+                        const kitsAvail = Math.min(...comps.map(c => {
+                          const p = parts.find(pt => pt.id === c.part_id);
+                          return Math.floor((Number(p?.quantity_on_hand) || 0) / (Number(c.quantity) || 1));
+                        }));
+                        return (
+                          <Badge className={kitsAvail > 0 ? "bg-emerald-100 text-emerald-700 border-0" : "bg-red-100 text-red-700 border-0"}>
+                            {kitsAvail} kit{kitsAvail === 1 ? "" : "s"}
+                          </Badge>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {(k.platform_ids || []).slice(0, 3).map(pid => {
@@ -192,6 +221,8 @@ export default function KitManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1 justify-end">
+                        <Button size="sm" variant="ghost" title="Order kit from vendor" onClick={() => setOrderKit(k)}><ShoppingBag className="w-3.5 h-3.5" /></Button>
+                        <Button size="sm" variant="ghost" title="Receive kit & restock components" onClick={() => setRestockKit(k)}><PackageCheck className="w-3.5 h-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => openEdit(k)}><Edit className="w-3.5 h-3.5" /></Button>
                         <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(k.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </div>
@@ -230,6 +261,17 @@ export default function KitManager() {
               </Select>
             </div>
             <div className="col-span-2"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} placeholder="What does this kit group together?" /></div>
+            <div className="col-span-2">
+              <Label>Vendor / Supplier</Label>
+              <Select value={form.supplier_id || "none"} onValueChange={v => setForm({...form, supplier_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Select vendor..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No vendor assigned</SelectItem>
+                  {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">Assigned vendor is used when ordering this kit as a purchase order.</p>
+            </div>
 
             {/* Components */}
             <div className="col-span-2">
@@ -357,6 +399,13 @@ export default function KitManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {orderKit && (
+        <OrderKitModal kit={orderKit} suppliers={suppliers} onClose={() => setOrderKit(null)} />
+      )}
+      {restockKit && (
+        <RestockKitModal kit={restockKit} parts={parts} onClose={() => setRestockKit(null)} />
+      )}
     </div>
   );
 }

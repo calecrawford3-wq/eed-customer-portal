@@ -31,6 +31,10 @@
       ],
       "default": "other"
     },
+    "supplier_id": {
+      "type": "string",
+      "description": "Vendor / supplier this kit is ordered from"
+    },
     "components": {
       "type": "array",
       "description": "Individual parts that make up this kit. When the kit is added to an estimate or invoice, each component is listed as its own line item with its own part number and price.",
