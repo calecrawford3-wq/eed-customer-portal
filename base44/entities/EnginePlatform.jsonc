@@ -1,0 +1,61 @@
+{
+  "name": "EnginePlatform",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Platform name (e.g., GSX-R600, YZF-R6, CBR600RR)"
+    },
+    "manufacturer": {
+      "type": "string",
+      "description": "Engine manufacturer (Suzuki, Yamaha, Honda, Kawasaki)"
+    },
+    "year_range_start": {
+      "type": "number",
+      "description": "Starting production year"
+    },
+    "year_range_end": {
+      "type": "number",
+      "description": "Ending production year"
+    },
+    "displacement_cc": {
+      "type": "number",
+      "description": "Displacement in cubic centimeters"
+    },
+    "configuration": {
+      "type": "string",
+      "enum": [
+        "inline-4",
+        "inline-3",
+        "v-twin",
+        "parallel-twin",
+        "single"
+      ],
+      "description": "Engine configuration"
+    },
+    "valve_count": {
+      "type": "number",
+      "description": "Total number of valves (e.g., 16 for inline-4 with 4 valves per cylinder)"
+    },
+    "cylinder_count": {
+      "type": "number",
+      "description": "Number of cylinders"
+    },
+    "notes": {
+      "type": "string",
+      "description": "General platform notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "manufacturer"
+  ]
+}

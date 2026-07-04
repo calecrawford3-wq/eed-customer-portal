@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -49,8 +50,8 @@ export default function Inventory() {
   const [partForm, setPartForm] = useState(emptyPart);
   const [laborForm, setLaborForm] = useState(emptyLabor);
   const [machiningForm, setMachiningForm] = useState(emptyMachining);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const qc = useQueryClient();
-  const csvInputRef = useRef();
 
   const { data: parts = [], isLoading: partsLoading } = useQuery({
     queryKey: ["parts"],
@@ -127,39 +128,6 @@ export default function Inventory() {
   const openNewMachining = () => { setEditingMachining(null); setMachiningForm(emptyMachining); setMachiningDialogOpen(true); };
   const openEditMachining = (m) => { setEditingMachining(m); setMachiningForm({ ...m }); setMachiningDialogOpen(true); };
 
-  const handleCSVImport = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const lines = ev.target.result.split("\n").filter(Boolean);
-      const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-      let imported = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const vals = lines[i].split(",").map(v => v.trim().replace(/"/g, ""));
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
-        const part = {
-          part_number: row.part_number || row["part #"] || row["part#"] || `IMPORT-${Date.now()}-${i}`,
-          name: row.name || row.description || "",
-          description: row.description || "",
-          category: row.category || "other",
-          unit_cost: parseFloat(row.unit_cost || row.cost || 0) || 0,
-          sell_price: parseFloat(row.sell_price || row.price || 0) || 0,
-          quantity_on_hand: parseInt(row.quantity_on_hand || row.qty || row.quantity || 0) || 0,
-          reorder_point: parseInt(row.reorder_point || 0) || 0,
-          location: row.location || "",
-          status: "active",
-        };
-        if (part.name) { await base44.entities.Part.create(part); imported++; }
-      }
-      qc.invalidateQueries({ queryKey: ["parts"] });
-      toast.success(`Imported ${imported} parts`);
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
   const lowStockCount = parts.filter(p => p.quantity_on_hand <= p.reorder_point && p.reorder_point > 0).length;
 
   const filteredParts = parts.filter(p => {
@@ -218,8 +186,7 @@ export default function Inventory() {
                 <AlertTriangle className="w-4 h-4 mr-2" /> {lowStockCount} Low Stock
               </Button>
             )}
-            <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
-            <Button variant="outline" onClick={() => csvInputRef.current.click()}>
+            <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
             <Button onClick={openNewPart} className="bg-[#e20404] hover:bg-[#c00303] text-white">
@@ -595,6 +562,8 @@ export default function Inventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PartCsvImportModal open={csvImportOpen} onClose={() => setCsvImportOpen(false)} />
     </div>
   );
 }

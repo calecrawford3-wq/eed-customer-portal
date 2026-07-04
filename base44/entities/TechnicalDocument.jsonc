@@ -1,0 +1,80 @@
+{
+  "name": "TechnicalDocument",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Document title"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Associated engine platform ID"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "oem_manual",
+        "torque_chart",
+        "diagram",
+        "wiring_schematic",
+        "parts_list",
+        "technical_bulletin",
+        "internal_procedure",
+        "other"
+      ],
+      "description": "Type of document"
+    },
+    "subsystem": {
+      "type": "string",
+      "enum": [
+        "block",
+        "rotating_assembly",
+        "cylinder_head",
+        "valvetrain",
+        "timing",
+        "oiling",
+        "cooling",
+        "fuel",
+        "ignition",
+        "intake",
+        "exhaust",
+        "sensors",
+        "general"
+      ],
+      "description": "Engine subsystem this document covers"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to uploaded file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "year_applicable_start": {
+      "type": "number",
+      "description": "Starting year this document applies to"
+    },
+    "year_applicable_end": {
+      "type": "number",
+      "description": "Ending year this document applies to"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of document contents"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Searchable tags"
+    }
+  },
+  "required": [
+    "title",
+    "platform_id",
+    "document_type",
+    "file_url"
+  ]
+}
