@@ -1,0 +1,78 @@
+{
+  "name": "PartKit",
+  "type": "object",
+  "properties": {
+    "part_number": {
+      "type": "string",
+      "description": "Kit part number / SKU (e.g. COMETIC-KIT-GSX600)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Kit display name"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this kit groups together and why"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "block",
+        "rotating_assembly",
+        "cylinder_head",
+        "valvetrain",
+        "timing",
+        "oiling",
+        "fasteners",
+        "gaskets",
+        "seals",
+        "electrical",
+        "other"
+      ],
+      "default": "other"
+    },
+    "components": {
+      "type": "array",
+      "description": "Individual parts that make up this kit. When the kit is added to an estimate or invoice, each component is listed as its own line item with its own part number and price.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "part_number",
+    "name"
+  ]
+}

@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
+import KitManager from "@/components/inventory/KitManager";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -186,6 +187,9 @@ export default function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="machining" className="flex items-center gap-2">
             <Cog className="w-4 h-4" /> Machining ({machiningItems.length})
+          </TabsTrigger>
+          <TabsTrigger value="kits" className="flex items-center gap-2">
+            <Boxes className="w-4 h-4" /> Kits
           </TabsTrigger>
         </TabsList>
 
@@ -413,9 +417,12 @@ export default function Inventory() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
 
-      {/* Machining Dialog */}
+        {/* ─── Kits Tab ─── */}
+        <TabsContent value="kits">
+          <KitManager />
+        </TabsContent>
+      </Tabs>
       <Dialog open={machiningDialogOpen} onOpenChange={setMachiningDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

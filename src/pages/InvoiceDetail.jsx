@@ -79,6 +79,11 @@ export default function InvoiceDetail() {
     queryFn: () => base44.entities.Part.list("-created_date", 500),
   });
 
+  const { data: partKits = [] } = useQuery({
+    queryKey: ["partKits"],
+    queryFn: () => base44.entities.PartKit.list("-created_date", 200),
+  });
+
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
@@ -172,6 +177,31 @@ export default function InvoiceDetail() {
     };
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
+  };
+
+  const selectKit = (kit) => {
+    const lines = [...form.line_items];
+    const expanded = (kit.components || []).map(c => {
+      const qty = Number(c.quantity) || 1;
+      const price = Number(c.unit_price) || 0;
+      return {
+        part_id: c.part_id || "",
+        part_number: c.part_number || "",
+        item_name: c.name || "",
+        quantity: qty,
+        unit_cost: Number(c.unit_cost) || 0,
+        unit_price: price,
+        total: qty * price,
+      };
+    });
+    const newLines = [
+      ...lines.slice(0, pickingIdx),
+      ...expanded,
+      ...lines.slice(pickingIdx + 1),
+    ];
+    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    setForm(f => ({ ...f, line_items: newLines, ...totals }));
+    toast.success(`Added kit "${kit.name}" — ${expanded.length} line item${expanded.length === 1 ? "" : "s"}`);
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
@@ -388,7 +418,9 @@ export default function InvoiceDetail() {
         open={partPickerOpen}
         onClose={() => setPartPickerOpen(false)}
         parts={parts}
+        kits={partKits}
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
+        onSelectKit={selectKit}
       />
       <GeneratePOModal
         open={poModalOpen}
