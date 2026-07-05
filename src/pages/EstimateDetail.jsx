@@ -682,10 +682,10 @@ export default function EstimateDetail() {
         tax_rate: form.tax_rate,
         tax_amount: form.tax_amount,
         total: form.total,
-        amount_paid: 0,
-        balance_due: form.total || 0,
+        amount_paid: totalDeposit > 0 ? totalDeposit : 0,
+        balance_due: Math.max(0, (form.total || 0) - totalDeposit),
         notes: form.notes || "",
-        payments: [],
+        payments: form.payments || [],
       });
       await base44.entities.Estimate.update(id, { invoice_id: invoice.id });
       setForm(f => ({ ...f, invoice_id: invoice.id }));
