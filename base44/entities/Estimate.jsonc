@@ -93,6 +93,51 @@
           },
           "total": {
             "type": "number"
+          },
+          "core_id": {
+            "type": "string",
+            "description": "Reference to EngineCore when selling a core from inventory"
+          },
+          "is_core_credit": {
+            "type": "boolean",
+            "default": false,
+            "description": "True when this line is a core credit (customer core bought/exchanged)"
+          },
+          "core_details": {
+            "type": "object",
+            "description": "Captured core details for a core credit line, used to add the core to inventory when the invoice completes",
+            "properties": {
+              "core_number": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "condition": {
+                "type": "string"
+              },
+              "unit_cost": {
+                "type": "number"
+              },
+              "sell_price": {
+                "type": "number"
+              },
+              "core_credit": {
+                "type": "number"
+              },
+              "platform_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

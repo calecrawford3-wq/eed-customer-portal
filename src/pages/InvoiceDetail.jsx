@@ -13,6 +13,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
+import CoreCreditModal from "@/components/estimates/CoreCreditModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
@@ -56,6 +57,7 @@ export default function InvoiceDetail() {
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
+  const [coreCreditOpen, setCoreCreditOpen] = useState(false);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const [printMode, setPrintMode] = useState(false);
   const [laborPickerOpen, setLaborPickerOpen] = useState(false);
@@ -294,7 +296,7 @@ export default function InvoiceDetail() {
     } else {
       const price = Number(core.sell_price) || 0;
       lines[pickingIdx] = {
-        part_id: "", part_number: core.core_number,
+        part_id: "", part_number: core.core_number, core_id: core.id,
         item_name: `${core.name} (Core)`,
         quantity: 1, unit_cost: Number(core.unit_cost) || 0, unit_price: price, total: price,
       };
@@ -306,11 +308,22 @@ export default function InvoiceDetail() {
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
 
-  const addCoreCredit = () => {
-    const lines = [...form.line_items, { part_id: "", part_number: "CORE-CREDIT", item_name: "Core Credit", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 }];
+  const handleCoreCredit = (coreDetails) => {
+    const credit = Number(coreDetails.core_credit) || 0;
+    const lines = [...form.line_items, {
+      part_id: "",
+      part_number: coreDetails.core_number || "CORE-CREDIT",
+      item_name: `Core Credit: ${coreDetails.name}`,
+      quantity: 1,
+      unit_cost: Number(coreDetails.unit_cost) || 0,
+      unit_price: -credit,
+      total: -credit,
+      is_core_credit: true,
+      core_details: { ...coreDetails },
+    }];
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
-    toast.success("Core credit line added — enter the credit amount as a negative value");
+    toast.success("Core credit added — core will be added to inventory when invoice is complete");
   };
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
@@ -531,6 +544,11 @@ export default function InvoiceDetail() {
         onSelectKit={selectKit}
         onSelectCore={selectCore}
       />
+      <CoreCreditModal
+        open={coreCreditOpen}
+        onClose={() => setCoreCreditOpen(false)}
+        onAdd={handleCoreCredit}
+      />
       <GeneratePOModal
         open={poModalOpen}
         onClose={() => setPoModalOpen(false)}
@@ -646,7 +664,7 @@ export default function InvoiceDetail() {
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={addCoreCredit} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
+            <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
             <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
           </div>
         </CardHeader>
