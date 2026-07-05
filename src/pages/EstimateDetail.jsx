@@ -239,6 +239,27 @@ export default function EstimateDetail() {
     return { subtotal, tax_amount, total: subtotal + tax_amount };
   };
 
+  const handleCustomerChange = (v) => {
+    const cust = customers.find(c => c.id === v);
+    const isTaxExempt = !!cust?.tax_exempt;
+    const override = cust?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
+    let newLines = form.line_items;
+    if (useOverride && form.line_items.some(l => l.part_id)) {
+      newLines = form.line_items.map(l => {
+        if (!l.part_id) return l;
+        const price = (Number(l.unit_cost) || 0) * (1 + Number(override) / 100);
+        return { ...l, unit_price: price, total: (Number(l.quantity) || 0) * price };
+      });
+    }
+    const newTaxRate = isTaxExempt ? 0 : form.tax_rate;
+    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], newTaxRate);
+    setForm({ ...form, customer_id: v, line_items: newLines, tax_rate: newTaxRate, ...totals });
+    if (isTaxExempt && useOverride) toast.info(`Tax-exempt • ${override}% markup applied to parts`);
+    else if (isTaxExempt) toast.info("Customer is tax-exempt — tax set to 0%");
+    else if (useOverride) toast.info(`Applied ${override}% markup override to parts`);
+  };
+
   const updateLine = (idx, field, value) => {
     const lines = [...form.line_items];
     lines[idx] = { ...lines[idx], [field]: value };
@@ -250,21 +271,26 @@ export default function EstimateDetail() {
   };
 
   const selectPart = (part) => {
+    const override = customer?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
+    const price = useOverride ? (Number(part.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(part.sell_price) || 0);
     const lines = [...form.line_items];
     lines[pickingIdx] = {
       part_id: part.id, part_number: part.part_number, item_name: part.name,
-      quantity: 1, unit_cost: part.unit_cost || 0, unit_price: part.sell_price || 0,
-      total: part.sell_price || 0,
+      quantity: 1, unit_cost: part.unit_cost || 0, unit_price: price,
+      total: price,
     };
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate);
     setForm({ ...form, line_items: lines, ...totals });
   };
 
   const selectKit = (kit) => {
+    const override = customer?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
     const lines = [...form.line_items];
     const expanded = (kit.components || []).map(c => {
       const qty = Number(c.quantity) || 1;
-      const price = Number(c.unit_price) || 0;
+      const price = useOverride ? (Number(c.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(c.unit_price) || 0);
       return {
         part_id: c.part_id || "",
         part_number: c.part_number || "",
@@ -1011,13 +1037,19 @@ export default function EstimateDetail() {
                   <CustomerSearchSelect
                     customers={customers}
                     value={form.customer_id}
-                    onValueChange={v => setForm({...form, customer_id: v})}
+                    onValueChange={handleCustomerChange}
                   />
                 </div>
                 <Button type="button" variant="outline" size="sm" className="shrink-0 mt-0" onClick={() => setQuickCustomerOpen(true)}>
                   + New
                 </Button>
               </div>
+              {(customer?.tax_exempt || (customer?.parts_markup_override !== null && customer?.parts_markup_override !== undefined && customer?.parts_markup_override !== "")) && (
+                <div className="flex gap-2 flex-wrap">
+                  {customer?.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0">Tax Exempt</Badge>}
+                  {customer?.parts_markup_override !== null && customer?.parts_markup_override !== undefined && customer?.parts_markup_override !== "" && <Badge className="bg-blue-100 text-blue-700 border-0">Custom Markup: {customer.parts_markup_override}%</Badge>}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Issue Date</Label><Input type="date" value={form.issue_date} onChange={e => setForm({...form, issue_date: e.target.value})} /></div>
@@ -1327,8 +1359,8 @@ export default function EstimateDetail() {
           <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-slate-600">Tax Rate (%)</span>
-            <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" />
+            <span className="text-slate-600 flex items-center gap-1">Tax Rate (%) {customer?.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">Exempt</Badge>}</span>
+            <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" disabled={customer?.tax_exempt} />
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>

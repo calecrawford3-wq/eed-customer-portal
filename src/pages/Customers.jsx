@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -17,7 +18,7 @@ import { useRef } from "react";
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
   address_line1: "", address_line2: "", city: "", state: "", zip: "",
-  notes: "", status: "active"
+  notes: "", status: "active", tax_exempt: false, parts_markup_override: null
 };
 
 export default function Customers() {
@@ -166,6 +167,12 @@ export default function Customers() {
                 {c.email && <div className="flex items-center gap-2 text-sm text-slate-600 mb-1"><Mail className="w-3.5 h-3.5" />{c.email}</div>}
                 {c.phone && <div className="flex items-center gap-2 text-sm text-slate-600 mb-1"><Phone className="w-3.5 h-3.5" />{c.phone}</div>}
                 {c.city && <div className="flex items-center gap-2 text-sm text-slate-600"><Building2 className="w-3.5 h-3.5" />{c.city}, {c.state}</div>}
+                {(c.tax_exempt || (c.parts_markup_override !== null && c.parts_markup_override !== undefined)) && (
+                  <div className="flex gap-1.5 flex-wrap mt-2">
+                    {c.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">Tax Exempt</Badge>}
+                    {c.parts_markup_override !== null && c.parts_markup_override !== undefined && <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px]">{c.parts_markup_override}% Markup</Badge>}
+                  </div>
+                )}
                 <div className="flex gap-2 mt-4">
                    <Link to={`/CustomerDetail?id=${c.id}`} className="flex-1">
                      <Button size="sm" variant="outline" className="w-full">
@@ -208,6 +215,18 @@ export default function Customers() {
             <div className="grid grid-cols-2 gap-2">
               <div><Label>State</Label><Input value={form.state} onChange={e => setForm({...form, state: e.target.value})} /></div>
               <div><Label>ZIP</Label><Input value={form.zip} onChange={e => setForm({...form, zip: e.target.value})} /></div>
+            </div>
+            <div className="col-span-2 flex items-center gap-3 pt-3 border-t border-slate-100">
+              <Switch checked={!!form.tax_exempt} onCheckedChange={v => setForm({...form, tax_exempt: v})} />
+              <div>
+                <Label className="cursor-pointer">Tax Exempt</Label>
+                <p className="text-xs text-slate-400">No sales tax charged on this customer's estimates/invoices</p>
+              </div>
+            </div>
+            <div className="col-span-2">
+              <Label>Parts Markup Override (%)</Label>
+              <Input type="number" value={form.parts_markup_override ?? ""} onChange={e => setForm({...form, parts_markup_override: e.target.value === "" ? null : Number(e.target.value)})} placeholder="Leave blank to use each part's own markup" min="0" step="0.1" />
+              <p className="text-xs text-slate-400 mt-1">Set a percentage to override each part's markup for this customer (e.g. 10 = 10% markup on cost instead of the part's default).</p>
             </div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={3} /></div>
           </div>

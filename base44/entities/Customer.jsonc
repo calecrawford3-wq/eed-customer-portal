@@ -44,6 +44,15 @@
       ],
       "default": "active"
     },
+    "tax_exempt": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, no sales tax is charged on this customer's estimates/invoices"
+    },
+    "parts_markup_override": {
+      "type": "number",
+      "description": "Override markup percentage applied to part costs for this customer (e.g. 10 = 10%). Leave null/undefined to use each part's own markup."
+    },
     "portal_temp_password": {
       "type": "string",
       "description": "Temporary password for customer portal access"
