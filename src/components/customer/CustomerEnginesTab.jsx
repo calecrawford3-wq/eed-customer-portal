@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 function getPlatformLabel(platform) {
@@ -52,6 +52,8 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [addOpen, setAddOpen] = useState(false);
   const [expandedEngine, setExpandedEngine] = useState(null);
   const [newEngine, setNewEngine] = useState({ engine_serial_number: "", platform_id: "", notes: "" });
+  const [editOpen, setEditOpen] = useState(false);
+  const [editEngine, setEditEngine] = useState(null);
 
   const { data: engines = [] } = useQuery({
     queryKey: ["customer-engines", customerId],
@@ -104,6 +106,17 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       setAddOpen(false);
       setNewEngine({ engine_serial_number: "", platform_id: "", notes: "" });
       toast.success(`Engine ${created.eed_id} registered`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }) => base44.entities.CustomerEngine.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
+      qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
+      setEditOpen(false);
+      toast.success("Engine updated");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -179,6 +192,15 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                           {mostRecentBuild.status?.replace("_", " ")}
                         </Badge>
                       )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-slate-500"
+                        onClick={(e) => { e.stopPropagation(); setEditEngine(engine); setEditOpen(true); }}
+                        title="Edit engine"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                     </div>
                   </div>
@@ -273,6 +295,74 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
           })}
         </div>
       )}
+
+      {/* Edit Engine Dialog */}
+      <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditEngine(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-[#e20404]" /> Edit Engine
+            </DialogTitle>
+          </DialogHeader>
+          {editEngine && (
+            <div className="space-y-4 py-2">
+              <div>
+                <Label>EED ID</Label>
+                <Input value={editEngine.eed_id || ""} onChange={e => setEditEngine({ ...editEngine, eed_id: e.target.value })} className="mt-1 font-mono" />
+              </div>
+              <div>
+                <Label>Engine Serial Number *</Label>
+                <Input value={editEngine.engine_serial_number || ""} onChange={e => setEditEngine({ ...editEngine, engine_serial_number: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>Engine Platform</Label>
+                <Select value={editEngine.platform_id || ""} onValueChange={v => setEditEngine({ ...editEngine, platform_id: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select platform..." /></SelectTrigger>
+                  <SelectContent>
+                    {platforms.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{getPlatformLabel(p)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Current Stage</Label>
+                <Select value={editEngine.current_stage || "stock"} onValueChange={v => setEditEngine({ ...editEngine, current_stage: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STAGE_LABELS).map(([val, lbl]) => (
+                      <SelectItem key={val} value={val}>{lbl}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Input value={editEngine.notes || ""} onChange={e => setEditEngine({ ...editEngine, notes: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditOpen(false); setEditEngine(null); }}>Cancel</Button>
+            <Button
+              className="bg-[#e20404] hover:bg-[#c00303] text-white"
+              disabled={updateMutation.isPending || !editEngine}
+              onClick={() => updateMutation.mutate({
+                id: editEngine.id,
+                data: {
+                  eed_id: editEngine.eed_id,
+                  engine_serial_number: editEngine.engine_serial_number,
+                  platform_id: editEngine.platform_id,
+                  current_stage: editEngine.current_stage || "stock",
+                  notes: editEngine.notes || "",
+                },
+              })}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Engine Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
