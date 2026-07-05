@@ -11,9 +11,10 @@ Deno.serve(async (req) => {
         }
 
         const payload = await req.json();
-        const customerEmail = payload.customer_email;
+        const customerEmail = payload.customer_email || payload.customerEmail;
 
         if (!customerEmail) {
+            console.error("sendPortalInvite: No email in payload", JSON.stringify(payload));
             return Response.json({ error: "No email provided" }, { status: 400 });
         }
 
