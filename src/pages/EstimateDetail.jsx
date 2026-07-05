@@ -1395,6 +1395,18 @@ export default function EstimateDetail() {
           <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
+          {(() => {
+            const revenue = Number(form.subtotal || 0);
+            const cost = (form.line_items || []).reduce((s, l) => s + (Number(l.unit_cost) || 0) * (Number(l.quantity) || 0), 0);
+            const profit = revenue - cost;
+            const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+            return (
+              <div className="flex justify-between text-xs bg-slate-50 rounded px-2 py-1">
+                <span className="text-slate-500">Est. Profit (Margin)</span>
+                <span className={profit >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>${profit.toFixed(2)} ({margin.toFixed(1)}%)</span>
+              </div>
+            );
+          })()}
           <div className="flex items-center justify-between gap-2">
             <span className="text-slate-600 flex items-center gap-1">Tax Rate (%) {customer?.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">Exempt</Badge>}</span>
             <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" disabled={customer?.tax_exempt} />
