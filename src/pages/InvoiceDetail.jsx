@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -305,6 +305,13 @@ export default function InvoiceDetail() {
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
+
+  const addCoreCredit = () => {
+    const lines = [...form.line_items, { part_id: "", part_number: "CORE-CREDIT", item_name: "Core Credit", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 }];
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    setForm(f => ({ ...f, line_items: lines, ...totals }));
+    toast.success("Core credit line added — enter the credit amount as a negative value");
+  };
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
@@ -638,7 +645,10 @@ export default function InvoiceDetail() {
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
-          <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={addCoreCredit} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
+            <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

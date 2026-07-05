@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -335,6 +335,13 @@ export default function EstimateDetail() {
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
+
+  const addCoreCredit = () => {
+    const lines = [...form.line_items, { part_id: "", part_number: "CORE-CREDIT", item_name: "Core Credit", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 }];
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate);
+    setForm({ ...form, line_items: lines, ...totals });
+    toast.success("Core credit line added — enter the credit amount as a negative value");
+  };
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate);
@@ -1225,7 +1232,10 @@ export default function EstimateDetail() {
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
-          <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={addCoreCredit} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
+            <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
