@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Package, Boxes, Recycle } from "lucide-react";
 
-export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore }) {
+export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, initialTab = "parts" }) {
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("parts");
+  const [tab, setTab] = useState(initialTab);
+
+  useEffect(() => { if (open) { setTab(initialTab); setSearch(""); } }, [open, initialTab]);
 
   const filteredParts = parts.filter(p =>
     `${p.part_number} ${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase())
@@ -26,7 +28,7 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
     if (onSelectCore) { onSelectCore(core, mode); onClose(); }
   };
 
-  const showTabs = kits.length > 0 || cores.length > 0;
+  const showTabs = true;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -45,11 +47,9 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
                 <Boxes className="w-3.5 h-3.5 mr-1" /> Kits ({kits.length})
               </Button>
             )}
-            {cores.length > 0 && (
-              <Button size="sm" variant={tab === "cores" ? "default" : "outline"} className={tab === "cores" ? "bg-[#e20404] hover:bg-[#c00303] text-white" : ""} onClick={() => { setTab("cores"); setSearch(""); }}>
-                <Recycle className="w-3.5 h-3.5 mr-1" /> Cores ({cores.length})
-              </Button>
-            )}
+            <Button size="sm" variant={tab === "cores" ? "default" : "outline"} className={tab === "cores" ? "bg-[#e20404] hover:bg-[#c00303] text-white" : ""} onClick={() => { setTab("cores"); setSearch(""); }}>
+              <Recycle className="w-3.5 h-3.5 mr-1" /> Cores ({cores.length})
+            </Button>
           </div>
         )}
 

@@ -58,6 +58,7 @@ export default function InvoiceDetail() {
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
+  const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [poModalOpen, setPoModalOpen] = useState(false);
   const [printMode, setPrintMode] = useState(false);
   const [laborPickerOpen, setLaborPickerOpen] = useState(false);
@@ -285,9 +286,11 @@ export default function InvoiceDetail() {
 
   const selectCore = (core, mode) => {
     const lines = [...form.line_items];
+    const idx = (pickingIdx === null || pickingIdx === undefined || pickingIdx >= lines.length) ? lines.length : pickingIdx;
+    let line;
     if (mode === "credit") {
       const credit = Number(core.core_credit) || 0;
-      lines[pickingIdx] = {
+      line = {
         part_id: "", part_number: core.core_number,
         item_name: `Core Credit: ${core.name}`,
         quantity: 1, unit_cost: 0, unit_price: -credit, total: -credit,
@@ -295,13 +298,14 @@ export default function InvoiceDetail() {
       toast.success(`Added core credit for "${core.name}" (−$${credit.toFixed(2)})`);
     } else {
       const price = Number(core.sell_price) || 0;
-      lines[pickingIdx] = {
+      line = {
         part_id: "", part_number: core.core_number, core_id: core.id,
         item_name: `${core.name} (Core)`,
         quantity: 1, unit_cost: Number(core.unit_cost) || 0, unit_price: price, total: price,
       };
       toast.success(`Added core "${core.name}" for sale ($${price.toFixed(2)})`);
     }
+    if (idx === lines.length) lines.push(line); else lines[idx] = line;
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
@@ -540,6 +544,7 @@ export default function InvoiceDetail() {
         parts={parts}
         kits={partKits}
         cores={engineCores}
+        initialTab={pickerInitialTab}
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
         onSelectKit={selectKit}
         onSelectCore={selectCore}
@@ -665,6 +670,7 @@ export default function InvoiceDetail() {
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
+            <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }} className="border-purple-300 text-purple-700 hover:bg-purple-50"><Recycle className="w-4 h-4 mr-1" /> Add Core</Button>
             <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
           </div>
         </CardHeader>
@@ -691,7 +697,7 @@ export default function InvoiceDetail() {
                     <td className="py-2 pr-2">
                       <div className="flex gap-1">
                         <Input value={line.item_name} onChange={e => updateLine(idx, "item_name", e.target.value)} placeholder="Item name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from inventory" onClick={() => { setPickingIdx(idx); setPartPickerOpen(true); }}>
+                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from inventory" onClick={() => { setPickingIdx(idx); setPickerInitialTab("parts"); setPartPickerOpen(true); }}>
                           <Search className="w-3.5 h-3.5" />
                         </Button>
                       </div>
