@@ -58,24 +58,82 @@ Deno.serve(async (req) => {
           note: `Stripe payment - Session ${session.id}`,
         };
 
-        const updatedPayments = [...(currentDoc.payments || []), payment];
-        const totalPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
-
-        let updateData = { payments: updatedPayments };
-
         if (documentType === "estimate") {
-          const depositMet = !currentDoc.deposit_required || totalPaid >= (currentDoc.deposit_amount || 0);
-          updateData.deposit_paid = depositMet;
-        } else {
-          const balanceDue = Math.max(0, (currentDoc.total || 0) - totalPaid);
-          const status = balanceDue <= 0 ? "paid" : "partial";
-          updateData.amount_paid = totalPaid;
-          updateData.balance_due = balanceDue;
-          updateData.status = status;
-        }
+          // Convert estimate to invoice — payment goes on the invoice, not the estimate
+          let invoiceId = currentDoc.invoice_id;
+          let invoice = null;
+          if (invoiceId) {
+            const invs = await base44.asServiceRole.entities.Invoice.filter({ id: invoiceId });
+            invoice = invs?.[0] || null;
+          }
 
-        await base44.asServiceRole.entities[entityName].update(documentId, updateData);
-        console.log(`${entityName} ${documentId} updated with payment of $${amountPaid}`);
+          const allPayments = [...(currentDoc.payments || []), payment];
+          const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+          if (invoice) {
+            const invPayments = [...(invoice.payments || []), payment];
+            const invPaid = invPayments.reduce((s, p) => s + (p.amount || 0), 0);
+            const invBalance = Math.max(0, (invoice.total || 0) - (Number(invoice.applied_credits) || 0) - invPaid);
+            const invStatus = invBalance <= 0 ? "paid" : "partial";
+            await base44.asServiceRole.entities.Invoice.update(invoice.id, {
+              payments: invPayments,
+              amount_paid: invPaid,
+              balance_due: invBalance,
+              status: invStatus,
+            });
+          } else {
+            const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+            const newInvoice = await base44.asServiceRole.entities.Invoice.create({
+              invoice_number: invoiceNumber,
+              estimate_id: currentDoc.id,
+              customer_id: currentDoc.customer_id,
+              customer_engine_id: currentDoc.customer_engine_id || "",
+              build_id: currentDoc.build_id || "",
+              status: totalPaid >= (currentDoc.total || 0) ? "paid" : "partial",
+              issue_date: new Date().toISOString().split("T")[0],
+              line_items: currentDoc.line_items || [],
+              labor_items: currentDoc.labor_items || [],
+              machining_items: currentDoc.machining_items || [],
+              subtotal: currentDoc.subtotal,
+              tax_rate: currentDoc.tax_rate,
+              tax_amount: currentDoc.tax_amount,
+              total: currentDoc.total,
+              applied_credits: currentDoc.applied_credits || 0,
+              amount_paid: totalPaid,
+              balance_due: Math.max(0, (currentDoc.total || 0) - (Number(currentDoc.applied_credits) || 0) - totalPaid),
+              notes: currentDoc.notes || "",
+              payments: allPayments,
+            });
+            invoiceId = newInvoice.id;
+          }
+
+          let depositPaid = currentDoc.deposit_paid || false;
+          if (currentDoc.deposit_required && currentDoc.deposit_amount && totalPaid >= currentDoc.deposit_amount) {
+            depositPaid = true;
+          }
+
+          await base44.asServiceRole.entities.Estimate.update(documentId, {
+            invoice_id: invoiceId,
+            status: "approved",
+            deposit_paid: depositPaid,
+            payments: [],
+            amount_paid: 0,
+          });
+          console.log(`Estimate ${documentId} converted to invoice — payment: $${amountPaid}`);
+        } else {
+          // Invoice payment — add directly to invoice
+          const updatedPayments = [...(currentDoc.payments || []), payment];
+          const totalPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+          const balanceDue = Math.max(0, (currentDoc.total || 0) - (Number(currentDoc.applied_credits) || 0) - totalPaid);
+          const status = balanceDue <= 0 ? "paid" : "partial";
+          await base44.asServiceRole.entities.Invoice.update(documentId, {
+            payments: updatedPayments,
+            amount_paid: totalPaid,
+            balance_due: balanceDue,
+            status,
+          });
+          console.log(`Invoice ${documentId} updated with payment of $${amountPaid}`);
+        }
 
         return Response.json({ success: true });
       } catch (error) {

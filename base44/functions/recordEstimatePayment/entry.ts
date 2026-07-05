@@ -84,66 +84,89 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    // STEP 6: Create payment record (valid Payment fields)
-    console.log(`[recordEstimatePayment] STEP 6: Creating payment record`);
+    // STEP 6: Create payment record
     const newPayment = {
       amount: amount,
       method: body.method || "card",
       note: body.note || `Stripe Payment - ${stripeSessionId || stripePaymentIntent || "N/A"}`,
       date: paidAt || new Date().toISOString().split("T")[0]
     };
-    console.log(`[recordEstimatePayment] STEP 7: Payment record created:`);
-    console.log(`  - Amount: $${newPayment.amount}`);
-    console.log(`  - Method: ${newPayment.method}`);
-    console.log(`  - Date: ${newPayment.date}`);
-    console.log(`  - Note: ${newPayment.note}`);
 
-    // STEP 7: Update Estimate with new payment
-    console.log(`[recordEstimatePayment] STEP 8: Updating Estimate`);
-    const existingPayments = estimate.payments || [];
-    const updatedPayments = [...existingPayments, newPayment];
-    
-    // Calculate total paid
-    const totalPaid = updatedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    // Determine new status
-    let newStatus = estimate.status;
-    let depositPaid = estimate.deposit_paid || false;
-    
-    if (estimate.deposit_required && estimate.deposit_amount) {
-      if (totalPaid >= estimate.deposit_amount) {
-        depositPaid = true;
-      }
+    // Check if invoice already exists for this estimate
+    let invoiceId = estimate.invoice_id;
+    let invoice = null;
+    if (invoiceId) {
+      const invoices = await base44.asServiceRole.entities.Invoice.filter({ id: invoiceId });
+      invoice = invoices?.[0] || null;
     }
 
-    // If fully paid, mark as approved
-    if (estimate.total && totalPaid >= estimate.total) {
-      newStatus = "approved";
-    }
+    const allPayments = [...(estimate.payments || []), newPayment];
+    const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
-    // Update Estimate (valid fields only)
-    try {
-      await base44.asServiceRole.entities.Estimate.update(estimate.id, {
-        payments: updatedPayments,
-        amount_paid: totalPaid,
-        deposit_paid: depositPaid,
-        status: newStatus
+    if (invoice) {
+      // Add new payment to existing invoice
+      const invPayments = [...(invoice.payments || []), newPayment];
+      const invPaid = invPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const invBalance = Math.max(0, (invoice.total || 0) - (Number(invoice.applied_credits) || 0) - invPaid);
+      const invStatus = invBalance <= 0 ? "paid" : "partial";
+      await base44.asServiceRole.entities.Invoice.update(invoice.id, {
+        payments: invPayments,
+        amount_paid: invPaid,
+        balance_due: invBalance,
+        status: invStatus,
       });
-      console.log(`[recordEstimatePayment] STEP 9: Estimate updated - status: ${newStatus}, amount_paid: ${totalPaid}, deposit_paid: ${depositPaid}`);
-    } catch (updateError) {
-      console.error(`[recordEstimatePayment] Update error: ${updateError.message}`);
-      return Response.json({ error: "Failed to update estimate" }, { status: 500 });
+      console.log(`[recordEstimatePayment] Payment added to existing invoice ${invoice.invoice_number}`);
+    } else {
+      // Create new invoice with all payments — payment goes on the invoice, not the estimate
+      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+      const newInvoice = await base44.asServiceRole.entities.Invoice.create({
+        invoice_number: invoiceNumber,
+        estimate_id: estimate.id,
+        customer_id: estimate.customer_id,
+        customer_engine_id: estimate.customer_engine_id || "",
+        build_id: estimate.build_id || "",
+        status: totalPaid >= (estimate.total || 0) ? "paid" : "partial",
+        issue_date: new Date().toISOString().split("T")[0],
+        line_items: estimate.line_items || [],
+        labor_items: estimate.labor_items || [],
+        machining_items: estimate.machining_items || [],
+        subtotal: estimate.subtotal,
+        tax_rate: estimate.tax_rate,
+        tax_amount: estimate.tax_amount,
+        total: estimate.total,
+        applied_credits: estimate.applied_credits || 0,
+        amount_paid: totalPaid,
+        balance_due: Math.max(0, (estimate.total || 0) - (Number(estimate.applied_credits) || 0) - totalPaid),
+        notes: estimate.notes || "",
+        payments: allPayments,
+      });
+      invoiceId = newInvoice.id;
+      console.log(`[recordEstimatePayment] New invoice created: ${invoiceNumber} (${invoiceId})`);
     }
 
-    // STEP 8: Return success
-    console.log(`[recordEstimatePayment] STEP 10: Payment recorded successfully`);
+    // Calculate deposit status
+    let depositPaid = estimate.deposit_paid || false;
+    if (estimate.deposit_required && estimate.deposit_amount && totalPaid >= estimate.deposit_amount) {
+      depositPaid = true;
+    }
+
+    // Update estimate: link invoice, clear payments, set approved
+    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+      invoice_id: invoiceId,
+      status: "approved",
+      deposit_paid: depositPaid,
+      payments: [],
+      amount_paid: 0,
+    });
+    console.log(`[recordEstimatePayment] Estimate updated — status: approved, invoice_id: ${invoiceId}, deposit_paid: ${depositPaid}`);
+
     return Response.json({
       success: true,
       estimate_id: estimate.id,
       estimate_number: estimate.estimate_number,
-      amount_paid: totalPaid,
+      invoice_id: invoiceId,
       deposit_paid: depositPaid,
-      status: newStatus
+      status: "approved"
     });
 
   } catch (error) {
