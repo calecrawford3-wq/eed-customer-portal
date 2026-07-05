@@ -105,6 +105,22 @@ export default function EstimateDetail() {
     queryFn: () => base44.entities.EngineCore.list("-created_date", 200),
   });
 
+  const { data: customerCredits = [] } = useQuery({
+    queryKey: ["accountCredits", form.customer_id],
+    queryFn: () => base44.entities.AccountCredit.filter({ customer_id: form.customer_id }),
+    enabled: !!form.customer_id,
+  });
+
+  const existingCreditRedemption = customerCredits.find(c => c.linked_estimate_id === id && c.type === "redemption");
+  const availableCreditBalance = customerCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
+
+  useEffect(() => {
+    if (form.customer_id && isNew && availableCreditBalance > 0) {
+      const cap = Math.min(availableCreditBalance, Number(form.total || 0));
+      setForm(f => Math.abs((Number(f.applied_credits) || 0) - cap) < 0.01 ? f : { ...f, applied_credits: cap });
+    }
+  }, [form.customer_id, availableCreditBalance, form.total, isNew]);
+
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
@@ -178,11 +194,37 @@ export default function EstimateDetail() {
   }, [isNew, prefillCustomerId, prefillBuildId]);
 
   const saveMutation = useMutation({
-    mutationFn: (data) => id
-      ? base44.entities.Estimate.update(id, data)
-      : base44.entities.Estimate.create(data),
+    mutationFn: async (data) => {
+      const result = id
+        ? await base44.entities.Estimate.update(id, data)
+        : await base44.entities.Estimate.create(data);
+      const estimateId = id || result.id;
+      const applied = Number(data.applied_credits) || 0;
+      const priorRedemption = customerCredits.find(c => c.linked_estimate_id === estimateId && c.type === "redemption");
+      if (applied > 0) {
+        const redemptionData = {
+          customer_id: data.customer_id,
+          amount: -applied,
+          type: "redemption",
+          subtype: "Estimate Credit Application",
+          description: `Credits applied to estimate ${data.estimate_number}`,
+          date: new Date().toISOString().split("T")[0],
+          linked_estimate_id: estimateId,
+          status: "active",
+        };
+        if (priorRedemption) {
+          await base44.entities.AccountCredit.update(priorRedemption.id, redemptionData);
+        } else {
+          await base44.entities.AccountCredit.create(redemptionData);
+        }
+      } else if (priorRedemption) {
+        await base44.entities.AccountCredit.delete(priorRedemption.id);
+      }
+      return result;
+    },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["estimates"] });
+      qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Estimate saved");
       if (isNew) navigate(`/EstimateDetail?id=${result.id}`);
     },
@@ -1290,8 +1332,17 @@ export default function EstimateDetail() {
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
+          {availableCreditBalance > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-600">Account Credit</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400">(Avail: ${availableCreditBalance.toFixed(2)})</span>
+                <Input type="number" value={Number(form.applied_credits) || 0} onChange={e => setForm({ ...form, applied_credits: Math.min(Math.max(0, Number(e.target.value) || 0), availableCreditBalance) })} className="w-20 text-right h-7" min="0" step="0.01" />
+              </div>
+            </div>
+          )}
           <div className="flex justify-between text-emerald-600 font-medium"><span>Amount Paid</span><span>${Number(form.amount_paid || 0).toFixed(2)}</span></div>
-          <div className="flex justify-between text-red-600 font-medium border-t border-slate-100 pt-2"><span>Amount Due</span><span>${Math.max(0, Number(form.total || 0) - Number(form.amount_paid || 0)).toFixed(2)}</span></div>
+          <div className="flex justify-between text-red-600 font-medium border-t border-slate-100 pt-2"><span>Amount Due</span><span>${Math.max(0, Number(form.total || 0) - Number(form.applied_credits || 0) - Number(form.amount_paid || 0)).toFixed(2)}</span></div>
           {form.deposit_required && (
             <div className="flex justify-between text-slate-600 text-sm border-t border-slate-100 pt-2">
               <span>Deposit Required</span>

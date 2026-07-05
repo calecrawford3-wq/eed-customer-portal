@@ -1,0 +1,68 @@
+{
+  "name": "AccountCredit",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Customer who owns this credit"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Positive = credit earned, negative = credit redeemed/applied"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "performance",
+        "referral",
+        "manual",
+        "redemption",
+        "other"
+      ],
+      "default": "manual",
+      "description": "Credit category"
+    },
+    "subtype": {
+      "type": "string",
+      "description": "e.g. '1st Place', 'Heat Race Win', 'Referral Bonus'"
+    },
+    "description": {
+      "type": "string"
+    },
+    "source_reference": {
+      "type": "string",
+      "description": "e.g. referrer customer ID or race result reference"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expires_on": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiration date (Dec 31 of year earned for performance credits)"
+    },
+    "linked_estimate_id": {
+      "type": "string",
+      "description": "Estimate this credit was redeemed against"
+    },
+    "linked_invoice_id": {
+      "type": "string",
+      "description": "Invoice this credit was redeemed against"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "expired",
+        "redeemed"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "customer_id",
+    "amount",
+    "type"
+  ]
+}

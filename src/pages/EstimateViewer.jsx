@@ -297,6 +297,18 @@ export default function EstimateViewer({ buildVersion }) {
                 <span className="text-lg font-semibold text-slate-900">Total</span>
                 <span className="text-2xl font-bold text-slate-900">{formatMoney(data.estimate?.total || (calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items) + (data.estimate?.tax_amount || 0)))}</span>
               </div>
+              {Number(data.estimate?.applied_credits) > 0 && (
+                <>
+                  <div className="flex justify-between items-center mb-6 pt-4 border-t border-slate-200">
+                    <span className="text-sm font-semibold text-violet-700">Account Credit Applied</span>
+                    <span className="text-xl font-bold text-violet-600">-{formatMoney(data.estimate.applied_credits)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="text-lg font-semibold text-slate-900">Amount Due</span>
+                    <span className="text-2xl font-bold text-[#e20404]">{formatMoney(Math.max(0, (data.estimate?.total || 0) - (data.estimate?.applied_credits || 0) - (data.estimate?.amount_paid || 0)))}</span>
+                  </div>
+                </>
+              )}
 
               {/* Approve Success Message */}
               {approvingSuccess && (

@@ -20,7 +20,8 @@ import {
   DollarSign,
   TrendingDown,
   BarChart2,
-  RefreshCw
+  RefreshCw,
+  Award
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -55,6 +56,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Expenses", page: "Expenses", icon: TrendingDown },
     { name: "Reports", page: "Reports", icon: BarChart2 },
     { type: "divider" },
+    { name: "Credits", page: "Credits", icon: Award },
     { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
     { name: "Settings", page: "Settings", icon: Settings2 },
   ];

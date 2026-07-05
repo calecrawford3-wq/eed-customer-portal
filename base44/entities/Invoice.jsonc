@@ -152,11 +152,19 @@
     "total": {
       "type": "number"
     },
+    "applied_credits": {
+      "type": "number",
+      "default": 0,
+      "description": "Account credits applied to this invoice (Performance Credit System)"
+    },
     "amount_paid": {
       "type": "number",
       "default": 0
     },
     "amount_due": {
+      "type": "number"
+    },
+    "balance_due": {
       "type": "number"
     },
     "payment_notes": {

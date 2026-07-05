@@ -172,6 +172,11 @@
     "total": {
       "type": "number"
     },
+    "applied_credits": {
+      "type": "number",
+      "default": 0,
+      "description": "Account credits applied to this estimate (Performance Credit System)"
+    },
     "amount_paid": {
       "type": "number",
       "default": 0

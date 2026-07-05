@@ -70,7 +70,7 @@ export default function InvoiceViewer() {
         };
         const updatedPayments = [...(inv.payments || []), payment];
         const newAmountPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
-        const newBalanceDue = Math.max(0, (inv.total || 0) - newAmountPaid);
+        const newBalanceDue = Math.max(0, (inv.total || 0) - (Number(inv.applied_credits) || 0) - newAmountPaid);
         const newStatus = newBalanceDue <= 0 ? "paid" : "partial";
 
         await base44.asServiceRole.entities.Invoice.update(inv.id, {
@@ -181,10 +181,14 @@ export default function InvoiceViewer() {
         {/* Summary */}
         <Card className="border-0 shadow-sm mb-6">
           <CardContent className="p-6">
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-4 gap-4 mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total Due</p>
                 <p className="text-2xl font-bold text-slate-900">${Number(inv.total || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 mb-1">Credit Applied</p>
+                <p className="text-2xl font-bold text-violet-600">${Number(inv.applied_credits || 0).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500 mb-1">Paid</p>

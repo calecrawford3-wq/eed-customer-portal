@@ -63,13 +63,19 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
             <span>TOTAL ESTIMATE:</span>
             <span>${Number(estimate.total || 0).toFixed(2)}</span>
           </div>
+          {Number(estimate.applied_credits) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#7c3aed", fontWeight: "600" }}>
+              <span>Account Credit Applied:</span>
+              <span>-${Number(estimate.applied_credits).toFixed(2)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#22c55e", fontWeight: "600" }}>
             <span>Amount Paid:</span>
             <span>${Number(estimate.amount_paid || 0).toFixed(2)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", borderTop: "1px solid #ddd", paddingTop: "8px", marginBottom: "4px", color: "#dc2626", fontWeight: "bold" }}>
             <span>Amount Due:</span>
-            <span>${Math.max(0, Number(estimate.total || 0) - Number(estimate.amount_paid || 0)).toFixed(2)}</span>
+            <span>${Math.max(0, Number(estimate.total || 0) - Number(estimate.applied_credits || 0) - Number(estimate.amount_paid || 0)).toFixed(2)}</span>
           </div>
           {estimate.deposit_required && (
             <>

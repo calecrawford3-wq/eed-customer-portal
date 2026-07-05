@@ -60,6 +60,12 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
             <span>TOTAL DUE:</span>
             <span>${Number(invoice.total || 0).toFixed(2)}</span>
           </div>
+          {Number(invoice.applied_credits) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#7c3aed", fontWeight: "600" }}>
+              <span>Account Credit Applied:</span>
+              <span>-${Number(invoice.applied_credits).toFixed(2)}</span>
+            </div>
+          )}
           {Number(invoice.amount_paid) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "#22c55e" }}>
               <span>Paid:</span>

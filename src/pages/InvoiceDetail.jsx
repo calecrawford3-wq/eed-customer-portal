@@ -89,6 +89,26 @@ export default function InvoiceDetail() {
     queryFn: () => base44.entities.EngineCore.list("-created_date", 200),
   });
 
+  const { data: customerCredits = [] } = useQuery({
+    queryKey: ["accountCredits", form.customer_id],
+    queryFn: () => base44.entities.AccountCredit.filter({ customer_id: form.customer_id }),
+    enabled: !!form.customer_id,
+  });
+
+  const existingCreditRedemption = customerCredits.find(c => c.linked_invoice_id === id && c.type === "redemption");
+  const availableCreditBalance = customerCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
+
+  useEffect(() => {
+    if (form.customer_id && isNew && availableCreditBalance > 0) {
+      const cap = Math.min(availableCreditBalance, Number(form.total || 0));
+      setForm(f => {
+        if (Math.abs((Number(f.applied_credits) || 0) - cap) < 0.01) return f;
+        const totals = recalc(f.line_items, f.labor_items || [], f.machining_items || [], f.tax_rate, f.amount_paid, cap);
+        return { ...f, applied_credits: cap, ...totals };
+      });
+    }
+  }, [form.customer_id, availableCreditBalance, form.total, isNew]);
+
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
@@ -138,24 +158,50 @@ export default function InvoiceDetail() {
   }, [settingsData, isNew]);
 
   const saveMutation = useMutation({
-    mutationFn: (data) => id
-      ? base44.entities.Invoice.update(id, data)
-      : base44.entities.Invoice.create(data),
+    mutationFn: async (data) => {
+      const result = id
+        ? await base44.entities.Invoice.update(id, data)
+        : await base44.entities.Invoice.create(data);
+      const invoiceId = id || result.id;
+      const applied = Number(data.applied_credits) || 0;
+      const priorRedemption = customerCredits.find(c => c.linked_invoice_id === invoiceId && c.type === "redemption");
+      if (applied > 0) {
+        const redemptionData = {
+          customer_id: data.customer_id,
+          amount: -applied,
+          type: "redemption",
+          subtype: "Invoice Credit Application",
+          description: `Credits applied to invoice ${data.invoice_number}`,
+          date: new Date().toISOString().split("T")[0],
+          linked_invoice_id: invoiceId,
+          status: "active",
+        };
+        if (priorRedemption) {
+          await base44.entities.AccountCredit.update(priorRedemption.id, redemptionData);
+        } else {
+          await base44.entities.AccountCredit.create(redemptionData);
+        }
+      } else if (priorRedemption) {
+        await base44.entities.AccountCredit.delete(priorRedemption.id);
+      }
+      return result;
+    },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Invoice saved");
       if (isNew) navigate(`/InvoiceDetail?id=${result.id}`);
     },
   });
 
-  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid, appliedCredits) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
     const subtotal = partTotal + laborTotal + machiningTotal;
     const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
     const total = subtotal + tax_amount;
-    const balance_due = total - (Number(amountPaid) || 0);
+    const balance_due = Math.max(0, total - (Number(appliedCredits) || 0) - (Number(amountPaid) || 0));
     return { subtotal, tax_amount, total, balance_due };
   };
 
@@ -165,7 +211,7 @@ export default function InvoiceDetail() {
     if (field === "quantity" || field === "unit_price") {
       lines[idx].total = (Number(lines[idx].quantity) || 0) * (Number(lines[idx].unit_price) || 0);
     }
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -180,7 +226,7 @@ export default function InvoiceDetail() {
       unit_price: part.sell_price || 0,
       total: part.sell_price || 0,
     };
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -204,7 +250,7 @@ export default function InvoiceDetail() {
       ...expanded,
       ...lines.slice(pickingIdx + 1),
     ];
-    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: newLines, ...totals }));
     toast.success(`Added kit "${kit.name}" — ${expanded.length} line item${expanded.length === 1 ? "" : "s"}`);
   };
@@ -228,28 +274,28 @@ export default function InvoiceDetail() {
       };
       toast.success(`Added core "${core.name}" for sale ($${price.toFixed(2)})`);
     }
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
   const selectLaborFromCatalog = (item) => {
     const items = [...(form.labor_items || [])];
     items[laborPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
 
   const selectMachiningFromCatalog = (item) => {
     const items = [...(form.machining_items || [])];
     items[machiningPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
 
@@ -257,12 +303,12 @@ export default function InvoiceDetail() {
   const updateLabor = (idx, field, value) => {
     const items = [...(form.labor_items || [])];
     items[idx] = { ...items[idx], [field]: value };
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
   const removeLabor = (idx) => {
     const items = (form.labor_items || []).filter((_, i) => i !== idx);
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
 
@@ -270,26 +316,26 @@ export default function InvoiceDetail() {
   const updateMachining = (idx, field, value) => {
     const items = [...(form.machining_items || [])];
     items[idx] = { ...items[idx], [field]: value };
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
   const removeMachining = (idx) => {
     const items = (form.machining_items || []).filter((_, i) => i !== idx);
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
 
   const updateTaxRate = (rate) => {
-    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.amount_paid);
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.amount_paid, form.applied_credits);
     setForm(f => ({ ...f, tax_rate: rate, ...totals }));
   };
 
   const handleRecordPayment = async (payment) => {
     const updatedPayments = [...(form.payments || []), payment];
     const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
-    const balance = Math.max(0, (form.total || 0) - paid);
+    const balance = Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - paid);
     const status = balance <= 0 ? "paid" : "partial";
-    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid);
+    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits);
     const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
     await saveMutation.mutateAsync(updated);
     setForm(updated);
@@ -702,6 +748,19 @@ export default function InvoiceDetail() {
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span>${Number(form.total || 0).toFixed(2)}</span></div>
+          {availableCreditBalance > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-600">Account Credit</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400">(Avail: ${availableCreditBalance.toFixed(2)})</span>
+                <Input type="number" value={Number(form.applied_credits) || 0} onChange={e => {
+                  const applied = Math.min(Math.max(0, Number(e.target.value) || 0), availableCreditBalance);
+                  const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, applied);
+                  setForm(f => ({ ...f, applied_credits: applied, ...totals }));
+                }} className="w-20 text-right h-7" min="0" step="0.01" />
+              </div>
+            </div>
+          )}
           {Number(form.amount_paid) > 0 && <div className="flex justify-between text-emerald-600"><span>Paid</span><span>-${Number(form.amount_paid).toFixed(2)}</span></div>}
           <div className="flex justify-between text-base font-bold text-[#e20404]"><span>Balance Due</span><span>${Number(form.balance_due || 0).toFixed(2)}</span></div>
         </div>
