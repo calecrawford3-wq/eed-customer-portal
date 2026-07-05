@@ -665,11 +665,36 @@ export default function EstimateDetail() {
               assembly_notes: form.notes || "",
               ...prevBuildData,
             });
-            await base44.entities.Estimate.update(id, { build_id: build.id });
-            setForm(f => ({ ...f, build_id: build.id }));
+            // Create invoice simultaneously and link to build + estimate
+            const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+            const invoice = await base44.entities.Invoice.create({
+              invoice_number: invoiceNumber,
+              estimate_id: id,
+              customer_id: form.customer_id,
+              customer_engine_id: form.customer_engine_id || "",
+              build_id: build.id,
+              status: "sent",
+              issue_date: new Date().toISOString().split("T")[0],
+              line_items: form.line_items,
+              labor_items: form.labor_items || [],
+              machining_items: form.machining_items || [],
+              subtotal: form.subtotal,
+              tax_rate: form.tax_rate,
+              tax_amount: form.tax_amount,
+              total: form.total,
+              applied_credits: Number(form.applied_credits) || 0,
+              amount_paid: totalDeposit > 0 ? totalDeposit : 0,
+              balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
+              notes: form.notes || "",
+              payments: form.payments || [],
+            });
+            await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
+            await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
+            setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
             qc.invalidateQueries({ queryKey: ["builds"] });
+            qc.invalidateQueries({ queryKey: ["invoices"] });
             setConvertingToBuild(false);
-            toast.success("Estimate approved — engine build created with previous build data!");
+            toast.success("Estimate approved — engine build & invoice created!");
             navigate(`/BuildDetail?id=${build.id}`);
             return;
           }
@@ -690,11 +715,35 @@ export default function EstimateDetail() {
          work_tag: "none",
          assembly_notes: form.notes || "",
        });
-       await base44.entities.Estimate.update(id, { build_id: build.id });
-       setForm(f => ({ ...f, build_id: build.id }));
+       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+       const invoice = await base44.entities.Invoice.create({
+         invoice_number: invoiceNumber,
+         estimate_id: id,
+         customer_id: form.customer_id,
+         customer_engine_id: form.customer_engine_id || "",
+         build_id: build.id,
+         status: "sent",
+         issue_date: new Date().toISOString().split("T")[0],
+         line_items: form.line_items,
+         labor_items: form.labor_items || [],
+         machining_items: form.machining_items || [],
+         subtotal: form.subtotal,
+         tax_rate: form.tax_rate,
+         tax_amount: form.tax_amount,
+         total: form.total,
+         applied_credits: Number(form.applied_credits) || 0,
+         amount_paid: totalDeposit > 0 ? totalDeposit : 0,
+         balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
+         notes: form.notes || "",
+         payments: form.payments || [],
+       });
+       await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
+       await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
+       setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
        qc.invalidateQueries({ queryKey: ["builds"] });
+       qc.invalidateQueries({ queryKey: ["invoices"] });
        setConvertingToBuild(false);
-       toast.success("Estimate approved — engine build created!");
+       toast.success("Estimate approved — engine build & invoice created!");
        navigate(`/BuildDetail?id=${build.id}`);
     } else {
       // Auto-create invoice
