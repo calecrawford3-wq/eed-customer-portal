@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle, ChevronDown } from "lucide-react";
+import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const METHOD_CONFIG = {
@@ -81,6 +81,22 @@ export default function Payments() {
   const byCash = filtered.filter(p => p.method === "cash").reduce((s, p) => s + (p.amount || 0), 0);
   const byCard = filtered.filter(p => p.method === "card").reduce((s, p) => s + (p.amount || 0), 0);
   const byCheck = filtered.filter(p => p.method === "check").reduce((s, p) => s + (p.amount || 0), 0);
+
+  const handleDeletePayment = async (payment) => {
+    const record = payment._record;
+    const payments = (record.payments || []).filter((_, i) => i !== payment._idx);
+    if (payment._type === "invoice") {
+      const paid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+      const balance = Math.max(0, (record.total || 0) - (Number(record.applied_credits) || 0) - paid);
+      const status = balance <= 0 ? "paid" : paid > 0 ? "partial" : "sent";
+      await base44.entities.Invoice.update(record.id, { payments, amount_paid: paid, balance_due: balance, status });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+    } else {
+      await base44.entities.Estimate.update(record.id, { payments });
+      qc.invalidateQueries({ queryKey: ["estimates"] });
+    }
+    toast.success("Payment deleted");
+  };
 
   const openEdit = (payment) => {
     setEditTarget(payment);
@@ -209,9 +225,14 @@ export default function Payments() {
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-emerald-700">${Number(p.amount || 0).toFixed(2)}</td>
                       <td className="py-3 px-4">
-                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
-                          <Edit className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => handleDeletePayment(p)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                     {isExpanded && (

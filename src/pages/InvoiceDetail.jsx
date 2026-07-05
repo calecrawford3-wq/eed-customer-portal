@@ -380,6 +380,18 @@ export default function InvoiceDetail() {
     setForm(f => ({ ...f, tax_rate: rate, ...totals }));
   };
 
+  const handleDeletePayment = async (idx) => {
+    const updatedPayments = (form.payments || []).filter((_, i) => i !== idx);
+    const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const balance = Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - paid);
+    const status = balance <= 0 ? "paid" : paid > 0 ? "partial" : "sent";
+    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits);
+    const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
+    await saveMutation.mutateAsync(updated);
+    setForm(updated);
+    toast.success("Payment deleted");
+  };
+
   const handleRecordPayment = async (payment) => {
     const updatedPayments = [...(form.payments || []), payment];
     const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
@@ -856,6 +868,7 @@ export default function InvoiceDetail() {
                   <th className="text-left py-2 font-medium text-slate-600">Method</th>
                   <th className="text-left py-2 font-medium text-slate-600">Note</th>
                   <th className="text-right py-2 font-medium text-slate-600">Amount</th>
+                  <th className="w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -865,6 +878,11 @@ export default function InvoiceDetail() {
                     <td className="py-2"><Badge className="bg-slate-100 text-slate-700 border-0 capitalize text-xs">{p.method}</Badge></td>
                     <td className="py-2 text-slate-500">{p.note || "—"}</td>
                     <td className="py-2 text-right font-semibold text-emerald-700">${Number(p.amount).toFixed(2)}</td>
+                    <td className="py-2">
+                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600 px-2" onClick={() => handleDeletePayment(i)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
