@@ -408,10 +408,17 @@ export default function InvoiceDetail() {
     const customer = customers.find(c => c.id === form.customer_id);
     if (!customer?.email) { toast.error("Customer has no email"); return; }
     setSending(true);
-    await saveMutation.mutateAsync(form);
+    // Generate public_access_token if missing (needed for viewer link)
+    let accessToken = form.public_access_token;
+    if (!accessToken) {
+      accessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      setForm(f => ({ ...f, public_access_token: accessToken }));
+    }
+    const formToSave = { ...form, public_access_token: accessToken };
+    await saveMutation.mutateAsync(formToSave);
     const settings = settingsData?.[0] || {};
     const subject = `Invoice ${form.invoice_number} — Payment Due`;
-    const viewUrl = `https://elite-viewer.base44.app/invoice/${form.public_access_token}`;
+    const viewUrl = `https://elite-viewer.base44.app/invoice/${accessToken}`;
     const dueDate = form.due_date ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "30 days from invoice date";
     const html = `
       <!DOCTYPE html>
@@ -456,7 +463,7 @@ export default function InvoiceDetail() {
 
               <div class="amount-box">
                 <p class="amount-label">Amount Due</p>
-                <p class="amount-value">$${Number(form.total || 0).toFixed(2)}</p>
+                <p class="amount-value">$${Number(form.balance_due ?? form.total ?? 0).toFixed(2)}</p>
                 <p class="due-date">Due by <strong>${dueDate}</strong></p>
               </div>
 

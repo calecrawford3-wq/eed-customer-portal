@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
               applied_credits: currentDoc.applied_credits || 0,
               amount_paid: totalPaid,
               balance_due: Math.max(0, (currentDoc.total || 0) - (Number(currentDoc.applied_credits) || 0) - totalPaid),
+              public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
               notes: currentDoc.notes || "",
               payments: allPayments,
             });

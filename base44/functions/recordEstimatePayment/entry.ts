@@ -137,6 +137,7 @@ Deno.serve(async (req) => {
         applied_credits: estimate.applied_credits || 0,
         amount_paid: totalPaid,
         balance_due: Math.max(0, (estimate.total || 0) - (Number(estimate.applied_credits) || 0) - totalPaid),
+        public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
         notes: estimate.notes || "",
         payments: allPayments,
       });

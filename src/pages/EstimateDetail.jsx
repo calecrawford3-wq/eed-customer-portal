@@ -503,6 +503,7 @@ export default function EstimateDetail() {
       total: form.total,
       amount_paid: newTotalDeposit,
       balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
+      public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
       notes: form.notes || "",
       payments: updatedPayments,
     });
