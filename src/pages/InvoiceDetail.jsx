@@ -415,12 +415,13 @@ export default function InvoiceDetail() {
       setForm(f => ({ ...f, public_access_token: accessToken }));
     }
     const formToSave = { ...form, public_access_token: accessToken };
-    await saveMutation.mutateAsync(formToSave);
+    const saved = await saveMutation.mutateAsync(formToSave);
+    const invoiceId = id || saved?.id;
 
     // Sync invoice snapshot to the public viewer app
     try {
       const syncRes = await base44.functions.invoke("syncInvoiceSnapshot", {
-        invoiceId: id,
+        invoiceId,
         publicAccessToken: accessToken,
       });
       if (syncRes?.data?.error) {
@@ -507,7 +508,7 @@ export default function InvoiceDetail() {
     `;
     const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
-    await base44.entities.Invoice.update(id || "", { status: "sent" });
+    await base44.entities.Invoice.update(invoiceId, { status: "sent" });
     qc.invalidateQueries({ queryKey: ["invoices"] });
     setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
