@@ -55,6 +55,8 @@ export default function EstimateDetail() {
     issue_date: new Date().toISOString().split("T")[0],
     expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     deposit_required: false,
+    deposit_type: "amount",
+    deposit_percent: 0,
     deposit_amount: 0,
     deposit_paid: false,
     is_engine_build: true,
@@ -195,6 +197,14 @@ export default function EstimateDetail() {
       setForm(f => ({ ...f, customer_id: prefillCustomerId, build_id: prefillBuildId || "" }));
     }
   }, [isNew, prefillCustomerId, prefillBuildId]);
+
+  // Auto-calculate deposit amount when in percent mode
+  useEffect(() => {
+    if (form.deposit_required && form.deposit_type === "percent") {
+      const calculated = (Number(form.total || 0) * (Number(form.deposit_percent || 0) / 100));
+      setForm(f => Math.abs((Number(f.deposit_amount) || 0) - calculated) < 0.01 ? f : { ...f, deposit_amount: calculated });
+    }
+  }, [form.deposit_required, form.deposit_type, form.deposit_percent, form.total]);
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
@@ -1176,21 +1186,55 @@ export default function EstimateDetail() {
         </CardHeader>
         {form.deposit_required && (
           <CardContent>
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-4 flex-wrap">
+              <div className="w-40">
+                <Label>Deposit Type</Label>
+                <Select
+                  value={form.deposit_type || "amount"}
+                  onValueChange={v => setForm({...form, deposit_type: v})}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="amount">Fixed Amount</SelectItem>
+                    <SelectItem value="percent">Percentage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="w-48">
-                <Label>Deposit Amount</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                  <Input
-                    type="number"
-                    value={form.deposit_amount}
-                    onChange={e => setForm({...form, deposit_amount: Number(e.target.value)})}
-                    className="pl-7"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
+                {form.deposit_type === "percent" ? (
+                  <>
+                    <Label>Deposit %</Label>
+                    <div className="relative mt-1">
+                      <Input
+                        type="number"
+                        value={form.deposit_percent || 0}
+                        onChange={e => setForm({...form, deposit_percent: Number(e.target.value)})}
+                        min="0"
+                        max="100"
+                        step="1"
+                        placeholder="0"
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Label>Deposit Amount</Label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                      <Input
+                        type="number"
+                        value={form.deposit_amount}
+                        onChange={e => setForm({...form, deposit_amount: Number(e.target.value)})}
+                        className="pl-7"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex-1">
                 <div className="text-sm text-slate-500 mb-1">Payments Received</div>
