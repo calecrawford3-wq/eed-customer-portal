@@ -1,4 +1,4 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.35";
 
 Deno.serve(async (req) => {
     try {
@@ -23,8 +23,8 @@ Deno.serve(async (req) => {
             return Response.json({ error: "Only admins can send portal invites" }, { status: 403 });
         }
 
-        // Use service role so the invite has elevated permissions to create the user account
-        await base44.asServiceRole.users.inviteUser(customerEmail, "user");
+        // Invite the user via the users namespace on the request-scoped client
+        await base44.users.inviteUser(customerEmail, "user");
 
         console.log(`Portal invite sent to ${customerEmail}`);
         return Response.json({ message: "Portal invite sent successfully." });
