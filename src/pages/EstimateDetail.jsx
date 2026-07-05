@@ -611,18 +611,18 @@ export default function EstimateDetail() {
     await saveMutation.mutateAsync(updated);
 
     if (form.is_engine_build) {
-      // Auto-create engine build, prefilling from previous build for this engine
+      // Auto-create engine build + invoice, prefilling from previous build for this engine
       setConvertingToBuild(true);
       const cust = customers.find(c => c.id === form.customer_id);
 
-      // Find previous builds for this engine to prefill data
+      // 1) Gather previous-build data (safe to fail — wrapped in try/catch)
       let prevBuildData = {};
+      let eng = null;
       if (form.customer_engine_id) {
         try {
           const engineRec = await base44.entities.CustomerEngine.filter({ id: form.customer_engine_id });
-          const eng = engineRec[0];
+          eng = engineRec?.[0] || null;
           if (eng) {
-            // Find last completed build with same serial
             const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
             const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
             if (lastBuild) {
@@ -640,7 +640,6 @@ export default function EstimateDetail() {
                 transmission_type: lastBuild.transmission_type,
                 spec_sheet_id: lastBuild.spec_sheet_id,
               };
-              // Update stage based on most recent build's spec sheet
               if (lastBuild.spec_sheet_id) {
                 try {
                   const specs = await base44.entities.SpecSheet.filter({ id: lastBuild.spec_sheet_id });
@@ -652,99 +651,81 @@ export default function EstimateDetail() {
                 }
               }
             }
-            const build = await base44.entities.EngineBuild.create({
-              engine_serial_number: eng.engine_serial_number,
-              eed_id: eng.eed_id,
-              customer_engine_id: eng.id,
-              platform_id: eng.platform_id,
-              build_number: form.estimate_number,
-              customer_id: form.customer_id,
-              customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
-              status: "queued",
-              work_tag: "none",
-              assembly_notes: form.notes || "",
-              ...prevBuildData,
-            });
-            // Create invoice simultaneously and link to build + estimate
-            const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-            const invoice = await base44.entities.Invoice.create({
-              invoice_number: invoiceNumber,
-              estimate_id: id,
-              customer_id: form.customer_id,
-              customer_engine_id: form.customer_engine_id || "",
-              build_id: build.id,
-              status: "sent",
-              issue_date: new Date().toISOString().split("T")[0],
-              line_items: form.line_items,
-              labor_items: form.labor_items || [],
-              machining_items: form.machining_items || [],
-              subtotal: form.subtotal,
-              tax_rate: form.tax_rate,
-              tax_amount: form.tax_amount,
-              total: form.total,
-              applied_credits: Number(form.applied_credits) || 0,
-              amount_paid: totalDeposit > 0 ? totalDeposit : 0,
-              balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
-              notes: form.notes || "",
-              payments: form.payments || [],
-            });
-            await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
-            await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
-            setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
-            qc.invalidateQueries({ queryKey: ["builds"] });
-            qc.invalidateQueries({ queryKey: ["invoices"] });
-            setConvertingToBuild(false);
-            toast.success("Estimate approved — engine build & invoice created!");
-            navigate(`/BuildDetail?id=${build.id}`);
-            return;
           }
         } catch (e) {
           console.error("Error prefilling from previous build", e);
         }
       }
 
-      // Fallback: no engine selected
-       const build = await base44.entities.EngineBuild.create({
-         engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
-         eed_id: `EED-${Date.now().toString().slice(-6)}`,
-         build_number: form.estimate_number,
-         platform_id: form.customer_engine_id ? selectedEngine?.platform_id : "",
-         customer_id: form.customer_id,
-         customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
-         status: "queued",
-         work_tag: "none",
-         assembly_notes: form.notes || "",
-       });
-       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-       const invoice = await base44.entities.Invoice.create({
-         invoice_number: invoiceNumber,
-         estimate_id: id,
-         customer_id: form.customer_id,
-         customer_engine_id: form.customer_engine_id || "",
-         build_id: build.id,
-         status: "sent",
-         issue_date: new Date().toISOString().split("T")[0],
-         line_items: form.line_items,
-         labor_items: form.labor_items || [],
-         machining_items: form.machining_items || [],
-         subtotal: form.subtotal,
-         tax_rate: form.tax_rate,
-         tax_amount: form.tax_amount,
-         total: form.total,
-         applied_credits: Number(form.applied_credits) || 0,
-         amount_paid: totalDeposit > 0 ? totalDeposit : 0,
-         balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
-         notes: form.notes || "",
-         payments: form.payments || [],
-       });
-       await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
-       await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
-       setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
-       qc.invalidateQueries({ queryKey: ["builds"] });
-       qc.invalidateQueries({ queryKey: ["invoices"] });
-       setConvertingToBuild(false);
-       toast.success("Estimate approved — engine build & invoice created!");
-       navigate(`/BuildDetail?id=${build.id}`);
+      // 2) Create the engine build (NOT inside the try/catch above)
+      let buildData;
+      if (eng) {
+        buildData = {
+          engine_serial_number: eng.engine_serial_number,
+          eed_id: eng.eed_id,
+          customer_engine_id: eng.id,
+          platform_id: eng.platform_id,
+          build_number: form.estimate_number,
+          customer_id: form.customer_id,
+          customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+          status: "queued",
+          work_tag: "none",
+          assembly_notes: form.notes || "",
+          ...prevBuildData,
+        };
+      } else {
+        buildData = {
+          engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
+          eed_id: `EED-${Date.now().toString().slice(-6)}`,
+          build_number: form.estimate_number,
+          platform_id: form.customer_engine_id ? selectedEngine?.platform_id : "",
+          customer_id: form.customer_id,
+          customer_name: cust ? `${cust.first_name} ${cust.last_name}` : "",
+          status: "queued",
+          work_tag: "none",
+          assembly_notes: form.notes || "",
+        };
+      }
+
+      try {
+        const build = await base44.entities.EngineBuild.create(buildData);
+        // 3) Create the invoice simultaneously — errors surface to the user now
+        const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+        const invoice = await base44.entities.Invoice.create({
+          invoice_number: invoiceNumber,
+          estimate_id: id,
+          customer_id: form.customer_id,
+          customer_engine_id: form.customer_engine_id || "",
+          build_id: build.id,
+          status: "sent",
+          issue_date: new Date().toISOString().split("T")[0],
+          line_items: form.line_items,
+          labor_items: form.labor_items || [],
+          machining_items: form.machining_items || [],
+          subtotal: form.subtotal,
+          tax_rate: form.tax_rate,
+          tax_amount: form.tax_amount,
+          total: form.total,
+          applied_credits: Number(form.applied_credits) || 0,
+          amount_paid: totalDeposit > 0 ? totalDeposit : 0,
+          balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
+          notes: form.notes || "",
+          payments: form.payments || [],
+        });
+        await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
+        await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
+        setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
+        qc.invalidateQueries({ queryKey: ["builds"] });
+        qc.invalidateQueries({ queryKey: ["invoices"] });
+        setConvertingToBuild(false);
+        toast.success("Estimate approved — engine build & invoice created!");
+        navigate(`/BuildDetail?id=${build.id}`);
+      } catch (e) {
+        console.error("Failed to create build/invoice on approval:", e);
+        setConvertingToBuild(false);
+        toast.error(`Failed to create build/invoice: ${e.message || e}`);
+      }
+      return;
     } else {
       // Auto-create invoice
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
