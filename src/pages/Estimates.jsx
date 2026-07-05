@@ -57,7 +57,6 @@ export default function Estimates() {
   const convertToInvoice = useMutation({
     mutationFn: async (estimate) => {
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-      const totalPaid = (estimate.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
       const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNumber,
         estimate_id: estimate.id,
@@ -68,13 +67,13 @@ export default function Estimates() {
         line_items: estimate.line_items || [],
         labor_items: estimate.labor_items || [],
         machining_items: estimate.machining_items || [],
-        payments: estimate.payments || [],
+        payments: [],
         subtotal: estimate.subtotal,
         tax_rate: estimate.tax_rate,
         tax_amount: estimate.tax_amount,
         total: estimate.total,
-        amount_paid: totalPaid,
-        balance_due: Math.max(0, (estimate.total || 0) - totalPaid),
+        amount_paid: 0,
+        balance_due: estimate.total || 0,
         notes: estimate.notes,
       });
       await base44.entities.Estimate.update(estimate.id, { invoice_id: invoice.id });
