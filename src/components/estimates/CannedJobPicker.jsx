@@ -26,6 +26,16 @@ export default function CannedJobPicker({ open, onClose, specSheets, platforms, 
 
   const getPlatform = (id) => platforms.find(p => p.id === id);
 
+  const yearRange = (p) => {
+    if (!p) return "";
+    const start = p.year_range_start;
+    const end = p.year_range_end;
+    if (start && end) return `${start}–${end}`;
+    if (start) return `${start}+`;
+    if (end) return `≤${end}`;
+    return "";
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -40,7 +50,7 @@ export default function CannedJobPicker({ open, onClose, specSheets, platforms, 
             <SelectTrigger><SelectValue placeholder="Filter by platform" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Platforms</SelectItem>
-              {platforms.map(p => <SelectItem key={p.id} value={p.id}>{p.manufacturer} {p.name}</SelectItem>)}
+              {platforms.map(p => <SelectItem key={p.id} value={p.id}>{p.manufacturer} {p.name}{yearRange(p) ? ` (${yearRange(p)})` : ""}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -68,7 +78,7 @@ export default function CannedJobPicker({ open, onClose, specSheets, platforms, 
                         </Badge>
                       </div>
                       {platform && (
-                        <p className="text-sm text-slate-500">{platform.manufacturer} {platform.name} · {platform.displacement_cc}cc</p>
+                        <p className="text-sm text-slate-500">{platform.manufacturer} {platform.name}{yearRange(platform) ? ` (${yearRange(platform)})` : ""} · {platform.displacement_cc}cc</p>
                       )}
                       {spec.notes && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{spec.notes}</p>}
                       <div className="flex gap-3 mt-2 text-xs text-slate-500">
