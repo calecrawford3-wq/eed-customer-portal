@@ -10,8 +10,6 @@ import CustomerPortal from './pages/CustomerPortal';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
 import DebugServiceWorker from './pages/DebugServiceWorker';
-import InvoiceViewer from './pages/InvoiceViewer';
-import EstimateViewer from './pages/EstimateViewer';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -93,8 +91,6 @@ function App() {
           <NavigationTracker />
           <Routes>
             <Route path="/debug-sw" element={<DebugServiceWorker />} />
-            <Route path="/invoice/:token" element={<InvoiceViewer />} />
-            <Route path="/estimate/:token" element={<EstimateViewer />} />
             <Route path="*" element={<AuthenticatedApp />} />
           </Routes>
         </AuthProvider>

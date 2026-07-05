@@ -416,9 +416,27 @@ export default function InvoiceDetail() {
     }
     const formToSave = { ...form, public_access_token: accessToken };
     await saveMutation.mutateAsync(formToSave);
+
+    // Sync invoice snapshot to the public viewer app
+    try {
+      const syncRes = await base44.functions.invoke("syncInvoiceSnapshot", {
+        invoiceId: id,
+        publicAccessToken: accessToken,
+      });
+      if (syncRes?.data?.error) {
+        console.error("[sendInvoice] Snapshot sync failed:", syncRes.data);
+        toast.error(`Snapshot sync failed: ${syncRes.data.error} - Continuing with email anyway...`);
+      } else {
+        console.log("[sendInvoice] Snapshot sync successful");
+      }
+    } catch (syncError) {
+      console.error("[sendInvoice] Snapshot sync error:", syncError);
+      toast.error(`Snapshot sync error: ${syncError.message} - Continuing with email anyway...`);
+    }
+
     const settings = settingsData?.[0] || {};
     const subject = `Invoice ${form.invoice_number} — Payment Due`;
-    const viewUrl = `${window.location.origin}/invoice/${accessToken}`;
+    const viewUrl = `https://elite-viewer.base44.app/invoice/${accessToken}`;
     const dueDate = form.due_date ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "30 days from invoice date";
     const html = `
       <!DOCTYPE html>
