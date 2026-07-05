@@ -84,6 +84,11 @@ export default function InvoiceDetail() {
     queryFn: () => base44.entities.PartKit.list("-created_date", 200),
   });
 
+  const { data: engineCores = [] } = useQuery({
+    queryKey: ["engineCores"],
+    queryFn: () => base44.entities.EngineCore.list("-created_date", 200),
+  });
+
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
@@ -202,6 +207,29 @@ export default function InvoiceDetail() {
     const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
     setForm(f => ({ ...f, line_items: newLines, ...totals }));
     toast.success(`Added kit "${kit.name}" — ${expanded.length} line item${expanded.length === 1 ? "" : "s"}`);
+  };
+
+  const selectCore = (core, mode) => {
+    const lines = [...form.line_items];
+    if (mode === "credit") {
+      const credit = Number(core.core_credit) || 0;
+      lines[pickingIdx] = {
+        part_id: "", part_number: core.core_number,
+        item_name: `Core Credit: ${core.name}`,
+        quantity: 1, unit_cost: 0, unit_price: -credit, total: -credit,
+      };
+      toast.success(`Added core credit for "${core.name}" (−$${credit.toFixed(2)})`);
+    } else {
+      const price = Number(core.sell_price) || 0;
+      lines[pickingIdx] = {
+        part_id: "", part_number: core.core_number,
+        item_name: `${core.name} (Core)`,
+        quantity: 1, unit_cost: Number(core.unit_cost) || 0, unit_price: price, total: price,
+      };
+      toast.success(`Added core "${core.name}" for sale ($${price.toFixed(2)})`);
+    }
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid);
+    setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
@@ -419,8 +447,10 @@ export default function InvoiceDetail() {
         onClose={() => setPartPickerOpen(false)}
         parts={parts}
         kits={partKits}
+        cores={engineCores}
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
         onSelectKit={selectKit}
+        onSelectCore={selectCore}
       />
       <GeneratePOModal
         open={poModalOpen}

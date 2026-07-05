@@ -1,0 +1,86 @@
+{
+  "name": "EngineCore",
+  "type": "object",
+  "properties": {
+    "core_number": {
+      "type": "string",
+      "description": "Core SKU / identifier (e.g. CORE-GSX600-BLOCK)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Core display name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "block",
+        "cylinder_head",
+        "rotating_assembly",
+        "crankshaft",
+        "valvetrain",
+        "timing",
+        "oiling",
+        "other"
+      ],
+      "default": "block",
+      "description": "Core category"
+    },
+    "platform_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Compatible engine platform IDs"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "rebuildable",
+        "needs_inspection",
+        "good",
+        "scrap"
+      ],
+      "default": "rebuildable",
+      "description": "Physical condition of the core"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of cores currently in stock"
+    },
+    "unit_cost": {
+      "type": "number",
+      "description": "Core value / your cost for this core"
+    },
+    "sell_price": {
+      "type": "number",
+      "description": "Price when selling this core to a customer"
+    },
+    "core_credit": {
+      "type": "number",
+      "description": "Credit given to a customer when buying their core or doing a core swap"
+    },
+    "location": {
+      "type": "string",
+      "description": "Physical storage location"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "core_number",
+    "name"
+  ]
+}

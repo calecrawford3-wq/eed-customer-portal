@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes, Recycle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 import KitManager from "@/components/inventory/KitManager";
+import CoreManager from "@/components/inventory/CoreManager";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -206,6 +207,9 @@ export default function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="kits" className="flex items-center gap-2">
             <Boxes className="w-4 h-4" /> Kits
+          </TabsTrigger>
+          <TabsTrigger value="cores" className="flex items-center gap-2">
+            <Recycle className="w-4 h-4" /> Cores
           </TabsTrigger>
         </TabsList>
 
@@ -448,6 +452,11 @@ export default function Inventory() {
         {/* ─── Kits Tab ─── */}
         <TabsContent value="kits">
           <KitManager />
+        </TabsContent>
+
+        {/* ─── Cores Tab ─── */}
+        <TabsContent value="cores">
+          <CoreManager />
         </TabsContent>
       </Tabs>
       <Dialog open={machiningDialogOpen} onOpenChange={setMachiningDialogOpen}>
