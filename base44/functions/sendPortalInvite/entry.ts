@@ -18,8 +18,13 @@ Deno.serve(async (req) => {
             return Response.json({ error: "No email provided" }, { status: 400 });
         }
 
-        // Invite the user — creates their Base44 account and sends an invite email
-        await base44.auth.inviteUser(customerEmail, "user");
+        // Only admins may send portal invites
+        if (user.role !== "admin") {
+            return Response.json({ error: "Only admins can send portal invites" }, { status: 403 });
+        }
+
+        // Use service role so the invite has elevated permissions to create the user account
+        await base44.asServiceRole.auth.inviteUser(customerEmail, "user");
 
         console.log(`Portal invite sent to ${customerEmail}`);
         return Response.json({ message: "Portal invite sent successfully." });
