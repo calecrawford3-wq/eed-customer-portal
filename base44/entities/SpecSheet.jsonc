@@ -80,6 +80,10 @@
           "items": {
             "type": "object",
             "properties": {
+              "labor_item_id": {
+                "type": "string",
+                "description": "Reference to the LaborItem catalog entry this canned labor was picked from \u2014 used to pull current pricing when loaded onto an estimate"
+              },
               "name": {
                 "type": "string"
               },

@@ -421,7 +421,10 @@ export default function EstimateDetail() {
     // Build labor items with current prices from labor catalog
     const cannedLaborItems = (spec.canned_items?.labor_items || []).length > 0
       ? spec.canned_items.labor_items.map(item => {
-          const inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
+          let inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
+          if (!inventoryLabor && item.name) {
+            inventoryLabor = allLaborItems.find(l => l.name && l.name.toLowerCase() === item.name.toLowerCase());
+          }
           return {
             name: item.name || "",
             description: item.description || "",
