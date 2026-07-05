@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Receipt, ClipboardList, Wrench, DollarSign, Download, RefreshCw,
-  User, LogOut, CheckCircle, Clock, ChevronRight, FileText, AlertTriangle, Cpu
+  User, LogOut, CheckCircle, Clock, ChevronRight, FileText, AlertTriangle, Cpu,
+  Award, TrendingUp, TrendingDown
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
@@ -129,6 +130,12 @@ export default function CustomerPortal() {
   const { data: refreshRequests = [] } = useQuery({
     queryKey: ["portal-refresh-requests", customer?.id],
     queryFn: () => base44.entities.RefreshRequest.filter({ customer_id: customer.id }),
+    enabled: !!customer,
+  });
+
+  const { data: credits = [] } = useQuery({
+    queryKey: ["portal-credits", customer?.id],
+    queryFn: () => base44.entities.AccountCredit.filter({ customer_id: customer.id }),
     enabled: !!customer,
   });
 
@@ -419,6 +426,7 @@ export default function CustomerPortal() {
             <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
             <TabsTrigger value="estimates">Estimates ({estimates.length})</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="tax">Tax Statement</TabsTrigger>
           </TabsList>
 
@@ -711,6 +719,113 @@ export default function CustomerPortal() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* ─── Credits ─── */}
+          <TabsContent value="credits">
+            {(() => {
+              const today = new Date().toISOString().split("T")[0];
+              const sorted = [...credits].sort((a, b) => new Date(b.date || b.created_date || 0) - new Date(a.date || a.created_date || 0));
+              const activeCredits = sorted.filter(c => !c.expires_on || c.expires_on >= today);
+              const expiredCredits = sorted.filter(c => c.expires_on && c.expires_on < today);
+              const available = activeCredits.reduce((s, c) => s + (c.amount || 0), 0);
+              const totalEarned = sorted.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0);
+              const totalRedeemed = sorted.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0);
+              const expiredValue = expiredCredits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0);
+              const TYPE_STYLES = { performance: "bg-amber-100 text-amber-700", referral: "bg-violet-100 text-violet-700", manual: "bg-slate-100 text-slate-600", redemption: "bg-red-100 text-red-700", other: "bg-slate-100 text-slate-600" };
+              const TYPE_LABELS = { performance: "Performance", referral: "Referral", manual: "Manual", redemption: "Redemption", other: "Other" };
+              return (
+                <div className="space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">Credits expire December 31</p>
+                      <p className="text-xs text-amber-700 mt-0.5">Performance and referral credits expire at the end of each calendar year (Dec 31). Redeem them toward engine builds before they expire!</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="border-0 shadow-sm bg-white">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="bg-violet-100 p-2 rounded-lg"><Award className="w-4 h-4 text-violet-600" /></div>
+                          <span className="text-sm text-slate-500">Available Balance</span>
+                        </div>
+                        <p className="text-2xl font-bold text-violet-700">${available.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-sm bg-white">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="bg-emerald-100 p-2 rounded-lg"><TrendingUp className="w-4 h-4 text-emerald-600" /></div>
+                          <span className="text-sm text-slate-500">Total Earned</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">${totalEarned.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-sm bg-white">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="bg-red-100 p-2 rounded-lg"><TrendingDown className="w-4 h-4 text-red-600" /></div>
+                          <span className="text-sm text-slate-500">Redeemed</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">${totalRedeemed.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {expiredValue > 0 && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-500">
+                      ${expiredValue.toFixed(2)} in credits expired on Dec 31.
+                    </div>
+                  )}
+
+                  {sorted.length === 0 ? (
+                    <div className="text-center py-16 text-slate-400">
+                      <Award className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                      <p>No credits yet</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                          <tr>
+                            <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
+                            <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
+                            <th className="text-left px-4 py-3 font-medium text-slate-600">Description / Reason</th>
+                            <th className="text-right px-4 py-3 font-medium text-slate-600">Amount</th>
+                            <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sorted.map(c => {
+                            const isExpired = c.expires_on && c.expires_on < today;
+                            return (
+                              <tr key={c.id} className="border-b border-slate-100">
+                                <td className="px-4 py-3 text-slate-500 text-xs">{c.date ? new Date(c.date).toLocaleDateString() : "—"}</td>
+                                <td className="px-4 py-3"><Badge className={`${TYPE_STYLES[c.type] || TYPE_STYLES.other} border-0`}>{TYPE_LABELS[c.type] || c.type}</Badge></td>
+                                <td className="px-4 py-3 text-slate-600">
+                                  {c.subtype && <span className="font-medium text-slate-700">{c.subtype}</span>}
+                                  {c.description && <span className="text-slate-500 text-xs block">{c.description}</span>}
+                                </td>
+                                <td className={`px-4 py-3 text-right font-bold ${c.amount >= 0 ? "text-emerald-600" : "text-red-600"}`}>{c.amount >= 0 ? "+" : "−"}${Math.abs(c.amount).toFixed(2)}</td>
+                                <td className="px-4 py-3 text-xs">
+                                  {c.expires_on ? (
+                                    <span className={isExpired ? "text-red-500" : "text-slate-500"}>
+                                      {new Date(c.expires_on).toLocaleDateString()}{isExpired && " (Expired)"}
+                                    </span>
+                                  ) : <span className="text-slate-300">—</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* ─── Tax Statement ─── */}

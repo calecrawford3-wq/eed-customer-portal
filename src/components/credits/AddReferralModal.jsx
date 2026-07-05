@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import { toast } from "sonner";
 
+const dec31ThisYear = () => `${new Date().getFullYear()}-12-31`;
+
 export default function AddReferralModal({ open, onClose, customers }) {
   const [referredId, setReferredId] = useState("");
   const [referrerId, setReferrerId] = useState("");
@@ -29,6 +31,7 @@ export default function AddReferralModal({ open, onClose, customers }) {
           description: `Referral bonus — referred by ${referrer?.first_name || ""} ${referrer?.last_name || ""}`,
           source_reference: referrerId,
           date: today,
+          expires_on: dec31ThisYear(),
           status: "active",
         },
         {
@@ -39,6 +42,7 @@ export default function AddReferralModal({ open, onClose, customers }) {
           description: `Referral bonus — referred ${referred?.first_name || ""} ${referred?.last_name || ""}`,
           source_reference: referredId,
           date: today,
+          expires_on: dec31ThisYear(),
           status: "active",
         },
       ]);

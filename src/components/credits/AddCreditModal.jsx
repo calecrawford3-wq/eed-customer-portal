@@ -68,7 +68,7 @@ export default function AddCreditModal({ open, onClose, customers }) {
       subtype: subtype || undefined,
       description: description || subtype || "",
       date,
-      expires_on: type === "performance" ? expiresOn : undefined,
+      expires_on: expiresOn || dec31ThisYear(),
       status: "active",
     });
   };
@@ -84,7 +84,7 @@ export default function AddCreditModal({ open, onClose, customers }) {
           </div>
           <div>
             <Label>Credit Type</Label>
-            <Select value={type} onValueChange={v => { setType(v); setSubtype(""); setAmount(0); setExpiresOn(v === "performance" ? dec31ThisYear() : ""); }}>
+            <Select value={type} onValueChange={v => { setType(v); setSubtype(""); setAmount(0); setExpiresOn(dec31ThisYear()); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
             </Select>
@@ -107,7 +107,7 @@ export default function AddCreditModal({ open, onClose, customers }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
-            <div><Label>Expires On</Label><Input type="date" value={expiresOn} onChange={e => setExpiresOn(e.target.value)} disabled={type !== "performance"} /></div>
+            <div><Label>Expires On</Label><Input type="date" value={expiresOn} onChange={e => setExpiresOn(e.target.value)} /></div>
           </div>
           <div><Label>Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional notes..." /></div>
         </div>
