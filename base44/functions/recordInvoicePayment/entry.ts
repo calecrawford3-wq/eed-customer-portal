@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
 
     const allPayments = [...existingPayments, newPayment];
     const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
-    const balance = Math.max(0, (invoice.total || 0) - (Number(invoice.applied_credits) || 0) - totalPaid);
-    const status = balance <= 0 ? "paid" : "partial";
+    const rawBalance = (invoice.total || 0) - (Number(invoice.applied_credits) || 0) - totalPaid;
+    const balance = rawBalance < 0.01 ? 0 : Math.max(0, rawBalance);
+    const status = balance < 0.01 ? "paid" : "partial";
 
     await base44.asServiceRole.entities.Invoice.update(invoice.id, {
       payments: allPayments,
