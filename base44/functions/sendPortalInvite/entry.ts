@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         }
 
         // Use service role so the invite has elevated permissions to create the user account
-        await base44.asServiceRole.auth.inviteUser(customerEmail, "user");
+        await base44.asServiceRole.users.inviteUser(customerEmail, "user");
 
         console.log(`Portal invite sent to ${customerEmail}`);
         return Response.json({ message: "Portal invite sent successfully." });
