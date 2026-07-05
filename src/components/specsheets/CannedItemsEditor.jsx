@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Package, Wrench, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
@@ -17,6 +18,7 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [laborPickerOpen, setLaborPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
+  const [selectedPartIds, setSelectedPartIds] = useState([]);
   const [search, setSearch] = useState("");
 
   const { data: parts = [] } = useQuery({
@@ -63,6 +65,19 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
     setSearch("");
   };
 
+  const togglePart = (id) => setSelectedPartIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const addSelectedParts = () => {
+    const newLines = selectedPartIds
+      .map(id => parts.find(p => p.id === id))
+      .filter(Boolean)
+      .map(p => ({ part_id: p.id, part_number: p.part_number, item_name: p.name, quantity: 1 }));
+    if (newLines.length > 0) onChange({ ...cannedItems, line_items: [...lineItems, ...newLines] });
+    setPartPickerOpen(false);
+    setSearch("");
+    setSelectedPartIds([]);
+  };
+
   const selectLaborItem = (laborItem) => {
     const items = [...laborItems];
     items[pickingIdx] = {
@@ -96,8 +111,8 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
           <CardTitle className="text-base flex items-center gap-2">
             <Package className="w-4 h-4" /> Default Parts
           </CardTitle>
-          <Button size="sm" variant="outline" onClick={addLine}>
-            <Plus className="w-4 h-4 mr-1" /> Add Part
+          <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setSearch(""); setSelectedPartIds([]); setPartPickerOpen(true); }}>
+            <Plus className="w-4 h-4 mr-1" /> Add Parts
           </Button>
         </CardHeader>
         <CardContent>
@@ -225,7 +240,7 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
       <Dialog open={partPickerOpen} onOpenChange={setPartPickerOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Package className="w-4 h-4" /> Select Part from Inventory</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Package className="w-4 h-4" /> {pickingIdx === null ? "Add Parts from Inventory" : "Select Part from Inventory"}</DialogTitle>
           </DialogHeader>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -235,26 +250,45 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b border-slate-200">
                 <tr>
+                  {pickingIdx === null && <th className="w-10 py-2 px-2"></th>}
                   <th className="text-left py-2 font-medium text-slate-600 px-2">Part #</th>
                   <th className="text-left py-2 font-medium text-slate-600">Name</th>
                   <th className="text-right py-2 font-medium text-slate-600 px-2">Sell Price</th>
-                  <th className="w-16"></th>
+                  <th className="w-20"></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredParts.map(p => (
-                  <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => selectPart(p)}>
-                    <td className="py-2 px-2 font-mono text-xs text-slate-500">{p.part_number}</td>
-                    <td className="py-2 font-medium">{p.name}</td>
-                    <td className="py-2 text-right px-2 text-slate-500">${Number(p.sell_price || 0).toFixed(2)}</td>
-                    <td className="py-2 text-right">
-                      <Button size="sm" variant="ghost" className="text-[#e20404] h-7 px-2">Select</Button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredParts.map(p => {
+                  const checked = selectedPartIds.includes(p.id);
+                  return (
+                    <tr key={p.id} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${checked ? "bg-blue-50" : ""}`} onClick={() => pickingIdx === null ? togglePart(p.id) : selectPart(p)}>
+                      {pickingIdx === null && (
+                        <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                          <Checkbox checked={checked} onCheckedChange={() => togglePart(p.id)} />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 font-mono text-xs text-slate-500">{p.part_number}</td>
+                      <td className="py-2 font-medium">{p.name}</td>
+                      <td className="py-2 text-right px-2 text-slate-500">${Number(p.sell_price || 0).toFixed(2)}</td>
+                      <td className="py-2 text-right">
+                        {pickingIdx === null
+                          ? <span className={`text-xs ${checked ? "text-blue-600 font-semibold" : "text-slate-400"}`}>{checked ? "✓ Selected" : "Select"}</span>
+                          : <Button size="sm" variant="ghost" className="text-[#e20404] h-7 px-2">Select</Button>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          {pickingIdx === null && (
+            <div className="border-t border-slate-200 pt-3 flex items-center justify-between">
+              <span className="text-sm text-slate-500">{selectedPartIds.length} part{selectedPartIds.length === 1 ? "" : "s"} selected</span>
+              <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" disabled={selectedPartIds.length === 0} onClick={addSelectedParts}>
+                <Plus className="w-4 h-4 mr-1" /> Add Selected ({selectedPartIds.length})
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
