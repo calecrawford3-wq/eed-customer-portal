@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -52,29 +52,41 @@ export default function Estimates() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); toast.success("Status updated"); },
   });
 
+  const navigate = useNavigate();
+
   const convertToInvoice = useMutation({
     mutationFn: async (estimate) => {
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-      return base44.entities.Invoice.create({
+      const totalPaid = (estimate.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+      const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNumber,
         estimate_id: estimate.id,
         customer_id: estimate.customer_id,
-        status: "draft",
+        customer_engine_id: estimate.customer_engine_id || "",
+        status: "sent",
         issue_date: new Date().toISOString().split("T")[0],
-        line_items: estimate.line_items,
+        line_items: estimate.line_items || [],
+        labor_items: estimate.labor_items || [],
+        machining_items: estimate.machining_items || [],
+        payments: estimate.payments || [],
         subtotal: estimate.subtotal,
         tax_rate: estimate.tax_rate,
         tax_amount: estimate.tax_amount,
         total: estimate.total,
-        amount_paid: 0,
-        balance_due: estimate.total,
+        amount_paid: totalPaid,
+        balance_due: Math.max(0, (estimate.total || 0) - totalPaid),
         notes: estimate.notes,
       });
+      await base44.entities.Estimate.update(estimate.id, { invoice_id: invoice.id });
+      return invoice;
     },
-    onSuccess: () => {
+    onSuccess: (invoice) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["estimates"] });
       toast.success("Converted to invoice!");
+      navigate(`/InvoiceDetail?id=${invoice.id}`);
     },
+    onError: () => toast.error("Failed to convert to invoice"),
   });
 
   const getCustomer = (id) => customers.find(c => c.id === id);
