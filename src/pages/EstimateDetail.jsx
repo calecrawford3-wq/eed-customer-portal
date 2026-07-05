@@ -484,50 +484,41 @@ export default function EstimateDetail() {
     const newTotalDeposit = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const newDepositPaid = newTotalDeposit >= Number(form.deposit_amount || 0);
 
-    // Non-engine-build estimates: convert to invoice immediately — payment goes on the invoice, not the estimate
-    if (!form.is_engine_build) {
-      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-      const invoice = await base44.entities.Invoice.create({
-        invoice_number: invoiceNumber,
-        estimate_id: id,
-        customer_id: form.customer_id,
-        customer_engine_id: form.customer_engine_id || "",
-        status: newTotalDeposit >= (form.total || 0) ? "paid" : "partial",
-        issue_date: new Date().toISOString().split("T")[0],
-        line_items: form.line_items,
-        labor_items: form.labor_items || [],
-        machining_items: form.machining_items || [],
-        subtotal: form.subtotal,
-        tax_rate: form.tax_rate,
-        tax_amount: form.tax_amount,
-        total: form.total,
-        amount_paid: newTotalDeposit,
-        balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
-        notes: form.notes || "",
-        payments: updatedPayments,
-      });
-      await base44.entities.Estimate.update(id, {
-        invoice_id: invoice.id,
-        status: "approved",
-        deposit_paid: newDepositPaid,
-        payments: [],
-        amount_paid: 0,
-      });
-      setForm(f => ({ ...f, invoice_id: invoice.id, status: "approved", deposit_paid: newDepositPaid, payments: [], amount_paid: 0 }));
-      qc.invalidateQueries({ queryKey: ["invoices"] });
-      qc.invalidateQueries({ queryKey: ["estimates"] });
-      toast.success("Payment recorded — invoice created!");
-      navigate(`/InvoiceDetail?id=${invoice.id}`);
-      return;
-    }
+    // Always convert to invoice — payment goes on the invoice, not the estimate
+    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    const invoice = await base44.entities.Invoice.create({
+      invoice_number: invoiceNumber,
+      estimate_id: id,
+      customer_id: form.customer_id,
+      customer_engine_id: form.customer_engine_id || "",
+      build_id: form.build_id || "",
+      status: newTotalDeposit >= (form.total || 0) ? "paid" : "partial",
+      issue_date: new Date().toISOString().split("T")[0],
+      line_items: form.line_items,
+      labor_items: form.labor_items || [],
+      machining_items: form.machining_items || [],
+      subtotal: form.subtotal,
+      tax_rate: form.tax_rate,
+      tax_amount: form.tax_amount,
+      total: form.total,
+      amount_paid: newTotalDeposit,
+      balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
+      notes: form.notes || "",
+      payments: updatedPayments,
+    });
+    await base44.entities.Estimate.update(id, {
+      invoice_id: invoice.id,
+      status: "approved",
+      deposit_paid: newDepositPaid,
+      payments: [],
+      amount_paid: 0,
+    });
+    setForm(f => ({ ...f, invoice_id: invoice.id, status: "approved", deposit_paid: newDepositPaid, payments: [], amount_paid: 0 }));
+    qc.invalidateQueries({ queryKey: ["invoices"] });
+    qc.invalidateQueries({ queryKey: ["estimates"] });
 
-    // Engine build flow: record payment on estimate, auto-create build if deposit met
-    const updated = { ...form, payments: updatedPayments, deposit_paid: newDepositPaid, amount_paid: newTotalDeposit };
-    setForm(updated);
-    await saveMutation.mutateAsync(updated);
-    toast.success("Payment recorded");
-
-    if (updated.is_engine_build && newDepositPaid && !updated.build_id) {
+    // For engine builds with deposit met: also create the build
+    if (form.is_engine_build && newDepositPaid && !form.build_id) {
       try {
         const cust = customers.find(c => c.id === form.customer_id);
         let prevBuildData = {};
@@ -576,7 +567,6 @@ export default function EstimateDetail() {
             setForm(f => ({ ...f, build_id: build.id }));
             qc.invalidateQueries({ queryKey: ["builds"] });
             toast.success("Deposit received — engine build created and queued!");
-            return;
           }
         }
 
@@ -603,9 +593,11 @@ export default function EstimateDetail() {
          toast.success("Deposit received — engine build created and queued!");
         } catch (e) {
          console.error("Failed to auto-create build on payment:", e);
-         toast.error("Payment recorded but failed to create build");
+         toast.error("Invoice created but failed to create build");
         }
         }
+        toast.success("Payment recorded — invoice created!");
+        navigate(`/InvoiceDetail?id=${invoice.id}`);
         };
 
   const handleApprove = async () => {
