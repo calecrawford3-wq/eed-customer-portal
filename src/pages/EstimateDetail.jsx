@@ -1255,14 +1255,9 @@ export default function EstimateDetail() {
               </p>
               <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
             </div>
-            <Checkbox
-              className="h-6 w-6 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+            <Switch
               checked={!!form.contains_illegal_parts}
-              onCheckedChange={v => {
-                if (v && !form.customer_id) { toast.error("Select a customer first"); return; }
-                setForm({...form, contains_illegal_parts: v});
-                if (v) setIllegalPartsOpen(true);
-              }}
+              onCheckedChange={v => setForm({...form, contains_illegal_parts: v})}
             />
           </div>
           {form.contains_illegal_parts && (
