@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
+import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 
 function getPlatformLabel(platform) {
   if (!platform) return "Unknown";
@@ -54,6 +55,14 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [newEngine, setNewEngine] = useState({ engine_serial_number: "", platform_id: "", notes: "" });
   const [editOpen, setEditOpen] = useState(false);
   const [editEngine, setEditEngine] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferEngine, setTransferEngine] = useState(null);
+  const [transferCustomerId, setTransferCustomerId] = useState("");
+
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => base44.entities.Customer.list("-created_date", 500),
+  });
 
   const { data: engines = [] } = useQuery({
     queryKey: ["customer-engines", customerId],
@@ -117,6 +126,20 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       setEditOpen(false);
       toast.success("Engine updated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: async ({ id, newCustomerId }) => base44.entities.CustomerEngine.update(id, { customer_id: newCustomerId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
+      qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
+      const target = allCustomers.find(c => c.id === transferCustomerId);
+      setTransferOpen(false);
+      setTransferEngine(null);
+      setTransferCustomerId("");
+      toast.success(`Engine transferred to ${target ? `${target.first_name} ${target.last_name}` : "new customer"}`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -192,6 +215,15 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                           {mostRecentBuild.status?.replace("_", " ")}
                         </Badge>
                       )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-slate-500"
+                        onClick={(e) => { e.stopPropagation(); setTransferEngine(engine); setTransferCustomerId(""); setTransferOpen(true); }}
+                        title="Transfer to another customer"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -359,6 +391,45 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
               })}
             >
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Engine Dialog */}
+      <Dialog open={transferOpen} onOpenChange={(o) => { setTransferOpen(o); if (!o) { setTransferEngine(null); setTransferCustomerId(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-[#e20404]" /> Transfer Engine
+            </DialogTitle>
+          </DialogHeader>
+          {transferEngine && (
+            <div className="space-y-4 py-2">
+              <div className="bg-slate-50 rounded-lg p-3 text-sm">
+                <p><span className="text-slate-500">Engine:</span> <span className="font-mono font-bold text-[#e20404]">{transferEngine.eed_id}</span> — {transferEngine.engine_serial_number}</p>
+                <p className="text-xs text-slate-400 mt-1">Currently owned by {customer?.first_name} {customer?.last_name}</p>
+              </div>
+              <div>
+                <Label>Transfer to Customer *</Label>
+                <div className="mt-1">
+                  <CustomerSearchSelect
+                    customers={allCustomers.filter(c => c.id !== customerId)}
+                    value={transferCustomerId}
+                    onValueChange={setTransferCustomerId}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setTransferOpen(false); setTransferEngine(null); setTransferCustomerId(""); }}>Cancel</Button>
+            <Button
+              className="bg-[#e20404] hover:bg-[#c00303] text-white"
+              disabled={transferMutation.isPending || !transferCustomerId}
+              onClick={() => transferMutation.mutate({ id: transferEngine.id, newCustomerId: transferCustomerId })}
+            >
+              {transferMutation.isPending ? "Transferring..." : "Transfer Engine"}
             </Button>
           </DialogFooter>
         </DialogContent>
