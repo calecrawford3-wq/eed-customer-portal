@@ -483,7 +483,7 @@ export default function CustomerPortal() {
               <div className="space-y-4">
                 {customerEngines.map(engine => {
                   const platform = platforms.find(p => p.id === engine.platform_id);
-                  const engineLegalDoc = legalDocs.find(d => d.customer_engine_id === engine.id && d.status !== "void");
+                  const engineLegalDocs = legalDocs.filter(d => d.customer_engine_id === engine.id && d.status !== "void");
                   const engineBuilds = builds
                     .filter(b => b.engine_serial_number === engine.engine_serial_number)
                     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
@@ -555,10 +555,10 @@ export default function CustomerPortal() {
                           </div>
                         )}
 
-                        {/* Illegal Parts Agreement */}
-                        {engineLegalDoc && (
-                          <div className="border-t border-slate-100 pt-4 mb-4">
-                            <PortalLegalDocument doc={engineLegalDoc} />
+                        {/* Legal Documents */}
+                        {engineLegalDocs.length > 0 && (
+                          <div className="border-t border-slate-100 pt-4 mb-4 space-y-2">
+                            {engineLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}
                           </div>
                         )}
 
@@ -568,7 +568,7 @@ export default function CustomerPortal() {
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Invoices for this Engine</p>
                             <div className="space-y-1">
                               {engineInvoices.map(inv => {
-                                const invLegalDoc = legalDocs.find(d => d.invoice_id === inv.id && d.status !== "void");
+                                const invLegalDocs = legalDocs.filter(d => d.invoice_id === inv.id && d.status !== "void");
                                 return (
                                   <div key={inv.id}>
                                     <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
@@ -580,7 +580,7 @@ export default function CustomerPortal() {
                                         {inv.status}
                                       </Badge>
                                     </div>
-                                    {invLegalDoc && <div className="mt-1"><PortalLegalDocument doc={invLegalDoc} /></div>}
+                                    {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}</div>}
                                   </div>
                                 );
                               })}
@@ -715,7 +715,7 @@ export default function CustomerPortal() {
             ) : (
               <div className="space-y-3">
                 {invoices.map(inv => {
-                  const invLegalDoc = legalDocs.find(d => d.invoice_id === inv.id && d.status !== "void");
+                  const invLegalDocs = legalDocs.filter(d => d.invoice_id === inv.id && d.status !== "void");
                   return (
                     <div key={inv.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                       <div className="flex items-center justify-between">
@@ -754,7 +754,7 @@ export default function CustomerPortal() {
                           </Badge>
                         </div>
                       </div>
-                      {invLegalDoc && <div className="mt-3"><PortalLegalDocument doc={invLegalDoc} /></div>}
+                      {invLegalDocs.length > 0 && <div className="mt-3 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}</div>}
                     </div>
                   );
                 })}

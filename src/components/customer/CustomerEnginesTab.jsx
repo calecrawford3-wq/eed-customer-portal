@@ -59,7 +59,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferEngine, setTransferEngine] = useState(null);
   const [transferCustomerId, setTransferCustomerId] = useState("");
-  const [legalDocEngine, setLegalDocEngine] = useState(null);
+  const [legalDocToView, setLegalDocToView] = useState(null);
 
   const { data: allCustomers = [] } = useQuery({
     queryKey: ["customers"],
@@ -336,18 +336,23 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                           <div>
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Legal Documents ({engineLegalDocs.length})</p>
                             <div className="space-y-1">
-                              {engineLegalDocs.map(d => (
-                                <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="w-3.5 h-3.5 text-amber-600" />
-                                    <span className="text-sm font-medium text-amber-800">Illegal Parts Acknowledgment</span>
-                                    {d.status === "fully_signed" && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Signed</Badge>}
+                              {engineLegalDocs.map(d => {
+                                const isContract = d.document_type === "contract_engine";
+                                return (
+                                  <div key={d.id} className={`flex items-center justify-between px-3 py-2 rounded-lg ${isContract ? "bg-blue-50" : "bg-amber-50"}`}>
+                                    <div className="flex items-center gap-2">
+                                      <FileText className={`w-3.5 h-3.5 ${isContract ? "text-blue-600" : "text-amber-600"}`} />
+                                      <span className={`text-sm font-medium ${isContract ? "text-blue-800" : "text-amber-800"}`}>
+                                        {isContract ? "Contract Engine Agreement" : "Illegal Parts Acknowledgment"}
+                                      </span>
+                                      {d.status === "fully_signed" && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Signed</Badge>}
+                                    </div>
+                                    <Button size="sm" variant="ghost" className={`h-7 px-2 ${isContract ? "text-blue-600" : "text-amber-600"}`} onClick={() => setLegalDocToView(d)}>
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </Button>
                                   </div>
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600" onClick={() => setLegalDocEngine(engine.id)}>
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         );
@@ -469,9 +474,9 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       </Dialog>
 
       <IllegalPartsViewModal
-        open={!!legalDocEngine}
-        onClose={() => setLegalDocEngine(null)}
-        customerEngineId={legalDocEngine}
+        open={!!legalDocToView}
+        onClose={() => setLegalDocToView(null)}
+        documentId={legalDocToView?.id}
       />
 
       {/* Add Engine Dialog */}

@@ -5,27 +5,32 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, Clock, Printer, FileText, Tag, Image } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId, documentType }) {
+export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId, documentType, documentId }) {
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!open || (!estimateId && !invoiceId && !customerEngineId)) return;
+    if (!open) return;
+    if (!documentId && !estimateId && !invoiceId && !customerEngineId) return;
     setLoading(true);
     const queries = [];
-    if (estimateId) queries.push(base44.entities.LegalDocument.filter({ estimate_id: estimateId }));
-    if (invoiceId) queries.push(base44.entities.LegalDocument.filter({ invoice_id: invoiceId }));
-    if (customerEngineId) queries.push(base44.entities.LegalDocument.filter({ customer_engine_id: customerEngineId }));
+    if (documentId) {
+      queries.push(base44.entities.LegalDocument.filter({ id: documentId }));
+    } else {
+      if (estimateId) queries.push(base44.entities.LegalDocument.filter({ estimate_id: estimateId }));
+      if (invoiceId) queries.push(base44.entities.LegalDocument.filter({ invoice_id: invoiceId }));
+      if (customerEngineId) queries.push(base44.entities.LegalDocument.filter({ customer_engine_id: customerEngineId }));
+    }
     Promise.all(queries)
       .then(results => {
         const all = results.flat();
         const filtered = documentType ? all.filter(d => d.document_type === documentType) : all;
-        const active = filtered.find(d => d.status !== "void") || null;
+        const active = filtered.find(d => d.status !== "void") || filtered[0] || null;
         setDoc(active);
       })
       .catch(() => setDoc(null))
       .finally(() => setLoading(false));
-  }, [open, estimateId, invoiceId, customerEngineId, documentType]);
+  }, [open, documentId, estimateId, invoiceId, customerEngineId, documentType]);
 
   const adminSigned = !!doc?.admin_signature;
   const customerSigned = !!doc?.customer_signature;
