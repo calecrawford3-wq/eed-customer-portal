@@ -15,10 +15,9 @@ Deno.serve(async (req) => {
       invoice_id,
       customer_id,
       build_id,
-      admin_signature,
     } = await req.json();
 
-    if (!document_type || !title || !customer_id || !admin_signature) {
+    if (!document_type || !title || !customer_id) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -50,9 +49,9 @@ Deno.serve(async (req) => {
       estimate_id: estimate_id || null,
       invoice_id: invoice_id || null,
       build_id: build_id || null,
-      admin_signature,
-      admin_signed_by: user.id,
-      admin_signed_at: new Date().toISOString(),
+      admin_signature: null,
+      admin_signed_by: null,
+      admin_signed_at: null,
       customer_signature: null,
       customer_signed_at: null,
       status: 'pending_customer',

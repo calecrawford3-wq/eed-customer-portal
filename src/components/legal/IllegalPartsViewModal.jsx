@@ -65,20 +65,16 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId }) {
             </div>
 
             {/* Signatures */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-slate-200 rounded-lg p-4">
-                <p className="text-xs font-medium text-slate-500 uppercase mb-2">Elite Engine Rep</p>
-                {adminSigned ? (
-                  <>
-                    <img src={doc.admin_signature} alt="Admin signature" className="max-h-20 object-contain bg-white rounded border border-slate-100 p-1" />
-                    <p className="text-xs text-slate-400 mt-2">
-                      Signed {doc.admin_signed_at ? new Date(doc.admin_signed_at).toLocaleDateString() : ""}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-400 italic">Not signed</p>
-                )}
-              </div>
+            <div className={adminSigned ? "grid grid-cols-2 gap-4" : "space-y-4"}>
+              {adminSigned && (
+                <div className="border border-slate-200 rounded-lg p-4">
+                  <p className="text-xs font-medium text-slate-500 uppercase mb-2">Elite Engine Rep</p>
+                  <img src={doc.admin_signature} alt="Admin signature" className="max-h-20 object-contain bg-white rounded border border-slate-100 p-1" />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Signed {doc.admin_signed_at ? new Date(doc.admin_signed_at).toLocaleDateString() : ""}
+                  </p>
+                </div>
+              )}
               <div className="border border-slate-200 rounded-lg p-4">
                 <p className="text-xs font-medium text-slate-500 uppercase mb-2">Customer</p>
                 {customerSigned ? (

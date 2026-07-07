@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import SignaturePad from "@/components/SignaturePad";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
@@ -22,19 +21,12 @@ By signing below, the customer acknowledges and agrees that:
 
 5. This agreement is binding and shall remain in effect for the lifetime of the engine build.
 
-Customer Signature: _____________________        Date: ___________
-
-Elite Engine Development Representative: _____________________        Date: ___________`;
+Customer Signature: _____________________        Date: ___________`;
 
 export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId, customerId, buildId }) {
-  const [adminSignature, setAdminSignature] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const handleConfirm = async () => {
-    if (!adminSignature) {
-      toast.error("Please sign before confirming");
-      return;
-    }
     setSaving(true);
     try {
       const res = await base44.functions.invoke("createLegalDocument", {
@@ -45,13 +37,11 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
         invoice_id: invoiceId || null,
         customer_id: customerId,
         build_id: buildId || null,
-        admin_signature: adminSignature,
       });
       if (res?.data?.error) {
         toast.error(res.data.error);
       } else {
         toast.success("Illegal Parts document created — customer will sign after approving the estimate");
-        setAdminSignature(null);
         if (onSigned) onSigned(res.data.legal_document);
         onClose();
       }
@@ -85,11 +75,6 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-64 overflow-y-auto">
             <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans">{ILLEGAL_PARTS_BODY}</pre>
           </div>
-
-          <SignaturePad
-            label="Your Signature (Elite Engine Development Representative)"
-            onChange={setAdminSignature}
-          />
         </div>
 
         <DialogFooter>
@@ -97,9 +82,9 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
           <Button
             className="bg-[#e20404] hover:bg-[#c00303] text-white"
             onClick={handleConfirm}
-            disabled={!adminSignature || saving}
+            disabled={saving}
           >
-            {saving ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : "Sign & Create Document"}
+            {saving ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : "Create Document"}
           </Button>
         </DialogFooter>
       </DialogContent>
