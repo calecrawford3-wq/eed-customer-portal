@@ -21,7 +21,9 @@ By signing below, the customer acknowledges and agrees that:
 
 5. This agreement is binding and shall remain in effect for the lifetime of the engine build.
 
-Customer Signature: _____________________        Date: ___________`;
+Customer Signature: _____________________        Date: ___________
+
+`;
 
 export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId, customerId, buildId }) {
   const [saving, setSaving] = useState(false);
