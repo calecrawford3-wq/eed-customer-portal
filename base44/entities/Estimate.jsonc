@@ -32,7 +32,12 @@
     "contains_illegal_parts": {
       "type": "boolean",
       "default": false,
-      "description": "If true, customer must sign an Illegal Parts Acknowledgment after approving the estimate before they can pay"
+      "description": "If true, customer must sign an Illegal Parts Acknowledgment"
+    },
+    "contains_contract_engine": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, a Contract Engine IP & Seal agreement has been generated for this estimate"
     },
     "public_access_token": {
       "type": "string",
@@ -105,12 +110,10 @@
           },
           "is_core_credit": {
             "type": "boolean",
-            "default": false,
-            "description": "True when this line is a core credit (customer core bought/exchanged)"
+            "default": false
           },
           "core_details": {
             "type": "object",
-            "description": "Captured core details for a core credit line, used to add the core to inventory when the invoice completes",
             "properties": {
               "core_number": {
                 "type": "string"

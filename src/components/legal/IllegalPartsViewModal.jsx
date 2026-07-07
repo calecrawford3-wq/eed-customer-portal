@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ShieldCheck, Clock, Printer } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Clock, Printer, FileText, Tag, Image } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId }) {
@@ -13,9 +13,9 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId, invoi
     if (!open || (!estimateId && !invoiceId && !customerEngineId)) return;
     setLoading(true);
     const queries = [];
-    if (estimateId) queries.push(base44.entities.LegalDocument.filter({ estimate_id: estimateId, document_type: "illegal_parts" }));
-    if (invoiceId) queries.push(base44.entities.LegalDocument.filter({ invoice_id: invoiceId, document_type: "illegal_parts" }));
-    if (customerEngineId) queries.push(base44.entities.LegalDocument.filter({ customer_engine_id: customerEngineId, document_type: "illegal_parts" }));
+    if (estimateId) queries.push(base44.entities.LegalDocument.filter({ estimate_id: estimateId }));
+    if (invoiceId) queries.push(base44.entities.LegalDocument.filter({ invoice_id: invoiceId }));
+    if (customerEngineId) queries.push(base44.entities.LegalDocument.filter({ customer_engine_id: customerEngineId }));
     Promise.all(queries)
       .then(results => {
         const all = results.flat();
@@ -35,7 +35,10 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId, invoi
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[#e20404]">
-            <AlertTriangle className="w-5 h-5" /> Illegal Parts Acknowledgment
+            {doc?.document_type === "contract_engine"
+              ? <><FileText className="w-5 h-5 text-blue-600" /> <span className="text-blue-700">Contract Engine Agreement</span></>
+              : <><AlertTriangle className="w-5 h-5" /> Illegal Parts Acknowledgment</>
+            }
           </DialogTitle>
         </DialogHeader>
 
@@ -68,6 +71,30 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId, invoi
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-64 overflow-y-auto">
               <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans">{doc.body}</pre>
             </div>
+
+            {/* Seal tag info for contract engines */}
+            {doc.document_type === "contract_engine" && (doc.seal_tag_numbers || (doc.seal_tag_photos || []).length > 0) && (
+              <div className="space-y-3">
+                {doc.seal_tag_numbers && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-blue-700 uppercase flex items-center gap-1 mb-1"><Tag className="w-3 h-3" /> Seal Tag Numbers</p>
+                    <p className="text-sm font-mono text-blue-900">{doc.seal_tag_numbers}</p>
+                  </div>
+                )}
+                {(doc.seal_tag_photos || []).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-1 mb-2"><Image className="w-3 h-3" /> Seal & Serial Photos</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {doc.seal_tag_photos.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          <img src={url} alt={`Seal photo ${i + 1}`} className="w-full h-24 object-cover rounded border border-slate-200 hover:opacity-90 transition-opacity" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Signatures */}
             <div className={adminSigned ? "grid grid-cols-2 gap-4" : "space-y-4"}>

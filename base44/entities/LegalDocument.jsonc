@@ -6,7 +6,8 @@
       "type": "string",
       "enum": [
         "illegal_parts",
-        "contract"
+        "contract",
+        "contract_engine"
       ],
       "description": "Type of legal document"
     },
@@ -36,7 +37,18 @@
     },
     "customer_engine_id": {
       "type": "string",
-      "description": "Linked customer engine \u2014 ties this agreement to a specific engine serial number. A newer agreement for the same engine replaces (voids) the previous one."
+      "description": "Linked customer engine \u2014 ties this agreement to a specific engine serial number."
+    },
+    "seal_tag_numbers": {
+      "type": "string",
+      "description": "Comma-separated seal tag numbers applied to this engine (contract engines only)"
+    },
+    "seal_tag_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded seal tag / serial number photos"
     },
     "admin_signature": {
       "type": "string",
@@ -61,12 +73,13 @@
     "status": {
       "type": "string",
       "enum": [
+        "pending_admin",
         "pending_customer",
         "fully_signed",
         "void"
       ],
       "default": "pending_customer",
-      "description": "pending_customer = admin signed, awaiting customer; fully_signed = both signed; void = cancelled"
+      "description": "pending_admin = needs admin signature first; pending_customer = awaiting customer; fully_signed = both signed; void = cancelled"
     },
     "public_access_token": {
       "type": "string",

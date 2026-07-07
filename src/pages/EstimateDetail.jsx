@@ -30,7 +30,8 @@ import PrintableEstimate from "@/components/PrintableEstimate";
 import EngineSelector from "@/components/EngineSelector";
 import IllegalPartsModal from "@/components/legal/IllegalPartsModal";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
-import { AlertTriangle as AlertTriangleIcon, ShieldAlert } from "lucide-react";
+import ContractEngineModal from "@/components/legal/ContractEngineModal";
+import { AlertTriangle as AlertTriangleIcon, ShieldAlert, FileText } from "lucide-react";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -90,6 +91,8 @@ export default function EstimateDetail() {
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [illegalPartsOpen, setIllegalPartsOpen] = useState(false);
   const [illegalPartsViewOpen, setIllegalPartsViewOpen] = useState(false);
+  const [contractEngineOpen, setContractEngineOpen] = useState(false);
+  const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -1107,6 +1110,35 @@ export default function EstimateDetail() {
         onClose={() => setIllegalPartsViewOpen(false)}
         estimateId={id}
       />
+      <IllegalPartsViewModal
+        open={contractEngineViewOpen}
+        onClose={() => setContractEngineViewOpen(false)}
+        estimateId={id}
+        customerEngineId={form.customer_engine_id}
+      />
+      <ContractEngineModal
+        open={contractEngineOpen}
+        onClose={() => setContractEngineOpen(false)}
+        estimateId={id}
+        customerId={form.customer_id}
+        buildId={form.build_id}
+        customerEngineId={form.customer_engine_id}
+        engineSerialNumber={selectedEngine?.engine_serial_number}
+        customerName={customer ? `${customer.first_name} ${customer.last_name}` : ""}
+        onCreated={async (legalDoc) => {
+          if (id && legalDoc?.public_access_token) {
+            try {
+              setForm(f => ({ ...f, contains_contract_engine: true }));
+              await base44.entities.Estimate.update(id, { contains_contract_engine: true });
+              await base44.functions.invoke("syncLegalDocument", { legalDocumentId: legalDoc.id });
+              qc.invalidateQueries({ queryKey: ["estimate", id] });
+              toast.success("Contract Engine agreement created");
+            } catch (e) {
+              console.error("Failed to sync contract engine doc:", e);
+            }
+          }
+        }}
+      />
       <IllegalPartsModal
         open={illegalPartsOpen}
         onClose={() => setIllegalPartsOpen(false)}
@@ -1269,6 +1301,56 @@ export default function EstimateDetail() {
                   <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 text-xs h-7" onClick={() => setCannedJobOpen(true)}>
                     <WrenchIcon className="w-3 h-3 mr-1" /> {selectedSpec ? "Change Spec" : "Load Canned Job"}
                   </Button>
+                </div>
+              )}
+            </div>
+            <div className="border border-blue-200 rounded-lg px-3 py-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-blue-600" /> Contract Engine
+                  </p>
+                  <p className="text-xs text-slate-400">Generates IP & seal agreement — you sign first, then customer</p>
+                </div>
+                <Switch
+                  checked={!!form.contains_contract_engine}
+                  onCheckedChange={v => {
+                    if (v) {
+                      if (!id) { toast.error("Save the estimate first"); return; }
+                      setContractEngineOpen(true);
+                    } else {
+                      setForm({...form, contains_contract_engine: false});
+                    }
+                  }}
+                />
+              </div>
+              {form.contains_contract_engine && (
+                <div className="flex items-center justify-between border-t border-blue-100 pt-2">
+                  <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                    <FileText className="w-3 h-3" /> Contract pending customer signature
+                  </span>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 text-xs h-7" onClick={() => setContractEngineOpen(true)} disabled={!id}>
+                      New
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 text-xs h-7" onClick={() => setContractEngineViewOpen(true)} disabled={!id}>
+                      View
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={async () => {
+                      if (!id) return;
+                      if (!confirm("Void the Contract Engine agreement?")) return;
+                      const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "contract_engine" });
+                      for (const d of (docs || [])) {
+                        if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
+                      }
+                      await base44.entities.Estimate.update(id, { contains_contract_engine: false });
+                      setForm(f => ({ ...f, contains_contract_engine: false }));
+                      qc.invalidateQueries({ queryKey: ["estimate", id] });
+                      toast.success("Contract Engine agreement voided");
+                    }} disabled={!id}>
+                      Void
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

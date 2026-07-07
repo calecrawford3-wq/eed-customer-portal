@@ -16,6 +16,10 @@ Deno.serve(async (req) => {
       customer_id,
       build_id,
       customer_engine_id,
+      seal_tag_numbers,
+      seal_tag_photos,
+      admin_signature,
+      admin_signed_at,
     } = await req.json();
 
     if (!document_type || !title || !customer_id) {
@@ -52,6 +56,7 @@ Deno.serve(async (req) => {
 
     const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
+    const hasAdminSig = !!admin_signature;
     const legalDocument = await base44.asServiceRole.entities.LegalDocument.create({
       document_type,
       title,
@@ -61,9 +66,11 @@ Deno.serve(async (req) => {
       invoice_id: invoice_id || null,
       build_id: build_id || null,
       customer_engine_id: customer_engine_id || null,
-      admin_signature: null,
-      admin_signed_by: null,
-      admin_signed_at: null,
+      seal_tag_numbers: seal_tag_numbers || null,
+      seal_tag_photos: seal_tag_photos || [],
+      admin_signature: admin_signature || null,
+      admin_signed_by: hasAdminSig ? user.id : null,
+      admin_signed_at: admin_signed_at || null,
       customer_signature: null,
       customer_signed_at: null,
       status: 'pending_customer',
