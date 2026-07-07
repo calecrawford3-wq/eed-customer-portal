@@ -22,6 +22,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [newEngine, setNewEngine] = useState({ engine_serial_number: "", platform_id: "", notes: "" });
+  const [createError, setCreateError] = useState("");
 
   const { data: engines = [] } = useQuery({
     queryKey: ["customer-engines", customerId],
@@ -62,6 +63,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       return base44.entities.CustomerEngine.create(data);
     },
     onSuccess: (created) => {
+      setCreateError("");
       qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       setAddOpen(false);
@@ -69,14 +71,19 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       onChange(created.id, created);
       toast.success(`Engine ${created.eed_id} registered`);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      setCreateError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const handleAdd = () => {
     if (!newEngine.engine_serial_number || !newEngine.platform_id) {
+      setCreateError("Serial number and platform are required");
       toast.error("Serial number and platform are required");
       return;
     }
+    setCreateError("");
     createMutation.mutate({
       ...newEngine,
       customer_id: customerId,
@@ -218,6 +225,11 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
               </div>
             )}
           </div>
+          {createError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+              {createError}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button
