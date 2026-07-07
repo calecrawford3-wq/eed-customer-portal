@@ -123,7 +123,21 @@ export default function InvoiceDetail() {
         notes: form.notes || "",
         internal_notes: `Converted from invoice ${form.invoice_number}`,
       });
-      toast.success("Estimate created from invoice");
+      // Delete the original invoice now that it's been sent back to estimate
+      if (id) {
+        try {
+          await base44.entities.Invoice.delete(id);
+          // Remove any credit redemption tied to this invoice so the customer's
+          // available credit balance isn't left with an orphaned negative entry
+          const redemption = customerCredits.find(c => c.linked_invoice_id === id && c.type === "redemption");
+          if (redemption) await base44.entities.AccountCredit.delete(redemption.id);
+        } catch (delErr) {
+          console.error("Failed to delete invoice during conversion:", delErr);
+        }
+        qc.invalidateQueries({ queryKey: ["invoices"] });
+        qc.invalidateQueries({ queryKey: ["accountCredits"] });
+      }
+      toast.success("Converted to estimate — invoice deleted");
       navigate(`/EstimateDetail?id=${estimate.id}`);
     } catch (err) {
       toast.error("Conversion failed: " + err.message);
