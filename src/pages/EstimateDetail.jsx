@@ -1087,6 +1087,7 @@ export default function EstimateDetail() {
           // Save the legal document token on the estimate and re-sync to viewer app
           if (id && legalDoc?.public_access_token) {
             try {
+              setForm(f => ({ ...f, contains_illegal_parts: true }));
               await base44.entities.Estimate.update(id, {
                 contains_illegal_parts: true,
               });
@@ -1095,8 +1096,10 @@ export default function EstimateDetail() {
                 await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken: form.public_access_token });
               }
               qc.invalidateQueries({ queryKey: ["estimate", id] });
+              toast.success("Illegal Parts document created and synced to portal");
             } catch (e) {
               console.error("Failed to sync legal document after signing:", e);
+              toast.error("Document created but sync to portal failed — try re-syncing");
             }
           }
         }}
@@ -1251,7 +1254,17 @@ export default function EstimateDetail() {
                 </div>
                 <Switch
                   checked={!!form.contains_illegal_parts}
-                  onCheckedChange={v => setForm({...form, contains_illegal_parts: v})}
+                  onCheckedChange={v => {
+                    if (v) {
+                      if (!id) {
+                        toast.error("Save the estimate first before flagging illegal parts");
+                        return;
+                      }
+                      setIllegalPartsOpen(true);
+                    } else {
+                      setForm({...form, contains_illegal_parts: false});
+                    }
+                  }}
                 />
               </div>
               {form.contains_illegal_parts && (
@@ -1259,9 +1272,14 @@ export default function EstimateDetail() {
                   <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
                     <AlertTriangleIcon className="w-3 h-3" /> {id ? "Signed after approval" : "Save estimate first"}
                   </span>
-                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
-                    View
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)} disabled={!id}>
+                      Create
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
+                      View
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
