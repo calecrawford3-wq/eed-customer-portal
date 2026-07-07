@@ -29,6 +29,7 @@ import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPick
 import PrintableEstimate from "@/components/PrintableEstimate";
 import EngineSelector from "@/components/EngineSelector";
 import IllegalPartsModal from "@/components/legal/IllegalPartsModal";
+import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 import { AlertTriangle as AlertTriangleIcon, ShieldAlert } from "lucide-react";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
@@ -88,6 +89,7 @@ export default function EstimateDetail() {
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [illegalPartsOpen, setIllegalPartsOpen] = useState(false);
+  const [illegalPartsViewOpen, setIllegalPartsViewOpen] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -1073,6 +1075,11 @@ export default function EstimateDetail() {
         onRecord={handleRecordPayment}
         title={form.deposit_required ? "Record Deposit Payment" : "Record Payment"}
       />
+      <IllegalPartsViewModal
+        open={illegalPartsViewOpen}
+        onClose={() => setIllegalPartsViewOpen(false)}
+        estimateId={id}
+      />
       <IllegalPartsModal
         open={illegalPartsOpen}
         onClose={() => setIllegalPartsOpen(false)}
@@ -1252,9 +1259,14 @@ export default function EstimateDetail() {
                   <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
                     <AlertTriangleIcon className="w-3 h-3" /> {id ? "Signed after approval" : "Save estimate first"}
                   </span>
-                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)} disabled={!id}>
-                    Re-sign / Edit
-                  </Button>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
+                      View
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)} disabled={!id}>
+                      Re-sign / Edit
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
