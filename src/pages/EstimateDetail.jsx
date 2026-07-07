@@ -27,6 +27,8 @@ import CannedJobPicker from "@/components/estimates/CannedJobPicker";
 import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import PrintableEstimate from "@/components/PrintableEstimate";
 import EngineSelector from "@/components/EngineSelector";
+import IllegalPartsModal from "@/components/legal/IllegalPartsModal";
+import { AlertTriangle as AlertTriangleIcon, ShieldAlert } from "lucide-react";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -60,6 +62,7 @@ export default function EstimateDetail() {
     deposit_amount: 0,
     deposit_paid: false,
     is_engine_build: true,
+    contains_illegal_parts: false,
     payments: [],
     line_items: [{ ...emptyPart }],
     labor_items: [],
@@ -83,6 +86,7 @@ export default function EstimateDetail() {
   const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
+  const [illegalPartsOpen, setIllegalPartsOpen] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -504,6 +508,7 @@ export default function EstimateDetail() {
       amount_paid: newTotalDeposit,
       balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
       public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+      contains_illegal_parts: form.contains_illegal_parts || false,
       notes: form.notes || "",
       payments: updatedPayments,
     });
@@ -709,6 +714,7 @@ export default function EstimateDetail() {
           applied_credits: Number(form.applied_credits) || 0,
           amount_paid: totalDeposit > 0 ? totalDeposit : 0,
           balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
+          contains_illegal_parts: form.contains_illegal_parts || false,
           notes: form.notes || "",
           payments: form.payments || [],
         });
@@ -745,6 +751,7 @@ export default function EstimateDetail() {
         total: form.total,
         amount_paid: totalDeposit > 0 ? totalDeposit : 0,
         balance_due: Math.max(0, (form.total || 0) - totalDeposit),
+        contains_illegal_parts: form.contains_illegal_parts || false,
         notes: form.notes || "",
         payments: form.payments || [],
       });
@@ -1065,6 +1072,14 @@ export default function EstimateDetail() {
         onRecord={handleRecordPayment}
         title={form.deposit_required ? "Record Deposit Payment" : "Record Payment"}
       />
+      <IllegalPartsModal
+        open={illegalPartsOpen}
+        onClose={() => setIllegalPartsOpen(false)}
+        onSigned={() => {}}
+        estimateId={id}
+        customerId={form.customer_id}
+        buildId={form.build_id}
+      />
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
@@ -1198,6 +1213,34 @@ export default function EstimateDetail() {
                   )}
                   <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 text-xs h-7" onClick={() => setCannedJobOpen(true)}>
                     <WrenchIcon className="w-3 h-3 mr-1" /> {selectedSpec ? "Change Spec" : "Load Canned Job"}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="border border-slate-200 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" /> Contains Illegal Parts
+                  </p>
+                  <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
+                </div>
+                <Switch
+                  checked={!!form.contains_illegal_parts}
+                  onCheckedChange={v => {
+                    if (v && !form.customer_id) { toast.error("Select a customer first"); return; }
+                    setForm({...form, contains_illegal_parts: v});
+                    if (v) setIllegalPartsOpen(true);
+                  }}
+                />
+              </div>
+              {form.contains_illegal_parts && (
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                  <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
+                    <AlertTriangleIcon className="w-3 h-3" /> Illegal Parts document will be signed after estimate approval
+                  </span>
+                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)}>
+                    Re-sign / Edit
                   </Button>
                 </div>
               )}

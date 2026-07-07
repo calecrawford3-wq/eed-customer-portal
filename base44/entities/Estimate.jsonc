@@ -29,6 +29,11 @@
       "default": false,
       "description": "If true, approval creates an engine build. If false, approval creates an invoice."
     },
+    "contains_illegal_parts": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, customer must sign an Illegal Parts Acknowledgment after approving the estimate before they can pay"
+    },
     "public_access_token": {
       "type": "string",
       "description": "Secure random token for public viewing without authentication"

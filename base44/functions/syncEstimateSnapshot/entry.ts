@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
       deposit_paid: estimate.deposit_paid || false,
       notes: estimate.notes || "",
       stripe_checkout_url: estimate.stripe_checkout_url,
+      contains_illegal_parts: estimate.contains_illegal_parts || false,
       company_name: appSettings.company_name,
       company_logo_url: appSettings.company_logo_url,
       company_phone: appSettings.company_phone,

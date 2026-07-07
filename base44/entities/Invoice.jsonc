@@ -27,6 +27,11 @@
       "type": "string",
       "description": "Pre-generated Stripe checkout URL for public payments"
     },
+    "contains_illegal_parts": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this invoice involves illegal parts and requires a signed acknowledgment"
+    },
     "is_legacy": {
       "type": "boolean",
       "default": false,

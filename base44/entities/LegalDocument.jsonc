@@ -1,0 +1,77 @@
+{
+  "name": "LegalDocument",
+  "type": "object",
+  "properties": {
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "illegal_parts",
+        "contract"
+      ],
+      "description": "Type of legal document"
+    },
+    "title": {
+      "type": "string",
+      "description": "Document title shown to customer"
+    },
+    "body": {
+      "type": "string",
+      "description": "Full text content of the agreement"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked customer"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Linked estimate (if applicable)"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Linked invoice (if applicable)"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked engine build (if applicable)"
+    },
+    "admin_signature": {
+      "type": "string",
+      "description": "Data URL (PNG) of admin's signature"
+    },
+    "admin_signed_by": {
+      "type": "string",
+      "description": "User ID of the admin who signed"
+    },
+    "admin_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "customer_signature": {
+      "type": "string",
+      "description": "Data URL (PNG) of customer's signature"
+    },
+    "customer_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_customer",
+        "fully_signed",
+        "void"
+      ],
+      "default": "pending_customer",
+      "description": "pending_customer = admin signed, awaiting customer; fully_signed = both signed; void = cancelled"
+    },
+    "public_access_token": {
+      "type": "string",
+      "description": "Secure token for viewer app to fetch and sign the document"
+    }
+  },
+  "required": [
+    "document_type",
+    "title",
+    "customer_id"
+  ]
+}

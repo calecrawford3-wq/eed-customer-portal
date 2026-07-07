@@ -54,7 +54,31 @@ Deno.serve(async (req) => {
       deposit_paid: est.deposit_paid,
       notes: est.notes,
       stripe_checkout_url: est.stripe_checkout_url,
+      contains_illegal_parts: est.contains_illegal_parts || false,
     };
+
+    // Fetch any pending/signed illegal parts legal document for this estimate
+    let legalDocument = null;
+    if (est.contains_illegal_parts) {
+      try {
+        const docs = await base44.asServiceRole.entities.LegalDocument.filter({
+          estimate_id: est.id, document_type: 'illegal_parts'
+        });
+        const activeDoc = (docs || []).find(d => d.status !== 'void') || null;
+        if (activeDoc) {
+          legalDocument = {
+            id: activeDoc.id,
+            title: activeDoc.title,
+            body: activeDoc.body,
+            status: activeDoc.status,
+            public_access_token: activeDoc.public_access_token,
+            admin_signature: activeDoc.admin_signature,
+          };
+        }
+      } catch (e) {
+        console.warn('Could not fetch legal document:', e.message);
+      }
+    }
 
     const safeCustomer = customer?.[0] ? {
       id: customer[0].id,
@@ -88,6 +112,7 @@ Deno.serve(async (req) => {
       settings: safeSettings,
       customerEngine: customerEngine ? { eed_id: customerEngine.eed_id, engine_serial_number: customerEngine.engine_serial_number } : null,
       platform: platform ? { name: platform.name, manufacturer: platform.manufacturer, year_range_start: platform.year_range_start, year_range_end: platform.year_range_end } : null,
+      legal_document: legalDocument,
     });
   } catch (error) {
     console.error('Error fetching estimate:', error);
