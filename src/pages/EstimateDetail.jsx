@@ -1259,14 +1259,9 @@ export default function EstimateDetail() {
                   <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
                     <AlertTriangleIcon className="w-3 h-3" /> {id ? "Signed after approval" : "Save estimate first"}
                   </span>
-                  <div className="flex gap-1.5">
-                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
-                      View
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)} disabled={!id}>
-                      Re-sign / Edit
-                    </Button>
-                  </div>
+                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
+                    View
+                  </Button>
                 </div>
               )}
             </div>
