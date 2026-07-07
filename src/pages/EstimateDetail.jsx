@@ -1109,12 +1109,14 @@ export default function EstimateDetail() {
         open={illegalPartsViewOpen}
         onClose={() => setIllegalPartsViewOpen(false)}
         estimateId={id}
+        documentType="illegal_parts"
       />
       <IllegalPartsViewModal
         open={contractEngineViewOpen}
         onClose={() => setContractEngineViewOpen(false)}
         estimateId={id}
         customerEngineId={form.customer_engine_id}
+        documentType="contract_engine"
       />
       <ContractEngineModal
         open={contractEngineOpen}

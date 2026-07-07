@@ -760,6 +760,7 @@ export default function InvoiceDetail() {
         invoiceId={id}
         estimateId={form.estimate_id}
         customerEngineId={form.customer_engine_id}
+        documentType="illegal_parts"
       />
 
       <div className="grid grid-cols-2 gap-6 mb-6">

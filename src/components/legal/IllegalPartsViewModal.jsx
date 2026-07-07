@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, Clock, Printer, FileText, Tag, Image } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId }) {
+export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId, documentType }) {
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,12 +19,13 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId, invoi
     Promise.all(queries)
       .then(results => {
         const all = results.flat();
-        const active = all.find(d => d.status !== "void") || null;
+        const filtered = documentType ? all.filter(d => d.document_type === documentType) : all;
+        const active = filtered.find(d => d.status !== "void") || null;
         setDoc(active);
       })
       .catch(() => setDoc(null))
       .finally(() => setLoading(false));
-  }, [open, estimateId, invoiceId, customerEngineId]);
+  }, [open, estimateId, invoiceId, customerEngineId, documentType]);
 
   const adminSigned = !!doc?.admin_signature;
   const customerSigned = !!doc?.customer_signature;
