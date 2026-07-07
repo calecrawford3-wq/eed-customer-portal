@@ -5,21 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, Clock, Printer } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function IllegalPartsViewModal({ open, onClose, estimateId }) {
+export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId }) {
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!open || !estimateId) return;
+    if (!open || (!estimateId && !invoiceId && !customerEngineId)) return;
     setLoading(true);
-    base44.entities.LegalDocument.filter({ estimate_id: estimateId, document_type: "illegal_parts" })
-      .then(docs => {
-        const active = (docs || []).find(d => d.status !== "void") || null;
+    const queries = [];
+    if (estimateId) queries.push(base44.entities.LegalDocument.filter({ estimate_id: estimateId, document_type: "illegal_parts" }));
+    if (invoiceId) queries.push(base44.entities.LegalDocument.filter({ invoice_id: invoiceId, document_type: "illegal_parts" }));
+    if (customerEngineId) queries.push(base44.entities.LegalDocument.filter({ customer_engine_id: customerEngineId, document_type: "illegal_parts" }));
+    Promise.all(queries)
+      .then(results => {
+        const all = results.flat();
+        const active = all.find(d => d.status !== "void") || null;
         setDoc(active);
       })
       .catch(() => setDoc(null))
       .finally(() => setLoading(false));
-  }, [open, estimateId]);
+  }, [open, estimateId, invoiceId, customerEngineId]);
 
   const adminSigned = !!doc?.admin_signature;
   const customerSigned = !!doc?.customer_signature;
@@ -40,7 +45,7 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId }) {
           </div>
         ) : !doc ? (
           <div className="text-center py-8 text-slate-400 text-sm">
-            No legal document found for this estimate.
+            No legal document found.
           </div>
         ) : (
           <div className="space-y-4">

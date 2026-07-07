@@ -21,6 +21,7 @@ import PaymentModal from "@/components/PaymentModal";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import EngineSelector from "@/components/EngineSelector";
+import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -67,6 +68,7 @@ export default function InvoiceDetail() {
   const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pdfFileRef = useRef(null);
+  const [legalDocOpen, setLegalDocOpen] = useState(false);
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -685,6 +687,11 @@ export default function InvoiceDetail() {
           <h1 className="text-2xl font-bold text-slate-900">{form.invoice_number}</h1>
         </div>
         <Badge className={`${STATUS_STYLES[form.status]} border-0 capitalize`}>{form.status}</Badge>
+        {form.contains_illegal_parts && (
+          <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setLegalDocOpen(true)}>
+            <FileText className="w-4 h-4 mr-1" /> Agreement
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
           <Package className="w-4 h-4 mr-1" /> Generate POs
         </Button>
@@ -736,6 +743,14 @@ export default function InvoiceDetail() {
         totalPaid={form.amount_paid || 0}
         onRecord={handleRecordPayment}
         title="Record Payment"
+      />
+
+      <IllegalPartsViewModal
+        open={legalDocOpen}
+        onClose={() => setLegalDocOpen(false)}
+        invoiceId={id}
+        estimateId={form.estimate_id}
+        customerEngineId={form.customer_engine_id}
       />
 
       <div className="grid grid-cols-2 gap-6 mb-6">

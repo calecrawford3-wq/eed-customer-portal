@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 
 function getPlatformLabel(platform) {
   if (!platform) return "Unknown";
@@ -58,6 +59,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferEngine, setTransferEngine] = useState(null);
   const [transferCustomerId, setTransferCustomerId] = useState("");
+  const [legalDocEngine, setLegalDocEngine] = useState(null);
 
   const { data: allCustomers = [] } = useQuery({
     queryKey: ["customers"],
@@ -78,6 +80,12 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const { data: allInvoices = [] } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date", 500),
+  });
+
+  const { data: legalDocs = [] } = useQuery({
+    queryKey: ["legal-docs", customerId],
+    queryFn: () => base44.entities.LegalDocument.filter({ customer_id: customerId }),
+    enabled: !!customerId,
   });
 
   const { data: allEngines = [] } = useQuery({
@@ -319,6 +327,31 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                           </div>
                         </div>
                       )}
+
+                      {/* Legal documents */}
+                      {(() => {
+                        const engineLegalDocs = legalDocs.filter(d => d.customer_engine_id === engine.id && d.status !== "void");
+                        if (engineLegalDocs.length === 0) return null;
+                        return (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Legal Documents ({engineLegalDocs.length})</p>
+                            <div className="space-y-1">
+                              {engineLegalDocs.map(d => (
+                                <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="w-3.5 h-3.5 text-amber-600" />
+                                    <span className="text-sm font-medium text-amber-800">Illegal Parts Acknowledgment</span>
+                                    {d.status === "fully_signed" && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Signed</Badge>}
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600" onClick={() => setLegalDocEngine(engine.id)}>
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </CardContent>
@@ -434,6 +467,12 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <IllegalPartsViewModal
+        open={!!legalDocEngine}
+        onClose={() => setLegalDocEngine(null)}
+        customerEngineId={legalDocEngine}
+      />
 
       {/* Add Engine Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
