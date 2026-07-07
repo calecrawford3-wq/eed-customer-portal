@@ -1255,6 +1255,7 @@ export default function EstimateDetail() {
               <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
             </div>
             <Switch
+              className="h-7 w-12 data-[state=unchecked]:bg-slate-300 data-[state=checked]:bg-amber-600 [&_span]:h-6 [&_span]:w-6 data-[state=checked]:[&_span]:translate-x-5"
               checked={!!form.contains_illegal_parts}
               onCheckedChange={v => {
                 if (v && !form.customer_id) { toast.error("Select a customer first"); return; }
