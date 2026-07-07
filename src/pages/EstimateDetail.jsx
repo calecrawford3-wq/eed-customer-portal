@@ -1218,6 +1218,30 @@ export default function EstimateDetail() {
                 </div>
               )}
             </div>
+            <div className="border border-amber-200 rounded-lg px-3 py-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" /> Contains Illegal Parts
+                  </p>
+                  <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
+                </div>
+                <Switch
+                  checked={!!form.contains_illegal_parts}
+                  onCheckedChange={v => setForm({...form, contains_illegal_parts: v})}
+                />
+              </div>
+              {form.contains_illegal_parts && (
+                <div className="flex items-center justify-between border-t border-amber-100 pt-2">
+                  <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
+                    <AlertTriangleIcon className="w-3 h-3" /> Signed after approval
+                  </span>
+                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)}>
+                    Re-sign / Edit
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -1245,33 +1269,7 @@ export default function EstimateDetail() {
         )}
       </div>
 
-      {/* Illegal Parts Acknowledgment */}
-      <Card className="border-amber-200 shadow-sm mb-6">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-amber-600" /> Contains Illegal Parts
-              </p>
-              <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
-            </div>
-            <Switch
-              checked={!!form.contains_illegal_parts}
-              onCheckedChange={v => setForm({...form, contains_illegal_parts: v})}
-            />
-          </div>
-          {form.contains_illegal_parts && (
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-2">
-              <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
-                <AlertTriangleIcon className="w-3 h-3" /> Illegal Parts document will be signed after estimate approval
-              </span>
-              <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)}>
-                Re-sign / Edit
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
 
       {/* Deposit Section */}
       <Card className="border-0 shadow-sm mb-6">
