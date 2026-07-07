@@ -1254,15 +1254,18 @@ export default function EstimateDetail() {
               </p>
               <p className="text-xs text-slate-400">Customer must sign an acknowledgment after approving</p>
             </div>
-            <Switch
-              className="h-7 w-12 data-[state=unchecked]:bg-slate-300 data-[state=checked]:bg-amber-600 [&_span]:h-6 [&_span]:w-6 data-[state=checked]:[&_span]:translate-x-5"
-              checked={!!form.contains_illegal_parts}
-              onCheckedChange={v => {
+            <button
+              type="button"
+              onClick={() => {
+                const v = !form.contains_illegal_parts;
                 if (v && !form.customer_id) { toast.error("Select a customer first"); return; }
                 setForm({...form, contains_illegal_parts: v});
                 if (v) setIllegalPartsOpen(true);
               }}
-            />
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${form.contains_illegal_parts ? 'bg-amber-600' : 'bg-slate-300'}`}
+            >
+              <span className={`pointer-events-none block h-6 w-6 rounded-full bg-white shadow-lg transition-transform ${form.contains_illegal_parts ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
           </div>
           {form.contains_illegal_parts && (
             <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-2">
