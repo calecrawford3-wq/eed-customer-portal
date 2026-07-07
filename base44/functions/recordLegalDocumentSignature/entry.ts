@@ -26,27 +26,30 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
 
-    const { customer_signature, customer_signed_at, estimate_number, estimate_id, public_access_token } = body;
+    const { customer_signature, customer_signed_at, estimate_number, estimate_id, public_access_token, document_id, document_type } = body;
 
     if (!customer_signature) {
       return Response.json({ error: "customer_signature is required" }, { status: 400 });
     }
 
-    // Find the LegalDocument — try public_access_token first, then estimate_id, then estimate_number
+    // Find the LegalDocument — try document_id first (most precise), then public_access_token, then estimate_id, then estimate_number
     let docs = [];
 
-    if (public_access_token) {
+    if (document_id) {
+      docs = await base44.asServiceRole.entities.LegalDocument.filter({ id: document_id });
+    }
+
+    if ((!docs || docs.length === 0) && public_access_token) {
+      // public_access_token is unique per document — no type filter needed
       docs = await base44.asServiceRole.entities.LegalDocument.filter({
         public_access_token,
-        document_type: "illegal_parts",
       });
     }
 
     if ((!docs || docs.length === 0) && estimate_id) {
-      docs = await base44.asServiceRole.entities.LegalDocument.filter({
-        estimate_id,
-        document_type: "illegal_parts",
-      });
+      const filterObj = { estimate_id };
+      if (document_type) filterObj.document_type = document_type;
+      docs = await base44.asServiceRole.entities.LegalDocument.filter(filterObj);
     }
 
     if ((!docs || docs.length === 0) && estimate_number) {
@@ -55,10 +58,9 @@ Deno.serve(async (req) => {
         estimate_number,
       });
       if (estimates && estimates.length > 0) {
-        docs = await base44.asServiceRole.entities.LegalDocument.filter({
-          estimate_id: estimates[0].id,
-          document_type: "illegal_parts",
-        });
+        const filterObj = { estimate_id: estimates[0].id };
+        if (document_type) filterObj.document_type = document_type;
+        docs = await base44.asServiceRole.entities.LegalDocument.filter(filterObj);
       }
     }
 
@@ -86,10 +88,12 @@ Deno.serve(async (req) => {
     console.log(`[recordLegalDocumentSignature] Updated document ${doc.id} — status: fully_signed`);
 
     // Notify admin
+    const isContract = doc.document_type === "contract_engine";
+    const docLabel = isContract ? "Contract Engine Agreement" : "Illegal Parts Acknowledgment";
     try {
       await base44.asServiceRole.functions.invoke("sendAdminNotification", {
-        title: "Illegal Parts Acknowledgment Signed",
-        message: `Customer signed the Illegal Parts Acknowledgment${estimate_number ? ` for ${estimate_number}` : ""}.`,
+        title: `${docLabel} Signed`,
+        message: `Customer signed the ${docLabel}${estimate_number ? ` for ${estimate_number}` : ""}.`,
         type: "other",
         link_url: doc.estimate_id ? `/EstimateDetail?id=${doc.estimate_id}` : `/InvoiceDetail?id=${doc.invoice_id}`,
       });
