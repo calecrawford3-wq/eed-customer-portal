@@ -73,6 +73,11 @@ Deno.serve(async (req) => {
     const activeDocs = docs.filter((d) => d.status !== "void");
     const doc = activeDocs[0] || docs[0];
 
+    if (doc.status === "void") {
+      console.error(`[recordLegalDocumentSignature] Document ${doc.id} is void — rejecting signature`);
+      return Response.json({ error: "This document is void and cannot be signed. Please use the latest document link." }, { status: 400 });
+    }
+
     if (doc.status === "fully_signed") {
       return Response.json({ success: true, message: "Document already signed", legal_document_id: doc.id });
     }
