@@ -85,6 +85,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch linked legal document (if illegal parts flagged)
+    let legalDocPublicToken = null;
+    let legalDocId = null;
+    if (inv.contains_illegal_parts) {
+      try {
+        const docs = await base44.entities.LegalDocument.filter({
+          invoice_id: invoiceId, document_type: "illegal_parts"
+        });
+        const activeDoc = (docs || []).find(d => d.status !== "void") || null;
+        if (activeDoc) {
+          legalDocPublicToken = activeDoc.public_access_token || null;
+          legalDocId = activeDoc.id;
+          console.log(`[syncInvoiceSnapshot] Found legal document: ${activeDoc.title}, token: ${legalDocPublicToken}`);
+        } else {
+          // Fallback: check estimate-linked legal document
+          if (inv.estimate_id) {
+            const estDocs = await base44.entities.LegalDocument.filter({
+              estimate_id: inv.estimate_id, document_type: "illegal_parts"
+            });
+            const estActiveDoc = (estDocs || []).find(d => d.status !== "void") || null;
+            if (estActiveDoc) {
+              legalDocPublicToken = estActiveDoc.public_access_token || null;
+              legalDocId = estActiveDoc.id;
+              console.log(`[syncInvoiceSnapshot] Found legal document via estimate: ${estActiveDoc.title}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[syncInvoiceSnapshot] Could not fetch legal document: ${e.message}`);
+      }
+    }
+
     // Build snapshot payload — all fields needed for viewing + payments
     const snapshot = {
       public_access_token: publicAccessToken,
@@ -114,6 +146,8 @@ Deno.serve(async (req) => {
       balance_due: inv.balance_due,
       stripe_checkout_url: inv.stripe_checkout_url,
       notes: inv.notes || "",
+      contains_illegal_parts: inv.contains_illegal_parts || false,
+      legal_document_public_access_token: legalDocPublicToken,
       // Company info
       company_name: appSettings.company_name,
       company_logo_url: appSettings.company_logo_url,
@@ -178,6 +212,16 @@ Deno.serve(async (req) => {
             response_body: responseBody,
           }
         }, { status: 500 });
+      }
+
+      // Sync the legal document to the public app if one exists
+      if (legalDocId) {
+        try {
+          await base44.functions.invoke("syncLegalDocument", { legalDocumentId: legalDocId });
+          console.log("[syncInvoiceSnapshot] Legal document synced to public app");
+        } catch (e) {
+          console.warn(`[syncInvoiceSnapshot] Failed to sync legal document: ${e.message}`);
+        }
       }
 
       const invoiceViewerLink = `https://elite-viewer.base44.app/invoice/${publicAccessToken}`;

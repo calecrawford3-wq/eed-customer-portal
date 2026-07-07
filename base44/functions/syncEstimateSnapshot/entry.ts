@@ -133,6 +133,25 @@ Deno.serve(async (req) => {
 
     console.log(`[syncEstimateSnapshot] Engine data - Serial: ${engineSerial}, EED: ${eedEngineId}, Stage: ${buildStage}, Spec: ${specSheetName}`);
 
+    // Fetch linked legal document (if illegal parts flagged)
+    let legalDocPublicToken = null;
+    if (estimate.contains_illegal_parts) {
+      try {
+        const docs = await base44.entities.LegalDocument.filter({
+          estimate_id: estimateId, document_type: "illegal_parts"
+        });
+        const activeDoc = (docs || []).find(d => d.status !== "void") || null;
+        if (activeDoc) {
+          legalDocPublicToken = activeDoc.public_access_token || null;
+          console.log(`[syncEstimateSnapshot] Found legal document: ${activeDoc.title}, token: ${legalDocPublicToken}`);
+        } else {
+          console.warn("[syncEstimateSnapshot] contains_illegal_parts=true but no active legal document found");
+        }
+      } catch (e) {
+        console.warn(`[syncEstimateSnapshot] Could not fetch legal document: ${e.message}`);
+      }
+    }
+
     // Build snapshot payload
     const snapshot = {
       public_access_token: publicAccessToken,
@@ -156,6 +175,7 @@ Deno.serve(async (req) => {
       notes: estimate.notes || "",
       stripe_checkout_url: estimate.stripe_checkout_url,
       contains_illegal_parts: estimate.contains_illegal_parts || false,
+      legal_document_public_access_token: legalDocPublicToken,
       company_name: appSettings.company_name,
       company_logo_url: appSettings.company_logo_url,
       company_phone: appSettings.company_phone,
@@ -221,6 +241,22 @@ Deno.serve(async (req) => {
             response_body: responseBody,
           }
         }, { status: 500 });
+      }
+
+      // Sync the legal document to the public app if one exists
+      if (legalDocPublicToken) {
+        try {
+          const docs2 = await base44.entities.LegalDocument.filter({
+            estimate_id: estimateId, document_type: "illegal_parts"
+          });
+          const activeDoc2 = (docs2 || []).find(d => d.status !== "void" && d.public_access_token === legalDocPublicToken);
+          if (activeDoc2) {
+            await base44.functions.invoke("syncLegalDocument", { legalDocumentId: activeDoc2.id });
+            console.log("[syncEstimateSnapshot] Legal document synced to public app");
+          }
+        } catch (e) {
+          console.warn(`[syncEstimateSnapshot] Failed to sync legal document: ${e.message}`);
+        }
       }
 
       // Build viewer app link
