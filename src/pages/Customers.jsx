@@ -73,38 +73,69 @@ export default function Customers() {
   const openNew = () => { setEditing(null); setForm(emptyCustomer); setDialogOpen(true); };
   const openEdit = (c) => { setEditing(c); setForm({ ...c }); setDialogOpen(true); };
 
+  const [importing, setImporting] = useState(false);
   const handleCSVImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    setImporting(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const lines = ev.target.result.split("\n").filter(Boolean);
-      const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-      let imported = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const vals = lines[i].split(",").map(v => v.trim().replace(/"/g, ""));
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
-        const customer = {
-          first_name: row.first_name || row["first name"] || row.firstname || "",
-          last_name: row.last_name || row["last name"] || row.lastname || "",
-          company_name: row.company_name || row.company || "",
-          email: row.email || "",
-          phone: row.phone || "",
-          address_line1: row.address_line1 || row.address || "",
-          city: row.city || "",
-          state: row.state || "",
-          zip: row.zip || row.postal_code || "",
-          status: "active",
-        };
-        if (customer.first_name || customer.email) {
-          await base44.entities.Customer.create(customer);
-          imported++;
+      try {
+        // Strip BOM, normalize line endings
+        const text = String(ev.target.result).replace(/^\ufeff/, "");
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+          toast.error("CSV needs a header row plus at least one customer");
+          return;
         }
+        const parseLine = (line) => {
+          // simple CSV parse honoring quoted fields with commas
+          const out = [];
+          let cur = "", inQ = false;
+          for (let j = 0; j < line.length; j++) {
+            const ch = line[j];
+            if (ch === '"') { inQ = !inQ; continue; }
+            if (ch === "," && !inQ) { out.push(cur); cur = ""; continue; }
+            cur += ch;
+          }
+          out.push(cur);
+          return out.map(v => v.trim());
+        };
+        const headers = parseLine(lines[0]).map(h => h.toLowerCase());
+        const toCreate = [];
+        for (let i = 1; i < lines.length; i++) {
+          const vals = parseLine(lines[i]);
+          const row = {};
+          headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
+          const customer = {
+            first_name: row.first_name || row["first name"] || row.firstname || "",
+            last_name: row.last_name || row["last name"] || row.lastname || "",
+            company_name: row.company_name || row.company || "",
+            email: row.email || "",
+            phone: row.phone || "",
+            address_line1: row.address_line1 || row.address || "",
+            city: row.city || "",
+            state: row.state || "",
+            zip: row.zip || row.postal_code || "",
+            status: "active",
+          };
+          if (customer.first_name || customer.email) toCreate.push(customer);
+        }
+        if (toCreate.length === 0) {
+          toast.error("No valid rows found in CSV");
+          return;
+        }
+        const created = await base44.entities.Customer.bulkCreate(toCreate);
+        qc.invalidateQueries({ queryKey: ["customers"] });
+        toast.success(`Imported ${created.length} customers`);
+      } catch (err) {
+        console.error("CSV import failed:", err);
+        toast.error(`Import failed: ${err.message || err}`);
+      } finally {
+        setImporting(false);
       }
-      qc.invalidateQueries({ queryKey: ["customers"] });
-      toast.success(`Imported ${imported} customers`);
     };
+    reader.onerror = () => { toast.error("Could not read file"); setImporting(false); };
     reader.readAsText(file);
     e.target.value = "";
   };
@@ -122,8 +153,8 @@ export default function Customers() {
         </div>
         <div className="flex gap-2">
           <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
-          <Button variant="outline" onClick={() => csvInputRef.current.click()}>
-            <Upload className="w-4 h-4 mr-2" /> Import CSV
+          <Button variant="outline" onClick={() => csvInputRef.current.click()} disabled={importing}>
+            <Upload className="w-4 h-4 mr-2" /> {importing ? "Importing..." : "Import CSV"}
           </Button>
           <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> Add Customer
