@@ -1217,7 +1217,7 @@ export default function EstimateDetail() {
                 </div>
               )}
             </div>
-            <div className="border border-slate-200 rounded-lg px-3 py-2">
+            <div className="relative border border-slate-200 rounded-lg px-3 py-2">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
