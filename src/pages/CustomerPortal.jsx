@@ -558,7 +558,7 @@ export default function CustomerPortal() {
                         {/* Legal Documents */}
                         {engineLegalDocs.length > 0 && (
                           <div className="border-t border-slate-100 pt-4 mb-4 space-y-2">
-                            {engineLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}
+                            {engineLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}
                           </div>
                         )}
 
@@ -580,7 +580,7 @@ export default function CustomerPortal() {
                                         {inv.status}
                                       </Badge>
                                     </div>
-                                    {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}</div>}
+                                    {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}</div>}
                                   </div>
                                 );
                               })}
@@ -754,7 +754,7 @@ export default function CustomerPortal() {
                           </Badge>
                         </div>
                       </div>
-                      {invLegalDocs.length > 0 && <div className="mt-3 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} />)}</div>}
+                      {invLegalDocs.length > 0 && <div className="mt-3 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}</div>}
                     </div>
                   );
                 })}
