@@ -687,11 +687,6 @@ export default function InvoiceDetail() {
           <h1 className="text-2xl font-bold text-slate-900">{form.invoice_number}</h1>
         </div>
         <Badge className={`${STATUS_STYLES[form.status]} border-0 capitalize`}>{form.status}</Badge>
-        {form.contains_illegal_parts && (
-          <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setLegalDocOpen(true)}>
-            <FileText className="w-4 h-4 mr-1" /> Agreement
-          </Button>
-        )}
         <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
           <Package className="w-4 h-4 mr-1" /> Generate POs
         </Button>
@@ -711,6 +706,20 @@ export default function InvoiceDetail() {
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
+
+      {/* Illegal Parts Agreement bar */}
+      {form.contains_illegal_parts && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+          <FileText className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-800">Illegal Parts Acknowledgment</p>
+            <p className="text-xs text-amber-600">This invoice involves non-compliant parts. A signed agreement is on file.</p>
+          </div>
+          <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={() => setLegalDocOpen(true)}>
+            <FileText className="w-4 h-4 mr-1" /> View Agreement
+          </Button>
+        </div>
+      )}
 
       {/* Legacy PDF attachment bar */}
       {form.is_legacy && (
