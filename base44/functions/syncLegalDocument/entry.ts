@@ -27,9 +27,40 @@ Deno.serve(async (req) => {
     const doc = docs[0];
     console.log(`[syncLegalDocument] Syncing document: ${doc.title} (token: ${doc.public_access_token})`);
 
+    // Look up the parent estimate/invoice public_access_token so the viewer can link this doc
+    let estimate_public_access_token = null;
+    let invoice_public_access_token = null;
+    if (doc.estimate_id) {
+      try {
+        const est = await base44.asServiceRole.entities.Estimate.get(doc.estimate_id);
+        estimate_public_access_token = est?.public_access_token || null;
+      } catch (e) {
+        console.log(`[syncLegalDocument] Could not fetch estimate ${doc.estimate_id}: ${e.message}`);
+      }
+    }
+    if (doc.invoice_id) {
+      try {
+        const inv = await base44.asServiceRole.entities.Invoice.get(doc.invoice_id);
+        invoice_public_access_token = inv?.public_access_token || null;
+      } catch (e) {
+        console.log(`[syncLegalDocument] Could not fetch invoice ${doc.invoice_id}: ${e.message}`);
+      }
+    }
+
+    // Convert seal_tag_numbers from comma-separated string to array
+    let sealTagArray = [];
+    if (doc.seal_tag_numbers) {
+      sealTagArray = doc.seal_tag_numbers
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    }
+
     const payload = {
       public_access_token: doc.public_access_token,
-      document_type: doc.document_type,
+      estimate_public_access_token,
+      invoice_public_access_token,
+      document_type: doc.document_type || "illegal_parts",
       title: doc.title,
       body: doc.body,
       customer_id: doc.customer_id || null,
@@ -37,7 +68,7 @@ Deno.serve(async (req) => {
       invoice_id: doc.invoice_id || null,
       build_id: doc.build_id || null,
       customer_engine_id: doc.customer_engine_id || null,
-      seal_tag_numbers: doc.seal_tag_numbers || null,
+      seal_tag_numbers: sealTagArray,
       seal_tag_photos: doc.seal_tag_photos || [],
       admin_signature: doc.admin_signature || null,
       admin_signed_at: doc.admin_signed_at || null,
