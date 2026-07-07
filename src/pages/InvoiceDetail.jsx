@@ -96,6 +96,42 @@ export default function InvoiceDetail() {
     toast.success("PDF removed");
   };
 
+  const [converting, setConverting] = useState(false);
+  const convertToEstimate = async () => {
+    if (!form.customer_id) { toast.error("Select a customer first"); return; }
+    setConverting(true);
+    try {
+      const estimate = await base44.entities.Estimate.create({
+        estimate_number: `EST-${form.invoice_number}`,
+        customer_id: form.customer_id,
+        customer_engine_id: form.customer_engine_id || "",
+        invoice_id: id || "",
+        is_engine_build: false,
+        status: "draft",
+        issue_date: form.issue_date || new Date().toISOString().split("T")[0],
+        line_items: form.line_items || [],
+        labor_items: form.labor_items || [],
+        machining_items: form.machining_items || [],
+        payments: [],
+        subtotal: Number(form.subtotal) || 0,
+        tax_rate: Number(form.tax_rate) || 0,
+        tax_amount: Number(form.tax_amount) || 0,
+        total: Number(form.total) || 0,
+        amount_paid: 0,
+        amount_due: Number(form.total) || 0,
+        applied_credits: 0,
+        notes: form.notes || "",
+        internal_notes: `Converted from invoice ${form.invoice_number}`,
+      });
+      toast.success("Estimate created from invoice");
+      navigate(`/EstimateDetail?id=${estimate.id}`);
+    } catch (err) {
+      toast.error("Conversion failed: " + err.message);
+    } finally {
+      setConverting(false);
+    }
+  };
+
   const { data: invoice } = useQuery({
     queryKey: ["invoice", id],
     queryFn: () => base44.entities.Invoice.filter({ id }),
@@ -637,6 +673,9 @@ export default function InvoiceDetail() {
         <Badge className={`${STATUS_STYLES[form.status]} border-0 capitalize`}>{form.status}</Badge>
         <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
           <Package className="w-4 h-4 mr-1" /> Generate POs
+        </Button>
+        <Button variant="outline" size="sm" onClick={convertToEstimate} disabled={converting || !form.customer_id} title="Create a new estimate from this invoice">
+          <ArrowLeft className="w-4 h-4 mr-1" /> {converting ? "Converting..." : "To Estimate"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}><Printer className="w-4 h-4 mr-1" /> View</Button>
         <Button variant="outline" size="sm" onClick={sendInvoice} disabled={sending || !form.customer_id}>
