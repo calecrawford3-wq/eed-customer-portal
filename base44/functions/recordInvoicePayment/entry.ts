@@ -85,6 +85,18 @@ Deno.serve(async (req) => {
 
     console.log(`[recordInvoicePayment] Invoice updated — paid: ${totalPaid}, balance: ${balance}, status: ${status}`);
 
+    // Notify admin of payment received (skip on duplicate webhook retries)
+    try {
+      await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+        title: "Payment Received",
+        message: `A payment of $${Number(amount).toFixed(2)} was received for invoice ${invoice.invoice_number}.`,
+        type: "payment_received",
+        link_url: `/InvoiceDetail?id=${invoice.id}`,
+      });
+    } catch (e) {
+      console.error("Payment notification failed:", e.message);
+    }
+
     return Response.json({
       success: true,
       invoice_id: invoice.id,

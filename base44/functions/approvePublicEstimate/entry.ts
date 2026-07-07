@@ -28,6 +28,18 @@ Deno.serve(async (req) => {
             status: "approved"
         });
 
+        // Notify admin
+        try {
+            await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+                title: "Estimate Accepted",
+                message: `Estimate ${estimate.estimate_number || estimate.id} was accepted by the customer via portal.`,
+                type: "estimate_accepted",
+                link_url: `/EstimateDetail?id=${estimate.id}`,
+            });
+        } catch (e) {
+            console.error("Notification failed:", e.message);
+        }
+
         // Return only safe public fields
         const safeEstimate = {
             id: updatedEstimate.id,

@@ -21,7 +21,8 @@ import {
   TrendingDown,
   BarChart2,
   RefreshCw,
-  Award
+  Award,
+  Bell
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -35,6 +36,12 @@ export default function Layout({ children, currentPageName }) {
     queryFn: () => base44.entities.RefreshRequest.list("-created_date", 50),
   });
   const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => base44.entities.Notification.list("-created_date", 50),
+  });
+  const unreadNotifications = notifications.filter(n => !n.is_read).length;
 
   const navigation = [
     { name: "Dashboard", page: "Dashboard", icon: Gauge },
@@ -58,6 +65,7 @@ export default function Layout({ children, currentPageName }) {
     { type: "divider" },
     { name: "Credits", page: "Credits", icon: Award },
     { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
+    { name: "Notifications", page: "Notifications", icon: Bell, badge: true },
     { name: "Settings", page: "Settings", icon: Settings2 },
   ];
 
@@ -101,14 +109,24 @@ export default function Layout({ children, currentPageName }) {
               >
                 <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
                 {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
-                {!collapsed && item.badge && pendingRefreshCount > 0 && (
+                {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
                   <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                     {pendingRefreshCount}
                   </span>
                 )}
-                {collapsed && item.badge && pendingRefreshCount > 0 && (
+                {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                  <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {unreadNotifications}
+                  </span>
+                )}
+                {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
                   <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                     {pendingRefreshCount}
+                  </span>
+                )}
+                {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                  <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                    {unreadNotifications}
                   </span>
                 )}
               </Link>

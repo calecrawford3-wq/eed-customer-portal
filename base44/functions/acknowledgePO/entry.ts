@@ -43,6 +43,16 @@ Deno.serve(async (req) => {
         });
       }
       await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "ready" });
+      try {
+        await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+          title: "Purchase Order Ready",
+          message: `Supplier marked PO ${po.po_number} as ready for pickup / shipment.`,
+          type: "po_ready",
+          link_url: `/PurchaseOrderDetail?id=${poId}`,
+        });
+      } catch (e) {
+        console.error("PO ready notification failed:", e.message);
+      }
       return new Response(htmlPage("Order Ready!", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been marked as <strong>ready for pickup / shipment</strong>. We have been notified.`, true), {
         headers: { "Content-Type": "text/html" },
       });
@@ -56,6 +66,17 @@ Deno.serve(async (req) => {
     }
 
     await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "acknowledged" });
+
+    try {
+      await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+        title: "Purchase Order Acknowledged",
+        message: `Supplier acknowledged PO ${po.po_number}.`,
+        type: "po_accepted",
+        link_url: `/PurchaseOrderDetail?id=${poId}`,
+      });
+    } catch (e) {
+      console.error("PO ack notification failed:", e.message);
+    }
 
     return new Response(htmlPage("Order Acknowledged", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been successfully acknowledged. We will follow up on delivery details.`, true), {
       headers: { "Content-Type": "text/html" },

@@ -161,6 +161,18 @@ Deno.serve(async (req) => {
     });
     console.log(`[recordEstimatePayment] Estimate updated — status: approved, invoice_id: ${invoiceId}, deposit_paid: ${depositPaid}`);
 
+    // Notify admin of payment received
+    try {
+      await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+        title: "Payment Received",
+        message: `A payment of $${Number(amount).toFixed(2)} was received for estimate ${estimate.estimate_number || estimate.id}.`,
+        type: "payment_received",
+        link_url: `/InvoiceDetail?id=${invoiceId}`,
+      });
+    } catch (e) {
+      console.error("Payment notification failed:", e.message);
+    }
+
     return Response.json({
       success: true,
       estimate_id: estimate.id,

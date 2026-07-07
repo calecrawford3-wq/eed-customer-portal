@@ -1,0 +1,39 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Short notification title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Details of what happened"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "estimate_accepted",
+        "payment_received",
+        "po_accepted",
+        "po_ready",
+        "refresh_request",
+        "other"
+      ],
+      "default": "other",
+      "description": "Category of notification"
+    },
+    "link_url": {
+      "type": "string",
+      "description": "In-app route to open for context (e.g. /InvoiceDetail?id=xxx)"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "message"
+  ]
+}
