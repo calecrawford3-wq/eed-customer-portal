@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import PrintableInvoice from "@/components/PrintableInvoice";
+import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -158,6 +159,12 @@ export default function CustomerPortal() {
   const { data: settingsData = [] } = useQuery({
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
+    enabled: !!customer,
+  });
+
+  const { data: legalDocs = [] } = useQuery({
+    queryKey: ["portal-legal-docs", customer?.id],
+    queryFn: () => base44.entities.LegalDocument.filter({ customer_id: customer.id }),
     enabled: !!customer,
   });
 
@@ -476,6 +483,7 @@ export default function CustomerPortal() {
               <div className="space-y-4">
                 {customerEngines.map(engine => {
                   const platform = platforms.find(p => p.id === engine.platform_id);
+                  const engineLegalDoc = legalDocs.find(d => d.customer_engine_id === engine.id && d.status !== "void");
                   const engineBuilds = builds
                     .filter(b => b.engine_serial_number === engine.engine_serial_number)
                     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
@@ -547,22 +555,35 @@ export default function CustomerPortal() {
                           </div>
                         )}
 
+                        {/* Illegal Parts Agreement */}
+                        {engineLegalDoc && (
+                          <div className="border-t border-slate-100 pt-4 mb-4">
+                            <PortalLegalDocument doc={engineLegalDoc} />
+                          </div>
+                        )}
+
                         {/* Linked invoices */}
                         {engineInvoices.length > 0 && (
                           <div className="border-t border-slate-100 pt-4">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Invoices for this Engine</p>
                             <div className="space-y-1">
-                              {engineInvoices.map(inv => (
-                                <div key={inv.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-                                  <div>
-                                    <span className="text-sm font-medium">{inv.invoice_number}</span>
-                                    <span className="ml-2 text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</span>
+                              {engineInvoices.map(inv => {
+                                const invLegalDoc = legalDocs.find(d => d.invoice_id === inv.id && d.status !== "void");
+                                return (
+                                  <div key={inv.id}>
+                                    <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                                      <div>
+                                        <span className="text-sm font-medium">{inv.invoice_number}</span>
+                                        <span className="ml-2 text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</span>
+                                      </div>
+                                      <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
+                                        {inv.status}
+                                      </Badge>
+                                    </div>
+                                    {invLegalDoc && <div className="mt-1"><PortalLegalDocument doc={invLegalDoc} /></div>}
                                   </div>
-                                  <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
-                                    {inv.status}
-                                  </Badge>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -693,44 +714,50 @@ export default function CustomerPortal() {
               </div>
             ) : (
               <div className="space-y-3">
-                {invoices.map(inv => (
-                  <div key={inv.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-slate-900">{inv.invoice_number}</p>
-                        {inv.is_legacy && <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">Legacy</Badge>}
-                      </div>
-                      <p className="text-sm text-slate-500">
-                        {inv.issue_date} · Total: <strong>${Number(inv.total || 0).toFixed(2)}</strong>
-                        {inv.amount_paid > 0 && <span className="text-emerald-600 ml-2">· Paid: ${Number(inv.amount_paid).toFixed(2)}</span>}
-                        {Number(inv.balance_due) > 0 && <span className="text-[#e20404] ml-2">· Due: ${Number(inv.balance_due).toFixed(2)}</span>}
-                      </p>
-                      {/* Payment history */}
-                      {(inv.payments || []).length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {inv.payments.map((p, i) => (
-                            <span key={i} className="text-xs bg-emerald-50 text-emerald-700 rounded px-2 py-0.5 mr-1">
-                              ${Number(p.amount).toFixed(2)} {p.method} {p.date}
-                            </span>
-                          ))}
+                {invoices.map(inv => {
+                  const invLegalDoc = legalDocs.find(d => d.invoice_id === inv.id && d.status !== "void");
+                  return (
+                    <div key={inv.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-slate-900">{inv.invoice_number}</p>
+                            {inv.is_legacy && <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">Legacy</Badge>}
+                          </div>
+                          <p className="text-sm text-slate-500">
+                            {inv.issue_date} · Total: <strong>${Number(inv.total || 0).toFixed(2)}</strong>
+                            {inv.amount_paid > 0 && <span className="text-emerald-600 ml-2">· Paid: ${Number(inv.amount_paid).toFixed(2)}</span>}
+                            {Number(inv.balance_due) > 0 && <span className="text-[#e20404] ml-2">· Due: ${Number(inv.balance_due).toFixed(2)}</span>}
+                          </p>
+                          {/* Payment history */}
+                          {(inv.payments || []).length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {inv.payments.map((p, i) => (
+                                <span key={i} className="text-xs bg-emerald-50 text-emerald-700 rounded px-2 py-0.5 mr-1">
+                                  ${Number(p.amount).toFixed(2)} {p.method} {p.date}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setDetailInvoice(inv); setPrintInvoice(false); }}>
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View
+                          </Button>
+                          {inv.legacy_pdf_url && (
+                            <a href={inv.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
+                            </a>
+                          )}
+                          <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
+                            {inv.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      {invLegalDoc && <div className="mt-3"><PortalLegalDocument doc={invLegalDoc} /></div>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setDetailInvoice(inv); setPrintInvoice(false); }}>
-                        <FileText className="w-3.5 h-3.5 mr-1" /> View
-                      </Button>
-                      {inv.legacy_pdf_url && (
-                        <a href={inv.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
-                        </a>
-                      )}
-                      <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
-                        {inv.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>

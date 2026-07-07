@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
       invoice_id,
       customer_id,
       build_id,
+      customer_engine_id,
     } = await req.json();
 
     if (!document_type || !title || !customer_id) {
@@ -39,6 +40,16 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Void ALL existing active docs (pending or signed) for the same engine — newer agreement replaces the old one
+    if (customer_engine_id) {
+      const engineDocs = await base44.asServiceRole.entities.LegalDocument.filter({
+        customer_engine_id, document_type
+      });
+      for (const doc of (engineDocs || []).filter(d => d.status !== 'void')) {
+        await base44.asServiceRole.entities.LegalDocument.update(doc.id, { status: 'void' });
+      }
+    }
+
     const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
     const legalDocument = await base44.asServiceRole.entities.LegalDocument.create({
@@ -49,6 +60,7 @@ Deno.serve(async (req) => {
       estimate_id: estimate_id || null,
       invoice_id: invoice_id || null,
       build_id: build_id || null,
+      customer_engine_id: customer_engine_id || null,
       admin_signature: null,
       admin_signed_by: null,
       admin_signed_at: null,

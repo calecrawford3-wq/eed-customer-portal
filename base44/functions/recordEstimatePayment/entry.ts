@@ -143,6 +143,24 @@ Deno.serve(async (req) => {
       });
       invoiceId = newInvoice.id;
       console.log(`[recordEstimatePayment] New invoice created: ${invoiceNumber} (${invoiceId})`);
+
+      // Link legal documents from the estimate to the new invoice + engine
+      if (estimate.contains_illegal_parts) {
+        try {
+          const legalDocs = await base44.asServiceRole.entities.LegalDocument.filter({
+            estimate_id: estimate.id, document_type: "illegal_parts"
+          });
+          for (const doc of (legalDocs || []).filter(d => d.status !== "void")) {
+            await base44.asServiceRole.entities.LegalDocument.update(doc.id, {
+              invoice_id: invoiceId,
+              customer_engine_id: estimate.customer_engine_id || doc.customer_engine_id || null,
+            });
+          }
+          console.log(`[recordEstimatePayment] Linked ${legalDocs?.length || 0} legal doc(s) to invoice ${invoiceId}`);
+        } catch (e) {
+          console.warn("[recordEstimatePayment] Failed to link legal docs to invoice:", e.message);
+        }
+      }
     }
 
     // Calculate deposit status

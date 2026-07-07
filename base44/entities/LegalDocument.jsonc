@@ -34,6 +34,10 @@
       "type": "string",
       "description": "Linked engine build (if applicable)"
     },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Linked customer engine \u2014 ties this agreement to a specific engine serial number. A newer agreement for the same engine replaces (voids) the previous one."
+    },
     "admin_signature": {
       "type": "string",
       "description": "Data URL (PNG) of admin's signature"

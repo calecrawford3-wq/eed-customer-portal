@@ -25,7 +25,7 @@ Customer Signature: _____________________        Date: ___________
 
 `;
 
-export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId, customerId, buildId }) {
+export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId, customerId, buildId, customerEngineId }) {
   const [saving, setSaving] = useState(false);
 
   const handleConfirm = async () => {
@@ -39,6 +39,7 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
         invoice_id: invoiceId || null,
         customer_id: customerId,
         build_id: buildId || null,
+        customer_engine_id: customerEngineId || null,
       });
       if (res?.data?.error) {
         toast.error(res.data.error);
@@ -69,9 +70,14 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-amber-800">
               You are flagging this document as containing illegal parts. A legal acknowledgment will be generated and
-              attached to this estimate. The customer will be required to sign it after approving the estimate, before
+              attached to this estimate and engine. The customer will be required to sign it after approving the estimate, before
               they can make a payment.
             </p>
+            {customerEngineId && (
+              <p className="text-xs text-amber-600 mt-2">
+                This agreement will be tied to the engine. If a newer agreement is created later, it will replace this one.
+              </p>
+            )}
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-64 overflow-y-auto">

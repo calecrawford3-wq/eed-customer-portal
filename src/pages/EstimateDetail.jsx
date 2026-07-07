@@ -723,6 +723,20 @@ export default function EstimateDetail() {
         });
         await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
         await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
+        // Link the legal document (if any) to the new invoice and engine
+        if (form.contains_illegal_parts) {
+          try {
+            const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "illegal_parts" });
+            const activeDoc = (docs || []).find(d => d.status !== "void");
+            if (activeDoc) {
+              await base44.entities.LegalDocument.update(activeDoc.id, {
+                invoice_id: invoice.id,
+                customer_engine_id: form.customer_engine_id || activeDoc.customer_engine_id || null,
+                build_id: build.id,
+              });
+            }
+          } catch (e) { console.warn("Failed to link legal doc to invoice:", e); }
+        }
         setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
         qc.invalidateQueries({ queryKey: ["builds"] });
         qc.invalidateQueries({ queryKey: ["invoices"] });
@@ -759,6 +773,19 @@ export default function EstimateDetail() {
         payments: form.payments || [],
       });
       await base44.entities.Estimate.update(id, { invoice_id: invoice.id });
+      // Link the legal document (if any) to the new invoice and engine
+      if (form.contains_illegal_parts) {
+        try {
+          const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "illegal_parts" });
+          const activeDoc = (docs || []).find(d => d.status !== "void");
+          if (activeDoc) {
+            await base44.entities.LegalDocument.update(activeDoc.id, {
+              invoice_id: invoice.id,
+              customer_engine_id: form.customer_engine_id || activeDoc.customer_engine_id || null,
+            });
+          }
+        } catch (e) { console.warn("Failed to link legal doc to invoice:", e); }
+      }
       setForm(f => ({ ...f, invoice_id: invoice.id }));
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Estimate approved — invoice created!");
@@ -1106,6 +1133,7 @@ export default function EstimateDetail() {
         estimateId={id}
         customerId={form.customer_id}
         buildId={form.build_id}
+        customerEngineId={form.customer_engine_id}
       />
 
       {/* Header */}
@@ -1278,6 +1306,27 @@ export default function EstimateDetail() {
                     </Button>
                     <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
                       View
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={async () => {
+                      if (!id) return;
+                      if (!confirm("Delete the Illegal Parts acknowledgment? This will void the signed document and remove the flag from this estimate.")) return;
+                      try {
+                        const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "illegal_parts" });
+                        for (const d of (docs || [])) {
+                          if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
+                        }
+                        await base44.entities.Estimate.update(id, { contains_illegal_parts: false });
+                        setForm(f => ({ ...f, contains_illegal_parts: false }));
+                        if (form.public_access_token) {
+                          await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken: form.public_access_token });
+                        }
+                        qc.invalidateQueries({ queryKey: ["estimate", id] });
+                        toast.success("Illegal Parts agreement deleted");
+                      } catch (e) {
+                        toast.error("Failed to delete: " + e.message);
+                      }
+                    }} disabled={!id}>
+                      Delete
                     </Button>
                   </div>
                 </div>

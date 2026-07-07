@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       estimate_id: doc.estimate_id || null,
       invoice_id: doc.invoice_id || null,
       build_id: doc.build_id || null,
+      customer_engine_id: doc.customer_engine_id || null,
       admin_signature: doc.admin_signature || null,
       admin_signed_at: doc.admin_signed_at || null,
       customer_signature: doc.customer_signature || null,
