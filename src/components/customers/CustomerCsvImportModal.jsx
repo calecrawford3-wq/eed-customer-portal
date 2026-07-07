@@ -14,7 +14,7 @@ const MAPPABLE_FIELDS = [
   { key: "first_name", label: "First Name", required: true, type: "string" },
   { key: "last_name", label: "Last Name", required: true, type: "string" },
   { key: "company_name", label: "Company", required: false, type: "string" },
-  { key: "email", label: "Email", required: true, type: "string" },
+  { key: "email", label: "Email", required: false, type: "string" },
   { key: "phone", label: "Phone", required: false, type: "string" },
   { key: "address_line1", label: "Address 1", required: false, type: "string" },
   { key: "address_line2", label: "Address 2", required: false, type: "string" },
@@ -149,7 +149,7 @@ export default function CustomerCsvImportModal({ open, onClose }) {
   }, [rows, mapping]);
 
   const validRows = useMemo(() => {
-    return previewRows.filter((r) => r.first_name && r.last_name && r.email);
+    return previewRows.filter((r) => r.first_name && r.last_name);
   }, [previewRows]);
 
   const importMutation = useMutation({
@@ -157,14 +157,13 @@ export default function CustomerCsvImportModal({ open, onClose }) {
       let ok = 0;
       let fail = 0;
       const toImport = previewRows.filter(
-        (r) => selected.has(r._idx) && r.first_name && r.last_name && r.email
+        (r) => selected.has(r._idx) && r.first_name && r.last_name
       );
       for (let i = 0; i < toImport.length; i += 50) {
         const chunk = toImport.slice(i, i + 50).map((r) => {
           const customer = {
             first_name: r.first_name,
             last_name: r.last_name,
-            email: r.email,
             status: "active",
           };
           MAPPABLE_FIELDS.forEach((f) => {
@@ -305,7 +304,7 @@ export default function CustomerCsvImportModal({ open, onClose }) {
             </div>
             <div className="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
               <strong>{validRows.length}</strong> of {rows.length} rows have the required fields
-              (first_name + last_name + email).
+              (first_name + last_name).
             </div>
           </div>
         )}
@@ -336,7 +335,7 @@ export default function CustomerCsvImportModal({ open, onClose }) {
                 </thead>
                 <tbody>
                   {previewRows.map((r) => {
-                    const isValid = r.first_name && r.last_name && r.email;
+                    const isValid = r.first_name && r.last_name;
                     const isSelected = selected.has(r._idx);
                     return (
                       <tr key={r._idx} className={`border-b border-slate-100 ${isSelected ? "bg-white" : "bg-slate-50/50"} ${!isValid ? "opacity-50" : ""}`}>
