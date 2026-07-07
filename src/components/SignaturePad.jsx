@@ -50,8 +50,24 @@ export default function SignaturePad({ onChange, label = "Sign Here", height = 1
     if (!isDrawing) return;
     setIsDrawing(false);
     setHasSigned(true);
-    const dataUrl = canvasRef.current.toDataURL("image/png");
+    const dataUrl = exportCompressed();
     if (onChange) onChange(dataUrl);
+  };
+
+  // Downscale to a fixed-size canvas and export as JPEG to keep the
+  // data URL small enough for entity field storage.
+  const exportCompressed = () => {
+    const source = canvasRef.current;
+    const outW = 400;
+    const outH = 140;
+    const tmp = document.createElement("canvas");
+    tmp.width = outW;
+    tmp.height = outH;
+    const tctx = tmp.getContext("2d");
+    tctx.fillStyle = "#ffffff";
+    tctx.fillRect(0, 0, outW, outH);
+    tctx.drawImage(source, 0, 0, outW, outH);
+    return tmp.toDataURL("image/jpeg", 0.7);
   };
 
   const clear = () => {

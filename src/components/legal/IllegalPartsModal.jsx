@@ -56,7 +56,8 @@ export default function IllegalPartsModal({ open, onClose, onSigned, estimateId,
         onClose();
       }
     } catch (err) {
-      toast.error("Failed to create document");
+      const msg = err?.response?.data?.error || err?.message || "Failed to create document";
+      toast.error(msg);
       console.error(err);
     } finally {
       setSaving(false);
