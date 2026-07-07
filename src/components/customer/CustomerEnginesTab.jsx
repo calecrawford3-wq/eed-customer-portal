@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText, Ban } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
@@ -60,6 +60,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [transferEngine, setTransferEngine] = useState(null);
   const [transferCustomerId, setTransferCustomerId] = useState("");
   const [legalDocToView, setLegalDocToView] = useState(null);
+  const [voidDoc, setVoidDoc] = useState(null);
 
   const { data: allCustomers = [] } = useQuery({
     queryKey: ["customers"],
@@ -150,6 +151,16 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       toast.success(`Engine transferred to ${target ? `${target.first_name} ${target.last_name}` : "new customer"}`);
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: async ({ id }) => base44.entities.LegalDocument.update(id, { status: "void" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["legal-docs", customerId] });
+      setVoidDoc(null);
+      toast.success("Document voided");
+    },
+    onError: (err) => toast.error(err.message || "Failed to void document"),
   });
 
   const handleAdd = () => {
@@ -347,9 +358,14 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                                       </span>
                                       {d.status === "fully_signed" && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Signed</Badge>}
                                     </div>
-                                    <Button size="sm" variant="ghost" className={`h-7 px-2 ${isContract ? "text-blue-600" : "text-amber-600"}`} onClick={() => setLegalDocToView(d)}>
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                      <Button size="sm" variant="ghost" className={`h-7 px-2 ${isContract ? "text-blue-600" : "text-amber-600"}`} onClick={() => setLegalDocToView(d)} title="View document">
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500 hover:text-red-700" onClick={() => setVoidDoc(d)} title="Void document">
+                                        <Ban className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -478,6 +494,37 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
         onClose={() => setLegalDocToView(null)}
         documentId={legalDocToView?.id}
       />
+
+      {/* Void Document Confirmation */}
+      <Dialog open={!!voidDoc} onOpenChange={(o) => { if (!o) setVoidDoc(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Ban className="w-5 h-5" /> Void Document
+            </DialogTitle>
+          </DialogHeader>
+          {voidDoc && (
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to void this {voidDoc.document_type === "contract_engine" ? "Contract Engine Agreement" : "Illegal Parts Acknowledgment"}?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                Voiding cancels this document permanently. {voidDoc.status === "fully_signed" ? "This document is already fully signed — voiding it will invalidate the agreement." : "The customer will need to sign a new document if required."}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVoidDoc(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={voidMutation.isPending}
+              onClick={() => voidMutation.mutate({ id: voidDoc.id })}
+            >
+              {voidMutation.isPending ? "Voiding..." : "Void Document"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Engine Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
