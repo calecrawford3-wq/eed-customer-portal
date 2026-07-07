@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Cpu, Plus, ChevronDown } from "lucide-react";
+import { Cpu, Plus, ChevronDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 function getPlatformLabel(platform) {
   if (!platform) return "Unknown";
@@ -23,6 +24,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
   const [addOpen, setAddOpen] = useState(false);
   const [newEngine, setNewEngine] = useState({ engine_serial_number: "", platform_id: "", notes: "" });
   const [createError, setCreateError] = useState("");
+  const [duplicateEngine, setDuplicateEngine] = useState(null);
 
   const { data: engines = [] } = useQuery({
     queryKey: ["customer-engines", customerId],
@@ -53,7 +55,9 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
         e.engine_serial_number === data.engine_serial_number && e.customer_id !== customerId
       );
       if (existing) {
-        throw new Error(`Serial number ${data.engine_serial_number} is already registered as ${existing.eed_id}`);
+        const err = new Error(`Serial number ${data.engine_serial_number} is already registered as ${existing.eed_id}`);
+        err.existingEngine = existing;
+        throw err;
       }
       // Check if same serial already registered for this customer
       const sameSerial = engines.find(e => e.engine_serial_number === data.engine_serial_number);
@@ -73,6 +77,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
     },
     onError: (err) => {
       setCreateError(err.message);
+      setDuplicateEngine(err.existingEngine || null);
       toast.error(err.message);
     },
   });
@@ -84,6 +89,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       return;
     }
     setCreateError("");
+    setDuplicateEngine(null);
     createMutation.mutate({
       ...newEngine,
       customer_id: customerId,
@@ -227,7 +233,16 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
           </div>
           {createError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-              {createError}
+              <p>{createError}</p>
+              {duplicateEngine && (
+                <Link
+                  to={`/CustomerDetail?id=${duplicateEngine.customer_id}`}
+                  onClick={() => setAddOpen(false)}
+                  className="inline-flex items-center gap-1 mt-2 text-[#e20404] font-semibold hover:underline"
+                >
+                  Go to that customer <ExternalLink className="w-3 h-3" />
+                </Link>
+              )}
             </div>
           )}
           <DialogFooter>
