@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,20 @@ export default function CustomerPortal() {
   const [printBuild, setPrintBuild] = useState(null);
   const [detailInvoice, setDetailInvoice] = useState(null);
   const [printInvoice, setPrintInvoice] = useState(false);
+  const invoicePdfRef = useRef(null);
   const qc = useQueryClient();
+
+  const handlePrintInvoice = () => {
+    if (detailInvoice?.is_legacy && detailInvoice?.legacy_pdf_url) {
+      if (invoicePdfRef.current?.contentWindow) {
+        try { invoicePdfRef.current.contentWindow.print(); return; } catch (e) { /* fall through */ }
+      }
+      window.open(detailInvoice.legacy_pdf_url, "_blank");
+      return;
+    }
+    setPrintInvoice(true);
+    setTimeout(() => window.print(), 300);
+  };
 
   // Auth check
   useEffect(() => {
@@ -967,26 +980,36 @@ export default function CustomerPortal() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Invoice {detailInvoice?.invoice_number}</span>
-              <Button size="sm" variant="outline" onClick={() => { setPrintInvoice(true); setTimeout(() => window.print(), 300); }}>
+              <Button size="sm" variant="outline" onClick={handlePrintInvoice}>
                 <Download className="w-3.5 h-3.5 mr-1" /> Print
               </Button>
             </DialogTitle>
           </DialogHeader>
           {detailInvoice && (
             <div className="py-2">
-              {detailInvoice.is_legacy && (
-                <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  This is a legacy invoice imported from a previous system. {detailInvoice.legacy_pdf_url && <>The original PDF is available via the download button on the invoices list.</>}
-                </div>
+              {detailInvoice.is_legacy ? (
+                detailInvoice.legacy_pdf_url ? (
+                  <iframe
+                    ref={invoicePdfRef}
+                    src={detailInvoice.legacy_pdf_url}
+                    title={`Invoice ${detailInvoice.invoice_number}`}
+                    className="w-full h-[70vh] border border-slate-200 rounded-lg"
+                  />
+                ) : (
+                  <div className="py-16 text-center text-slate-400">
+                    <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                    <p>No PDF attached to this legacy invoice.</p>
+                  </div>
+                )
+              ) : (
+                <PrintableInvoice
+                  invoice={detailInvoice}
+                  customer={customer}
+                  settings={settingsData?.[0]}
+                  customerEngine={customerEngines.find(e => e.id === detailInvoice.customer_engine_id)}
+                  platform={platforms.find(p => p.id === customerEngines.find(e => e.id === detailInvoice.customer_engine_id)?.platform_id)}
+                />
               )}
-              <PrintableInvoice
-                invoice={detailInvoice}
-                customer={customer}
-                settings={settingsData?.[0]}
-                customerEngine={customerEngines.find(e => e.id === detailInvoice.customer_engine_id)}
-                platform={platforms.find(p => p.id === customerEngines.find(e => e.id === detailInvoice.customer_engine_id)?.platform_id)}
-              />
             </div>
           )}
           <DialogFooter>
