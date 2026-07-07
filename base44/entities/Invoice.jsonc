@@ -27,6 +27,15 @@
       "type": "string",
       "description": "Pre-generated Stripe checkout URL for public payments"
     },
+    "is_legacy": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this invoice was imported from an old system (summary only, no line items)"
+    },
+    "legacy_pdf_url": {
+      "type": "string",
+      "description": "URL to the original PDF from the old system, downloadable in the client portal"
+    },
     "status": {
       "type": "string",
       "enum": [

@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Receipt, DollarSign, Clock, CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
+import { Plus, Search, Receipt, DollarSign, Clock, CheckCircle, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import LegacyInvoiceImportModal from "@/components/invoices/LegacyInvoiceImportModal";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -22,6 +23,7 @@ const STATUS_STYLES = {
 export default function Invoices() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [legacyImportOpen, setLegacyImportOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: invoices = [], isLoading } = useQuery({
@@ -70,12 +72,19 @@ export default function Invoices() {
           <h1 className="text-3xl font-bold text-slate-900">Invoices</h1>
           <p className="text-slate-500 mt-1">{invoices.length} total invoices</p>
         </div>
-        <Link to="/InvoiceDetail?new=1">
-          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
-            <Plus className="w-4 h-4 mr-2" /> New Invoice
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setLegacyImportOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" /> Import Legacy
           </Button>
-        </Link>
+          <Link to="/InvoiceDetail?new=1">
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
+              <Plus className="w-4 h-4 mr-2" /> New Invoice
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      <LegacyInvoiceImportModal open={legacyImportOpen} onClose={() => setLegacyImportOpen(false)} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

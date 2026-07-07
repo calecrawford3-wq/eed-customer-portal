@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -65,6 +65,36 @@ export default function InvoiceDetail() {
   const [laborPickingIdx, setLaborPickingIdx] = useState(null);
   const [machiningPickerOpen, setMachiningPickerOpen] = useState(false);
   const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const pdfFileRef = useRef(null);
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPdf(true);
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      const url = res?.file_url || res?.data?.file_url;
+      const updated = { ...form, legacy_pdf_url: url };
+      setForm(updated);
+      if (id) await base44.entities.Invoice.update(id, { legacy_pdf_url: url });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("PDF attached");
+    } catch (err) {
+      toast.error("Upload failed: " + err.message);
+    } finally {
+      setUploadingPdf(false);
+      e.target.value = "";
+    }
+  };
+
+  const removePdf = async () => {
+    const updated = { ...form, legacy_pdf_url: "" };
+    setForm(updated);
+    if (id) await base44.entities.Invoice.update(id, { legacy_pdf_url: "" });
+    qc.invalidateQueries({ queryKey: ["invoices"] });
+    toast.success("PDF removed");
+  };
 
   const { data: invoice } = useQuery({
     queryKey: ["invoice", id],
@@ -621,6 +651,30 @@ export default function InvoiceDetail() {
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
+
+      {/* Legacy PDF attachment bar */}
+      {form.is_legacy && (
+        <div className="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+          <FileText className="w-5 h-5 text-slate-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-slate-700">Original Invoice PDF</p>
+            <p className="text-xs text-slate-400">Attach the original PDF from your old system so customers can download it from the portal.</p>
+          </div>
+          {form.legacy_pdf_url ? (
+            <>
+              <a href={form.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="outline"><Download className="w-4 h-4 mr-1" /> View PDF</Button>
+              </a>
+              <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={removePdf}><Trash2 className="w-4 h-4" /></Button>
+            </>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => pdfFileRef.current?.click()} disabled={uploadingPdf}>
+              <Paperclip className="w-4 h-4 mr-1" /> {uploadingPdf ? "Uploading..." : "Attach PDF"}
+            </Button>
+          )}
+          <input ref={pdfFileRef} type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
+        </div>
+      )}
 
       <PaymentModal
         open={paymentModalOpen}

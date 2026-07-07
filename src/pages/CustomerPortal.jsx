@@ -661,7 +661,10 @@ export default function CustomerPortal() {
                 {invoices.map(inv => (
                   <div key={inv.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
                     <div>
-                      <p className="font-semibold text-slate-900">{inv.invoice_number}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900">{inv.invoice_number}</p>
+                        {inv.is_legacy && <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">Legacy</Badge>}
+                      </div>
                       <p className="text-sm text-slate-500">
                         {inv.issue_date} · Total: <strong>${Number(inv.total || 0).toFixed(2)}</strong>
                         {inv.amount_paid > 0 && <span className="text-emerald-600 ml-2">· Paid: ${Number(inv.amount_paid).toFixed(2)}</span>}
@@ -678,9 +681,16 @@ export default function CustomerPortal() {
                         </div>
                       )}
                     </div>
-                    <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
-                      {inv.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {inv.legacy_pdf_url && (
+                        <a href={inv.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
+                        </a>
+                      )}
+                      <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
+                        {inv.status}
+                      </Badge>
+                    </div>
                   </div>
                 ))}
               </div>
