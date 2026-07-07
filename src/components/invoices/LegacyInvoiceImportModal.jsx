@@ -202,25 +202,19 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
     });
   }, [rows, mapping, customers]);
 
-  // initialize customer map when preview changes
-  useMemo(() => {
-    const init = {};
-    previewRows.forEach((r) => {
-      if (r._matchedCustomerId) init[r._idx] = r._matchedCustomerId;
-    });
-    setCustomerMap((prev) => {
-      const merged = { ...init };
-      Object.keys(prev).forEach((k) => { if (prev[k]) merged[k] = prev[k]; });
-      return merged;
-    });
-  }, [previewRows]);
+  // Effective customer = manual override if set, else auto-matched guess
+  const getEffectiveCustomerId = (r) =>
+    customerMap[r._idx] !== undefined ? customerMap[r._idx] : (r._matchedCustomerId || "");
 
-  const validRows = useMemo(() => previewRows.filter((r) => r.total != null && customerMap[r._idx]), [previewRows, customerMap]);
+  const validRows = useMemo(
+    () => previewRows.filter((r) => r.total != null && getEffectiveCustomerId(r)),
+    [previewRows, customerMap]
+  );
 
   const importMutation = useMutation({
     mutationFn: async () => {
       let ok = 0, fail = 0;
-      const toImport = previewRows.filter((r) => selected.has(r._idx) && r.total != null && customerMap[r._idx]);
+      const toImport = previewRows.filter((r) => selected.has(r._idx) && r.total != null && getEffectiveCustomerId(r));
       const records = toImport.map((r) => {
         const total = Number(r.total) || 0;
         const paid = Number(r.amount_paid) || 0;
@@ -230,7 +224,7 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
         const issueDate = normalizeDate(r.issue_date);
         const inv = {
           invoice_number: r.invoice_number || `LEG-${Date.now().toString().slice(-6)}-${r._idx}`,
-          customer_id: customerMap[r._idx],
+          customer_id: getEffectiveCustomerId(r),
           customer_engine_id: engineMap[r._idx] || "",
           is_legacy: true,
           status,
@@ -398,7 +392,7 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
                 <tbody>
                   {previewRows.map((r) => {
                     const isSelected = selected.has(r._idx);
-                    const custId = customerMap[r._idx] || "";
+                    const custId = customerMap[r._idx] !== undefined ? customerMap[r._idx] : (r._matchedCustomerId || "");
                     const engines = customerEngines.filter(e => e.customer_id === custId);
                     const ready = r.total != null && custId;
                     return (
