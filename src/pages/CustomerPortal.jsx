@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
+import PrintableInvoice from "@/components/PrintableInvoice";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -57,6 +58,8 @@ export default function CustomerPortal() {
   const [refreshBuild, setRefreshBuild] = useState(null);
   const [refreshMessage, setRefreshMessage] = useState("");
   const [printBuild, setPrintBuild] = useState(null);
+  const [detailInvoice, setDetailInvoice] = useState(null);
+  const [printInvoice, setPrintInvoice] = useState(false);
   const qc = useQueryClient();
 
   // Auth check
@@ -136,6 +139,12 @@ export default function CustomerPortal() {
   const { data: credits = [] } = useQuery({
     queryKey: ["portal-credits", customer?.id],
     queryFn: () => base44.entities.AccountCredit.filter({ customer_id: customer.id }),
+    enabled: !!customer,
+  });
+
+  const { data: settingsData = [] } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
     enabled: !!customer,
   });
 
@@ -345,6 +354,19 @@ export default function CustomerPortal() {
             build={printBuild}
             platform={platforms.find(p => p.id === printBuild.platform_id)}
             specSheet={specSheets.find(s => s.id === printBuild.spec_sheet_id)}
+          />
+        </div>
+      )}
+
+      {/* Print-only invoice */}
+      {printInvoice && detailInvoice && (
+        <div className="hidden print:block">
+          <PrintableInvoice
+            invoice={detailInvoice}
+            customer={customer}
+            settings={settingsData?.[0]}
+            customerEngine={customerEngines.find(e => e.id === detailInvoice.customer_engine_id)}
+            platform={platforms.find(p => p.id === customerEngines.find(e => e.id === detailInvoice.customer_engine_id)?.platform_id)}
           />
         </div>
       )}
@@ -682,6 +704,9 @@ export default function CustomerPortal() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setDetailInvoice(inv); setPrintInvoice(false); }}>
+                        <FileText className="w-3.5 h-3.5 mr-1" /> View
+                      </Button>
                       {inv.legacy_pdf_url && (
                         <a href={inv.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
@@ -932,6 +957,40 @@ export default function CustomerPortal() {
             <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => profileMutation.mutate(profileForm)} disabled={profileMutation.isPending}>
               {profileMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!detailInvoice && !printInvoice} onOpenChange={(o) => !o && setDetailInvoice(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Invoice {detailInvoice?.invoice_number}</span>
+              <Button size="sm" variant="outline" onClick={() => { setPrintInvoice(true); setTimeout(() => window.print(), 300); }}>
+                <Download className="w-3.5 h-3.5 mr-1" /> Print
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          {detailInvoice && (
+            <div className="py-2">
+              {detailInvoice.is_legacy && (
+                <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  This is a legacy invoice imported from a previous system. {detailInvoice.legacy_pdf_url && <>The original PDF is available via the download button on the invoices list.</>}
+                </div>
+              )}
+              <PrintableInvoice
+                invoice={detailInvoice}
+                customer={customer}
+                settings={settingsData?.[0]}
+                customerEngine={customerEngines.find(e => e.id === detailInvoice.customer_engine_id)}
+                platform={platforms.find(p => p.id === customerEngines.find(e => e.id === detailInvoice.customer_engine_id)?.platform_id)}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailInvoice(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
