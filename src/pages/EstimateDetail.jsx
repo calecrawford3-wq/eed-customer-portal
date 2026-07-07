@@ -1076,7 +1076,23 @@ export default function EstimateDetail() {
       <IllegalPartsModal
         open={illegalPartsOpen}
         onClose={() => setIllegalPartsOpen(false)}
-        onSigned={() => {}}
+        onSigned={async (legalDoc) => {
+          // Save the legal document token on the estimate and re-sync to viewer app
+          if (id && legalDoc?.public_access_token) {
+            try {
+              await base44.entities.Estimate.update(id, {
+                contains_illegal_parts: true,
+              });
+              await base44.functions.invoke("syncLegalDocument", { legalDocumentId: legalDoc.id });
+              if (form.public_access_token) {
+                await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken: form.public_access_token });
+              }
+              qc.invalidateQueries({ queryKey: ["estimate", id] });
+            } catch (e) {
+              console.error("Failed to sync legal document after signing:", e);
+            }
+          }
+        }}
         estimateId={id}
         customerId={form.customer_id}
         buildId={form.build_id}
@@ -1234,9 +1250,9 @@ export default function EstimateDetail() {
               {form.contains_illegal_parts && (
                 <div className="flex items-center justify-between border-t border-amber-100 pt-2">
                   <span className="text-xs text-amber-700 font-medium flex items-center gap-1">
-                    <AlertTriangleIcon className="w-3 h-3" /> Signed after approval
+                    <AlertTriangleIcon className="w-3 h-3" /> {id ? "Signed after approval" : "Save estimate first"}
                   </span>
-                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)}>
+                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsOpen(true)} disabled={!id}>
                     Re-sign / Edit
                   </Button>
                 </div>
