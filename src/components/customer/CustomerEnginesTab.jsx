@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText, Ban } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText, Ban, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
@@ -328,11 +328,35 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                                     {inv.status}
                                   </Badge>
                                 </div>
-                                <Link to={`/InvoiceDetail?id=${inv.id}`}>
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500">
-                                    <ExternalLink className="w-3.5 h-3.5" />
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-red-400 hover:text-red-600"
+                                    title="Unlink from engine"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const updates = {};
+                                      if (inv.customer_engine_id === engine.id) updates.customer_engine_id = "";
+                                      if (inv.build_id && engineBuilds.some(b => b.id === inv.build_id)) updates.build_id = "";
+                                      if (Object.keys(updates).length === 0) { toast.error("Invoice is not directly linked to this engine"); return; }
+                                      try {
+                                        await base44.entities.Invoice.update(inv.id, updates);
+                                        qc.invalidateQueries({ queryKey: ["invoices"] });
+                                        toast.success(`Invoice ${inv.invoice_number} unlinked from ${engine.eed_id}`);
+                                      } catch (err) {
+                                        toast.error("Failed to unlink: " + err.message);
+                                      }
+                                    }}
+                                  >
+                                    <Unlink className="w-3.5 h-3.5" />
                                   </Button>
-                                </Link>
+                                  <Link to={`/InvoiceDetail?id=${inv.id}`}>
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500">
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </Link>
+                                </div>
                               </div>
                             ))}
                           </div>
