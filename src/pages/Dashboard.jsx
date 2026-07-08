@@ -151,26 +151,26 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
         <p className="text-slate-500 mt-1">Engine specification vault overview</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
         {stats.map((stat) => (
           <Link key={stat.label} to={createPageUrl(stat.page)}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer border-0 shadow-sm">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                     {isLoading ? (
                       <Skeleton className="h-9 w-16 mt-1" />
                     ) : (
-                      <p className="text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
+                      <p className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
                     )}
                   </div>
                   <div className={`${stat.color} p-3 rounded-xl`}>
@@ -185,7 +185,7 @@ export default function Dashboard() {
 
 
       {/* Action Items Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
 
         {/* Open Purchase Orders */}
         <Card className="border-0 shadow-sm">
@@ -311,7 +311,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Recent Builds */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
@@ -377,7 +377,7 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             <Link
               to={createPageUrl("Platforms")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Layers className="w-5 h-5 text-blue-600" />
@@ -390,7 +390,7 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("SpecSheets")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-emerald-100 p-3 rounded-lg">
                 <FileText className="w-5 h-5 text-emerald-600" />
@@ -403,7 +403,7 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("Builds")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-[#e20404]/10 p-3 rounded-lg">
                 <Wrench className="w-5 h-5 text-[#e20404]" />
@@ -416,7 +416,7 @@ export default function Dashboard() {
             
             <Link
               to={createPageUrl("Documents")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-purple-100 p-3 rounded-lg">
                 <FolderOpen className="w-5 h-5 text-purple-600" />
@@ -429,7 +429,7 @@ export default function Dashboard() {
 
             <Link
               to={createPageUrl("Estimates")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-amber-100 p-3 rounded-lg">
                 <ClipboardList className="w-5 h-5 text-amber-600" />
@@ -442,7 +442,7 @@ export default function Dashboard() {
 
             <Link
               to={createPageUrl("Inventory")}
-              className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
               <div className="bg-slate-100 p-3 rounded-lg">
                 <Package className="w-5 h-5 text-slate-600" />
