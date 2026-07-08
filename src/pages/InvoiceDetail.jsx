@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -309,6 +309,23 @@ export default function InvoiceDetail() {
     if (isTaxExempt && useOverride) toast.info(`Tax-exempt • ${override}% markup applied to parts`);
     else if (isTaxExempt) toast.info("Customer is tax-exempt — tax set to 0%");
     else if (useOverride) toast.info(`Applied ${override}% markup override to parts`);
+  };
+
+  const handleUnlinkEngine = async () => {
+    if (!id) {
+      setForm(f => ({ ...f, customer_engine_id: "" }));
+      toast.success("Engine unlinked");
+      return;
+    }
+    try {
+      await base44.entities.Invoice.update(id, { customer_engine_id: "" });
+      setForm(f => ({ ...f, customer_engine_id: "" }));
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["invoice", id] });
+      toast.success("Engine unlinked from invoice");
+    } catch (err) {
+      toast.error("Failed to unlink: " + err.message);
+    }
   };
 
   const updateLine = (idx, field, value) => {
@@ -821,6 +838,7 @@ export default function InvoiceDetail() {
               {customer.city && <p className="text-slate-600">{customer.city}, {customer.state} {customer.zip}</p>}
               {customer.email && <p className="text-slate-600">{customer.email}</p>}
               {selectedEngine && (
+                <>
                 <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-4 text-sm">
                   {selectedEngine.eed_id && <div><p className="text-xs text-slate-400 uppercase">EED ID</p><p className="font-mono font-bold text-[#e20404]">{selectedEngine.eed_id}</p></div>}
                   {selectedEngine.engine_serial_number && <div><p className="text-xs text-slate-400 uppercase">Serial #</p><p className="font-semibold">{selectedEngine.engine_serial_number}</p></div>}
@@ -828,6 +846,10 @@ export default function InvoiceDetail() {
                   {selectedEngine.current_stage && <div><p className="text-xs text-slate-400 uppercase">Stage</p><p className="font-semibold">{STAGE_LABELS_INV[selectedEngine.current_stage] || selectedEngine.current_stage}</p></div>}
                   {selectedSpecSheet && <div><p className="text-xs text-slate-400 uppercase">Spec Sheet</p><p className="font-semibold text-purple-700">{selectedSpecSheet.custom_name || STAGE_LABELS_INV[selectedSpecSheet.spec_type] || selectedSpecSheet.spec_type} <span className="text-slate-400 text-xs">v{selectedSpecSheet.version}</span></p></div>}
                 </div>
+                <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600 mt-2 -mb-1" onClick={handleUnlinkEngine}>
+                  <Unlink className="w-3.5 h-3.5 mr-1" /> Unlink Engine
+                </Button>
+                </>
               )}
             </CardContent>
           </Card>
