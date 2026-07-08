@@ -115,7 +115,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="company">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex overflow-x-auto">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1" /> Company</TabsTrigger>
           <TabsTrigger value="billing"><Receipt className="w-4 h-4 mr-1" /> Billing</TabsTrigger>
           <TabsTrigger value="email"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
@@ -127,7 +127,7 @@ export default function Settings() {
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Company Information</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label>Company Name</Label>
                   <Input value={form.company_name} onChange={e => set("company_name", e.target.value)} />

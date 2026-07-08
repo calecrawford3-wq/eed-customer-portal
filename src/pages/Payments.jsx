@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
 
 const METHOD_CONFIG = {
   cash: { label: "Cash", color: "bg-emerald-100 text-emerald-700" },
@@ -155,7 +156,7 @@ export default function Payments() {
       </div>
 
       {/* Search + Tabs */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search by customer, reference..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -175,8 +176,8 @@ export default function Payments() {
           <p>No payments found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                  <th className="py-3 px-4 w-8"></th>
@@ -200,7 +201,7 @@ export default function Payments() {
                           <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                         </button>
                       </td>
-                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{p.date || "—"}</td>
+                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{p.date ? format(typeof p.date === "string" && p.date.includes("T") ? parseISO(p.date) : new Date(p.date), "MMM d, yyyy") : "—"}</td>
                       <td className="py-3 px-4">
                         {p._customer ? (
                           <Link to={`/CustomerDetail?id=${p._customer.id}`} className="font-medium hover:text-[#e20404] underline">

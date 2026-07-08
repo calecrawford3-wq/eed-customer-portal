@@ -246,7 +246,7 @@ export default function Expenses() {
       )}
 
       {/* Search & Tabs */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search expenses..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -270,8 +270,8 @@ export default function Expenses() {
           <p>No expenses recorded</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left py-3 px-4 font-medium text-slate-600">Date</th>

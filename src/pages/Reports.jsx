@@ -147,7 +147,7 @@ export default function Reports() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex overflow-x-auto">
           <TabsTrigger value="pnl">P&amp;L</TabsTrigger>
           <TabsTrigger value="salestax">Sales Tax</TabsTrigger>
           <TabsTrigger value="expenses">Expense Breakdown</TabsTrigger>

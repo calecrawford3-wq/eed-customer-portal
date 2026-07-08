@@ -195,7 +195,7 @@ export default function Inventory() {
       </div>
 
       <Tabs defaultValue="parts">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex overflow-x-auto">
           <TabsTrigger value="parts" className="flex items-center gap-2">
             <Package className="w-4 h-4" /> Parts ({parts.length})
           </TabsTrigger>
@@ -248,8 +248,8 @@ export default function Inventory() {
               <p className="text-lg font-medium">No parts found</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+              <table className="w-full min-w-[800px] text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Part #</th>
