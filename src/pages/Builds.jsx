@@ -320,8 +320,8 @@ export default function Builds() {
   const availableSpecs = specSheets.filter(s => s.platform_id === newBuild.platform_id && s.status === "active");
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Engine Builds</h1>
           <p className="text-slate-500 mt-1">Manage build queue and track progress</p>
@@ -514,7 +514,7 @@ export default function Builds() {
                   return (
                     <Card key={build.id} className={`border-0 shadow-sm ${isInProgress ? 'ring-2 ring-[#e20404]' : ''}`}>
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col gap-1">
                               <Button
@@ -536,7 +536,7 @@ export default function Builds() {
                                 <ChevronDown className="w-4 h-4" />
                               </Button>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-bold text-lg">{build.engine_serial_number}</h3>
                                 {build.eed_id && <span className="font-mono text-sm text-[#e20404] font-semibold">{build.eed_id}</span>}
@@ -545,7 +545,7 @@ export default function Builds() {
                                   <Badge className={workTagInfo.color}>{workTagInfo.label}</Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                              <div className="flex items-center gap-3 mt-1 text-sm text-slate-500 flex-wrap">
                                 <span>{getPlatformLabel(build.platform_id)}</span>
                                 {getCustomerName(build) && (
                                   <>

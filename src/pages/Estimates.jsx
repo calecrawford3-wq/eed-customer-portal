@@ -100,10 +100,10 @@ export default function Estimates() {
   const totalValue = filtered.reduce((sum, e) => sum + (e.total || 0), 0);
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Estimates</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Estimates</h1>
           <p className="text-slate-500 mt-1">{filtered.length} estimates · ${totalValue.toLocaleString("en-US", {minimumFractionDigits: 2})} total</p>
         </div>
         <Link to="/EstimateDetail?new=1">
@@ -113,7 +113,7 @@ export default function Estimates() {
         </Link>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search estimates..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -136,8 +136,8 @@ export default function Estimates() {
           <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create First Estimate</Button></Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                  <th className="text-left px-4 py-3 font-medium text-slate-600">Estimate #</th>

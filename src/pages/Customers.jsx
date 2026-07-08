@@ -80,10 +80,10 @@ export default function Customers() {
   );
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Customers</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Customers</h1>
           <p className="text-slate-500 mt-1">{customers.length} total customers</p>
         </div>
         <div className="flex gap-2">
@@ -162,7 +162,7 @@ export default function Customers() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Customer" : "New Customer"}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <div><Label>First Name *</Label><Input value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})} /></div>
             <div><Label>Last Name *</Label><Input value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} /></div>
             <div><Label>Company</Label><Input value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} /></div>

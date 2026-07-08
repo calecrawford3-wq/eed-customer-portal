@@ -66,10 +66,10 @@ export default function Invoices() {
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Invoices</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Invoices</h1>
           <p className="text-slate-500 mt-1">{invoices.length} total invoices</p>
         </div>
         <div className="flex gap-2">
@@ -87,7 +87,7 @@ export default function Invoices() {
       <LegacyInvoiceImportModal open={legacyImportOpen} onClose={() => setLegacyImportOpen(false)} />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
           <div className="bg-amber-100 p-3 rounded-lg"><Clock className="w-5 h-5 text-amber-600" /></div>
           <div>
@@ -111,7 +111,7 @@ export default function Invoices() {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -134,8 +134,8 @@ export default function Invoices() {
           <Link to="/InvoiceDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create First Invoice</Button></Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Invoice #</th>
