@@ -1047,7 +1047,7 @@ export default function EstimateDetail() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <LaborMachiningPickerModal
         open={laborPickerOpen}
         onClose={() => setLaborPickerOpen(false)}
@@ -1171,9 +1171,9 @@ export default function EstimateDetail() {
       />
 
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
         <Link to="/Estimates"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">{form.estimate_number}</h1>
         </div>
         <Badge className={`${STATUS_BADGE[form.status] || "bg-slate-100 text-slate-600"} border-0 capitalize`}>{form.status}</Badge>
@@ -1234,7 +1234,7 @@ export default function EstimateDetail() {
       </div>
 
       {/* Details + Bill To */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Estimate Details</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -1259,7 +1259,7 @@ export default function EstimateDetail() {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Issue Date</Label><Input type="date" value={form.issue_date} onChange={e => setForm({...form, issue_date: e.target.value})} /></div>
               <div><Label>Expiry Date</Label><Input type="date" value={form.expiry_date} onChange={e => setForm({...form, expiry_date: e.target.value})} /></div>
             </div>
@@ -1574,9 +1574,9 @@ export default function EstimateDetail() {
 
       {/* Parts */}
       <Card className="border-0 shadow-sm mb-6">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
             <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }} className="border-purple-300 text-purple-700 hover:bg-purple-50"><Recycle className="w-4 h-4 mr-1" /> Add Core</Button>
             <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
@@ -1584,7 +1584,7 @@ export default function EstimateDetail() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-28">Part #</th>
@@ -1641,7 +1641,8 @@ export default function EstimateDetail() {
           {(form.labor_items || []).length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-4">No labor items added.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
@@ -1666,6 +1667,7 @@ export default function EstimateDetail() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1680,7 +1682,8 @@ export default function EstimateDetail() {
           {(form.machining_items || []).length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-4">No machining items added.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
@@ -1705,13 +1708,14 @@ export default function EstimateDetail() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Totals */}
       <div className="flex justify-end mb-6">
-        <div className="w-72 space-y-2 text-sm">
+        <div className="w-full sm:w-72 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
@@ -1760,7 +1764,7 @@ export default function EstimateDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div><Label>Customer Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Notes visible to customer..." /></div>
         <div><Label>Internal Notes</Label><Textarea value={form.internal_notes} onChange={e => setForm({...form, internal_notes: e.target.value})} rows={4} placeholder="Internal only..." /></div>
       </div>
