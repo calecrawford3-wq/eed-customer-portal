@@ -225,6 +225,26 @@
     "total": {
       "type": "number"
     },
+    "discount_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "amount",
+        "percentage"
+      ],
+      "default": "none",
+      "description": "Type of discount applied to this estimate"
+    },
+    "discount_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Discount value \u2014 dollar amount (if type=amount) or percentage (if type=percentage)"
+    },
+    "discount_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Calculated discount amount in dollars"
+    },
     "applied_credits": {
       "type": "number",
       "default": 0,
