@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eraser } from "lucide-react";
+import { Eraser, Save } from "lucide-react";
 
-export default function SignaturePad({ onChange, label = "Sign Here", height = 180 }) {
+export default function SignaturePad({ onChange, label = "Sign Here", height = 180, saveLabel = "Save Signature" }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSigned, setHasSigned] = useState(false);
@@ -50,6 +50,10 @@ export default function SignaturePad({ onChange, label = "Sign Here", height = 1
     if (!isDrawing) return;
     setIsDrawing(false);
     setHasSigned(true);
+  };
+
+  const save = () => {
+    if (!hasSigned) return;
     const dataUrl = exportCompressed();
     if (onChange) onChange(dataUrl);
   };
@@ -102,6 +106,9 @@ export default function SignaturePad({ onChange, label = "Sign Here", height = 1
       <div className="flex gap-2 mt-2">
         <Button type="button" variant="outline" size="sm" onClick={clear} disabled={!hasSigned}>
           <Eraser className="w-3.5 h-3.5 mr-1" /> Clear
+        </Button>
+        <Button type="button" size="sm" onClick={save} disabled={!hasSigned}>
+          <Save className="w-3.5 h-3.5 mr-1" /> {saveLabel}
         </Button>
       </div>
     </div>

@@ -193,23 +193,38 @@ export default function PortalLegalDocument({ doc, onSigned }) {
                   </div>
                 ) : signMode ? (
                   <div className="space-y-3">
-                    <SignaturePad onChange={setSignature} label="Draw your signature below to sign this agreement" height={160} />
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline" onClick={() => { setSignMode(false); setSignature(null); }} disabled={submitting}>
-                        Cancel
-                      </Button>
-                      <Button
-                        className={isContract ? "bg-blue-600 hover:bg-blue-700" : "bg-[#e20404] hover:bg-red-700"}
-                        onClick={handleSign}
-                        disabled={!signature || submitting}
-                      >
-                        {submitting ? (
-                          <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Submitting...</>
-                        ) : (
-                          <><PenLine className="w-4 h-4 mr-1" /> Confirm Signature</>
-                        )}
-                      </Button>
-                    </div>
+                    {signature ? (
+                      <div className="space-y-3">
+                        <div className="border border-slate-200 rounded-lg p-3 bg-white">
+                          <img src={signature} alt="Your signature" className="max-h-20 object-contain mx-auto" />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" onClick={() => setSignature(null)} disabled={submitting}>
+                            Clear & Re-sign
+                          </Button>
+                          <Button
+                            className={isContract ? "bg-blue-600 hover:bg-blue-700" : "bg-[#e20404] hover:bg-red-700"}
+                            onClick={handleSign}
+                            disabled={submitting}
+                          >
+                            {submitting ? (
+                              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Submitting...</>
+                            ) : (
+                              <><PenLine className="w-4 h-4 mr-1" /> Confirm Signature</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <SignaturePad onChange={setSignature} label="Draw your signature below to sign this agreement" height={160} />
+                        <div className="flex justify-end">
+                          <Button variant="outline" onClick={() => { setSignMode(false); setSignature(null); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex justify-center">
