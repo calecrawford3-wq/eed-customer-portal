@@ -56,6 +56,12 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
               <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
             </div>
           )}
+          {Number(invoice.discount_amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", color: "#22c55e" }}>
+              <span>Discount:</span>
+              <span>-${Number(invoice.discount_amount).toFixed(2)}</span>
+            </div>
+          )}
           <div style={{ borderTop: "2px solid #e20404", paddingTop: "8px", marginTop: "8px", display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold" }}>
             <span>TOTAL DUE:</span>
             <span>${Number(invoice.total || 0).toFixed(2)}</span>

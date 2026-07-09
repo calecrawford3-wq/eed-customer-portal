@@ -51,6 +51,7 @@ export default function InvoiceDetail() {
     line_items: [{ ...emptyPart }],
     labor_items: [],
     machining_items: [],
+    discount_type: "none", discount_value: 0, discount_amount: 0,
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
   const [sending, setSending] = useState(false);
@@ -279,15 +280,21 @@ export default function InvoiceDetail() {
     },
   });
 
-  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid, appliedCredits) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid, appliedCredits, discountType = "none", discountValue = 0) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
     const subtotal = partTotal + laborTotal + machiningTotal;
     const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
-    const total = subtotal + tax_amount;
+    let discount_amount = 0;
+    if (discountType === "amount") {
+      discount_amount = Math.min(Number(discountValue) || 0, subtotal);
+    } else if (discountType === "percentage") {
+      discount_amount = subtotal * ((Number(discountValue) || 0) / 100);
+    }
+    const total = subtotal + tax_amount - discount_amount;
     const balance_due = Math.max(0, total - (Number(appliedCredits) || 0) - (Number(amountPaid) || 0));
-    return { subtotal, tax_amount, total, balance_due };
+    return { subtotal, tax_amount, discount_amount, total, balance_due };
   };
 
   const handleCustomerChange = (v) => {
@@ -304,7 +311,7 @@ export default function InvoiceDetail() {
       });
     }
     const newTaxRate = isTaxExempt ? 0 : form.tax_rate;
-    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], newTaxRate, form.amount_paid, form.applied_credits);
+    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], newTaxRate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, customer_id: v, line_items: newLines, tax_rate: newTaxRate, ...totals }));
     if (isTaxExempt && useOverride) toast.info(`Tax-exempt • ${override}% markup applied to parts`);
     else if (isTaxExempt) toast.info("Customer is tax-exempt — tax set to 0%");
@@ -334,7 +341,7 @@ export default function InvoiceDetail() {
     if (field === "quantity" || field === "unit_price") {
       lines[idx].total = (Number(lines[idx].quantity) || 0) * (Number(lines[idx].unit_price) || 0);
     }
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -352,7 +359,7 @@ export default function InvoiceDetail() {
       unit_price: price,
       total: price,
     };
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -378,7 +385,7 @@ export default function InvoiceDetail() {
       ...expanded,
       ...lines.slice(pickingIdx + 1),
     ];
-    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: newLines, ...totals }));
     toast.success(`Added kit "${kit.name}" — ${expanded.length} line item${expanded.length === 1 ? "" : "s"}`);
   };
@@ -405,7 +412,7 @@ export default function InvoiceDetail() {
       toast.success(`Added core "${core.name}" for sale ($${price.toFixed(2)})`);
     }
     if (idx === lines.length) lines.push(line); else lines[idx] = line;
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
@@ -424,27 +431,27 @@ export default function InvoiceDetail() {
       is_core_credit: true,
       core_details: { ...coreDetails },
     }];
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
     toast.success("Core credit added — core will be added to inventory when invoice is complete");
   };
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
-    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, line_items: lines, ...totals }));
   };
 
   const selectLaborFromCatalog = (item) => {
     const items = [...(form.labor_items || [])];
     items[laborPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
 
   const selectMachiningFromCatalog = (item) => {
     const items = [...(form.machining_items || [])];
     items[machiningPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
 
@@ -452,12 +459,12 @@ export default function InvoiceDetail() {
   const updateLabor = (idx, field, value) => {
     const items = [...(form.labor_items || [])];
     items[idx] = { ...items[idx], [field]: value };
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
   const removeLabor = (idx) => {
     const items = (form.labor_items || []).filter((_, i) => i !== idx);
-    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, items, form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, labor_items: items, ...totals }));
   };
 
@@ -465,18 +472,25 @@ export default function InvoiceDetail() {
   const updateMachining = (idx, field, value) => {
     const items = [...(form.machining_items || [])];
     items[idx] = { ...items[idx], [field]: value };
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
   const removeMachining = (idx) => {
     const items = (form.machining_items || []).filter((_, i) => i !== idx);
-    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
 
   const updateTaxRate = (rate) => {
-    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.amount_paid, form.applied_credits);
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, tax_rate: rate, ...totals }));
+  };
+
+  const updateDiscount = (field, value) => {
+    const updated = { ...form, [`discount_${field}`]: value };
+    if (field === "type" && value === "none") updated.discount_value = 0;
+    const totals = recalc(updated.line_items, updated.labor_items || [], updated.machining_items || [], updated.tax_rate, updated.amount_paid, updated.applied_credits, updated.discount_type || "none", updated.discount_value || 0);
+    setForm({ ...updated, ...totals });
   };
 
   const handleDeletePayment = async (idx) => {
@@ -484,7 +498,7 @@ export default function InvoiceDetail() {
     const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const balance = Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - paid);
     const status = balance <= 0 ? "paid" : paid > 0 ? "partial" : "sent";
-    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits);
+    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
     await saveMutation.mutateAsync(updated);
     setForm(updated);
@@ -496,7 +510,7 @@ export default function InvoiceDetail() {
     const paid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const balance = Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - paid);
     const status = balance <= 0 ? "paid" : "partial";
-    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits);
+    const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
     await saveMutation.mutateAsync(updated);
     setForm(updated);
@@ -1017,6 +1031,25 @@ export default function InvoiceDetail() {
             <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" disabled={customer?.tax_exempt} />
           </div>
           {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-slate-600">Discount</span>
+            <div className="flex items-center gap-2">
+              <Select value={form.discount_type || "none"} onValueChange={v => updateDiscount("type", v)}>
+                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="amount">$ Amount</SelectItem>
+                  <SelectItem value="percentage">% Percent</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.discount_type && form.discount_type !== "none" && (
+                <Input type="number" value={form.discount_value || 0} onChange={e => updateDiscount("value", Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.01" />
+              )}
+            </div>
+          </div>
+          {Number(form.discount_amount) > 0 && (
+            <div className="flex justify-between text-emerald-600"><span>Discount Applied</span><span>-${Number(form.discount_amount || 0).toFixed(2)}</span></div>
+          )}
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span>${Number(form.total || 0).toFixed(2)}</span></div>
           {availableCreditBalance > 0 && (
             <div className="flex items-center justify-between gap-2">
@@ -1025,7 +1058,7 @@ export default function InvoiceDetail() {
                 <span className="text-xs text-slate-400">(Avail: ${availableCreditBalance.toFixed(2)})</span>
                 <Input type="number" value={Number(form.applied_credits) || 0} onChange={e => {
                   const applied = Math.min(Math.max(0, Number(e.target.value) || 0), availableCreditBalance);
-                  const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, applied);
+                  const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, applied, form.discount_type || "none", form.discount_value || 0);
                   setForm(f => ({ ...f, applied_credits: applied, ...totals }));
                 }} className="w-20 text-right h-7" min="0" step="0.01" />
               </div>

@@ -59,6 +59,12 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
               <span>${Number(estimate.tax_amount || 0).toFixed(2)}</span>
             </div>
           )}
+          {Number(estimate.discount_amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", color: "#22c55e" }}>
+              <span>Discount:</span>
+              <span>-${Number(estimate.discount_amount).toFixed(2)}</span>
+            </div>
+          )}
           <div style={{ borderTop: "2px solid #e20404", paddingTop: "8px", marginTop: "8px", display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold" }}>
             <span>TOTAL ESTIMATE:</span>
             <span>${Number(estimate.total || 0).toFixed(2)}</span>
