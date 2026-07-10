@@ -1,0 +1,100 @@
+{
+  "name": "ManualPayment",
+  "type": "object",
+  "properties": {
+    "public_access_token": {
+      "type": "string",
+      "description": "Links to the estimate/invoice"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "estimate",
+        "invoice"
+      ],
+      "description": "Whether this payment is for an estimate or invoice"
+    },
+    "document_number": {
+      "type": "string",
+      "description": "Estimate or invoice number"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Resolved estimate ID (when document_type=estimate)"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Resolved invoice ID (when document_type=invoice)"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Resolved customer ID from the linked document"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "check"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "check_number": {
+      "type": "string",
+      "description": "Check number \u2014 required when payment_method=check"
+    },
+    "delivery_method": {
+      "type": "string",
+      "enum": [
+        "drop_off",
+        "mail"
+      ],
+      "description": "How the payment will be delivered"
+    },
+    "mail_tracking_number": {
+      "type": "string",
+      "description": "Certified mail tracking number (when delivery_method=mail)"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "customer_email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "received",
+        "verified"
+      ],
+      "default": "pending",
+      "description": "pending = customer notified; received = team confirms arrival; verified = funds cleared"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer submitted the manual payment intent"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the team marked the payment as received"
+    },
+    "received_by": {
+      "type": "string",
+      "description": "User ID of the admin who marked this payment received"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "public_access_token",
+    "document_type",
+    "payment_method",
+    "amount",
+    "status"
+  ]
+}
