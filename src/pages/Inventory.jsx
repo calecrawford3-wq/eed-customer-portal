@@ -18,6 +18,7 @@ import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
 import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
+import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -238,6 +239,7 @@ export default function Inventory() {
             <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
+            <MotosportBrowseButton label="Browse MotoSport" />
             <Button onClick={openNewPart} className="bg-[#e20404] hover:bg-[#c00303] text-white">
               <Plus className="w-4 h-4 mr-2" /> Add Part
             </Button>
