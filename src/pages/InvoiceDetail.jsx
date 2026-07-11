@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import CoreCreditModal from "@/components/estimates/CoreCreditModal";
+import QuickCreateCoreModal from "@/components/estimates/QuickCreateCoreModal";
 import GeneratePOModal from "@/components/estimates/GeneratePOModal";
 import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
@@ -60,6 +61,7 @@ export default function InvoiceDetail() {
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
+  const [coreCreateOpen, setCoreCreateOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [poModalOpen, setPoModalOpen] = useState(false);
   const [printMode, setPrintMode] = useState(false);
@@ -700,11 +702,16 @@ export default function InvoiceDetail() {
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
         onSelectKit={selectKit}
         onSelectCore={selectCore}
+        onNewCore={() => setCoreCreateOpen(true)}
       />
       <CoreCreditModal
         open={coreCreditOpen}
         onClose={() => setCoreCreditOpen(false)}
         onAdd={handleCoreCredit}
+      />
+      <QuickCreateCoreModal
+        open={coreCreateOpen}
+        onClose={() => setCoreCreateOpen(false)}
       />
       <GeneratePOModal
         open={poModalOpen}

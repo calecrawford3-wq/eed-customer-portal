@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Package, Boxes, Recycle } from "lucide-react";
+import { Search, Package, Boxes, Recycle, Plus } from "lucide-react";
 
-export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, initialTab = "parts" }) {
+export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, onNewCore, initialTab = "parts" }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState(initialTab);
 
@@ -53,9 +53,16 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
           </div>
         )}
 
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input className="pl-9" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+        <div className="flex gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input className="pl-9" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+          </div>
+          {tab === "cores" && onNewCore && (
+            <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50" onClick={onNewCore}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> New Core
+            </Button>
+          )}
         </div>
 
         <div className="overflow-y-auto flex-1">
