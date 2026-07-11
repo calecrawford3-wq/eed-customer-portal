@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
 
 const empty = {
   core_number: "", name: "", category: "block", condition: "needs_inspection",
@@ -52,7 +53,10 @@ export default function QuickCreateCoreModal({ open, onClose, onCreated, editing
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editingCore ? "Edit Core" : "New Core (Add to Inventory)"}</DialogTitle>
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle>{editingCore ? "Edit Core" : "New Core (Add to Inventory)"}</DialogTitle>
+            <PartzillaBrowseButton label="Browse Partzilla" />
+          </div>
         </DialogHeader>
         <div className="space-y-3">
           <div>

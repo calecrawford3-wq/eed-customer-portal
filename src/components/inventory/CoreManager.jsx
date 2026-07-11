@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Trash2, Edit, Recycle } from "lucide-react";
 import { toast } from "sonner";
+import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
 
 const CATEGORIES = ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"];
 const CONDITIONS = ["rebuildable","needs_inspection","good","scrap"];
@@ -168,7 +169,10 @@ export default function CoreManager() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Core" : "New Engine Core"}</DialogTitle>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle>{editing ? "Edit Core" : "New Engine Core"}</DialogTitle>
+              <PartzillaBrowseButton label="Browse Partzilla" />
+            </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
             <div><Label>Core Number *</Label><Input value={form.core_number} onChange={e => setForm({...form, core_number: e.target.value})} placeholder="e.g. CORE-GSX600-BLOCK" /></div>

@@ -17,6 +17,7 @@ import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
+import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -502,7 +503,10 @@ export default function Inventory() {
       <Dialog open={partDialogOpen} onOpenChange={setPartDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
+              <PartzillaBrowseButton label="Browse Partzilla" />
+            </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
             <div><Label>Part Number *</Label><Input value={partForm.part_number} onChange={e => setPartForm({...partForm, part_number: e.target.value})} /></div>
