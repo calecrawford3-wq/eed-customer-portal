@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
+import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
 
@@ -54,6 +55,7 @@ export default function Inventory() {
   const [laborForm, setLaborForm] = useState(emptyLabor);
   const [machiningForm, setMachiningForm] = useState(emptyMachining);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: parts = [], isLoading: partsLoading } = useQuery({
@@ -513,7 +515,12 @@ export default function Inventory() {
               </Select>
             </div>
             <div>
-              <Label>Supplier</Label>
+              <div className="flex items-center justify-between">
+                <Label>Supplier</Label>
+                <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-xs text-[#e20404] hover:text-[#c00303]" onClick={() => setSupplierModalOpen(true)}>
+                  <Plus className="w-3 h-3 mr-1" /> New Supplier
+                </Button>
+              </div>
               <Select value={partForm.supplier_id || ""} onValueChange={v => setPartForm({...partForm, supplier_id: v})}>
                 <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>
@@ -674,6 +681,11 @@ export default function Inventory() {
         </DialogContent>
       </Dialog>
 
+      <QuickCreateSupplierModal
+        open={supplierModalOpen}
+        onClose={() => setSupplierModalOpen(false)}
+        onCreated={(s) => setPartForm(f => ({ ...f, supplier_id: s.id }))}
+      />
       <PartCsvImportModal open={csvImportOpen} onClose={() => setCsvImportOpen(false)} />
     </div>
   );
