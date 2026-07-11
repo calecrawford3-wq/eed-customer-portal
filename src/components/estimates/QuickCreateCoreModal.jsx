@@ -14,18 +14,22 @@ const empty = {
   unit_cost: 0, sell_price: 0, core_credit: 0, quantity_on_hand: 1, description: "", status: "active"
 };
 
-export default function QuickCreateCoreModal({ open, onClose, onCreated }) {
+export default function QuickCreateCoreModal({ open, onClose, onCreated, editingCore }) {
   const [form, setForm] = useState(empty);
   const qc = useQueryClient();
 
-  useEffect(() => { if (open) setForm(empty); }, [open]);
+  useEffect(() => {
+    if (open) setForm(editingCore ? { ...empty, ...editingCore } : empty);
+  }, [open, editingCore]);
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.EngineCore.create(data),
-    onSuccess: (result) => {
+  const saveMutation = useMutation({
+    mutationFn: (data) => editingCore
+      ? base44.entities.EngineCore.update(editingCore.id, data)
+      : base44.entities.EngineCore.create(data),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["engineCores"] });
-      toast.success("Core added to inventory");
-      onCreated?.(result);
+      toast.success(editingCore ? "Core updated" : "Core added to inventory");
+      onCreated?.();
       setForm(empty);
       onClose();
     },
@@ -41,14 +45,14 @@ export default function QuickCreateCoreModal({ open, onClose, onCreated }) {
       sell_price: Number(form.sell_price) || 0,
       core_credit: Number(form.core_credit) || 0,
     };
-    createMutation.mutate(payload);
+    saveMutation.mutate(payload);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>New Core (Add to Inventory)</DialogTitle>
+          <DialogTitle>{editingCore ? "Edit Core" : "New Core (Add to Inventory)"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -107,12 +111,12 @@ export default function QuickCreateCoreModal({ open, onClose, onCreated }) {
             <Label>Notes</Label>
             <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Core details, condition notes..." />
           </div>
-          <p className="text-xs text-slate-400">This core is added to your core inventory immediately. After creating, pick it from the list to sell it or give the customer credit.</p>
+          <p className="text-xs text-slate-400">{editingCore ? "Changes save to this core inventory record." : "This core is added to your core inventory immediately. After creating, pick it from the list to sell it or give the customer credit."}</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={submit} disabled={createMutation.isPending || !form.name}>
-            {createMutation.isPending ? "Creating..." : "Create Core"}
+          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={submit} disabled={saveMutation.isPending || !form.name}>
+            {saveMutation.isPending ? "Saving..." : editingCore ? "Save Changes" : "Create Core"}
           </Button>
         </DialogFooter>
       </DialogContent>

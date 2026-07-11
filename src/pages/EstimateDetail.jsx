@@ -91,6 +91,7 @@ export default function EstimateDetail() {
   const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
   const [coreCreateOpen, setCoreCreateOpen] = useState(false);
+  const [editingCore, setEditingCore] = useState(null);
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [illegalPartsOpen, setIllegalPartsOpen] = useState(false);
   const [illegalPartsViewOpen, setIllegalPartsViewOpen] = useState(false);
@@ -1110,7 +1111,8 @@ export default function EstimateDetail() {
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
         onSelectKit={selectKit}
         onSelectCore={selectCore}
-        onNewCore={() => setCoreCreateOpen(true)}
+        onNewCore={() => { setEditingCore(null); setCoreCreateOpen(true); }}
+        onEditCore={(c) => { setEditingCore(c); setCoreCreateOpen(true); }}
       />
       <CoreCreditModal
         open={coreCreditOpen}
@@ -1120,6 +1122,7 @@ export default function EstimateDetail() {
       <QuickCreateCoreModal
         open={coreCreateOpen}
         onClose={() => setCoreCreateOpen(false)}
+        editingCore={editingCore}
       />
       <GeneratePOModal
         open={poModalOpen}

@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Package, Boxes, Recycle, Plus } from "lucide-react";
+import { Search, Package, Boxes, Recycle, Plus, Edit } from "lucide-react";
 
-export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, onNewCore, initialTab = "parts" }) {
+export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, onNewCore, onEditCore, initialTab = "parts" }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState(initialTab);
 
@@ -170,7 +170,10 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
                     <td className="px-3 py-2 text-right text-slate-900 font-medium">${Number(c.sell_price || 0).toFixed(2)}</td>
                     <td className="px-3 py-2 text-right text-emerald-600 font-medium">${Number(c.core_credit || 0).toFixed(2)}</td>
                     <td className="px-3 py-2">
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end items-center">
+                        {onEditCore && (
+                          <Button size="sm" variant="ghost" className="text-slate-500 hover:text-[#e20404] px-1.5" title="Edit core" onClick={() => onEditCore(c)}><Edit className="w-3.5 h-3.5" /></Button>
+                        )}
                         <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => handleCoreSelect(c, "sell")} disabled={!onSelectCore}>Sell</Button>
                         <Button size="sm" variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50" onClick={() => handleCoreSelect(c, "credit")} disabled={!onSelectCore}>Credit</Button>
                       </div>

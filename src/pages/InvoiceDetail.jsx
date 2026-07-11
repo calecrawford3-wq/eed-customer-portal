@@ -62,6 +62,7 @@ export default function InvoiceDetail() {
   const [pickingIdx, setPickingIdx] = useState(null);
   const [coreCreditOpen, setCoreCreditOpen] = useState(false);
   const [coreCreateOpen, setCoreCreateOpen] = useState(false);
+  const [editingCore, setEditingCore] = useState(null);
   const [pickerInitialTab, setPickerInitialTab] = useState("parts");
   const [poModalOpen, setPoModalOpen] = useState(false);
   const [printMode, setPrintMode] = useState(false);
@@ -702,7 +703,8 @@ export default function InvoiceDetail() {
         onSelect={(part) => { selectPart(part); setPartPickerOpen(false); }}
         onSelectKit={selectKit}
         onSelectCore={selectCore}
-        onNewCore={() => setCoreCreateOpen(true)}
+        onNewCore={() => { setEditingCore(null); setCoreCreateOpen(true); }}
+        onEditCore={(c) => { setEditingCore(c); setCoreCreateOpen(true); }}
       />
       <CoreCreditModal
         open={coreCreditOpen}
@@ -712,6 +714,7 @@ export default function InvoiceDetail() {
       <QuickCreateCoreModal
         open={coreCreateOpen}
         onClose={() => setCoreCreateOpen(false)}
+        editingCore={editingCore}
       />
       <GeneratePOModal
         open={poModalOpen}
