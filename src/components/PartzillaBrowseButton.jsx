@@ -98,12 +98,17 @@ export default function PartzillaBrowseButton({ label = "Browse Catalog", size =
             <DialogTitle>Browse Partzilla & Capture Parts</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
-            <div className="border rounded-lg overflow-hidden bg-slate-50 h-[300px]">
-              <iframe src={PARTZILLA_URL} className="w-full h-full" title="Partzilla Catalog" />
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400">If the catalog doesn't load above, browse in a new tab and paste a product/diagram URL below to capture its parts.</p>
-              <a href={PARTZILLA_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline whitespace-nowrap ml-2">Open in new tab ↗</a>
+            <div className="border rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center text-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-[#e20404]/10 flex items-center justify-center">
+                <ExternalLink className="w-6 h-6 text-[#e20404]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-700">Partzilla blocks in-app embedding</p>
+                <p className="text-xs text-slate-500 mt-1">Open the catalog in a new tab, find your model/diagram page, copy its URL, then paste it below to capture the parts.</p>
+              </div>
+              <a href={PARTZILLA_URL} target="_blank" rel="noopener noreferrer">
+                <Button type="button" variant="outline" size="sm">Open Partzilla Catalog ↗</Button>
+              </a>
             </div>
             <div className="flex gap-2">
               <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="Paste Partzilla product/diagram URL (e.g. .../catalog/honda/motorcycle/.../model)" />
