@@ -507,7 +507,10 @@ export default function Inventory() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
-              <PartzillaBrowseButton label="Browse Partzilla" />
+              <div className="flex items-center gap-2">
+                <PartzillaBrowseButton label="Browse Partzilla" />
+                <MotosportBrowseButton label="Browse MotoSport" />
+              </div>
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
