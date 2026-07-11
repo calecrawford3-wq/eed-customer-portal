@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -23,16 +23,29 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
   const [selected, setSelected] = useState({});
   const [importing, setImporting] = useState(null);
   const qc = useQueryClient();
+  const iframeRef = useRef(null);
+  const expectingLoad = useRef(false);
+  const [staleUrl, setStaleUrl] = useState(false);
 
   const go = (url) => {
     let u = (url ?? address).trim();
     if (!u) return;
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
-    setSrc(u); setAddress(u); setCaptureUrl(u);
+    setSrc(u); setAddress(u); setCaptureUrl(u); setStaleUrl(false);
     setReloadKey(k => k + 1);
+    expectingLoad.current = true;
     setLoading(true);
   };
-  const reload = () => { setReloadKey(k => k + 1); setLoading(true); };
+  const reload = () => { setReloadKey(k => k + 1); expectingLoad.current = true; setLoading(true); };
+
+  const handleLoad = () => {
+    setLoading(false);
+    if (expectingLoad.current) { expectingLoad.current = false; setStaleUrl(false); return; }
+    let url = null;
+    try { url = iframeRef.current?.contentWindow?.location?.href; } catch { url = null; }
+    if (url && url !== "about:blank") { setAddress(url); setCaptureUrl(url); setStaleUrl(false); }
+    else { setStaleUrl(true); setCaptureUrl(""); }
+  };
 
   const captureParts = async () => {
     let u = captureUrl.trim();
@@ -118,12 +131,17 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
               : "Browse to a part diagram in the frame, paste its URL here, then capture to import."}
           </p>
           <div className="flex items-center gap-1.5">
-            <Input value={captureUrl} onChange={e => setCaptureUrl(e.target.value)} placeholder="Paste the MotoSport diagram URL" className="h-8 text-xs font-mono" />
+            <Input value={captureUrl} onChange={e => { setCaptureUrl(e.target.value); setStaleUrl(false); }} placeholder="Paste the MotoSport diagram URL" className="h-8 text-xs font-mono" />
             <Button size="sm" className="h-8 bg-[#e20404] hover:bg-[#c00303] text-white" onClick={captureParts} disabled={capturing}>
               {capturing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
               Capture parts
             </Button>
           </div>
+          {staleUrl && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
+              MotoSport hides its page URL, so capture can't auto-follow your clicks. Open the diagram in a new tab, copy its URL, paste it above, then Capture parts.
+            </p>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 relative bg-white">
@@ -135,11 +153,12 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
           <iframe
             key={reloadKey}
             src={src}
+            ref={iframeRef}
             title="MotoSport OEM Parts Catalog"
             className="w-full h-full border-0"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
             referrerPolicy="no-referrer"
-            onLoad={() => setLoading(false)}
+            onLoad={handleLoad}
           />
         </div>
 
