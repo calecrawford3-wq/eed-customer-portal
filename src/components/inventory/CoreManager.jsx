@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Trash2, Edit, Recycle } from "lucide-react";
 import { toast } from "sonner";
-import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
+import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 
 const CATEGORIES = ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"];
 const CONDITIONS = ["rebuildable","needs_inspection","good","scrap"];
@@ -171,7 +171,7 @@ export default function CoreManager() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editing ? "Edit Core" : "New Engine Core"}</DialogTitle>
-              <PartzillaBrowseButton label="Browse Partzilla" />
+              <MotosportBrowseButton label="Browse MotoSport" />
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
