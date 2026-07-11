@@ -82,6 +82,7 @@ export default function CoreManager() {
   const openNew = () => { setEditing(null); setForm(emptyCore); setDialogOpen(true); };
   const openEdit = (c) => { setEditing(c); setForm({ ...emptyCore, ...c }); setDialogOpen(true); };
   const pickCoreFromCatalog = (part) => {
+    setEditing(null);
     setForm(f => ({
       ...f,
       core_number: part.part_number || f.core_number,
@@ -90,6 +91,7 @@ export default function CoreManager() {
       category: CATEGORIES.includes(part.category_hint) ? part.category_hint : "other",
       description: part.description || f.description,
     }));
+    setDialogOpen(true);
   };
 
   const filtered = cores.filter(c =>

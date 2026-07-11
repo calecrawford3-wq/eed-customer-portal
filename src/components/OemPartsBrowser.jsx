@@ -164,12 +164,14 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
               {tray.map((r, i) => (
                 <div key={i} className="flex items-center gap-2 px-2 py-1.5 border-b last:border-0 text-xs">
                   {pickMode ? (
-                    <button onClick={() => pickPart(r)} className="flex items-center gap-2 flex-1 text-left hover:bg-slate-50 -mx-1 px-1 rounded">
+                    <>
                       <span className="font-mono text-slate-500 w-28 truncate">{r.part_number || "—"}</span>
                       <span className="flex-1 truncate text-slate-800">{r.name}</span>
                       {Number(r.price) > 0 && <span className="text-emerald-700 font-semibold">${Number(r.price).toFixed(2)}</span>}
-                      <span className="inline-flex items-center gap-1 text-[#e20404] font-medium">Use <ArrowRight className="w-3 h-3" /></span>
-                    </button>
+                      <Button size="sm" className="h-6 px-2 bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => pickPart(r)}>
+                        Use <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <input type="checkbox" checked={!!selected[i]} onChange={() => toggle(i)} className="w-3.5 h-3.5 accent-[#e20404]" />

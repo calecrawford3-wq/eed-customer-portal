@@ -167,6 +167,7 @@ export default function Inventory() {
   const openNewPart = () => { setEditingPart(null); setPartForm(emptyPart); setPartDialogOpen(true); };
   const openEditPart = (p) => { setEditingPart(p); setPartForm({ ...p }); setPartDialogOpen(true); };
   const pickPartFromCatalog = (part) => {
+    setEditingPart(null);
     setPartForm(f => ({
       ...f,
       part_number: part.part_number || f.part_number,
@@ -175,6 +176,7 @@ export default function Inventory() {
       category: CATEGORIES.includes(part.category_hint) ? part.category_hint : (f.category || "other"),
       description: part.description || f.description,
     }));
+    setPartDialogOpen(true);
   };
   const openNewLabor = () => { setEditingLabor(null); setLaborForm(emptyLabor); setLaborDialogOpen(true); };
   const openEditLabor = (l) => { setEditingLabor(l); setLaborForm({ ...l }); setLaborDialogOpen(true); };
@@ -248,7 +250,7 @@ export default function Inventory() {
             <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
-            <MotosportBrowseButton label="Browse MotoSport" />
+            <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
             <Button onClick={openNewPart} className="bg-[#e20404] hover:bg-[#c00303] text-white">
               <Plus className="w-4 h-4 mr-2" /> Add Part
             </Button>
