@@ -17,7 +17,6 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [captureUrl, setCaptureUrl] = useState(DEFAULT_URL);
   const [capturing, setCapturing] = useState(false);
   const [tray, setTray] = useState([]);
   const [selected, setSelected] = useState({});
@@ -31,7 +30,7 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
     let u = (url ?? address).trim();
     if (!u) return;
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
-    setSrc(u); setAddress(u); setCaptureUrl(u); setStaleUrl(false);
+    setSrc(u); setAddress(u); setStaleUrl(false);
     setReloadKey(k => k + 1);
     expectingLoad.current = true;
     setLoading(true);
@@ -43,13 +42,13 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
     if (expectingLoad.current) { expectingLoad.current = false; setStaleUrl(false); return; }
     let url = null;
     try { url = iframeRef.current?.contentWindow?.location?.href; } catch { url = null; }
-    if (url && url !== "about:blank") { setAddress(url); setCaptureUrl(url); setStaleUrl(false); }
-    else { setStaleUrl(true); setCaptureUrl(""); }
+    if (url && url !== "about:blank") { setAddress(url); setStaleUrl(false); }
+    else { setStaleUrl(true); }
   };
 
   const captureParts = async () => {
-    let u = captureUrl.trim();
-    if (!u) { toast.error("Enter the diagram URL to capture"); return; }
+    let u = address.trim();
+    if (!u) { toast.error("Enter the diagram URL in the address bar first"); return; }
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
     setCapturing(true);
     try {
@@ -117,29 +116,26 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick
           <Button size="icon" variant="outline" className="h-8 w-8" onClick={reload}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Input value={address} onChange={e => setAddress(e.target.value)} onKeyDown={e => { if (e.key === "Enter") go(); }} className="h-8 text-xs font-mono" />
+          <Input value={address} onChange={e => { setAddress(e.target.value); setStaleUrl(false); }} onKeyDown={e => { if (e.key === "Enter") go(); }} className="h-8 text-xs font-mono" />
           <Button size="sm" variant="outline" className="h-8" onClick={() => go()}>Go</Button>
           <Button size="sm" variant="outline" className="h-8" onClick={() => window.open(src, "_blank")}>
             <ExternalLink className="w-3.5 h-3.5 mr-1" /> New Tab
           </Button>
         </div>
 
-        <div className="px-4 py-2 border-b bg-slate-50">
-          <p className="text-[10px] text-slate-400 mb-1">
+        <div className="px-4 py-2 border-b bg-slate-50 flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-[10px] text-slate-400">
             {pickMode
-              ? "Browse to a part diagram in the frame, paste its URL here, capture, then click a part to fill the form."
-              : "Browse to a part diagram in the frame, paste its URL here, then capture to import."}
+              ? "Capture uses the address bar URL above. Load a diagram, click Capture, then click a part to fill the form."
+              : "Capture uses the address bar URL above. Load a diagram, then Capture to import."}
           </p>
-          <div className="flex items-center gap-1.5">
-            <Input value={captureUrl} onChange={e => { setCaptureUrl(e.target.value); setStaleUrl(false); }} placeholder="Paste the MotoSport diagram URL" className="h-8 text-xs font-mono" />
-            <Button size="sm" className="h-8 bg-[#e20404] hover:bg-[#c00303] text-white" onClick={captureParts} disabled={capturing}>
-              {capturing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
-              Capture parts
-            </Button>
-          </div>
+          <Button size="sm" className="h-8 bg-[#e20404] hover:bg-[#c00303] text-white" onClick={captureParts} disabled={capturing || staleUrl}>
+            {capturing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+            Capture parts
+          </Button>
           {staleUrl && (
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
-              MotoSport hides its page URL, so capture can't auto-follow your clicks. Open the diagram in a new tab, copy its URL, paste it above, then Capture parts.
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-full">
+              You navigated inside MotoSport and its URL is hidden by the browser. Paste the diagram URL in the address bar above and press Go, then Capture parts.
             </p>
           )}
         </div>
