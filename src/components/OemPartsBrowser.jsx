@@ -89,7 +89,7 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 gap-0">
+      <DialogContent className="w-[98vw] max-w-[1700px] max-h-[94vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="text-base">OEM Parts Catalog — MotoSport</DialogTitle>
         </DialogHeader>
