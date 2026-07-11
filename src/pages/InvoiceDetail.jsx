@@ -527,7 +527,10 @@ export default function InvoiceDetail() {
       accessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       setForm(f => ({ ...f, public_access_token: accessToken }));
     }
-    const formToSave = { ...form, public_access_token: accessToken };
+    // Mark as "sent" before saving so the public viewer receives an acceptable
+    // status (it rejects "draft"). The sync reads this persisted status.
+    const formToSave = { ...form, public_access_token: accessToken, status: "sent" };
+    setForm(f => ({ ...f, public_access_token: accessToken, status: "sent" }));
     const saved = await saveMutation.mutateAsync(formToSave);
     const invoiceId = id || saved?.id;
 
@@ -621,9 +624,7 @@ export default function InvoiceDetail() {
     `;
     const result = await base44.functions.invoke("sendSmtpEmail", { to: customer.email, subject, html, usePOSmtp: false });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
-    await base44.entities.Invoice.update(invoiceId, { status: "sent" });
     qc.invalidateQueries({ queryKey: ["invoices"] });
-    setForm(f => ({ ...f, status: "sent" }));
     setSending(false);
     toast.success(`Invoice sent to ${customer.email}`);
   };
