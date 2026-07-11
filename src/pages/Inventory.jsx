@@ -17,7 +17,6 @@ import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
-import PartzillaBrowseButton from "@/components/PartzillaBrowseButton";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
@@ -507,10 +506,7 @@ export default function Inventory() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
-              <div className="flex items-center gap-2">
-                <PartzillaBrowseButton label="Browse Partzilla" />
-                <MotosportBrowseButton label="Browse MotoSport" />
-              </div>
+              <MotosportBrowseButton label="Browse MotoSport" />
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
