@@ -166,6 +166,16 @@ export default function Inventory() {
 
   const openNewPart = () => { setEditingPart(null); setPartForm(emptyPart); setPartDialogOpen(true); };
   const openEditPart = (p) => { setEditingPart(p); setPartForm({ ...p }); setPartDialogOpen(true); };
+  const pickPartFromCatalog = (part) => {
+    setPartForm(f => ({
+      ...f,
+      part_number: part.part_number || f.part_number,
+      name: part.name || f.name,
+      sell_price: part.price != null && part.price > 0 ? part.price : f.sell_price,
+      category: CATEGORIES.includes(part.category_hint) ? part.category_hint : (f.category || "other"),
+      description: part.description || f.description,
+    }));
+  };
   const openNewLabor = () => { setEditingLabor(null); setLaborForm(emptyLabor); setLaborDialogOpen(true); };
   const openEditLabor = (l) => { setEditingLabor(l); setLaborForm({ ...l }); setLaborDialogOpen(true); };
   const openNewMachining = () => { setEditingMachining(null); setMachiningForm(emptyMachining); setMachiningDialogOpen(true); };
@@ -506,7 +516,7 @@ export default function Inventory() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
-              <MotosportBrowseButton label="Browse MotoSport" />
+              <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">

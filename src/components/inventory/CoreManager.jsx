@@ -81,6 +81,16 @@ export default function CoreManager() {
 
   const openNew = () => { setEditing(null); setForm(emptyCore); setDialogOpen(true); };
   const openEdit = (c) => { setEditing(c); setForm({ ...emptyCore, ...c }); setDialogOpen(true); };
+  const pickCoreFromCatalog = (part) => {
+    setForm(f => ({
+      ...f,
+      core_number: part.part_number || f.core_number,
+      name: part.name || f.name,
+      sell_price: part.price != null && part.price > 0 ? part.price : f.sell_price,
+      category: CATEGORIES.includes(part.category_hint) ? part.category_hint : "other",
+      description: part.description || f.description,
+    }));
+  };
 
   const filtered = cores.filter(c =>
     `${c.core_number} ${c.name} ${c.description}`.toLowerCase().includes(search.toLowerCase())
@@ -171,7 +181,7 @@ export default function CoreManager() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editing ? "Edit Core" : "New Engine Core"}</DialogTitle>
-              <MotosportBrowseButton label="Browse MotoSport" />
+              <MotosportBrowseButton label="Browse MotoSport" onPick={pickCoreFromCatalog} />
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">

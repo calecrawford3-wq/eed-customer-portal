@@ -4,14 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { RefreshCw, ExternalLink, Loader2, Plus, Package, Recycle, X } from "lucide-react";
+import { RefreshCw, ExternalLink, Loader2, Plus, Package, Recycle, X, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_URL = "https://www.motosport.com/oem-parts";
 const PART_CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
-const CORE_CAT_MAP = { block:"block", cylinder_head:"cylinder_head", rotating_assembly:"rotating_assembly", crankshaft:"crankshaft", valvetrain:"valvetrain", timing:"timing", oiling:"oiling", fasteners:"other", gaskets:"other", seals:"other", electrical:"other", other:"other" };
 
-export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
+export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick }) {
+  const pickMode = !!onPick;
   const [address, setAddress] = useState(DEFAULT_URL);
   const [src, setSrc] = useState(DEFAULT_URL);
   const [reloadKey, setReloadKey] = useState(0);
@@ -45,7 +45,7 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
       if (parts.length === 0) { toast.error("No parts found on that page"); return; }
       setTray(prev => [...prev, ...parts.map(p => ({
         name: p.name || "Imported part", part_number: p.part_number || "",
-        price: p.price || 0, category_hint: p.category_hint, source: u,
+        price: p.price || 0, category_hint: p.category_hint, description: p.description || "", source: u,
       }))]);
       toast.success(`Captured ${parts.length} parts`);
     } catch (e) {
@@ -56,6 +56,12 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
   const toggle = (i) => setSelected(s => ({ ...s, [i]: !s[i] }));
   const removeFromTray = (i) => setTray(prev => prev.filter((_, idx) => idx !== i));
   const selectedCount = tray.filter((_, i) => selected[i]).length;
+
+  const pickPart = (part) => {
+    onPick(part);
+    setTray([]); setSelected({});
+    onOpenChange(false);
+  };
 
   const importAs = async (type) => {
     const picked = tray.filter((_, i) => selected[i]);
@@ -72,7 +78,7 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
       } else {
         await base44.entities.EngineCore.bulkCreate(picked.map(p => ({
           core_number: p.part_number, name: p.name,
-          category: CORE_CAT_MAP[p.category_hint] || "other",
+          category: ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"].includes(p.category_hint) ? p.category_hint : "other",
           condition: "needs_inspection", quantity_on_hand: 1,
           unit_cost: 0, sell_price: Number(p.price) || 0, core_credit: 0, status: "active",
         })));
@@ -106,7 +112,11 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
         </div>
 
         <div className="px-4 py-2 border-b bg-slate-50">
-          <p className="text-[10px] text-slate-400 mb-1">Browse to a part diagram in the frame, paste its URL here, then capture to import.</p>
+          <p className="text-[10px] text-slate-400 mb-1">
+            {pickMode
+              ? "Browse to a part diagram in the frame, paste its URL here, capture, then click a part to fill the form."
+              : "Browse to a part diagram in the frame, paste its URL here, then capture to import."}
+          </p>
           <div className="flex items-center gap-1.5">
             <Input value={captureUrl} onChange={e => setCaptureUrl(e.target.value)} placeholder="Paste the MotoSport diagram URL" className="h-8 text-xs font-mono" />
             <Button size="sm" className="h-8 bg-[#e20404] hover:bg-[#c00303] text-white" onClick={captureParts} disabled={capturing}>
@@ -135,27 +145,42 @@ export default function OemPartsBrowser({ open, onOpenChange, onImported }) {
 
         {tray.length > 0 && (
           <DialogFooter className="px-4 py-2 border-t bg-slate-50 flex-col items-stretch gap-2 sm:flex-col sm:items-stretch">
-            <div className="max-h-28 overflow-y-auto border rounded-md bg-white">
+            <div className="max-h-32 overflow-y-auto border rounded-md bg-white">
               {tray.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 px-2 py-1 border-b last:border-0 text-xs">
-                  <input type="checkbox" checked={!!selected[i]} onChange={() => toggle(i)} className="w-3.5 h-3.5 accent-[#e20404]" />
-                  <span className="font-mono text-slate-500 w-28 truncate">{r.part_number || "—"}</span>
-                  <span className="flex-1 truncate text-slate-800">{r.name}</span>
-                  {Number(r.price) > 0 && <span className="text-emerald-700 font-semibold">${Number(r.price).toFixed(2)}</span>}
-                  <button onClick={() => removeFromTray(i)} className="text-slate-300 hover:text-[#e20404]"><X className="w-3 h-3" /></button>
+                <div key={i} className="flex items-center gap-2 px-2 py-1.5 border-b last:border-0 text-xs">
+                  {pickMode ? (
+                    <button onClick={() => pickPart(r)} className="flex items-center gap-2 flex-1 text-left hover:bg-slate-50 -mx-1 px-1 rounded">
+                      <span className="font-mono text-slate-500 w-28 truncate">{r.part_number || "—"}</span>
+                      <span className="flex-1 truncate text-slate-800">{r.name}</span>
+                      {Number(r.price) > 0 && <span className="text-emerald-700 font-semibold">${Number(r.price).toFixed(2)}</span>}
+                      <span className="inline-flex items-center gap-1 text-[#e20404] font-medium">Use <ArrowRight className="w-3 h-3" /></span>
+                    </button>
+                  ) : (
+                    <>
+                      <input type="checkbox" checked={!!selected[i]} onChange={() => toggle(i)} className="w-3.5 h-3.5 accent-[#e20404]" />
+                      <span className="font-mono text-slate-500 w-28 truncate">{r.part_number || "—"}</span>
+                      <span className="flex-1 truncate text-slate-800">{r.name}</span>
+                      {Number(r.price) > 0 && <span className="text-emerald-700 font-semibold">${Number(r.price).toFixed(2)}</span>}
+                      <button onClick={() => removeFromTray(i)} className="text-slate-300 hover:text-[#e20404]"><X className="w-3 h-3" /></button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">{tray.length} captured · {selectedCount} selected</span>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50 h-8" disabled={importing !== null} onClick={() => importAs("core")}>
-                  <Recycle className="w-3.5 h-3.5 mr-1" /> {importing === "core" ? "..." : "Import as Cores"}
-                </Button>
-                <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white h-8" disabled={importing !== null} onClick={() => importAs("part")}>
-                  <Package className="w-3.5 h-3.5 mr-1" /> {importing === "part" ? "..." : "Import as Parts"}
-                </Button>
-              </div>
+              <span className="text-xs text-slate-500">
+                {pickMode ? `${tray.length} captured · click a part to fill the form` : `${tray.length} captured · ${selectedCount} selected`}
+              </span>
+              {!pickMode && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50 h-8" disabled={importing !== null} onClick={() => importAs("core")}>
+                    <Recycle className="w-3.5 h-3.5 mr-1" /> {importing === "core" ? "..." : "Import as Cores"}
+                  </Button>
+                  <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white h-8" disabled={importing !== null} onClick={() => importAs("part")}>
+                    <Package className="w-3.5 h-3.5 mr-1" /> {importing === "part" ? "..." : "Import as Parts"}
+                  </Button>
+                </div>
+              )}
             </div>
           </DialogFooter>
         )}
