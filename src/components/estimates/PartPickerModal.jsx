@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Package, Boxes, Recycle, Plus, Edit } from "lucide-react";
+import QuickCreatePartModal from "@/components/estimates/QuickCreatePartModal";
 
 export default function PartPickerModal({ open, onClose, parts, kits = [], cores = [], onSelect, onSelectKit, onSelectCore, onNewCore, onEditCore, initialTab = "parts" }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState(initialTab);
+  const [newPartOpen, setNewPartOpen] = useState(false);
 
   useEffect(() => { if (open) { setTab(initialTab); setSearch(""); } }, [open, initialTab]);
 
@@ -58,6 +60,11 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input className="pl-9" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
           </div>
+          {tab === "parts" && (
+            <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => setNewPartOpen(true)}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> New Part
+            </Button>
+          )}
           {tab === "cores" && onNewCore && (
             <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50" onClick={onNewCore}>
               <Plus className="w-3.5 h-3.5 mr-1" /> New Core
@@ -187,6 +194,12 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
             </table>
           )}
         </div>
+
+        <QuickCreatePartModal
+          open={newPartOpen}
+          onClose={() => setNewPartOpen(false)}
+          onCreated={(p) => { setNewPartOpen(false); onSelect(p); onClose(); }}
+        />
       </DialogContent>
     </Dialog>
   );
