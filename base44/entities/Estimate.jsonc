@@ -257,6 +257,21 @@
     "amount_due": {
       "type": "number"
     },
+    "first_viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "First time the customer viewed this estimate via the public viewer"
+    },
+    "last_viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent time the customer viewed this estimate via the public viewer"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times the estimate was viewed via the public viewer"
+    },
     "notes": {
       "type": "string"
     },
