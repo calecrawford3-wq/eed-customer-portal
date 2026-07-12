@@ -40,6 +40,24 @@ Deno.serve(async (req) => {
       console.log(`[recordDocumentView] First view — ${document_type} ${docNumber} by ${customer_email || customer_name || "unknown"} | UA: ${(user_agent || "").slice(0, 120)}`);
     };
 
+    // Notify admin (Notification record + email) only on the first-ever view of a document
+    const notifyFirstView = async (docNumber, docId) => {
+      const viewer = customer_email || customer_name || "A customer";
+      const label = document_type === "invoice" ? "Invoice" : "Estimate";
+      const link = document_type === "invoice" ? `/InvoiceDetail?id=${docId}` : `/EstimateDetail?id=${docId}`;
+      try {
+        await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+          title: `${label} Viewed`,
+          message: `${viewer} viewed ${label.toLowerCase()} ${docNumber}.`,
+          type: "other",
+          link_url: link,
+        });
+        console.log(`[recordDocumentView] Admin notified of first ${document_type} view: ${docNumber}`);
+      } catch (e) {
+        console.error("[recordDocumentView] Admin notification failed:", e.message);
+      }
+    };
+
     if (document_type === "estimate") {
       const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token });
       const estimate = estimates?.[0];
@@ -48,7 +66,10 @@ Deno.serve(async (req) => {
       }
       const firstViewedAt = estimate.first_viewed_at || viewed_at;
       const viewCount = (estimate.view_count || 0) + 1;
-      if (isFirstView(estimate)) logFirstView(estimate.estimate_number || estimate.id);
+      if (isFirstView(estimate)) {
+        logFirstView(estimate.estimate_number || estimate.id);
+        await notifyFirstView(estimate.estimate_number || estimate.id, estimate.id);
+      }
       await base44.asServiceRole.entities.Estimate.update(estimate.id, {
         first_viewed_at: firstViewedAt,
         last_viewed_at: viewed_at,
@@ -73,7 +94,10 @@ Deno.serve(async (req) => {
     }
     const firstViewedAt = invoice.first_viewed_at || viewed_at;
     const viewCount = (invoice.view_count || 0) + 1;
-    if (isFirstView(invoice)) logFirstView(invoice.invoice_number || invoice.id);
+    if (isFirstView(invoice)) {
+      logFirstView(invoice.invoice_number || invoice.id);
+      await notifyFirstView(invoice.invoice_number || invoice.id, invoice.id);
+    }
     await base44.asServiceRole.entities.Invoice.update(invoice.id, {
       first_viewed_at: firstViewedAt,
       last_viewed_at: viewed_at,
