@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import EngineSelector from "@/components/EngineSelector";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
+import HistoryModal from "@/components/HistoryModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -73,6 +74,7 @@ export default function InvoiceDetail() {
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pdfFileRef = useRef(null);
   const [legalDocOpen, setLegalDocOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -744,6 +746,11 @@ export default function InvoiceDetail() {
             <DollarSign className="w-4 h-4 mr-1" /> Record Payment
           </Button>
         )}
+        {id && (
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+            <History className="w-4 h-4 mr-1" /> History
+          </Button>
+        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" size="sm" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
@@ -803,6 +810,12 @@ export default function InvoiceDetail() {
         estimateId={form.estimate_id}
         customerEngineId={form.customer_engine_id}
         documentType="illegal_parts"
+      />
+
+      <HistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        context={{ type: "invoice", id, number: form.invoice_number, estimateId: form.estimate_id, buildId: form.build_id }}
       />
 
       <div className="grid grid-cols-2 gap-6 mb-6">

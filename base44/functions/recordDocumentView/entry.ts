@@ -58,6 +58,26 @@ Deno.serve(async (req) => {
       }
     };
 
+    // Record a "viewed" activity entry (once per viewer session)
+    const logView = async (docNumber, docId) => {
+      const viewer = customer_email || customer_name || "Customer";
+      try {
+        await base44.asServiceRole.entities.ActivityLog.create({
+          entity_type: document_type,
+          document_id: docId,
+          document_number: docNumber,
+          event_type: "viewed",
+          title: "Document viewed",
+          description: `Viewed by ${viewer}.`,
+          actor: viewer,
+          actor_type: "customer",
+          event_date: viewed_at,
+        });
+      } catch (e) {
+        console.error("[recordDocumentView] ActivityLog failed:", e.message);
+      }
+    };
+
     if (document_type === "estimate") {
       const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token });
       const estimate = estimates?.[0];
@@ -75,6 +95,7 @@ Deno.serve(async (req) => {
         last_viewed_at: viewed_at,
         view_count: viewCount,
       });
+      await logView(estimate.estimate_number || estimate.id, estimate.id);
       console.log(`[recordDocumentView] Estimate ${estimate.estimate_number || estimate.id} viewed (count: ${viewCount})`);
       return Response.json({
         success: true,
@@ -103,6 +124,7 @@ Deno.serve(async (req) => {
       last_viewed_at: viewed_at,
       view_count: viewCount,
     });
+    await logView(invoice.invoice_number || invoice.id, invoice.id);
     console.log(`[recordDocumentView] Invoice ${invoice.invoice_number || invoice.id} viewed (count: ${viewCount})`);
     return Response.json({
       success: true,

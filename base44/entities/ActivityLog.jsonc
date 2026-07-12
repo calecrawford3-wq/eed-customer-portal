@@ -1,0 +1,86 @@
+{
+  "name": "ActivityLog",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "estimate",
+        "invoice",
+        "build"
+      ],
+      "description": "Which entity this event pertains to"
+    },
+    "document_id": {
+      "type": "string",
+      "description": "ID of the estimate/invoice/build this event is about"
+    },
+    "document_number": {
+      "type": "string",
+      "description": "Estimate/invoice number or engine serial for display"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "created",
+        "updated",
+        "viewed",
+        "payment",
+        "status_change",
+        "deleted"
+      ],
+      "default": "updated",
+      "description": "Category of activity"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short headline"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable detail"
+    },
+    "changes": {
+      "type": "array",
+      "description": "Field-level changes for update events",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "old_value": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "actor": {
+      "type": "string",
+      "description": "Who performed the action (System, customer email/name, admin)"
+    },
+    "actor_type": {
+      "type": "string",
+      "enum": [
+        "system",
+        "admin",
+        "customer"
+      ],
+      "default": "system"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event occurred (settable for backfill); falls back to created_date for sorting"
+    }
+  },
+  "required": [
+    "entity_type",
+    "document_id",
+    "event_type",
+    "title"
+  ]
+}

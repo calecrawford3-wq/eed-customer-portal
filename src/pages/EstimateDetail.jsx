@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -33,6 +33,7 @@ import IllegalPartsModal from "@/components/legal/IllegalPartsModal";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 import ContractEngineModal from "@/components/legal/ContractEngineModal";
 import { AlertTriangle as AlertTriangleIcon, ShieldAlert, FileText } from "lucide-react";
+import HistoryModal from "@/components/HistoryModal";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -97,6 +98,7 @@ export default function EstimateDetail() {
   const [illegalPartsViewOpen, setIllegalPartsViewOpen] = useState(false);
   const [contractEngineOpen, setContractEngineOpen] = useState(false);
   const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data: estimate } = useQuery({
     queryKey: ["estimate", id],
@@ -1203,6 +1205,12 @@ export default function EstimateDetail() {
         customerEngineId={form.customer_engine_id}
       />
 
+      <HistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        context={{ type: "estimate", id, number: form.estimate_number, buildId: form.build_id }}
+      />
+
       {/* Header */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         <Link to="/Estimates"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
@@ -1260,6 +1268,11 @@ export default function EstimateDetail() {
               <Receipt className="w-4 h-4 mr-1" /> View Invoice
             </Button>
           </Link>
+        )}
+        {id && (
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+            <History className="w-4 h-4 mr-1" /> History
+          </Button>
         )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" size="sm" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
