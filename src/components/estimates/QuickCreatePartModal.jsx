@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
-import { Package } from "lucide-react";
+import { Package, Plus } from "lucide-react";
+import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 
 const CATEGORIES = [
   "block", "rotating_assembly", "cylinder_head", "valvetrain", "timing",
@@ -26,6 +27,7 @@ const empty = {
 export default function QuickCreatePartModal({ open, onClose, onCreated }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ ...empty });
+  const [newSupplierOpen, setNewSupplierOpen] = useState(false);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
@@ -111,15 +113,20 @@ export default function QuickCreatePartModal({ open, onClose, onCreated }) {
             </div>
             <div>
               <Label>Supplier</Label>
-              <Select value={form.supplier_id || ""} onValueChange={(v) => setForm({ ...form, supplier_id: v })}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>None</SelectItem>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={form.supplier_id || ""} onValueChange={(v) => setForm({ ...form, supplier_id: v })}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => setNewSupplierOpen(true)}>
+                  <Plus className="w-3.5 h-3.5" /> New
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -197,6 +204,12 @@ export default function QuickCreatePartModal({ open, onClose, onCreated }) {
             {createMut.isPending ? "Creating..." : "Create & Add to Line"}
           </Button>
         </div>
+
+        <QuickCreateSupplierModal
+          open={newSupplierOpen}
+          onClose={() => setNewSupplierOpen(false)}
+          onCreated={(s) => setForm((f) => ({ ...f, supplier_id: s.id }))}
+        />
       </DialogContent>
     </Dialog>
   );
