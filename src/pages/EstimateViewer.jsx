@@ -239,7 +239,7 @@ export default function EstimateViewer({ buildVersion }) {
                   <tbody>
                     {data.estimate.line_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
-                        <td className="py-3 text-slate-900">{item.item_name || item.part_number}</td>
+                        <td className="py-3 text-slate-900">{item.item_name}</td>
                         <td className="text-center py-3 text-slate-600">{item.quantity}</td>
                         <td className="text-right py-3 text-slate-600">{formatMoney(item.unit_price)}</td>
                         <td className="text-right py-3 text-slate-900 font-semibold">{formatMoney(item.total)}</td>

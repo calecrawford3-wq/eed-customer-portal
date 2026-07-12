@@ -100,7 +100,7 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
           <tbody>
             {(invoice.line_items || []).map((item, idx) => (
               <tr key={idx}>
-                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.item_name} {item.part_number && `(${item.part_number})`}</td>
+                <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{item.item_name}</td>
                 <td style={{ textAlign: "center", padding: "8px", borderBottom: "1px solid #eee" }}>{item.quantity}</td>
                 <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.unit_price).toFixed(2)}</td>
                 <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee" }}>${Number(item.total).toFixed(2)}</td>
