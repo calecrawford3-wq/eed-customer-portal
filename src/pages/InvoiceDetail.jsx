@@ -54,6 +54,7 @@ export default function InvoiceDetail() {
     labor_items: [],
     machining_items: [],
     discount_type: "none", discount_value: 0, discount_amount: 0,
+    shipping_cost: 0,
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
   const [sending, setSending] = useState(false);
@@ -125,6 +126,7 @@ export default function InvoiceDetail() {
         tax_rate: Number(form.tax_rate) || 0,
         tax_amount: Number(form.tax_amount) || 0,
         total: Number(form.total) || 0,
+        shipping_cost: Number(form.shipping_cost) || 0,
         amount_paid: 0,
         amount_due: Number(form.total) || 0,
         applied_credits: 0,
@@ -285,7 +287,7 @@ export default function InvoiceDetail() {
     },
   });
 
-  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid, appliedCredits, discountType = "none", discountValue = 0) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, amountPaid, appliedCredits, discountType = "none", discountValue = 0, shippingCost) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
@@ -297,7 +299,8 @@ export default function InvoiceDetail() {
     } else if (discountType === "percentage") {
       discount_amount = subtotal * ((Number(discountValue) || 0) / 100);
     }
-    const total = subtotal + tax_amount - discount_amount;
+    const shipping = shippingCost !== undefined ? (Number(shippingCost) || 0) : (Number(form.shipping_cost) || 0);
+    const total = subtotal + tax_amount - discount_amount + shipping;
     const balance_due = Math.max(0, total - (Number(appliedCredits) || 0) - (Number(amountPaid) || 0));
     return { subtotal, tax_amount, discount_amount, total, balance_due };
   };
@@ -496,6 +499,12 @@ export default function InvoiceDetail() {
     if (field === "type" && value === "none") updated.discount_value = 0;
     const totals = recalc(updated.line_items, updated.labor_items || [], updated.machining_items || [], updated.tax_rate, updated.amount_paid, updated.applied_credits, updated.discount_type || "none", updated.discount_value || 0);
     setForm({ ...updated, ...totals });
+  };
+
+  const updateShipping = (val) => {
+    const shipping = Number(val) || 0;
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0, shipping);
+    setForm(f => ({ ...f, shipping_cost: shipping, ...totals }));
   };
 
   const handleDeletePayment = async (idx) => {
@@ -1074,6 +1083,13 @@ export default function InvoiceDetail() {
           {Number(form.discount_amount) > 0 && (
             <div className="flex justify-between text-emerald-600"><span>Discount Applied</span><span>-${Number(form.discount_amount || 0).toFixed(2)}</span></div>
           )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-slate-600">Shipping</span>
+            <div className="relative w-20">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+              <Input type="number" value={Number(form.shipping_cost) || 0} onChange={e => updateShipping(Number(e.target.value))} className="text-right h-7 pl-5" min="0" step="0.01" />
+            </div>
+          </div>
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span>${Number(form.total || 0).toFixed(2)}</span></div>
           {availableCreditBalance > 0 && (
             <div className="flex items-center justify-between gap-2">

@@ -245,6 +245,11 @@
       "default": 0,
       "description": "Calculated discount amount in dollars"
     },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping charge added to the total"
+    },
     "applied_credits": {
       "type": "number",
       "default": 0,

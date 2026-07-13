@@ -73,6 +73,7 @@ export default function EstimateDetail() {
     labor_items: [],
     machining_items: [],
     discount_type: "none", discount_value: 0, discount_amount: 0,
+    shipping_cost: 0,
     tax_rate: 0, notes: "", internal_notes: ""
   });
   const [sending, setSending] = useState(false);
@@ -259,7 +260,7 @@ export default function EstimateDetail() {
     },
   });
 
-  const recalc = (lineItems, laborItems, machiningItems, taxRate, discountType = "none", discountValue = 0) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, discountType = "none", discountValue = 0, shippingCost) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
@@ -271,7 +272,8 @@ export default function EstimateDetail() {
     } else if (discountType === "percentage") {
       discount_amount = subtotal * ((Number(discountValue) || 0) / 100);
     }
-    return { subtotal, tax_amount, discount_amount, total: subtotal + tax_amount - discount_amount };
+    const shipping = shippingCost !== undefined ? (Number(shippingCost) || 0) : (Number(form.shipping_cost) || 0);
+    return { subtotal, tax_amount, discount_amount, total: subtotal + tax_amount - discount_amount + shipping };
   };
 
   const handleCustomerChange = (v) => {
@@ -449,6 +451,12 @@ export default function EstimateDetail() {
     setForm({ ...updated, ...totals });
   };
 
+  const updateShipping = (val) => {
+    const shipping = Number(val) || 0;
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0, shipping);
+    setForm(f => ({ ...f, shipping_cost: shipping, ...totals }));
+  };
+
   const handleCannedJobSelect = async (spec, platform) => {
     setSelectedSpec(spec);
     setSelectedSpecPlatform(platform);
@@ -533,6 +541,7 @@ export default function EstimateDetail() {
       discount_type: form.discount_type || "none",
       discount_value: form.discount_value || 0,
       discount_amount: form.discount_amount || 0,
+      shipping_cost: Number(form.shipping_cost) || 0,
       amount_paid: newTotalDeposit,
       balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
       public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
@@ -742,6 +751,7 @@ export default function EstimateDetail() {
           discount_type: form.discount_type || "none",
           discount_value: form.discount_value || 0,
           discount_amount: form.discount_amount || 0,
+          shipping_cost: Number(form.shipping_cost) || 0,
           applied_credits: Number(form.applied_credits) || 0,
           amount_paid: totalDeposit > 0 ? totalDeposit : 0,
           balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
@@ -797,6 +807,7 @@ export default function EstimateDetail() {
         discount_type: form.discount_type || "none",
         discount_value: form.discount_value || 0,
         discount_amount: form.discount_amount || 0,
+        shipping_cost: Number(form.shipping_cost) || 0,
         amount_paid: totalDeposit > 0 ? totalDeposit : 0,
         balance_due: Math.max(0, (form.total || 0) - totalDeposit),
         contains_illegal_parts: form.contains_illegal_parts || false,
@@ -1802,6 +1813,13 @@ export default function EstimateDetail() {
           {Number(form.discount_amount) > 0 && (
             <div className="flex justify-between text-emerald-600"><span>Discount Applied</span><span>-${Number(form.discount_amount || 0).toFixed(2)}</span></div>
           )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-slate-600">Shipping</span>
+            <div className="relative w-20">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+              <Input type="number" value={Number(form.shipping_cost) || 0} onChange={e => updateShipping(Number(e.target.value))} className="text-right h-7 pl-5" min="0" step="0.01" />
+            </div>
+          </div>
           <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
           {availableCreditBalance > 0 && (
             <div className="flex items-center justify-between gap-2">
