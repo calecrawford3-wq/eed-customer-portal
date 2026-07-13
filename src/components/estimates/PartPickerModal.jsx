@@ -10,6 +10,8 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState(initialTab);
   const [newPartOpen, setNewPartOpen] = useState(false);
+  const [kitChoice, setKitChoice] = useState(null);
+  const [kitMode, setKitMode] = useState("separate");
 
   useEffect(() => { if (open) { setTab(initialTab); setSearch(""); } }, [open, initialTab]);
 
@@ -24,7 +26,11 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
   );
 
   const handleKitSelect = (kit) => {
-    if (onSelectKit) { onSelectKit(kit); onClose(); }
+    setKitMode(kit.default_display_mode || "separate");
+    setKitChoice(kit);
+  };
+  const confirmKitSelect = () => {
+    if (onSelectKit && kitChoice) { onSelectKit(kitChoice, kitMode); setKitChoice(null); onClose(); }
   };
   const handleCoreSelect = (core, mode) => {
     if (onSelectCore) { onSelectCore(core, mode); onClose(); }
@@ -122,14 +128,15 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
               </thead>
               <tbody>
                 {filteredKits.map(k => {
-                  const price = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+                  const price = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0) + (k.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0);
                   return (
                     <tr key={k.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="px-3 py-2 font-mono text-xs text-slate-600">{k.part_number}</td>
                       <td className="px-3 py-2 font-medium text-slate-900">{k.name}</td>
                       <td className="px-3 py-2">
                         <div className="flex flex-wrap gap-1">
-                          <Badge className="bg-slate-100 text-slate-600 border-0">{(k.components || []).length} item{(k.components || []).length === 1 ? "" : "s"}</Badge>
+                          <Badge className="bg-slate-100 text-slate-600 border-0">{(k.components || []).length} part{(k.components || []).length === 1 ? "" : "s"}</Badge>
+                          {(k.labor_items || []).length > 0 && <Badge className="bg-amber-50 text-amber-700 border-0 text-xs">{(k.labor_items || []).length} labor</Badge>}
                           {(k.components || []).slice(0, 2).map((c, i) => (
                             <Badge key={i} className="bg-blue-50 text-blue-700 border-0 text-xs">{c.part_number}</Badge>
                           ))}
@@ -195,6 +202,48 @@ export default function PartPickerModal({ open, onClose, parts, kits = [], cores
           )}
         </div>
 
+        {kitChoice && (
+          <Dialog open={!!kitChoice} onOpenChange={(o) => !o && setKitChoice(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add Kit — {kitChoice.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-1">
+                <div className="text-sm text-slate-500">
+                  {(kitChoice.components || []).length} part{(kitChoice.components || []).length === 1 ? "" : "s"}
+                  {(kitChoice.labor_items || []).length > 0 && ` · ${(kitChoice.labor_items || []).length} labor line${(kitChoice.labor_items || []).length === 1 ? "" : "s"}`}
+                  {" · "}${((kitChoice.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0) + (kitChoice.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0)).toFixed(2)}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setKitMode("separate")}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${kitMode === "separate" ? "border-[#e20404] bg-red-50" : "border-slate-200 hover:border-slate-300"}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 ${kitMode === "separate" ? "border-[#e20404] bg-[#e20404]" : "border-slate-300"}`} />
+                    <span className="font-medium text-slate-900 text-sm">Break into separate items</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 ml-6">Each part and labor line shows individually on the document. Use for gasket kits where pieces can be sold separately.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKitMode("whole")}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${kitMode === "whole" ? "border-[#e20404] bg-red-50" : "border-slate-200 hover:border-slate-300"}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 ${kitMode === "whole" ? "border-[#e20404] bg-[#e20404]" : "border-slate-300"}`} />
+                    <span className="font-medium text-slate-900 text-sm">Add as single item (kit name)</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 ml-6">Shows as one line on the document. Component parts still populate purchase orders automatically. Use for transmissions you sell as one unit.</p>
+                </button>
+              </div>
+              <div className="flex justify-end gap-2 mt-2">
+                <Button variant="outline" onClick={() => setKitChoice(null)}>Cancel</Button>
+                <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={confirmKitSelect}>Add Kit</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
         <QuickCreatePartModal
           open={newPartOpen}
           onClose={() => setNewPartOpen(false)}

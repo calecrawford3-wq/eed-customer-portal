@@ -34,6 +34,19 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
     const neededItems = [];
 
     for (const item of lineItems) {
+      // Whole-kit lines: expand component parts for purchasing (labor stays out of POs)
+      if (item.is_kit && Array.isArray(item.kit_components)) {
+        const kitQty = Number(item.quantity) || 1;
+        for (const comp of item.kit_components) {
+          if (!comp.part_id) continue;
+          const part = parts.find(p => p.id === comp.part_id);
+          if (!part) continue;
+          const needed = (Number(comp.quantity) || 1) * kitQty - (part.quantity_on_hand || 0);
+          if (needed <= 0) continue;
+          neededItems.push({ part, quantity_needed: needed, from_line: item });
+        }
+        continue;
+      }
       if (!item.part_id) continue;
       const part = parts.find(p => p.id === item.part_id);
       if (!part) continue;

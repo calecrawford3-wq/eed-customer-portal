@@ -37,7 +37,7 @@
     },
     "components": {
       "type": "array",
-      "description": "Individual parts that make up this kit. When the kit is added to an estimate or invoice, each component is listed as its own line item with its own part number and price.",
+      "description": "Individual parts that make up this kit. When added as separate items, each component is listed as its own line item; when added as a single item, components are bundled but still populate purchase orders.",
       "items": {
         "type": "object",
         "properties": {
@@ -63,13 +63,41 @@
         }
       }
     },
+    "labor_items": {
+      "type": "array",
+      "description": "Labor included in this kit (e.g. assembly labor bundled into a transmission kit). When added as separate items, these become labor lines; when added as a single item, their price is bundled into the kit line.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "default_display_mode": {
+      "type": "string",
+      "enum": [
+        "separate",
+        "whole"
+      ],
+      "default": "separate",
+      "description": "How this kit is added to documents by default: 'separate' = each component and labor line listed individually; 'whole' = single line under the kit name (components still populate purchase orders)"
+    },
     "kit_cost_override": {
       "type": "number",
       "description": "Optional manual kit cost override. When set, used instead of the summed component cost."
     },
     "kit_price_override": {
       "type": "number",
-      "description": "Optional manual kit sell price override. When set, used instead of the summed component price."
+      "description": "Optional manual kit sell price override. When set, used instead of the summed component + labor price."
     },
     "platform_ids": {
       "type": "array",

@@ -29,17 +29,14 @@
     },
     "contains_illegal_parts": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, this invoice involves illegal parts and requires a signed acknowledgment"
+      "default": false
     },
     "is_legacy": {
       "type": "boolean",
-      "default": false,
-      "description": "True if this invoice was imported from an old system (summary only, no line items)"
+      "default": false
     },
     "legacy_pdf_url": {
-      "type": "string",
-      "description": "URL to the original PDF from the old system, downloadable in the client portal"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -92,18 +89,51 @@
           "total": {
             "type": "number"
           },
+          "is_kit": {
+            "type": "boolean",
+            "default": false,
+            "description": "True when this line is a bundled kit shown as a single item"
+          },
+          "kit_id": {
+            "type": "string",
+            "description": "Reference to the PartKit when is_kit is true"
+          },
+          "kit_components": {
+            "type": "array",
+            "description": "Component parts captured from the kit, used to expand into purchase orders",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_id": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number",
+                  "default": 1
+                },
+                "unit_cost": {
+                  "type": "number"
+                }
+              }
+            }
+          },
           "core_id": {
             "type": "string",
             "description": "Reference to EngineCore when selling a core from inventory"
           },
           "is_core_credit": {
             "type": "boolean",
-            "default": false,
-            "description": "True when this line is a core credit (customer core bought/exchanged)"
+            "default": false
           },
           "core_details": {
             "type": "object",
-            "description": "Captured core details for a core credit line, used to add the core to inventory when the invoice completes",
+            "description": "Captured core details for a core credit line",
             "properties": {
               "core_number": {
                 "type": "string"
@@ -223,18 +253,15 @@
         "amount",
         "percentage"
       ],
-      "default": "none",
-      "description": "Type of discount applied to this invoice"
+      "default": "none"
     },
     "discount_value": {
       "type": "number",
-      "default": 0,
-      "description": "Discount value \u2014 dollar amount (if type=amount) or percentage (if type=percentage)"
+      "default": 0
     },
     "discount_amount": {
       "type": "number",
-      "default": 0,
-      "description": "Calculated discount amount in dollars"
+      "default": 0
     },
     "shipping_cost": {
       "type": "number",
@@ -243,8 +270,7 @@
     },
     "applied_credits": {
       "type": "number",
-      "default": 0,
-      "description": "Account credits applied to this invoice (Performance Credit System)"
+      "default": 0
     },
     "amount_paid": {
       "type": "number",
@@ -258,18 +284,15 @@
     },
     "first_viewed_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "First time the customer viewed this invoice via the public viewer"
+      "format": "date-time"
     },
     "last_viewed_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Most recent time the customer viewed this invoice via the public viewer"
+      "format": "date-time"
     },
     "view_count": {
       "type": "number",
-      "default": 0,
-      "description": "Number of times the invoice was viewed via the public viewer"
+      "default": 0
     },
     "payment_notes": {
       "type": "string"

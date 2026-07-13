@@ -109,6 +109,40 @@
           "total": {
             "type": "number"
           },
+          "is_kit": {
+            "type": "boolean",
+            "default": false,
+            "description": "True when this line is a bundled kit shown as a single item"
+          },
+          "kit_id": {
+            "type": "string",
+            "description": "Reference to the PartKit when is_kit is true"
+          },
+          "kit_components": {
+            "type": "array",
+            "description": "Component parts captured from the kit, used to expand into purchase orders",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_id": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number",
+                  "default": 1
+                },
+                "unit_cost": {
+                  "type": "number"
+                }
+              }
+            }
+          },
           "core_id": {
             "type": "string",
             "description": "Reference to EngineCore when selling a core from inventory"
@@ -237,18 +271,15 @@
         "amount",
         "percentage"
       ],
-      "default": "none",
-      "description": "Type of discount applied to this estimate"
+      "default": "none"
     },
     "discount_value": {
       "type": "number",
-      "default": 0,
-      "description": "Discount value \u2014 dollar amount (if type=amount) or percentage (if type=percentage)"
+      "default": 0
     },
     "discount_amount": {
       "type": "number",
-      "default": 0,
-      "description": "Calculated discount amount in dollars"
+      "default": 0
     },
     "shipping_cost": {
       "type": "number",
@@ -257,8 +288,7 @@
     },
     "applied_credits": {
       "type": "number",
-      "default": 0,
-      "description": "Account credits applied to this estimate (Performance Credit System)"
+      "default": 0
     },
     "amount_paid": {
       "type": "number",
@@ -269,18 +299,15 @@
     },
     "first_viewed_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "First time the customer viewed this estimate via the public viewer"
+      "format": "date-time"
     },
     "last_viewed_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Most recent time the customer viewed this estimate via the public viewer"
+      "format": "date-time"
     },
     "view_count": {
       "type": "number",
-      "default": 0,
-      "description": "Number of times the estimate was viewed via the public viewer"
+      "default": 0
     },
     "notes": {
       "type": "string"

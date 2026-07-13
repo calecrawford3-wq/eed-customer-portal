@@ -321,10 +321,45 @@ export default function EstimateDetail() {
     setForm({ ...form, line_items: lines, ...totals });
   };
 
-  const selectKit = (kit) => {
+  const selectKit = (kit, mode) => {
     const override = customer?.parts_markup_override;
     const useOverride = override !== null && override !== undefined && override !== "";
     const lines = [...form.line_items];
+    const kitLabor = (kit.labor_items || []).map(l => ({ name: l.name || "", description: l.description || "", price: Number(l.price) || 0 }));
+
+    if (mode === "whole") {
+      const partsCost = (kit.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 1), 0);
+      const hasCostOv = kit.kit_cost_override !== null && kit.kit_cost_override !== undefined && !isNaN(Number(kit.kit_cost_override));
+      const hasPriceOv = kit.kit_price_override !== null && kit.kit_price_override !== undefined && !isNaN(Number(kit.kit_price_override));
+      const partsPrice = (kit.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 1), 0);
+      const laborPrice = kitLabor.reduce((s, l) => s + (Number(l.price) || 0), 0);
+      const kitCost = hasCostOv ? Number(kit.kit_cost_override) : partsCost;
+      const kitPrice = hasPriceOv ? Number(kit.kit_price_override) : (partsPrice + laborPrice);
+      const kitLine = {
+        is_kit: true,
+        kit_id: kit.id || "",
+        part_number: kit.part_number || "",
+        item_name: kit.name || "",
+        quantity: 1,
+        unit_cost: kitCost,
+        unit_price: kitPrice,
+        total: kitPrice,
+        kit_components: (kit.components || []).map(c => ({
+          part_id: c.part_id || "",
+          part_number: c.part_number || "",
+          name: c.name || "",
+          quantity: Number(c.quantity) || 1,
+          unit_cost: Number(c.unit_cost) || 0,
+        })),
+      };
+      const idx = (pickingIdx === null || pickingIdx === undefined || pickingIdx >= lines.length) ? lines.length : pickingIdx;
+      const newLines = idx === lines.length ? [...lines, kitLine] : [...lines.slice(0, idx), kitLine, ...lines.slice(idx + 1)];
+      const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
+      setForm({ ...form, line_items: newLines, ...totals });
+      toast.success(`Added kit "${kit.name}" as a single item`);
+      return;
+    }
+
     const expanded = (kit.components || []).map(c => {
       const qty = Number(c.quantity) || 1;
       const price = useOverride ? (Number(c.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(c.unit_price) || 0);
@@ -343,9 +378,10 @@ export default function EstimateDetail() {
       ...expanded,
       ...lines.slice(pickingIdx + 1),
     ];
-    const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
-    setForm({ ...form, line_items: newLines, ...totals });
-    toast.success(`Added kit "${kit.name}" — ${expanded.length} line item${expanded.length === 1 ? "" : "s"}`);
+    const newLabor = [...(form.labor_items || []), ...kitLabor];
+    const totals = recalc(newLines, newLabor, form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
+    setForm({ ...form, line_items: newLines, labor_items: newLabor, ...totals });
+    toast.success(`Added kit "${kit.name}" — ${expanded.length} part${expanded.length === 1 ? "" : "s"}${kitLabor.length > 0 ? ` + ${kitLabor.length} labor` : ""}`);
   };
 
   const selectCore = (core, mode) => {
@@ -1666,6 +1702,12 @@ export default function EstimateDetail() {
                           <Search className="w-3.5 h-3.5" />
                         </Button>
                       </div>
+                      {line.is_kit && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">Kit</Badge>
+                          <span className="text-[10px] text-slate-400">{(line.kit_components || []).length} part{(line.kit_components || []).length === 1 ? "" : "s"} · PO expands</span>
+                        </div>
+                      )}
                     </td>
                     <td className="py-2 px-1">
                       <Input type="number" value={line.quantity} onChange={e => updateLine(idx, "quantity", Number(e.target.value))} className="text-center border-slate-200" min="0" />

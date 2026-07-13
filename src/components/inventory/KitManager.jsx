@@ -18,7 +18,8 @@ const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","ti
 
 const emptyKit = {
 part_number: "", name: "", description: "", category: "gaskets",
-components: [], kit_cost_override: null, kit_price_override: null,
+components: [], labor_items: [], default_display_mode: "separate",
+kit_cost_override: null, kit_price_override: null,
 supplier_id: "", platform_ids: [], notes: "", status: "active"
 };
 
@@ -86,7 +87,7 @@ export default function KitManager() {
   });
 
   const openNew = () => { setEditing(null); setForm(emptyKit); setDialogOpen(true); };
-  const openEdit = (k) => { setEditing(k); setForm({ components: [], notes: "", ...k }); setDialogOpen(true); };
+  const openEdit = (k) => { setEditing(k); setForm({ components: [], labor_items: [], default_display_mode: "separate", notes: "", ...k }); setDialogOpen(true); };
 
   const filtered = kits.filter(k =>
     `${k.part_number} ${k.name} ${k.description}`.toLowerCase().includes(search.toLowerCase())
@@ -120,8 +121,21 @@ export default function KitManager() {
     setForm(f => ({ ...f, components: (f.components || []).filter((_, i) => i !== idx) }));
   };
 
+  const addKitLabor = () => setForm(f => ({ ...f, labor_items: [...(f.labor_items || []), { name: "", description: "", price: 0 }] }));
+  const updateKitLabor = (idx, field, value) => {
+    setForm(f => {
+      const items = [...(f.labor_items || [])];
+      items[idx] = { ...items[idx], [field]: value };
+      return { ...f, labor_items: items };
+    });
+  };
+  const removeKitLabor = (idx) => {
+    setForm(f => ({ ...f, labor_items: (f.labor_items || []).filter((_, i) => i !== idx) }));
+  };
+
   const sumCost = (form.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
-  const sumPrice = (form.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+  const sumLaborPrice = (form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0);
+  const sumPrice = (form.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0) + sumLaborPrice;
   const hasCostOverride = form.kit_cost_override !== null && form.kit_cost_override !== "" && !isNaN(Number(form.kit_cost_override));
   const hasPriceOverride = form.kit_price_override !== null && form.kit_price_override !== "" && !isNaN(Number(form.kit_price_override));
   const kitTotalCost = hasCostOverride ? Number(form.kit_cost_override) : sumCost;
@@ -145,7 +159,7 @@ export default function KitManager() {
         <div className="text-center py-20 text-slate-400">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="text-lg font-medium">No kits yet</p>
-          <p className="text-sm mt-1">Group individual parts into a sellable kit. Adding a kit to an estimate or invoice lists each component as its own line item.</p>
+          <p className="text-sm mt-1">Group parts (and optional labor) into a sellable kit. Add it to a document as separate line items or as a single bundled item.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -167,7 +181,7 @@ export default function KitManager() {
             <tbody>
               {filtered.map(k => {
                 const sumCost = (k.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 0), 0);
-                const sumPrice = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0);
+                const sumPrice = (k.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 0), 0) + (k.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0);
                 const hasCostOv = k.kit_cost_override !== null && k.kit_cost_override !== undefined && !isNaN(Number(k.kit_cost_override));
                 const hasPriceOv = k.kit_price_override !== null && k.kit_price_override !== undefined && !isNaN(Number(k.kit_price_override));
                 const cost = hasCostOv ? Number(k.kit_cost_override) : sumCost;
@@ -179,7 +193,7 @@ export default function KitManager() {
                     <td className="px-4 py-3 text-slate-600 text-xs">
                       {k.supplier_id ? (suppliers.find(s => s.id === k.supplier_id)?.name || "—") : <span className="text-slate-400">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{(k.components || []).length} item{(k.components || []).length === 1 ? "" : "s"}</td>
+                    <td className="px-4 py-3 text-slate-500">{(k.components || []).length} part{(k.components || []).length === 1 ? "" : "s"}{(k.labor_items || []).length > 0 && <span className="text-slate-400"> + {(k.labor_items || []).length} labor</span>}</td>
                     <td className="px-4 py-3 text-center">
                       {(() => {
                         const comps = k.components || [];
@@ -340,6 +354,64 @@ export default function KitManager() {
               )}
               <p className="text-xs text-slate-400 mt-2">When this kit is added to an estimate or invoice, each component above becomes its own line item with its own part number and price.</p>
 
+              {/* Labor included in kit */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Labor Included in Kit</Label>
+                  <Button size="sm" variant="outline" onClick={addKitLabor}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Labor
+                  </Button>
+                </div>
+                {(form.labor_items || []).length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-3 border rounded-lg">No labor in this kit.</p>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium text-slate-600">Name</th>
+                          <th className="text-left px-3 py-2 font-medium text-slate-600">Description</th>
+                          <th className="text-right px-3 py-2 font-medium text-slate-600 w-24">Price</th>
+                          <th className="w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(form.labor_items || []).map((l, idx) => (
+                          <tr key={idx} className="border-t border-slate-100">
+                            <td className="px-3 py-1.5"><Input value={l.name} onChange={e => updateKitLabor(idx, "name", e.target.value)} className="h-7" placeholder="e.g. Transmission rebuild labor" /></td>
+                            <td className="px-3 py-1.5"><Input value={l.description} onChange={e => updateKitLabor(idx, "description", e.target.value)} className="h-7" placeholder="Description..." /></td>
+                            <td className="px-3 py-1.5"><Input type="number" step="0.01" value={l.price} onChange={e => updateKitLabor(idx, "price", Number(e.target.value))} className="text-right h-7" /></td>
+                            <td className="px-3 py-1.5"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeKitLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {sumLaborPrice > 0 && (
+                        <tfoot className="bg-slate-50">
+                          <tr className="border-t border-slate-200 font-medium">
+                            <td colSpan={2} className="px-3 py-2 text-right text-slate-600">Kit Labor Total</td>
+                            <td className="px-3 py-2 text-right text-slate-900">${sumLaborPrice.toFixed(2)}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Default display mode */}
+              <div className="mt-4">
+                <Label>Default Display Mode</Label>
+                <Select value={form.default_display_mode || "separate"} onValueChange={v => setForm({ ...form, default_display_mode: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="separate">Break into separate items</SelectItem>
+                    <SelectItem value="whole">Add as single item (kit name)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-400 mt-1">"Separate" lists each component & labor line on the document. "Single item" shows one line under the kit name — components still populate purchase orders automatically.</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 mt-3">
                 <div>
                   <Label>Kit Cost Override</Label>
@@ -361,7 +433,7 @@ export default function KitManager() {
                     value={form.kit_price_override ?? ""}
                     onChange={e => setForm({ ...form, kit_price_override: e.target.value === "" ? null : Number(e.target.value) })}
                   />
-                  <p className="text-xs text-slate-400 mt-1">Leave blank to use summed component price ({sumPrice.toFixed(2)}).</p>
+                  <p className="text-xs text-slate-400 mt-1">Leave blank to use parts + labor ({sumPrice.toFixed(2)}).</p>
                 </div>
               </div>
 
@@ -393,7 +465,7 @@ export default function KitManager() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || !(form.components || []).length}>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || (!(form.components || []).length && !(form.labor_items || []).length)}>
               {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Kit"}
             </Button>
           </DialogFooter>
