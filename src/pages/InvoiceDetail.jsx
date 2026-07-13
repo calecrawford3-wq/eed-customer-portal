@@ -364,6 +364,7 @@ export default function InvoiceDetail() {
       item_name: part.name,
       quantity: 1,
       unit_cost: part.unit_cost || 0,
+      shipping_cost: Number(part.shipping_cost) || 0,
       unit_price: price,
       total: price,
     };
@@ -946,6 +947,9 @@ export default function InvoiceDetail() {
                     </td>
                     <td className="py-2 px-1">
                       <Input type="number" value={line.unit_cost} onChange={e => updateLine(idx, "unit_cost", Number(e.target.value))} className="text-right border-slate-200 text-slate-400" min="0" step="0.01" />
+                      {Number(line.shipping_cost) > 0 && (
+                        <div className="text-[10px] text-slate-400 text-right mt-0.5">w/ ship ${((Number(line.unit_cost) || 0) + (Number(line.shipping_cost) || 0)).toFixed(2)}</div>
+                      )}
                     </td>
                     <td className="py-2 px-1">
                       <Input type="number" value={line.unit_price} onChange={e => updateLine(idx, "unit_price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" />
@@ -1049,7 +1053,7 @@ export default function InvoiceDetail() {
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
           {(() => {
             const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0);
-            const cost = (form.line_items || []).reduce((s, l) => s + (l.is_core_credit ? 0 : (Number(l.unit_cost) || 0) * (Number(l.quantity) || 0)), 0);
+            const cost = (form.line_items || []).reduce((s, l) => s + (l.is_core_credit ? 0 : ((Number(l.unit_cost) || 0) + (Number(l.shipping_cost) || 0)) * (Number(l.quantity) || 0)), 0);
             const profit = revenue - cost;
             const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
             return (

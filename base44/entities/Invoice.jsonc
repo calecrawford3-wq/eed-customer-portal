@@ -81,6 +81,11 @@
           "unit_cost": {
             "type": "number"
           },
+          "shipping_cost": {
+            "type": "number",
+            "default": 0,
+            "description": "Per-unit inbound shipping cost captured from the part (landed cost component for profit margin)"
+          },
           "unit_price": {
             "type": "number"
           },
