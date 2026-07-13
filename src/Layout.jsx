@@ -23,6 +23,8 @@ import {
   RefreshCw,
   Award,
   Bell,
+  LifeBuoy,
+  Calendar,
   Menu,
   X
 } from "lucide-react";
@@ -65,6 +67,9 @@ export default function Layout({ children, currentPageName }) {
     { name: "Payments", page: "Payments", icon: DollarSign },
     { name: "Expenses", page: "Expenses", icon: TrendingDown },
     { name: "Reports", page: "Reports", icon: BarChart2 },
+    { type: "divider" },
+    { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
+    { name: "Calendar", page: "Calendar", icon: Calendar },
     { type: "divider" },
     { name: "Credits", page: "Credits", icon: Award },
     { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },

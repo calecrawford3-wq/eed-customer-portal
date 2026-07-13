@@ -1,0 +1,36 @@
+{
+  "name": "DriverNote",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "preferred_tracks": {
+      "type": "string"
+    },
+    "driving_style": {
+      "type": "string"
+    },
+    "favorite_gearing": {
+      "type": "string"
+    },
+    "championship_goals": {
+      "type": "string"
+    },
+    "family_information": {
+      "type": "string"
+    },
+    "future_plans": {
+      "type": "string"
+    },
+    "upcoming_engine_class": {
+      "type": "string"
+    },
+    "other_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_id"
+  ]
+}

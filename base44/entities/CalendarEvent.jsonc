@@ -1,0 +1,64 @@
+{
+  "name": "CalendarEvent",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "followup",
+        "delivery",
+        "pickup",
+        "consultation",
+        "shop_task",
+        "appointment",
+        "internal_reminder",
+        "personal_reminder"
+      ],
+      "default": "appointment"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "all_day": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    }
+  },
+  "required": [
+    "title",
+    "event_type",
+    "start_date"
+  ]
+}
