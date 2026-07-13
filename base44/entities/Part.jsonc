@@ -37,6 +37,11 @@
     "unit_cost": {
       "type": "number"
     },
+    "shipping_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Inbound shipping cost per unit; added to unit_cost for the landed total cost and markup-based sell price"
+    },
     "sell_price": {
       "type": "number"
     },

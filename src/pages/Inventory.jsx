@@ -25,7 +25,7 @@ const MACHINING_CATEGORIES = ["block","head","rotating_assembly","valvetrain","o
 
 const emptyPart = {
   part_number: "", name: "", description: "", category: "other",
-  supplier_id: "", supplier_part_number: "", unit_cost: "", sell_price: "",
+  supplier_id: "", supplier_part_number: "", unit_cost: "", sell_price: "", shipping_cost: "",
   use_markup: false, markup_percentage: 0,
   quantity_on_hand: 0, reorder_point: 0, reorder_quantity: 0,
   location: "", notes: "", status: "active", platform_ids: []
@@ -556,9 +556,33 @@ export default function Inventory() {
                 onChange={e => {
                   const cost = e.target.value;
                   const updates = { unit_cost: cost };
-                  if (partForm.use_markup) updates.sell_price = calcSellPrice(cost, partForm.markup_percentage);
+                  if (partForm.use_markup) updates.sell_price = calcSellPrice((Number(cost) || 0) + (Number(partForm.shipping_cost) || 0), partForm.markup_percentage);
                   setPartForm(f => ({...f, ...updates}));
                 }}
+              />
+            </div>
+            <div>
+              <Label>Shipping ($)</Label>
+              <Input
+                type="number"
+                value={partForm.shipping_cost}
+                onChange={e => {
+                  const ship = e.target.value;
+                  const updates = { shipping_cost: ship };
+                  if (partForm.use_markup) updates.sell_price = calcSellPrice((Number(partForm.unit_cost) || 0) + (Number(ship) || 0), partForm.markup_percentage);
+                  setPartForm(f => ({...f, ...updates}));
+                }}
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <Label>Total Cost ($)</Label>
+              <Input
+                value={((Number(partForm.unit_cost) || 0) + (Number(partForm.shipping_cost) || 0)).toFixed(2)}
+                disabled
+                className="bg-slate-50 text-slate-500"
               />
             </div>
             <div>
@@ -570,7 +594,7 @@ export default function Inventory() {
                     checked={!!partForm.use_markup}
                     onCheckedChange={v => {
                       const updates = { use_markup: v };
-                      if (v) updates.sell_price = calcSellPrice(partForm.unit_cost, partForm.markup_percentage);
+                      if (v) updates.sell_price = calcSellPrice((Number(partForm.unit_cost) || 0) + (Number(partForm.shipping_cost) || 0), partForm.markup_percentage);
                       setPartForm(f => ({...f, ...updates}));
                     }}
                   />
@@ -587,7 +611,7 @@ export default function Inventory() {
                         setPartForm(f => ({
                           ...f,
                           markup_percentage: pct,
-                          sell_price: calcSellPrice(f.unit_cost, pct),
+                          sell_price: calcSellPrice((Number(f.unit_cost) || 0) + (Number(f.shipping_cost) || 0), pct),
                         }));
                       }}
                       min="0"
@@ -597,7 +621,7 @@ export default function Inventory() {
                     <Percent className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   </div>
                   <span className="text-sm text-slate-500 whitespace-nowrap">
-                    = ${calcSellPrice(partForm.unit_cost, partForm.markup_percentage).toFixed(2)}
+                    = ${calcSellPrice((Number(partForm.unit_cost) || 0) + (Number(partForm.shipping_cost) || 0), partForm.markup_percentage).toFixed(2)}
                   </span>
                 </div>
               ) : (
