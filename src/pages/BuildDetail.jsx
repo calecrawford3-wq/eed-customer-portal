@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   FileText,
   User
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,9 +58,11 @@ const SPEC_TYPES = [
 ];
 
 export default function BuildDetail() {
+  const navigate = useNavigate();
   const [buildId, setBuildId] = useState(null);
   const [localChanges, setLocalChanges] = useState({});
   const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const printRef = useRef();
 
   const queryClient = useQueryClient();
@@ -112,6 +115,16 @@ export default function BuildDetail() {
       queryClient.invalidateQueries({ queryKey: ["build", buildId] });
       setLocalChanges({});
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => base44.entities.EngineBuild.delete(buildId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["builds"] });
+      toast.success("Build deleted");
+      navigate(createPageUrl("Builds"));
+    },
+    onError: (err) => toast.error(err.message || "Failed to delete build"),
   });
 
   const handleSave = () => {
@@ -280,6 +293,14 @@ export default function BuildDetail() {
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
             Print Build Sheet
+          </Button>
+          <Button
+            variant="outline"
+            className="text-red-600 border-red-300 hover:bg-red-50"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Build
           </Button>
           {hasChanges && (
             <Button onClick={handleSave} className="bg-[#e20404] hover:bg-[#c00303]">
@@ -951,6 +972,35 @@ export default function BuildDetail() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" /> Delete Engine Build
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-slate-600">
+              Delete the build for <span className="font-semibold">{build?.engine_serial_number}</span>{build?.eed_id && <span className="font-mono text-[#e20404]"> ({build.eed_id})</span>}? This permanently removes the build record and cannot be undone.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+              Any linked invoices, purchase orders, customer success tasks, and calendar events will be cleaned up automatically. The registered engine is not deleted.
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Build"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Print Dialog */}
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>

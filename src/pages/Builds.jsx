@@ -668,11 +668,26 @@ export default function Builds() {
                           >
                             <Receipt className="w-3.5 h-3.5 mr-1" /> Create Invoice
                           </Button>
-                          <Link to={createPageUrl(`BuildDetail?id=${build.id}`)}>
-                            <Button variant="ghost" size="sm">
-                              View <ArrowRight className="w-4 h-4 ml-1" />
+                          <div className="flex items-center gap-1">
+                            <Link to={createPageUrl(`BuildDetail?id=${build.id}`)}>
+                              <Button variant="ghost" size="sm">
+                                View <ArrowRight className="w-4 h-4 ml-1" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                if (window.confirm(`Delete build for ${build.engine_serial_number}? This cannot be undone.`)) {
+                                  deleteMutation.mutate(build.id);
+                                }
+                              }}
+                              title="Delete build"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </Button>
-                          </Link>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
