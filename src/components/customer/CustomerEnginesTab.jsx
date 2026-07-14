@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText, Ban, Unlink } from "lucide-react";
+import { Cpu, Plus, ExternalLink, Receipt, ChevronDown, ChevronRight, Wrench, Pencil, ArrowRightLeft, FileText, Ban, Unlink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
@@ -61,6 +61,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [transferCustomerId, setTransferCustomerId] = useState("");
   const [legalDocToView, setLegalDocToView] = useState(null);
   const [voidDoc, setVoidDoc] = useState(null);
+  const [deleteEngine, setDeleteEngine] = useState(null);
 
   const { data: allCustomers = [] } = useQuery({
     queryKey: ["customers"],
@@ -151,6 +152,20 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       toast.success(`Engine transferred to ${target ? `${target.first_name} ${target.last_name}` : "new customer"}`);
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async ({ id }) => {
+      await base44.entities.CustomerEngine.delete(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
+      qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
+      const eedId = deleteEngine?.eed_id || "";
+      setDeleteEngine(null);
+      toast.success(`Engine ${eedId} deleted`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to delete engine"),
   });
 
   const voidMutation = useMutation({
@@ -251,6 +266,15 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
                         title="Edit engine"
                       >
                         <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-red-400 hover:text-red-600"
+                        onClick={(e) => { e.stopPropagation(); setDeleteEngine(engine); }}
+                        title="Delete engine"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                     </div>
@@ -545,6 +569,45 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
               onClick={() => voidMutation.mutate({ id: voidDoc.id })}
             >
               {voidMutation.isPending ? "Voiding..." : "Void Document"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Engine Confirmation */}
+      <Dialog open={!!deleteEngine} onOpenChange={(o) => { if (!o) setDeleteEngine(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" /> Delete Registered Engine
+            </DialogTitle>
+          </DialogHeader>
+          {deleteEngine && (() => {
+            const linkedBuilds = allBuilds.filter(b => b.engine_serial_number === deleteEngine.engine_serial_number);
+            const linkedInvoices = allInvoices.filter(inv => inv.customer_engine_id === deleteEngine.id || linkedBuilds.some(b => b.id === inv.build_id));
+            return (
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-slate-600">
+                  Delete <span className="font-mono font-bold text-[#e20404]">{deleteEngine.eed_id}</span> ({deleteEngine.engine_serial_number})? This removes the registration record but does not delete any builds or invoices.
+                </p>
+                {(linkedBuilds.length > 0 || linkedInvoices.length > 0) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                    <p className="font-semibold mb-1">This engine has linked records:</p>
+                    {linkedBuilds.length > 0 && <p>• {linkedBuilds.length} engine build(s) — these will remain but lose their EED link.</p>}
+                    {linkedInvoices.length > 0 && <p>• {linkedInvoices.length} invoice(s) — these will remain but lose their engine link.</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteEngine(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate({ id: deleteEngine.id })}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Engine"}
             </Button>
           </DialogFooter>
         </DialogContent>
