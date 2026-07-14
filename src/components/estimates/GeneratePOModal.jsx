@@ -156,7 +156,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Generate Purchase Orders</DialogTitle>
         </DialogHeader>
@@ -171,7 +171,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
             <Button className="mt-4" variant="outline" onClick={onClose}>Close</Button>
           </div>
         ) : (
-          <div>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6">
             {/* PO Navigator */}
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-slate-500">
@@ -199,8 +199,9 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                     {!current.supplier?.email && <Badge className="bg-amber-100 text-amber-700 border-0">No email on file</Badge>}
                   </div>
                 </div>
+                <div className="overflow-y-auto max-h-[50vh]">
                 <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200">
+                  <thead className="border-b border-slate-200 sticky top-0 bg-white">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-slate-600">Part #</th>
                       <th className="text-left px-4 py-2 font-medium text-slate-600">Description</th>
@@ -226,11 +227,12 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                       <td className="px-4 py-2 text-right text-[#e20404]">${Number(current.total).toFixed(2)}</td>
                     </tr>
                   </tfoot>
-                </table>
-              </div>
-            )}
+                  </table>
+                  </div>
+                  </div>
+                  )}
 
-            <div className="flex gap-3 mt-4 justify-end">
+                  <div className="flex gap-3 mt-4 justify-end">
               <Button variant="outline" onClick={onClose}>Close</Button>
               {current && (
                 <Button variant="outline" className="border-blue-300 text-blue-700" onClick={() => handleSendOne(current, currentIdx)}>
