@@ -177,6 +177,7 @@ Deno.serve(async (req) => {
       estimate_number: estimate.estimate_number,
       customer_name: customer ? `${customer.first_name} ${customer.last_name}` : "",
       customer_email: customer?.email || "",
+      customer_country: customer?.country || "US",
       status: estimate.status,
       issue_date: estimate.issue_date,
       expiry_date: estimate.expiry_date,

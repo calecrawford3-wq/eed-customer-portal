@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
       customer_city: customer?.city || "",
       customer_state: customer?.state || "",
       customer_zip: customer?.zip || "",
+      customer_country: customer?.country || "US",
       // Public viewer only accepts sent/partial/overdue/paid — never sync "draft"
       status: inv.status === "draft" ? "sent" : inv.status,
       issue_date: inv.issue_date,
