@@ -149,6 +149,7 @@ export default function InvoiceViewer() {
             {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
             {customer.address_line1 && <p className="text-slate-600">{customer.address_line1}</p>}
             {customer.city && <p className="text-slate-600">{customer.city}, {customer.state} {customer.zip}</p>}
+            {customer.country && <p className="text-slate-600">{customer.country}</p>}
 
             {customerEngine && (
               <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-6 text-sm">

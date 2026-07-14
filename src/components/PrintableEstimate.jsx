@@ -11,7 +11,7 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
   const expiryDate = estimate.expiry_date ? new Date(estimate.expiry_date).toLocaleDateString() : "N/A";
 
   const companyAddress = [settings?.company_address, settings?.company_city ? `${settings.company_city}, ${settings.company_state} ${settings.company_zip}` : null, settings?.company_phone, settings?.company_email].filter(Boolean).join(" | ");
-  const customerAddress = [customer.address_line1, customer.address_line2, customer.city ? `${customer.city}, ${customer.state} ${customer.zip}` : null, customer.phone, customer.email].filter(Boolean).join(" | ");
+  const customerAddress = [customer.address_line1, customer.address_line2, customer.city ? `${customer.city}, ${customer.state} ${customer.zip}` : null, customer.country, customer.phone, customer.email].filter(Boolean).join(" | ");
 
   const totalDepositReceived = (estimate.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const depositRemaining = Math.max(0, (estimate.deposit_amount || 0) - totalDepositReceived);

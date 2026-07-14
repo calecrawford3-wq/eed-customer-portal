@@ -18,7 +18,7 @@ import CustomerCsvImportModal from "@/components/customers/CustomerCsvImportModa
 
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
-  address_line1: "", address_line2: "", city: "", state: "", zip: "",
+  address_line1: "", address_line2: "", city: "", state: "", zip: "", country: "",
   notes: "", status: "active", tax_exempt: false, parts_markup_override: null
 };
 
@@ -181,6 +181,7 @@ export default function Customers() {
               <div><Label>State</Label><Input value={form.state} onChange={e => setForm({...form, state: e.target.value})} /></div>
               <div><Label>ZIP</Label><Input value={form.zip} onChange={e => setForm({...form, zip: e.target.value})} /></div>
             </div>
+            <div className="col-span-2"><Label>Country</Label><Input value={form.country || ""} onChange={e => setForm({...form, country: e.target.value})} /></div>
             <div className="col-span-2 flex items-center gap-3 pt-3 border-t border-slate-100">
               <Switch checked={!!form.tax_exempt} onCheckedChange={v => setForm({...form, tax_exempt: v})} />
               <div>

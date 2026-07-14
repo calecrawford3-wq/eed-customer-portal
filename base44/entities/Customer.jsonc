@@ -33,6 +33,10 @@
     "zip": {
       "type": "string"
     },
+    "country": {
+      "type": "string",
+      "description": "Customer country"
+    },
     "notes": {
       "type": "string"
     },
