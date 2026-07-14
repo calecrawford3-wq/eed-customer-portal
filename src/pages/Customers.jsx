@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useRef } from "react";
 import CustomerCsvImportModal from "@/components/customers/CustomerCsvImportModal";
+import CountrySelect from "@/components/CountrySelect";
 
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
@@ -181,7 +182,7 @@ export default function Customers() {
               <div><Label>State</Label><Input value={form.state} onChange={e => setForm({...form, state: e.target.value})} /></div>
               <div><Label>ZIP</Label><Input value={form.zip} onChange={e => setForm({...form, zip: e.target.value})} /></div>
             </div>
-            <div className="col-span-2"><Label>Country</Label><Input value={form.country || ""} onChange={e => setForm({...form, country: e.target.value})} /></div>
+            <div className="col-span-2"><Label>Country</Label><CountrySelect value={form.country || ""} onChange={v => setForm({...form, country: v})} /></div>
             <div className="col-span-2 flex items-center gap-3 pt-3 border-t border-slate-100">
               <Switch checked={!!form.tax_exempt} onCheckedChange={v => setForm({...form, tax_exempt: v})} />
               <div>

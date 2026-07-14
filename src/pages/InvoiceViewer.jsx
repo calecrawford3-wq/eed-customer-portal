@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import PrintableInvoice from "@/components/PrintableInvoice";
+import { getCountryName } from "@/components/CountrySelect";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
@@ -149,7 +150,7 @@ export default function InvoiceViewer() {
             {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
             {customer.address_line1 && <p className="text-slate-600">{customer.address_line1}</p>}
             {customer.city && <p className="text-slate-600">{customer.city}, {customer.state} {customer.zip}</p>}
-            {customer.country && <p className="text-slate-600">{customer.country}</p>}
+            {customer.country && <p className="text-slate-600">{getCountryName(customer.country)}</p>}
 
             {customerEngine && (
               <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-6 text-sm">

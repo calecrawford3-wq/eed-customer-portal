@@ -19,6 +19,7 @@ import {
 import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
+import CountrySelect, { getCountryName } from "@/components/CountrySelect";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -187,7 +188,7 @@ export default function CustomerDetail() {
                   <p>{customer.address_line1}</p>
                   {customer.address_line2 && <p>{customer.address_line2}</p>}
                   {customer.city && <p>{customer.city}, {customer.state} {customer.zip}</p>}
-                  {customer.country && <p>{customer.country}</p>}
+                  {customer.country && <p>{getCountryName(customer.country)}</p>}
                 </div>
               </div>
             )}
@@ -352,7 +353,7 @@ export default function CustomerDetail() {
               <div><Label>State</Label><Input value={editForm.state || ""} onChange={e => setEditForm({ ...editForm, state: e.target.value })} /></div>
               <div><Label>ZIP</Label><Input value={editForm.zip || ""} onChange={e => setEditForm({ ...editForm, zip: e.target.value })} /></div>
             </div>
-            <div className="col-span-2"><Label>Country</Label><Input value={editForm.country || ""} onChange={e => setEditForm({ ...editForm, country: e.target.value })} /></div>
+            <div className="col-span-2"><Label>Country</Label><CountrySelect value={editForm.country || ""} onChange={v => setEditForm({ ...editForm, country: v })} /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} /></div>
           </div>
           <DialogFooter>

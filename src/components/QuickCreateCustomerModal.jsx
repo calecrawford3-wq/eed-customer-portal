@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatPhone } from "@/lib/formatPhone";
+import CountrySelect from "@/components/CountrySelect";
 
 const empty = { first_name: "", last_name: "", company_name: "", email: "", phone: "", country: "", status: "active" };
 
@@ -35,7 +36,7 @@ export default function QuickCreateCustomerModal({ open, onClose, onCreated }) {
           <div className="col-span-2"><Label>Company</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} /></div>
           <div className="col-span-2"><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
           <div className="col-span-2"><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: formatPhone(e.target.value) })} placeholder="(999) 999-9999" /></div>
-          <div className="col-span-2"><Label>Country</Label><Input value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} /></div>
+          <div className="col-span-2"><Label>Country</Label><CountrySelect value={form.country} onChange={v => setForm({ ...form, country: v })} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
