@@ -5,13 +5,15 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, CheckCircle, Clock, AlertTriangle, Calendar as CalendarIcon, Users } from "lucide-react";
+import { Phone, CheckCircle, Clock, AlertTriangle, Calendar as CalendarIcon, Users, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { TIMEFRAME_LABELS, SATISFACTION_OPTIONS, todayStr, addDaysStr, daysOverdue } from "@/lib/customerSuccess";
 import CustomerSuccessCallForm from "@/components/customersuccess/CustomerSuccessCallForm";
 
 export default function CustomerSuccess() {
   const qc = useQueryClient();
   const [activeTask, setActiveTask] = useState(null);
+  const [search, setSearch] = useState("");
   const today = todayStr();
   const in30 = addDaysStr(today, 30);
 
@@ -21,10 +23,13 @@ export default function CustomerSuccess() {
   });
   const { data: builds = [] } = useQuery({ queryKey: ["builds-all-cs"], queryFn: () => base44.entities.EngineBuild.list("-created_date", 500) });
 
-  const dueToday = tasks.filter((t) => t.status === "pending" && t.due_date === today);
-  const upcoming = tasks.filter((t) => t.status === "pending" && t.due_date > today && t.due_date <= in30).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  const overdue = tasks.filter((t) => t.status === "pending" && t.due_date < today).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  const completed = tasks.filter((t) => t.status === "completed").sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || "")).slice(0, 15);
+  const q = search.trim().toLowerCase();
+  const matches = (t) => !q || `${t.customer_name || ""} ${t.engine_serial_number || ""} ${t.eed_id || ""}`.toLowerCase().includes(q);
+
+  const dueToday = tasks.filter((t) => t.status === "pending" && t.due_date === today && matches(t));
+  const upcoming = tasks.filter((t) => t.status === "pending" && t.due_date > today && t.due_date <= in30 && matches(t)).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const overdue = tasks.filter((t) => t.status === "pending" && t.due_date < today && matches(t)).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const completed = tasks.filter((t) => t.status === "completed" && matches(t)).sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || "")).slice(0, 15);
 
   const completedCount = tasks.filter((t) => t.status === "completed").length;
   const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
@@ -76,7 +81,23 @@ export default function CustomerSuccess() {
           <h1 className="text-2xl font-bold text-slate-900">Customer Success</h1>
           <p className="text-sm text-slate-500">Post-delivery follow-ups and relationship building</p>
         </div>
-        <Link to="/Calendar"><Button variant="outline" size="sm"><CalendarIcon className="w-4 h-4 mr-1" /> Calendar</Button></Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              className="pl-9 pr-8 h-9 w-56"
+              placeholder="Search customer or engine…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <Link to="/Calendar"><Button variant="outline" size="sm"><CalendarIcon className="w-4 h-4 mr-1" /> Calendar</Button></Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
