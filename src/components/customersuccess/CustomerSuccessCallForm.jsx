@@ -149,10 +149,9 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     },
   });
 
-  const isPending = task.status === "pending";
-
   if (!task) return null;
-  const overdue = task.status === "pending" ? daysOverdue(task.due_date) : 0;
+  const isPending = task.status === "pending";
+  const overdue = isPending ? daysOverdue(task.due_date) : 0;
   const driverFields = driverNote ? [
     ["Preferred Tracks", driverNote.preferred_tracks],
     ["Driving Style", driverNote.driving_style],
