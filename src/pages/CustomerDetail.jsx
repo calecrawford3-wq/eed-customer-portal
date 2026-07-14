@@ -19,6 +19,7 @@ import {
 import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
+import CustomerCreditsTab from "@/components/customer/CustomerCreditsTab";
 import CountrySelect, { getCountryName } from "@/components/CountrySelect";
 import { toast } from "sonner";
 
@@ -209,6 +210,7 @@ export default function CustomerDetail() {
               <TabsTrigger value="builds">Builds ({customerBuilds.length})</TabsTrigger>
               <TabsTrigger value="estimates">Estimates ({customerEstimates.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({customerInvoices.length})</TabsTrigger>
+              <TabsTrigger value="credits">Credits</TabsTrigger>
             </TabsList>
 
             <TabsContent value="engines">
@@ -315,10 +317,14 @@ export default function CustomerDetail() {
                     </Card>
                   ))}
                 </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
+                )}
+                </TabsContent>
+
+                <TabsContent value="credits">
+                <CustomerCreditsTab customer={customer} />
+                </TabsContent>
+                </Tabs>
+                </div>
       </div>
 
       <CustomerPortalModal

@@ -30,8 +30,8 @@ const TYPES = [
 
 const dec31ThisYear = () => `${new Date().getFullYear()}-12-31`;
 
-export default function AddCreditModal({ open, onClose, customers }) {
-  const [customerId, setCustomerId] = useState("");
+export default function AddCreditModal({ open, onClose, customers, presetCustomerId }) {
+  const [customerId, setCustomerId] = useState(presetCustomerId || "");
   const [type, setType] = useState("performance");
   const [subtype, setSubtype] = useState("");
   const [amount, setAmount] = useState(0);
@@ -46,7 +46,7 @@ export default function AddCreditModal({ open, onClose, customers }) {
       qc.invalidateQueries({ queryKey: ["allAccountCredits"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Credit added");
-      setCustomerId(""); setType("performance"); setSubtype(""); setAmount(0);
+      setCustomerId(presetCustomerId || ""); setType("performance"); setSubtype(""); setAmount(0);
       setDescription(""); setDate(new Date().toISOString().split("T")[0]); setExpiresOn(dec31ThisYear());
       onClose();
     },
