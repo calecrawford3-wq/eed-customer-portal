@@ -184,20 +184,20 @@ export default function BuildDetail() {
     return stock;
   };
 
-  // LSA = |intakeCenterline - exhaustCenterline| / 2 ... actually
-  // LSA = (intakeCL + exhaustCL) / 2 when both are measured as centerline degrees from TDC
-  // Per user: LSA = subtract the two centerlines, always positive
-  const calculateLSA = () => {
-    const intakeDir = getCamValue("intake_direction");
-    const intakeDeg = getCamValue("intake_degrees");
-    const exhaustDir = getCamValue("exhaust_direction");
-    const exhaustDeg = getCamValue("exhaust_degrees");
-
-    const effectiveIntake = calculateEffectiveCenterline(stockIntakeCenterline, intakeDir, intakeDeg);
-    const effectiveExhaust = calculateEffectiveCenterline(stockExhaustCenterline, exhaustDir, exhaustDeg);
-
+  // Centerline Separation = |ICL − ECL| (always positive)
+  const calculateCenterlineSeparation = () => {
+    const effectiveIntake = calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"));
+    const effectiveExhaust = calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"));
     if (effectiveIntake === null || effectiveExhaust === null) return null;
     return Math.abs(effectiveIntake - effectiveExhaust).toFixed(1);
+  };
+
+  // Lobe Separation Angle (LSA) = (ICL + ECL) ÷ 2
+  const calculateLSA = () => {
+    const effectiveIntake = calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"));
+    const effectiveExhaust = calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"));
+    if (effectiveIntake === null || effectiveExhaust === null) return null;
+    return ((effectiveIntake + effectiveExhaust) / 2).toFixed(1);
   };
 
   const availableSpecsForEdit = specSheets.filter(s => s.platform_id === getValue("platform_id") && s.is_current);
@@ -732,8 +732,15 @@ export default function BuildDetail() {
                 {calculateLSA() !== null ? (
                   <div className="flex items-center gap-8">
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">LSA</p>
+                      <p className="text-xs text-slate-400 mb-1">Lobe Separation Angle (LSA)</p>
                       <div className="text-4xl font-bold text-[#e20404]">{calculateLSA()}°</div>
+                      <p className="text-xs text-slate-400 mt-2">
+                        ({calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"))} + {calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"))}) ÷ 2
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Centerline Separation</p>
+                      <div className="text-2xl font-bold text-slate-600">{calculateCenterlineSeparation()}°</div>
                       <p className="text-xs text-slate-400 mt-2">
                         |{calculateEffectiveCenterline(stockIntakeCenterline, getCamValue("intake_direction"), getCamValue("intake_degrees"))} − {calculateEffectiveCenterline(stockExhaustCenterline, getCamValue("exhaust_direction"), getCamValue("exhaust_degrees"))}|
                       </p>
