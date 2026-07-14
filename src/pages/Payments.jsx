@@ -24,6 +24,7 @@ const METHOD_CONFIG = {
 export default function Payments() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // { type: 'invoice'|'estimate', record, paymentIdx }
   const [editForm, setEditForm] = useState({});
@@ -73,9 +74,10 @@ export default function Payments() {
     const matchSearch = (
       (p._ref || "") + (p._customer?.first_name || "") + (p._customer?.last_name || "") + (p.method || "") + (p.note || "")
     ).toLowerCase().includes(search.toLowerCase());
-    if (tab === "invoice") return matchSearch && p._type === "invoice";
-    if (tab === "estimate") return matchSearch && p._type === "estimate";
-    return matchSearch;
+    const matchYear = yearFilter === "all" || (p.date || "").slice(0, 4) === yearFilter;
+    if (tab === "invoice") return matchSearch && matchYear && p._type === "invoice";
+    if (tab === "estimate") return matchSearch && matchYear && p._type === "estimate";
+    return matchSearch && matchYear;
   });
 
   const totalIn = filtered.reduce((s, p) => s + (p.amount || 0), 0);
@@ -161,6 +163,15 @@ export default function Payments() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search by customer, reference..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Year" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {[...new Set(allPayments.map(p => (p.date || "").slice(0, 4)).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(y => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList>
