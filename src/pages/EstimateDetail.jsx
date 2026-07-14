@@ -1691,7 +1691,7 @@ export default function EstimateDetail() {
               </thead>
               <tbody>
                 {(form.line_items || []).map((line, idx) => (
-                  <tr key={idx} className="border-b border-slate-100">
+                  <tr key={idx} className="border-b border-slate-100 [&>td]:align-top">
                     <td className="py-2 pr-2">
                       <Input value={line.part_number} onChange={e => updateLine(idx, "part_number", e.target.value)} placeholder="Part #" className="border-slate-200 text-xs font-mono" />
                     </td>
