@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle, Phone, SkipForward, Edit3 } from "lucide-react";
-import { TIMEFRAME_LABELS, CHECKLISTS_BY_TIMEFRAME, SATISFACTION_OPTIONS, daysOverdue } from "@/lib/customerSuccess";
+import { CheckCircle, Phone, SkipForward, Edit3, CalendarClock, History } from "lucide-react";
+import { TIMEFRAME_LABELS, CHECKLISTS_BY_TIMEFRAME, SATISFACTION_OPTIONS, daysOverdue, nextWeekdayStr, isWeekend } from "@/lib/customerSuccess";
 import EngineHealthTimeline from "./EngineHealthTimeline";
 import DriverNotesModal from "./DriverNotesModal";
 import CustomerCreditContext from "./CustomerCreditContext";
@@ -23,6 +23,9 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
   const [satisfaction, setSatisfaction] = useState("");
   const [requiresFollowup, setRequiresFollowup] = useState(false);
   const [followupDate, setFollowupDate] = useState("");
+  const [followupTime, setFollowupTime] = useState("");
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
   const { data: driverNoteArr = [] } = useQuery({
     queryKey: ["driver-note-cs", task?.customer_id],
@@ -30,6 +33,15 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     enabled: !!task?.customer_id && open,
   });
   const driverNote = driverNoteArr && driverNoteArr[0];
+
+  const { data: allCustomerTasks = [] } = useQuery({
+    queryKey: ["cs-tasks-history", task?.customer_id],
+    queryFn: () => base44.entities.CustomerSuccessTask.filter({ customer_id: task.customer_id }, "-due_date", 50),
+    enabled: !!task?.customer_id && open,
+  });
+  const pastCalls = (allCustomerTasks || [])
+    .filter((t) => (t.status === "completed" || t.status === "skipped") && t.id !== task?.id)
+    .sort((a, b) => (b.completed_at || b.due_date || "").localeCompare(a.completed_at || a.due_date || ""));
 
   useEffect(() => {
     if (!task) return;
@@ -42,6 +54,9 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     setSatisfaction(task.satisfaction || "");
     setRequiresFollowup(!!task.requires_followup);
     setFollowupDate(task.followup_date || "");
+    setFollowupTime("");
+    setRescheduleDate(task.due_date || "");
+    setRescheduleTime(task.call_time || "");
   }, [task]);
 
   const saveMutation = useMutation({
@@ -66,7 +81,8 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
           delivery_date: task.delivery_date || "",
           timeframe: "custom",
           title: `Follow-up — ${task.engine_serial_number || ""}`.trim(),
-          due_date: followupDate,
+          due_date: nextWeekdayStr(followupDate),
+          call_time: followupTime || "",
           status: "pending",
           customer_name: task.customer_name || "",
           customer_phone: task.customer_phone || "",
@@ -117,6 +133,22 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     },
   });
 
+  const rescheduleMutation = useMutation({
+    mutationFn: () => base44.entities.CustomerSuccessTask.update(task.id, {
+      due_date: nextWeekdayStr(rescheduleDate),
+      call_time: rescheduleTime || "",
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cs-tasks"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-cal"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-build"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-history"] });
+      toast.success("Call rescheduled");
+      onSaved && onSaved();
+      onClose();
+    },
+  });
+
   const isPending = task.status === "pending";
 
   if (!task) return null;
@@ -131,6 +163,8 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     ["Upcoming Engine Class", driverNote.upcoming_engine_class],
     ["Other Notes", driverNote.other_notes],
   ].filter(([, v]) => v && String(v).trim()) : [];
+  const preferredTime = driverNote?.preferred_contact_time || "";
+  const preferredDays = driverNote?.preferred_contact_days || "";
 
   return (
     <>
@@ -166,6 +200,15 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
                   ))}
                 </div>
               )}
+              {(preferredTime || preferredDays) && (
+                <div className="mt-2 pt-2 border-t border-amber-200/70 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-semibold text-slate-700">Best time to call:</span>
+                  {preferredTime && <Badge className="bg-blue-100 text-blue-700 border-0">{preferredTime}</Badge>}
+                  {preferredDays && preferredDays.split(",").map((d) => d.trim()).filter(Boolean).map((d) => (
+                    <Badge key={d} className="bg-blue-100 text-blue-700 border-0">{d}</Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="border rounded-lg p-3">
@@ -179,6 +222,27 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
               currentDueDate={task.due_date}
               deliveryDate={task.delivery_date}
             />
+
+            {pastCalls.length > 0 && (
+              <div className="border rounded-lg p-3 bg-slate-50/60">
+                <h4 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-1.5"><History className="w-4 h-4" /> Previous Call Notes</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {pastCalls.map((pc) => (
+                    <div key={pc.id} className="text-sm border-l-2 pl-2 py-1" style={{ borderColor: pc.status === "skipped" ? "#cbd5e1" : "#10b981" }}>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="font-medium text-slate-700">{TIMEFRAME_LABELS[pc.timeframe] || "Follow-up"}</span>
+                        <span>·</span>
+                        <span>{pc.due_date}</span>
+                        {pc.call_time && <><span>·</span><span>{pc.call_time}</span></>}
+                        {pc.satisfaction && <Badge className={`border-0 ${pc.satisfaction === "excellent" ? "bg-emerald-100 text-emerald-700" : pc.satisfaction === "good" ? "bg-blue-100 text-blue-700" : pc.satisfaction === "needs_attention" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{pc.satisfaction.replace("_", " ")}</Badge>}
+                        {pc.status === "skipped" && <Badge className="bg-slate-200 text-slate-500 border-0">skipped</Badge>}
+                      </div>
+                      {pc.notes && <p className="text-slate-700 mt-0.5 whitespace-pre-wrap">{pc.notes}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <h4 className="text-sm font-semibold text-slate-800 mb-2">{TIMEFRAME_LABELS[task.timeframe] || "Follow-up"} Checklist</h4>
@@ -217,9 +281,28 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
                 </div>
               </div>
               {requiresFollowup && (
-                <div className="mt-2"><Label>Next Reminder Date</Label><Input type="date" value={followupDate} onChange={(e) => setFollowupDate(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div><Label>Next Reminder Date</Label><Input type="date" value={followupDate} onChange={(e) => setFollowupDate(e.target.value)} /></div>
+                  <div><Label>Time (optional)</Label><Input type="time" value={followupTime} onChange={(e) => setFollowupTime(e.target.value)} /></div>
+                </div>
               )}
             </div>
+
+            {isPending && (
+              <div className="border rounded-lg p-3">
+                <h4 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-1.5"><CalendarClock className="w-4 h-4" /> Reschedule This Call</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label>Date</Label><Input type="date" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} /></div>
+                  <div><Label>Time (optional)</Label><Input type="time" value={rescheduleTime} onChange={(e) => setRescheduleTime(e.target.value)} /></div>
+                </div>
+                {rescheduleDate && isWeekend(rescheduleDate) && (
+                  <p className="text-xs text-amber-600 mt-1">Weekend selected — will auto-move to {nextWeekdayStr(rescheduleDate)}.</p>
+                )}
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => rescheduleMutation.mutate()} disabled={rescheduleMutation.isPending || !rescheduleDate}>
+                  {rescheduleMutation.isPending ? "Rescheduling..." : "Reschedule Call"}
+                </Button>
+              </div>
+            )}
           </div>
           <DialogFooter className="flex-wrap gap-2">
             {isPending && <Button variant="ghost" onClick={() => skipMutation.mutate()} disabled={skipMutation.isPending}><SkipForward className="w-4 h-4 mr-1" /> Skip</Button>}

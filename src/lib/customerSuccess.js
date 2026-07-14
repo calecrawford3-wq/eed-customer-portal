@@ -13,6 +13,22 @@ export function daysOverdue(dueDate) {
   return Math.floor((new Date(todayStr() + "T00:00:00").getTime() - new Date(dueDate + "T00:00:00").getTime()) / 86400000);
 }
 
+export const WEEKDAY_OPTIONS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+export const CONTACT_TIME_OPTIONS = ["Morning", "Afternoon", "Evening", "Any time"];
+
+export function isWeekend(dateStr) {
+  const dow = new Date(dateStr + "T00:00:00").getDay();
+  return dow === 0 || dow === 6;
+}
+export function nextWeekdayStr(dateStr) {
+  if (!dateStr) return dateStr;
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = d.getDay();
+  if (dow === 6) d.setDate(d.getDate() + 2);
+  else if (dow === 0) d.setDate(d.getDate() + 1);
+  return dateToStr(d);
+}
+
 export const TIMEFRAME_LABELS = {
   "3_5_days": "3-5 Day Follow-up",
   "2_weeks": "2 Week Follow-up",

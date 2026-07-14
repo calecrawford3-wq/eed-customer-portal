@@ -39,6 +39,10 @@
       "type": "string",
       "format": "date"
     },
+    "call_time": {
+      "type": "string",
+      "description": "Optional time-of-day for the follow-up call (HH:MM). Blank = any time / all day"
+    },
     "status": {
       "type": "string",
       "enum": [

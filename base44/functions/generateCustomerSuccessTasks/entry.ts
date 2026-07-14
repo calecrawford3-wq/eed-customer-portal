@@ -21,6 +21,17 @@ function addDays(dateStr, n) {
   const da = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${da}`;
 }
+// Follow-up calls should never fall on a weekend — push Sat/Sun to the next Monday.
+function toWeekday(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = d.getDay();
+  if (dow === 6) d.setDate(d.getDate() + 2);
+  else if (dow === 0) d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
 
 Deno.serve(async (req) => {
   try {
@@ -61,7 +72,7 @@ Deno.serve(async (req) => {
       delivery_date: deliveryDate,
       timeframe: tf.key,
       title: `${tf.label} — ${build.engine_serial_number || ""}`.trim(),
-      due_date: addDays(deliveryDate, tf.offsetDays),
+      due_date: toWeekday(addDays(deliveryDate, tf.offsetDays)),
       status: "pending",
       customer_name: customerName,
       customer_phone: customerPhone,

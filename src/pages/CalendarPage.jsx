@@ -27,7 +27,7 @@ export default function CalendarPage() {
     tasks.forEach((t) => {
       if (!t.due_date) return;
       if (!map[t.due_date]) map[t.due_date] = [];
-      map[t.due_date].push({ kind: "task", type: "followup", title: `${t.customer_name || "Customer"} · ${TIMEFRAME_LABELS[t.timeframe] || "Follow-up"}`, done: t.status === "completed", ref: t });
+      map[t.due_date].push({ kind: "task", type: "followup", title: `${t.customer_name || "Customer"} · ${TIMEFRAME_LABELS[t.timeframe] || "Follow-up"}`, time: t.call_time || "", done: t.status === "completed", ref: t });
     });
     events.forEach((e) => {
       if (!e.start_date) return;
@@ -97,7 +97,7 @@ export default function CalendarPage() {
                       return (
                         <button key={j} onClick={() => setActiveTask(it.ref)} className={`w-full text-left flex items-center gap-1 px-1 py-0.5 rounded text-[11px] ${it.done ? "bg-slate-100 text-slate-400" : meta.badge} hover:opacity-80`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${it.done ? "bg-slate-300" : meta.dot} flex-shrink-0`} />
-                          <span className="truncate">{it.title}</span>
+                          <span className="truncate">{it.time ? `${it.time} ` : ""}{it.title}</span>
                         </button>
                       );
                     })}

@@ -28,6 +28,14 @@
     },
     "other_notes": {
       "type": "string"
+    },
+    "preferred_contact_time": {
+      "type": "string",
+      "description": "Preferred time of day for follow-up calls (e.g. Morning, Afternoon, Evening)"
+    },
+    "preferred_contact_days": {
+      "type": "string",
+      "description": "Preferred days of the week for follow-up calls (comma-separated, e.g. Mon,Wed,Fri)"
     }
   },
   "required": [
