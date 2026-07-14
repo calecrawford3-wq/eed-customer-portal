@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Send, CheckCircle, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, CheckCircle, Package, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber }) {
@@ -121,12 +121,52 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
       return result;
     },
     onSuccess: (result, variables) => {
-      const idx = poGroups.indexOf(variables);
-      setPoGroups(prev => prev.map((g, i) => i === idx ? { ...g, saved: true, savedId: result.id } : g));
+      setPoGroups(prev => prev.map(g => g.supplierId === variables.supplierId ? { ...g, saved: true, savedId: result.id } : g));
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       toast.success(`PO created for ${variables.supplier?.name || "Unknown Supplier"}`);
     },
   });
+
+  const recalcGroup = (group) => {
+    const lineItems = group.lineItems.map(l => ({ ...l, total: (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0) }));
+    const subtotal = lineItems.reduce((s, l) => s + l.total, 0);
+    return { ...group, lineItems, subtotal, total: subtotal };
+  };
+
+  const updateLineItem = (groupIdx, itemIdx, field, value) => {
+    setPoGroups(prev => prev.map((g, i) => {
+      if (i !== groupIdx) return g;
+      const newItems = g.lineItems.map((l, j) => j === itemIdx ? { ...l, [field]: value } : l);
+      return recalcGroup({ ...g, lineItems: newItems });
+    }));
+  };
+
+  const removeLineItem = (groupIdx, itemIdx) => {
+    setPoGroups(prev => prev.map((g, i) => {
+      if (i !== groupIdx) return g;
+      const newItems = g.lineItems.filter((_, j) => j !== itemIdx);
+      return recalcGroup({ ...g, lineItems: newItems });
+    }));
+  };
+
+  const handleSaveOne = async (group, idx) => {
+    if (group.savedId) {
+      toast.info("This PO is already saved");
+      return;
+    }
+    const result = await createPOMutation.mutateAsync(group);
+    return result;
+  };
+
+  const handleSaveAll = async () => {
+    for (let i = 0; i < poGroups.length; i++) {
+      if (!poGroups[i].savedId) {
+        await createPOMutation.mutateAsync(poGroups[i]);
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+    toast.success("All POs saved!");
+  };
 
   const handleSendOne = async (group, idx) => {
     if (!group.savedId) {
@@ -203,21 +243,63 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                 <table className="w-full text-sm">
                   <thead className="border-b border-slate-200 sticky top-0 bg-white">
                     <tr>
-                      <th className="text-left px-4 py-2 font-medium text-slate-600">Part #</th>
-                      <th className="text-left px-4 py-2 font-medium text-slate-600">Description</th>
-                      <th className="text-center px-4 py-2 font-medium text-slate-600">Qty Needed</th>
-                      <th className="text-right px-4 py-2 font-medium text-slate-600">Unit Cost</th>
-                      <th className="text-right px-4 py-2 font-medium text-slate-600">Total</th>
+                      <th className="text-left px-2 py-2 font-medium text-slate-600">Part #</th>
+                      <th className="text-left px-2 py-2 font-medium text-slate-600">Description</th>
+                      <th className="text-center px-2 py-2 font-medium text-slate-600">Qty</th>
+                      <th className="text-right px-2 py-2 font-medium text-slate-600">Unit Cost</th>
+                      <th className="text-right px-2 py-2 font-medium text-slate-600">Total</th>
+                      <th className="px-1"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {current.lineItems.map((l, i) => (
                       <tr key={i} className="border-b border-slate-100">
-                        <td className="px-4 py-2 font-mono text-xs text-slate-600">{l.part_number}</td>
-                        <td className="px-4 py-2 text-slate-800">{l.description}</td>
-                        <td className="px-4 py-2 text-center">{l.quantity}</td>
-                        <td className="px-4 py-2 text-right">${Number(l.unit_cost).toFixed(2)}</td>
-                        <td className="px-4 py-2 text-right font-medium">${Number(l.total).toFixed(2)}</td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className="font-mono text-xs text-slate-600 w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-400 rounded px-1 py-1 outline-none"
+                            value={l.part_number || ""}
+                            onChange={(e) => updateLineItem(currentIdx, i, "part_number", e.target.value)}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className="text-slate-800 w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-400 rounded px-1 py-1 outline-none"
+                            value={l.description || ""}
+                            onChange={(e) => updateLineItem(currentIdx, i, "description", e.target.value)}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 text-center">
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-16 text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-400 rounded px-1 py-1 outline-none"
+                            value={l.quantity}
+                            onChange={(e) => updateLineItem(currentIdx, i, "quantity", Number(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <div className="flex items-center justify-end">
+                            <span className="text-slate-400 text-sm mr-0.5">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="w-20 text-right bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-400 rounded px-1 py-1 outline-none"
+                              value={l.unit_cost}
+                              onChange={(e) => updateLineItem(currentIdx, i, "unit_cost", Number(e.target.value) || 0)}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-medium">${Number(l.total).toFixed(2)}</td>
+                        <td className="px-1 py-1.5 text-center">
+                          <button
+                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                            onClick={() => removeLineItem(currentIdx, i)}
+                            title="Remove item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -225,6 +307,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                     <tr className="bg-slate-50 font-bold">
                       <td colSpan={4} className="px-4 py-2 text-right text-slate-700">Total</td>
                       <td className="px-4 py-2 text-right text-[#e20404]">${Number(current.total).toFixed(2)}</td>
+                      <td></td>
                     </tr>
                   </tfoot>
                   </table>
@@ -232,8 +315,26 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                   </div>
                   )}
 
-                  <div className="flex gap-3 mt-4 justify-end">
+                  <div className="flex flex-wrap gap-2 mt-4 justify-end">
               <Button variant="outline" onClick={onClose}>Close</Button>
+              {current && (
+                <Button
+                  variant="outline"
+                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  disabled={current.saved || createPOMutation.isPending}
+                  onClick={() => handleSaveOne(current, currentIdx)}
+                >
+                  <Save className="w-4 h-4 mr-1" /> {current.saved ? "Saved" : "Save This PO"}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                disabled={poGroups.every(g => g.saved)}
+                onClick={handleSaveAll}
+              >
+                <Save className="w-4 h-4 mr-1" /> Save All POs
+              </Button>
               {current && (
                 <Button variant="outline" className="border-blue-300 text-blue-700" onClick={() => handleSendOne(current, currentIdx)}>
                   <Send className="w-4 h-4 mr-1" /> Send This PO
