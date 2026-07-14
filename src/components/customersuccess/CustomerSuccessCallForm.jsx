@@ -13,6 +13,7 @@ import { CheckCircle, Phone, SkipForward, Edit3 } from "lucide-react";
 import { TIMEFRAME_LABELS, CHECKLISTS_BY_TIMEFRAME, SATISFACTION_OPTIONS, daysOverdue } from "@/lib/customerSuccess";
 import EngineHealthTimeline from "./EngineHealthTimeline";
 import DriverNotesModal from "./DriverNotesModal";
+import CustomerCreditContext from "./CustomerCreditContext";
 
 export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }) {
   const qc = useQueryClient();
@@ -90,11 +91,33 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
     mutationFn: () => base44.entities.CustomerSuccessTask.update(task.id, { status: "skipped", notes, completed_at: new Date().toISOString() }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cs-tasks"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-cal"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-build"] });
       toast.success("Follow-up skipped");
       onSaved && onSaved();
       onClose();
     },
   });
+
+  const saveNotesMutation = useMutation({
+    mutationFn: () => base44.entities.CustomerSuccessTask.update(task.id, {
+      notes,
+      checklist,
+      satisfaction: satisfaction || null,
+      requires_followup: requiresFollowup,
+      followup_date: requiresFollowup ? followupDate : null,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cs-tasks"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-cal"] });
+      qc.invalidateQueries({ queryKey: ["cs-tasks-build"] });
+      toast.success("Notes saved");
+      onSaved && onSaved();
+      onClose();
+    },
+  });
+
+  const isPending = task.status === "pending";
 
   if (!task) return null;
   const overdue = task.status === "pending" ? daysOverdue(task.due_date) : 0;
@@ -150,6 +173,13 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
               <EngineHealthTimeline engineSerialNumber={task.engine_serial_number} />
             </div>
 
+            <CustomerCreditContext
+              customerId={task.customer_id}
+              buildId={task.build_id}
+              currentDueDate={task.due_date}
+              deliveryDate={task.delivery_date}
+            />
+
             <div>
               <h4 className="text-sm font-semibold text-slate-800 mb-2">{TIMEFRAME_LABELS[task.timeframe] || "Follow-up"} Checklist</h4>
               <div className="space-y-1">
@@ -192,11 +222,16 @@ export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }
             </div>
           </div>
           <DialogFooter className="flex-wrap gap-2">
-            <Button variant="ghost" onClick={() => skipMutation.mutate()} disabled={skipMutation.isPending}><SkipForward className="w-4 h-4 mr-1" /> Skip</Button>
+            {isPending && <Button variant="ghost" onClick={() => skipMutation.mutate()} disabled={skipMutation.isPending}><SkipForward className="w-4 h-4 mr-1" /> Skip</Button>}
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || (requiresFollowup && !followupDate)}>
-              <CheckCircle className="w-4 h-4 mr-1" /> {saveMutation.isPending ? "Saving..." : "Complete"}
+            <Button variant="secondary" onClick={() => saveNotesMutation.mutate()} disabled={saveNotesMutation.isPending}>
+              {saveNotesMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
+            {isPending && (
+              <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || (requiresFollowup && !followupDate)}>
+                <CheckCircle className="w-4 h-4 mr-1" /> {saveMutation.isPending ? "Saving..." : "Complete"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

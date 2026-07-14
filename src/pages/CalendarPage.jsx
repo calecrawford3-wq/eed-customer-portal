@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { EVENT_TYPE_META, TIMEFRAME_LABELS, dateToStr, todayStr } from "@/lib/customerSuccess";
 import CalendarEventModal from "@/components/customersuccess/CalendarEventModal";
+import CustomerSuccessCallForm from "@/components/customersuccess/CustomerSuccessCallForm";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -16,6 +17,7 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
 
   const { data: tasks = [] } = useQuery({ queryKey: ["cs-tasks-cal"], queryFn: () => base44.entities.CustomerSuccessTask.list("-due_date", 500) });
   const { data: events = [] } = useQuery({ queryKey: ["calendar-events"], queryFn: () => base44.entities.CalendarEvent.list("-start_date", 500) });
@@ -25,7 +27,7 @@ export default function CalendarPage() {
     tasks.forEach((t) => {
       if (!t.due_date) return;
       if (!map[t.due_date]) map[t.due_date] = [];
-      map[t.due_date].push({ kind: "task", type: "followup", title: `${t.customer_name || "Customer"} · ${TIMEFRAME_LABELS[t.timeframe] || "Follow-up"}`, done: t.status === "completed" });
+      map[t.due_date].push({ kind: "task", type: "followup", title: `${t.customer_name || "Customer"} · ${TIMEFRAME_LABELS[t.timeframe] || "Follow-up"}`, done: t.status === "completed", ref: t });
     });
     events.forEach((e) => {
       if (!e.start_date) return;
@@ -93,10 +95,10 @@ export default function CalendarPage() {
                         );
                       }
                       return (
-                        <div key={j} className={`w-full flex items-center gap-1 px-1 py-0.5 rounded text-[11px] ${it.done ? "bg-slate-100 text-slate-400" : meta.badge}`}>
+                        <button key={j} onClick={() => setActiveTask(it.ref)} className={`w-full text-left flex items-center gap-1 px-1 py-0.5 rounded text-[11px] ${it.done ? "bg-slate-100 text-slate-400" : meta.badge} hover:opacity-80`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${it.done ? "bg-slate-300" : meta.dot} flex-shrink-0`} />
                           <span className="truncate">{it.title}</span>
-                        </div>
+                        </button>
                       );
                     })}
                     {items.length > 3 && <p className="text-[10px] text-slate-400 px-1">+{items.length - 3} more</p>}
@@ -117,6 +119,7 @@ export default function CalendarPage() {
       </div>
 
       <CalendarEventModal open={modalOpen} onClose={() => setModalOpen(false)} defaultDate={defaultDate} event={editEvent} />
+      <CustomerSuccessCallForm open={!!activeTask} onClose={() => setActiveTask(null)} task={activeTask} />
     </div>
   );
 }

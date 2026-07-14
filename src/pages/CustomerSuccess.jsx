@@ -37,20 +37,20 @@ export default function CustomerSuccess() {
     const od = daysOverdue(t.due_date);
     return (
       <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
-        <div className="flex-1 min-w-0">
+        <button onClick={() => setActiveTask(t)} className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2">
             <p className="font-medium text-slate-900 text-sm truncate">{t.customer_name || "—"}</p>
             <Badge className="bg-purple-100 text-purple-700 border-0 font-mono text-[10px]">{t.engine_serial_number || "—"}</Badge>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">{TIMEFRAME_LABELS[t.timeframe] || "Follow-up"} · due {t.due_date}{showOverdue && od > 0 && <span className="text-red-600 font-medium"> · {od}d overdue</span>}</p>
-        </div>
+        </button>
         {t.customer_phone && (
           <a href={`tel:${t.customer_phone}`} title="Quick call" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex-shrink-0">
             <Phone className="w-4 h-4" />
           </a>
         )}
-        <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white flex-shrink-0" onClick={() => setActiveTask(t)}>
-          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete
+        <Button size="sm" variant="outline" className="flex-shrink-0" onClick={() => setActiveTask(t)}>
+          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Open
         </Button>
       </div>
     );
@@ -120,7 +120,7 @@ export default function CustomerSuccess() {
                 const sat = SATISFACTION_OPTIONS.find((s) => s.value === t.satisfaction);
                 const note = t.notes ? (t.notes.length > 120 ? t.notes.slice(0, 120) + "…" : t.notes) : "";
                 return (
-                  <div key={t.id} className="py-2.5 border-b border-slate-100 last:border-0">
+                  <button key={t.id} onClick={() => setActiveTask(t)} className="w-full text-left py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 -mx-2 px-2 rounded">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-slate-900 text-sm truncate flex-1">{t.customer_name || "—"}</p>
                       <Badge className="bg-purple-100 text-purple-700 border-0 font-mono text-[10px]">{t.engine_serial_number || "—"}</Badge>
@@ -128,7 +128,7 @@ export default function CustomerSuccess() {
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">{TIMEFRAME_LABELS[t.timeframe] || "Follow-up"} · {(t.completed_at || "").slice(0, 10)}</p>
                     {note && <p className="text-xs text-slate-400 mt-1">{note}</p>}
-                  </div>
+                  </button>
                 );
               })}
           </CardContent>
