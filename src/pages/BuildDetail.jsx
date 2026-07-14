@@ -172,15 +172,15 @@ export default function BuildDetail() {
   const stockExhaustCenterline = specSheet?.specs?.camshaft?.exhaust_centerline ?? null;
 
   // Calculate effective centerlines after advance/retard adjustments
-  // Advanced = moves centerline later = add degrees
-  // Retarded = moves centerline earlier = subtract degrees
+  // Advanced = earlier centerline = subtract degrees (e.g. 104 advanced 1 → 103)
+  // Retarded = later centerline = add degrees (e.g. 104 retarded 1 → 105)
   const calculateEffectiveCenterline = (stockCenterline, direction, degrees) => {
     if (stockCenterline === null || stockCenterline === undefined || stockCenterline === "") return null;
     const stock = parseFloat(stockCenterline);
     const deg = parseFloat(degrees) || 0;
     if (isNaN(stock)) return null;
-    if (direction === "advanced") return stock + deg;
-    if (direction === "retarded") return stock - deg;
+    if (direction === "advanced") return stock - deg;
+    if (direction === "retarded") return stock + deg;
     return stock;
   };
 
