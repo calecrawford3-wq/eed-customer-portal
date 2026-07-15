@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Send, CheckCircle, Package, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, CheckCircle, Package, Save, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import PoPartPickerModal from "./PoPartPickerModal";
 
 export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber }) {
   const qc = useQueryClient();
@@ -13,6 +14,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
   const [currentIdx, setCurrentIdx] = useState(0);
   const [generated, setGenerated] = useState(false);
   const [sentIds, setSentIds] = useState([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: parts = [] } = useQuery({
     queryKey: ["parts"],
@@ -149,6 +151,24 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
     }));
   };
 
+  const addPartToGroup = (groupIdx, newLine) => {
+    setPoGroups(prev => prev.map((g, i) => {
+      if (i !== groupIdx) return g;
+      // Avoid duplicate part_id entries — merge qty if already present
+      const existingIdx = g.lineItems.findIndex(l => l.part_id && l.part_id === newLine.part_id);
+      let newItems;
+      if (existingIdx >= 0) {
+        newItems = g.lineItems.map((l, j) => j === existingIdx
+          ? { ...l, quantity: (Number(l.quantity) || 0) + (Number(newLine.quantity) || 0) }
+          : l);
+      } else {
+        newItems = [...g.lineItems, newLine];
+      }
+      return recalcGroup({ ...g, lineItems: newItems });
+    }));
+    toast.success(`${newLine.description} added to PO`);
+  };
+
   const handleSaveOne = async (group, idx) => {
     if (group.savedId) {
       toast.info("This PO is already saved");
@@ -237,6 +257,9 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                   <div className="flex items-center gap-2">
                     {sentIds.includes(current.savedId) && <Badge className="bg-emerald-100 text-emerald-700 border-0">Sent</Badge>}
                     {!current.supplier?.email && <Badge className="bg-amber-100 text-amber-700 border-0">No email on file</Badge>}
+                    <Button size="sm" variant="outline" className="border-slate-300" onClick={() => setPickerOpen(true)}>
+                      <Plus className="w-4 h-4 mr-1" /> Add Part
+                    </Button>
                   </div>
                 </div>
                 <div className="overflow-y-auto max-h-[50vh]">
@@ -347,6 +370,18 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
           </div>
         )}
       </DialogContent>
+      {current && (
+        <PoPartPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          parts={parts}
+          suppliers={suppliers}
+          currentSupplierId={current.supplierId}
+          currentSupplierName={current.supplier?.name}
+          existingPartIds={current.lineItems.map(l => l.part_id).filter(Boolean)}
+          onAdd={(newLine) => addPartToGroup(currentIdx, newLine)}
+        />
+      )}
     </Dialog>
   );
 }
