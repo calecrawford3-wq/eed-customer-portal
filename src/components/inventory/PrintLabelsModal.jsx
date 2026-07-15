@@ -20,6 +20,8 @@ const buildPrintHtml = (labels) => {
           <span class="loc">${esc(l.location ? `📍 ${l.location}` : "")}</span>
           <span class="code">${esc(l.code)}</span>
         </div>
+        ${l.platforms ? `<div class="label-line">${esc(l.platforms)}</div>` : ""}
+        ${l.notes ? `<div class="label-line notes">📝 ${esc(l.notes)}</div>` : ""}
       </div>`;
   }).join("");
 
@@ -31,7 +33,7 @@ const buildPrintHtml = (labels) => {
   body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   .labels { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
   .label {
-    width: 3in; height: 1.4in;
+    width: 3in; height: 1.65in;
     border: 1px dashed #bbb;
     padding: 6px 8px;
     display: flex; flex-direction: column; justify-content: space-between;
@@ -44,6 +46,8 @@ const buildPrintHtml = (labels) => {
   .no-bc { font-size: 10px; color: #999; }
   .label-footer { display: flex; justify-content: space-between; align-items: center; font-size: 8px; color: #666; }
   .code { font-family: monospace; }
+  .label-line { font-size: 7.5px; color: #444; line-height: 1.1; max-height: 22px; overflow: hidden; }
+  .label-line.notes { color: #333; font-style: italic; }
 </style></head>
 <body><div class="labels">${labelHtml}</div>
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
@@ -85,7 +89,7 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
     const labels = [];
     chosen.forEach((i) => {
       for (let c = 0; c < (Number(copies) || 1); c++) {
-        labels.push({ code: i.code, name: i.name, location: i.location });
+        labels.push({ code: i.code, name: i.name, location: i.location, platforms: i.platforms, notes: i.notes });
       }
     });
     if (labels.length === 0) return;
@@ -135,6 +139,8 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm text-slate-800 truncate">{i.name}</div>
                       <div className="text-xs text-slate-500 font-mono">{i.code}{i.location ? ` · ${i.location}` : ""}</div>
+                      {i.platforms && <div className="text-[11px] text-blue-600 truncate mt-0.5">{i.platforms}</div>}
+                      {i.notes && <div className="text-[11px] text-slate-500 truncate">📝 {i.notes}</div>}
                     </div>
                     <BarcodeLabel value={i.code} className="hidden lg:flex w-24" />
                   </label>

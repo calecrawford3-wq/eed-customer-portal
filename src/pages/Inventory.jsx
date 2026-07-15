@@ -737,7 +737,16 @@ export default function Inventory() {
         open={printLabelsOpen}
         onClose={() => setPrintLabelsOpen(false)}
         title="Print Part Labels"
-        items={filteredParts.map(p => ({ id: p.id, code: p.part_number, name: p.name, location: p.location }))}
+        items={filteredParts.map(p => ({
+          id: p.id,
+          code: p.part_number,
+          name: p.name,
+          location: p.location,
+          platforms: (p.platform_ids || []).map(pid => {
+            const pl = enginePlatforms.find(x => x.id === pid);
+            return pl ? `${pl.manufacturer} ${pl.name}` : null;
+          }).filter(Boolean).join(", "),
+        }))}
       />
     </div>
   );

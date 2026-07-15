@@ -264,7 +264,7 @@ export default function CoreManager() {
         open={printOpen}
         onClose={() => setPrintOpen(false)}
         title="Print Core Labels"
-        items={filtered.map(c => ({ id: c.id, code: c.core_number, name: c.name, location: c.location }))}
+        items={filtered.map(c => ({ id: c.id, code: c.core_number, name: c.name, location: c.location, notes: c.notes }))}
       />
     </div>
   );
