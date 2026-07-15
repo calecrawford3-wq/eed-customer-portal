@@ -62,25 +62,30 @@ const buildPrintHtml = (labels, startPos = 1) => {
 </body></html>`;
 };
 
-export default function PrintLabelsModal({ open, onClose, items, title = "Print Labels" }) {
+export default function PrintLabelsModal({ open, onClose, items, title = "Print Labels", preselectId }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
-  const [copies, setCopies] = useState(1);
+  const [quantities, setQuantities] = useState({});
+  const [batchQty, setBatchQty] = useState(1);
   const [startPos, setStartPos] = useState(1);
-  const copiesRef = useRef(null);
+  const qtyRefs = useRef({});
 
   React.useEffect(() => {
     if (open) {
-      setSelected(new Set(items.map((i) => i.id)));
-      setSearch("");
-      setCopies(1);
-      setStartPos(1);
-      // When printing a single label, focus the copies field so the user can enter how many
-      if (items.length === 1) {
-        setTimeout(() => { copiesRef.current?.focus(); copiesRef.current?.select(); }, 100);
+      const q = {};
+      items.forEach((i) => { q[i.id] = 1; });
+      setQuantities(q);
+      if (preselectId) {
+        setSelected(new Set([preselectId]));
+        setTimeout(() => { qtyRefs.current[preselectId]?.focus(); qtyRefs.current[preselectId]?.select(); }, 100);
+      } else {
+        setSelected(new Set(items.map((i) => i.id)));
       }
+      setSearch("");
+      setBatchQty(1);
+      setStartPos(1);
     }
-  }, [open, items]);
+  }, [open, items, preselectId]);
 
   const filtered = useMemo(
     () => items.filter((i) => `${i.code} ${i.name} ${i.location || ""}`.toLowerCase().includes(search.toLowerCase())),
@@ -99,11 +104,16 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
   const selectAll = () => setSelected(new Set(filtered.map((i) => i.id)));
   const clearAll = () => setSelected(new Set());
 
+  const totalCount = items
+    .filter((i) => selected.has(i.id))
+    .reduce((sum, i) => sum + (Math.max(1, Number(quantities[i.id]) || 1)), 0);
+
   const handlePrint = () => {
     const chosen = items.filter((i) => selected.has(i.id));
     const labels = [];
     chosen.forEach((i) => {
-      for (let c = 0; c < (Number(copies) || 1); c++) {
+      const qty = Math.max(1, Number(quantities[i.id]) || 1);
+      for (let c = 0; c < qty; c++) {
         labels.push({ code: i.code, name: i.name, location: i.location, platforms: i.platforms, notes: i.notes });
       }
     });
@@ -133,8 +143,16 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
           <Button variant="outline" size="sm" onClick={selectAll}><CheckCheck className="w-4 h-4 mr-1" /> All</Button>
           <Button variant="outline" size="sm" onClick={clearAll}>Clear</Button>
           <div className="flex items-center gap-2">
-            <Label className="text-xs whitespace-nowrap">{items.length === 1 ? "How many?" : "Copies"}</Label>
-            <Input ref={copiesRef} type="number" min="1" className="w-16" value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
+            <Label className="text-xs whitespace-nowrap">Qty all</Label>
+            <Input type="number" min="1" className="w-16" value={batchQty} onChange={(e) => {
+              const v = Math.max(1, Number(e.target.value) || 1);
+              setBatchQty(v);
+              setQuantities((q) => {
+                const nq = { ...q };
+                selected.forEach((id) => { nq[id] = v; });
+                return nq;
+              });
+            }} />
           </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs whitespace-nowrap">Start at slot</Label>
@@ -162,6 +180,14 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
                       {i.platforms && <div className="text-[11px] text-blue-600 truncate mt-0.5">{i.platforms}</div>}
                       {i.notes && <div className="text-[11px] text-slate-500 truncate">📝 {i.notes}</div>}
                     </div>
+                    <Input
+                      ref={(el) => { qtyRefs.current[i.id] = el; }}
+                      type="number"
+                      min="1"
+                      className="w-14 h-8 text-center flex-shrink-0"
+                      value={quantities[i.id] ?? 1}
+                      onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
+                    />
                     <BarcodeLabel value={i.code} className="hidden lg:flex w-24" />
                   </label>
                 );
@@ -174,7 +200,7 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
           <span className="text-sm text-slate-500 mr-auto">{selected.size} selected</span>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handlePrint} disabled={selected.size === 0}>
-            <Printer className="w-4 h-4 mr-2" /> Print {selected.size > 0 ? `(${selected.size * (Number(copies) || 1)})` : ""}
+            <Printer className="w-4 h-4 mr-2" /> Print {totalCount > 0 ? `(${totalCount})` : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
