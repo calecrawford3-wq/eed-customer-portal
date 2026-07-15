@@ -28,25 +28,30 @@ const buildPrintHtml = (labels) => {
   return `<!DOCTYPE html>
 <html><head><title>Print Labels</title>
 <style>
-  @page { margin: 0.3in; size: auto; }
+  @page { size: 8.5in 11in; margin: 0.5in 0.15625in; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-  .labels { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+  /* Avery 18163: 2 columns × 5 rows = 10 labels per page, 4in × 2in each */
+  .labels {
+    display: grid;
+    grid-template-columns: repeat(2, 4in);
+    grid-template-rows: repeat(5, 2in);
+    column-gap: 0.1875in;
+    row-gap: 0in;
+  }
   .label {
-    width: 3in; height: 1.65in;
-    border: 1px dashed #bbb;
-    padding: 6px 8px;
+    width: 4in; height: 2in;
+    padding: 5px 8px;
     display: flex; flex-direction: column; justify-content: space-between;
-    page-break-inside: avoid;
     overflow: hidden;
   }
-  .label-title { font-size: 10px; font-weight: 700; line-height: 1.15; max-height: 26px; overflow: hidden; }
-  .barcode { text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; }
+  .label-title { font-size: 11px; font-weight: 700; line-height: 1.2; max-height: 40px; overflow: hidden; }
+  .barcode { text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 0; }
   .barcode svg { max-width: 100%; height: auto; }
-  .no-bc { font-size: 10px; color: #999; }
-  .label-footer { display: flex; justify-content: space-between; align-items: center; font-size: 8px; color: #666; }
+  .no-bc { font-size: 11px; color: #999; }
+  .label-footer { display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #555; }
   .code { font-family: monospace; }
-  .label-line { font-size: 7.5px; color: #444; line-height: 1.1; max-height: 22px; overflow: hidden; }
+  .label-line { font-size: 8.5px; color: #444; line-height: 1.15; max-height: 26px; overflow: hidden; }
   .label-line.notes { color: #333; font-style: italic; }
 </style></head>
 <body><div class="labels">${labelHtml}</div>
