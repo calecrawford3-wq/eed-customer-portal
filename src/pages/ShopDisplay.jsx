@@ -1,7 +1,7 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Wrench, Clock, Package } from "lucide-react";
+import { Wrench, Clock, Package, MapPin } from "lucide-react";
 
 export default function ShopDisplay() {
   const { data: builds = [] } = useQuery({
@@ -107,6 +107,14 @@ export default function ShopDisplay() {
                     <div className="text-slate-400 text-lg">
                       {getPlatformName(build.platform_id)}
                     </div>
+                    {build.storage_location && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <MapPin className="w-4 h-4 text-amber-400" />
+                        <span className="text-amber-300 font-semibold text-base bg-amber-400/10 px-2 py-0.5 rounded">
+                          {build.storage_location}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

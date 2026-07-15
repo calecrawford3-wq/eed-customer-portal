@@ -444,6 +444,14 @@ export default function BuildDetail() {
                   />
                 </div>
                 <div>
+                  <Label>Storage Location</Label>
+                  <Input
+                    value={getValue("storage_location")}
+                    onChange={(e) => handleChange("storage_location", e.target.value)}
+                    placeholder="e.g., Rack A-3, Bench 2"
+                  />
+                </div>
+                <div>
                   <Label>Build Date</Label>
                   <Input
                     type="date"

@@ -103,6 +103,10 @@
       "type": "string",
       "description": "Vehicle/application for this build (e.g., Microsprint)"
     },
+    "storage_location": {
+      "type": "string",
+      "description": "Physical storage location where this customer engine is kept in the shop (e.g., Rack A-3, Bench 2) so it can be found quickly without searching by serial number"
+    },
     "cam_info": {
       "type": "object",
       "description": "Camshaft advance/retard information",
