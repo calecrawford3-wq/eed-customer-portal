@@ -66,7 +66,6 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [quantities, setQuantities] = useState({});
-  const [batchQty, setBatchQty] = useState(1);
   const [startPos, setStartPos] = useState(1);
   const qtyRefs = useRef({});
 
@@ -82,7 +81,6 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
         setSelected(new Set(items.map((i) => i.id)));
       }
       setSearch("");
-      setBatchQty(1);
       setStartPos(1);
     }
   }, [open, items, preselectId]);
@@ -142,18 +140,6 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
           </div>
           <Button variant="outline" size="sm" onClick={selectAll}><CheckCheck className="w-4 h-4 mr-1" /> All</Button>
           <Button variant="outline" size="sm" onClick={clearAll}>Clear</Button>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs whitespace-nowrap">Qty all</Label>
-            <Input type="number" min="1" className="w-16" value={batchQty} onChange={(e) => {
-              const v = Math.max(1, Number(e.target.value) || 1);
-              setBatchQty(v);
-              setQuantities((q) => {
-                const nq = { ...q };
-                selected.forEach((id) => { nq[id] = v; });
-                return nq;
-              });
-            }} />
-          </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs whitespace-nowrap">Start at slot</Label>
             <Input type="number" min="1" max="10" className="w-16" value={startPos} onChange={(e) => setStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} />
