@@ -9,7 +9,9 @@ import BarcodeLabel, { generateBarcodeSVG } from "@/components/inventory/Barcode
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-const buildPrintHtml = (labels) => {
+const buildPrintHtml = (labels, startPos = 1) => {
+  const blanks = Math.max(0, Math.min(9, startPos - 1));
+  const blankHtml = Array.from({ length: blanks }).map(() => `<div class="label empty"></div>`).join("");
   const labelHtml = labels.map((l) => {
     const barcode = generateBarcodeSVG(l.code, { width: 1.6, height: 40, fontSize: 12 });
     return `
@@ -45,6 +47,7 @@ const buildPrintHtml = (labels) => {
     display: flex; flex-direction: column; justify-content: space-between;
     overflow: hidden;
   }
+  .label.empty { border: none; padding: 0; }
   .label-title { font-size: 11px; font-weight: 700; line-height: 1.2; max-height: 40px; overflow: hidden; }
   .barcode { text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 0; }
   .barcode svg { max-width: 100%; height: auto; }
@@ -54,7 +57,7 @@ const buildPrintHtml = (labels) => {
   .label-line { font-size: 8.5px; color: #444; line-height: 1.15; max-height: 26px; overflow: hidden; }
   .label-line.notes { color: #333; font-style: italic; }
 </style></head>
-<body><div class="labels">${labelHtml}</div>
+<body><div class="labels">${blankHtml}${labelHtml}</div>
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
 </body></html>`;
 };
@@ -63,12 +66,14 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [copies, setCopies] = useState(1);
+  const [startPos, setStartPos] = useState(1);
 
   React.useEffect(() => {
     if (open) {
       setSelected(new Set(items.map((i) => i.id)));
       setSearch("");
       setCopies(1);
+      setStartPos(1);
     }
   }, [open, items]);
 
@@ -98,7 +103,7 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
       }
     });
     if (labels.length === 0) return;
-    const html = buildPrintHtml(labels);
+    const html = buildPrintHtml(labels, startPos);
     const w = window.open("", "_blank", "width=800,height=600");
     if (!w) {
       alert("Please allow popups to print labels.");
@@ -125,6 +130,11 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
           <div className="flex items-center gap-2">
             <Label className="text-xs whitespace-nowrap">Copies</Label>
             <Input type="number" min="1" className="w-16" value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">Start at slot</Label>
+            <Input type="number" min="1" max="10" className="w-16" value={startPos} onChange={(e) => setStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} />
+            <span className="text-xs text-slate-400">/ 10</span>
           </div>
         </div>
 
