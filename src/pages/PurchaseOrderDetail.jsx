@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
+import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
@@ -45,6 +46,7 @@ export default function PurchaseOrderDetail() {
   const [receiveMode, setReceiveMode] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
   const [receiveCosts, setReceiveCosts] = useState({});
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: po } = useQuery({
     queryKey: ["po", id],
@@ -250,6 +252,23 @@ export default function PurchaseOrderDetail() {
     toast.success(`Items received${inventoryUpdates.length > 0 ? ` — ${inventoryUpdates.length} inventory record(s) updated` : ""}`);
   };
 
+  const addPartFromPicker = (newLine) => {
+    setForm(f => {
+      const existingIdx = (f.line_items || []).findIndex(l => l.part_id && l.part_id === newLine.part_id);
+      let lines;
+      if (existingIdx >= 0) {
+        lines = f.line_items.map((l, j) => j === existingIdx
+          ? { ...l, quantity: (Number(l.quantity) || 0) + (Number(newLine.quantity) || 0), total: ((Number(l.quantity) || 0) + (Number(newLine.quantity) || 0)) * (Number(l.unit_cost) || 0) }
+          : l);
+      } else {
+        lines = [...(f.line_items || []), { ...newLine }];
+      }
+      recalc(lines, f.shipping_cost);
+      return { ...f, line_items: lines };
+    });
+    toast.success(`${newLine.description} added to PO`);
+  };
+
   const fillLowStockItems = () => {
     if (!form.supplier_id) {
       toast.error("Select a supplier first");
@@ -347,7 +366,10 @@ export default function PurchaseOrderDetail() {
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Order Items</CardTitle>
-          <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}><Package className="w-4 h-4 mr-1" /> Add Part</Button>
+            <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Blank Item</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <table className="w-full text-sm">
@@ -491,6 +513,17 @@ export default function PurchaseOrderDetail() {
       )}
 
       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Special instructions, notes for supplier..." /></div>
+
+      <PoPartPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        parts={parts}
+        suppliers={suppliers}
+        currentSupplierId={form.supplier_id}
+        currentSupplierName={supplier?.name}
+        existingPartIds={(form.line_items || []).map(l => l.part_id).filter(Boolean)}
+        onAdd={addPartFromPicker}
+      />
     </div>
   );
 }
