@@ -744,7 +744,11 @@ export default function Inventory() {
           location: p.location,
           platforms: (p.platform_ids || []).map(pid => {
             const pl = enginePlatforms.find(x => x.id === pid);
-            return pl ? `${pl.manufacturer} ${pl.name}` : null;
+            if (!pl) return null;
+            const years = pl.year_range_start || pl.year_range_end
+              ? `${pl.year_range_start ?? ""}${pl.year_range_end ? `–${pl.year_range_end}` : ""}`
+              : "";
+            return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
           }).filter(Boolean).join(", "),
         }))}
       />

@@ -6,15 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { ScanLine, Package, Recycle, Minus, Plus, Save, RotateCcw, MapPin, DollarSign, AlertTriangle } from "lucide-react";
+import { ScanLine, Package, Recycle, Minus, Plus, Save, RotateCcw, MapPin, DollarSign, AlertTriangle, Edit } from "lucide-react";
 import { toast } from "sonner";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
 import BarcodeLabel from "@/components/inventory/BarcodeLabel";
+import PartEditModal from "@/components/inventory/PartEditModal";
 
 export default function BarcodeScan() {
   const [result, setResult] = useState(null); // { type, item }
   const [searching, setSearching] = useState(false);
   const [qtyInput, setQtyInput] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
   const qc = useQueryClient();
 
   const lookup = async (code) => {
@@ -184,6 +186,11 @@ export default function BarcodeScan() {
                 <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={saveQty} disabled={adjustMutation.isPending}>
                   <Save className="w-4 h-4 mr-1" /> {adjustMutation.isPending ? "Saving..." : "Save"}
                 </Button>
+                {isPart && (
+                  <Button variant="outline" onClick={() => setEditOpen(true)}>
+                    <Edit className="w-4 h-4 mr-1" /> Edit Details
+                  </Button>
+                )}
                 <Button variant="outline" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Scan Next</Button>
               </div>
               {(item.reorder_point > 0 && (Number(qtyInput) || 0) <= item.reorder_point) && (
@@ -192,6 +199,15 @@ export default function BarcodeScan() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {isPart && (
+        <PartEditModal
+          part={item}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => setResult((r) => (r ? { ...r, item: { ...r.item, ...updated } } : r))}
+        />
       )}
     </div>
   );
