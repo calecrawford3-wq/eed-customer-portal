@@ -166,15 +166,19 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
                       {i.platforms && <div className="text-[11px] text-blue-600 truncate mt-0.5">{i.platforms}</div>}
                       {i.notes && <div className="text-[11px] text-slate-500 truncate">📝 {i.notes}</div>}
                     </div>
-                    <Input
-                      ref={(el) => { qtyRefs.current[i.id] = el; }}
-                      type="number"
-                      min="1"
-                      className="w-14 h-8 text-center flex-shrink-0"
-                      value={quantities[i.id] ?? 1}
-                      onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
-                    />
-                    <BarcodeLabel value={i.code} className="hidden lg:flex w-24" />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-xs text-slate-500">Qty</span>
+                      <Input
+                        ref={(el) => { qtyRefs.current[i.id] = el; }}
+                        type="number"
+                        min="1"
+                        className="w-14 h-8 text-center"
+                        value={quantities[i.id] ?? 1}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
+                      />
+                    </div>
+                    <BarcodeLabel value={i.code} className="hidden xl:flex w-20 flex-shrink-0" />
                   </label>
                 );
               })}
