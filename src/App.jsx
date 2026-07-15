@@ -14,6 +14,7 @@ import Notifications from './pages/Notifications';
 import DebugServiceWorker from './pages/DebugServiceWorker';
 import CustomerSuccess from './pages/CustomerSuccess';
 import CalendarPage from './pages/CalendarPage';
+import BarcodeScan from './pages/BarcodeScan';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
       <Route path="/RefreshRequests" element={<LayoutWrapper currentPageName="RefreshRequests"><RefreshRequests /></LayoutWrapper>} />
       <Route path="/CustomerSuccess" element={<LayoutWrapper currentPageName="CustomerSuccess"><CustomerSuccess /></LayoutWrapper>} />
       <Route path="/Calendar" element={<LayoutWrapper currentPageName="Calendar"><CalendarPage /></LayoutWrapper>} />
+      <Route path="/BarcodeScan" element={<LayoutWrapper currentPageName="BarcodeScan"><BarcodeScan /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

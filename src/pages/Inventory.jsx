@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes, Recycle } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes, Recycle, Printer } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
+import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
 
 const CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 const LABOR_CATEGORIES = ["assembly","machining","cleaning","diagnostic","dyno","misc"];
@@ -57,6 +58,7 @@ export default function Inventory() {
   const [machiningForm, setMachiningForm] = useState(emptyMachining);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [printLabelsOpen, setPrintLabelsOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: parts = [], isLoading: partsLoading } = useQuery({
@@ -251,6 +253,9 @@ export default function Inventory() {
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
             <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
+            <Button variant="outline" onClick={() => setPrintLabelsOpen(true)}>
+              <Printer className="w-4 h-4 mr-2" /> Print Labels
+            </Button>
             <Button onClick={openNewPart} className="bg-[#e20404] hover:bg-[#c00303] text-white">
               <Plus className="w-4 h-4 mr-2" /> Add Part
             </Button>
@@ -728,6 +733,12 @@ export default function Inventory() {
         onCreated={(s) => setPartForm(f => ({ ...f, supplier_id: s.id }))}
       />
       <PartCsvImportModal open={csvImportOpen} onClose={() => setCsvImportOpen(false)} />
+      <PrintLabelsModal
+        open={printLabelsOpen}
+        onClose={() => setPrintLabelsOpen(false)}
+        title="Print Part Labels"
+        items={filteredParts.map(p => ({ id: p.id, code: p.part_number, name: p.name, location: p.location }))}
+      />
     </div>
   );
 }

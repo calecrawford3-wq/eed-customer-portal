@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Recycle } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Recycle, Printer } from "lucide-react";
 import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
+import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
 
 const CATEGORIES = ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"];
 const CONDITIONS = ["rebuildable","needs_inspection","good","scrap"];
@@ -32,6 +33,7 @@ const CONDITION_STYLES = {
 
 export default function CoreManager() {
   const [search, setSearch] = useState("");
+  const [printOpen, setPrintOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyCore);
@@ -105,6 +107,9 @@ export default function CoreManager() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input className="pl-10" placeholder="Search cores..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        <Button variant="outline" onClick={() => setPrintOpen(true)}>
+          <Printer className="w-4 h-4 mr-2" /> Print Labels
+        </Button>
         <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
           <Plus className="w-4 h-4 mr-2" /> Add Core
         </Button>
@@ -255,6 +260,12 @@ export default function CoreManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PrintLabelsModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        title="Print Core Labels"
+        items={filtered.map(c => ({ id: c.id, code: c.core_number, name: c.name, location: c.location }))}
+      />
     </div>
   );
 }
