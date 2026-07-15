@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Search, Printer, CheckCheck } from "lucide-react";
-import BarcodeLabel, { generateBarcodeSVG } from "@/components/inventory/BarcodeLabel";
+import { generateBarcodeSVG } from "@/components/inventory/BarcodeLabel";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -172,13 +172,12 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
                         ref={(el) => { qtyRefs.current[i.id] = el; }}
                         type="number"
                         min="1"
-                        className="w-14 h-8 text-center"
+                        className="w-16 h-8 text-center"
                         value={quantities[i.id] ?? 1}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
                       />
                     </div>
-                    <BarcodeLabel value={i.code} className="hidden xl:flex w-20 flex-shrink-0" />
                   </label>
                 );
               })}
