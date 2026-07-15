@@ -264,7 +264,21 @@ export default function CoreManager() {
         open={printOpen}
         onClose={() => setPrintOpen(false)}
         title="Print Core Labels"
-        items={filtered.map(c => ({ id: c.id, code: c.core_number, name: c.name, location: c.location, notes: c.notes }))}
+        items={filtered.map(c => ({
+          id: c.id,
+          code: c.core_number,
+          name: c.name,
+          location: c.location,
+          notes: c.notes,
+          platforms: (c.platform_ids || []).map(pid => {
+            const pl = enginePlatforms.find(x => x.id === pid);
+            if (!pl) return null;
+            const years = pl.year_range_start || pl.year_range_end
+              ? `${pl.year_range_start ?? ""}${pl.year_range_end ? `–${pl.year_range_end}` : ""}`
+              : "";
+            return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
+          }).filter(Boolean).join(", "),
+        }))}
       />
     </div>
   );
