@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Recycle, Printer } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag } from "lucide-react";
 import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
@@ -34,6 +34,7 @@ const CONDITION_STYLES = {
 export default function CoreManager() {
   const [search, setSearch] = useState("");
   const [printOpen, setPrintOpen] = useState(false);
+  const [singleLabelItem, setSingleLabelItem] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyCore);
@@ -172,6 +173,21 @@ export default function CoreManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="ghost" title="Print this label" onClick={() => setSingleLabelItem({
+                        id: c.id,
+                        code: c.core_number,
+                        name: c.name,
+                        location: c.location,
+                        notes: c.notes,
+                        platforms: (c.platform_ids || []).map(pid => {
+                          const pl = enginePlatforms.find(x => x.id === pid);
+                          if (!pl) return null;
+                          const years = pl.year_range_start || pl.year_range_end
+                            ? `${pl.year_range_start ?? ""}${pl.year_range_end ? `–${pl.year_range_end}` : ""}`
+                            : "";
+                          return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
+                        }).filter(Boolean).join(", "),
+                      })}><Tag className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
@@ -279,6 +295,12 @@ export default function CoreManager() {
             return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
           }).filter(Boolean).join(", "),
         }))}
+      />
+      <PrintLabelsModal
+        open={!!singleLabelItem}
+        onClose={() => setSingleLabelItem(null)}
+        title={`Print Label — ${singleLabelItem?.name || ""}`}
+        items={singleLabelItem ? [singleLabelItem] : []}
       />
     </div>
   );

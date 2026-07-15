@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes, Recycle, Printer } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Trash2, Edit, Upload, Wrench, Percent, Cog, Boxes, Recycle, Printer, Tag } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -59,6 +59,7 @@ export default function Inventory() {
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [printLabelsOpen, setPrintLabelsOpen] = useState(false);
+  const [singleLabelItem, setSingleLabelItem] = useState(null);
   const qc = useQueryClient();
 
   const { data: parts = [], isLoading: partsLoading } = useQuery({
@@ -339,6 +340,20 @@ export default function Inventory() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="ghost" title="Print this label" onClick={() => setSingleLabelItem({
+                              id: p.id,
+                              code: p.part_number,
+                              name: p.name,
+                              location: p.location,
+                              platforms: (p.platform_ids || []).map(pid => {
+                                const pl = enginePlatforms.find(x => x.id === pid);
+                                if (!pl) return null;
+                                const years = pl.year_range_start || pl.year_range_end
+                                  ? `${pl.year_range_start ?? ""}${pl.year_range_end ? `–${pl.year_range_end}` : ""}`
+                                  : "";
+                                return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
+                              }).filter(Boolean).join(", "),
+                            })}><Tag className="w-3.5 h-3.5" /></Button>
                             <Button size="sm" variant="ghost" onClick={() => openEditPart(p)}><Edit className="w-3.5 h-3.5" /></Button>
                             <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deletePartMutation.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                           </div>
@@ -751,6 +766,12 @@ export default function Inventory() {
             return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
           }).filter(Boolean).join(", "),
         }))}
+      />
+      <PrintLabelsModal
+        open={!!singleLabelItem}
+        onClose={() => setSingleLabelItem(null)}
+        title={`Print Label — ${singleLabelItem?.name || ""}`}
+        items={singleLabelItem ? [singleLabelItem] : []}
       />
     </div>
   );
