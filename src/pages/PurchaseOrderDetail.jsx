@@ -39,7 +39,7 @@ export default function PurchaseOrderDetail() {
     order_date: new Date().toISOString().split("T")[0],
     expected_date: "",
     line_items: [{ ...emptyLine }],
-    shipping_cost: 0, tax_rate: 0, tax_amount: 0, notes: "", shipping_address: ""
+    shipping_cost: 0, tax_amount: 0, notes: "", shipping_address: ""
   });
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
@@ -97,18 +97,17 @@ export default function PurchaseOrderDetail() {
     recalc(lines, form.shipping_cost);
   };
 
-  const recalc = (lines, shippingCost, taxRate) => {
+  const recalc = (lines, shippingCost, taxAmount) => {
     const subtotal = lines.reduce((s, l) => s + (l.total || 0), 0);
-    const rate = Number(taxRate) || 0;
-    const tax_amount = subtotal * (rate / 100);
-    const total = subtotal + (Number(shippingCost) || 0) + tax_amount;
-    setForm(f => ({ ...f, line_items: lines, subtotal, tax_amount, total }));
+    const tax = Number(taxAmount) || 0;
+    const total = subtotal + (Number(shippingCost) || 0) + tax;
+    setForm(f => ({ ...f, line_items: lines, subtotal, tax_amount: tax, total }));
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyLine }] }));
   const removeLine = (idx) => {
     const lines = form.line_items.filter((_, i) => i !== idx);
-    recalc(lines, form.shipping_cost, form.tax_rate);
+    recalc(lines, form.shipping_cost, form.tax_amount);
   };
 
   const sendPO = async () => {
@@ -421,13 +420,12 @@ export default function PurchaseOrderDetail() {
               <div className="flex justify-between"><span className="text-slate-600">Subtotal</span><span className="font-medium">${Number(form.subtotal || 0).toFixed(2)}</span></div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-600">Shipping</span>
-                <Input type="number" value={form.shipping_cost} onChange={e => { const sc = Number(e.target.value); recalc(form.line_items, sc, form.tax_rate); setForm(f => ({...f, shipping_cost: sc})); }} className="w-24 text-right h-7" min="0" step="0.01" />
+                <Input type="number" value={form.shipping_cost} onChange={e => { const sc = Number(e.target.value); recalc(form.line_items, sc, form.tax_amount); setForm(f => ({...f, shipping_cost: sc})); }} className="w-24 text-right h-7" min="0" step="0.01" />
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-600">Tax (%)</span>
-                <Input type="number" value={form.tax_rate} onChange={e => { const tr = Number(e.target.value); recalc(form.line_items, form.shipping_cost, tr); setForm(f => ({...f, tax_rate: tr})); }} className="w-24 text-right h-7" min="0" step="0.01" placeholder="0" />
+                <span className="text-slate-600">Tax ($)</span>
+                <Input type="number" value={form.tax_amount} onChange={e => { const ta = Number(e.target.value); recalc(form.line_items, form.shipping_cost, ta); setForm(f => ({...f, tax_amount: ta})); }} className="w-24 text-right h-7" min="0" step="0.01" placeholder="0.00" />
               </div>
-              <div className="flex justify-between"><span className="text-slate-600">Tax Amount</span><span className="font-medium">${Number(form.tax_amount || 0).toFixed(2)}</span></div>
               <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
             </div>
           </div>

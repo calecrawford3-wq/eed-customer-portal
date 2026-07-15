@@ -74,15 +74,10 @@
       "type": "number",
       "default": 0
     },
-    "tax_rate": {
-      "type": "number",
-      "default": 0,
-      "description": "Tax percentage applied to the subtotal (e.g. 7 = 7%)"
-    },
     "tax_amount": {
       "type": "number",
       "default": 0,
-      "description": "Calculated tax amount"
+      "description": "Flat tax dollar amount added to the subtotal"
     },
     "total": {
       "type": "number"
