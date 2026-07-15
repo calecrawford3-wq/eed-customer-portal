@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
   const [selected, setSelected] = useState(new Set());
   const [copies, setCopies] = useState(1);
   const [startPos, setStartPos] = useState(1);
+  const copiesRef = useRef(null);
 
   React.useEffect(() => {
     if (open) {
@@ -74,6 +75,10 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
       setSearch("");
       setCopies(1);
       setStartPos(1);
+      // When printing a single label, focus the copies field so the user can enter how many
+      if (items.length === 1) {
+        setTimeout(() => { copiesRef.current?.focus(); copiesRef.current?.select(); }, 100);
+      }
     }
   }, [open, items]);
 
@@ -128,8 +133,8 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
           <Button variant="outline" size="sm" onClick={selectAll}><CheckCheck className="w-4 h-4 mr-1" /> All</Button>
           <Button variant="outline" size="sm" onClick={clearAll}>Clear</Button>
           <div className="flex items-center gap-2">
-            <Label className="text-xs whitespace-nowrap">Copies</Label>
-            <Input type="number" min="1" className="w-16" value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
+            <Label className="text-xs whitespace-nowrap">{items.length === 1 ? "How many?" : "Copies"}</Label>
+            <Input ref={copiesRef} type="number" min="1" className="w-16" value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
           </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs whitespace-nowrap">Start at slot</Label>
