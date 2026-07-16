@@ -51,6 +51,7 @@ import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import EngineSelector from "@/components/EngineSelector";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
+import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -86,6 +87,7 @@ export default function Builds() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [storagePrompt, setStoragePrompt] = useState(null);
+  const [pickupScan, setPickupScan] = useState(null);
   const [newBuild, setNewBuild] = useState({
     engine_serial_number: "",
     eed_id: "",
@@ -327,6 +329,27 @@ export default function Builds() {
     });
     toast.success("Invoice created!");
     navigate(`/InvoiceDetail?id=${invoice.id}`);
+  };
+
+  const handlePickupVerified = async () => {
+    if (!pickupScan) return;
+    const build = pickupScan;
+    const now = new Date().toISOString();
+    try {
+      await base44.entities.EngineBuild.update(build.id, { picked_up: true, picked_up_at: now });
+      if (build.customer_engine_id) {
+        await base44.entities.CustomerEngine.update(build.customer_engine_id, {
+          check_in_status: "picked_up",
+          picked_up_at: now,
+        }).catch(e => console.warn("Failed to update engine check-in status:", e));
+      }
+      queryClient.invalidateQueries({ queryKey: ["builds"] });
+      queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+      toast.success("Pickup confirmed! Engine marked as picked up.");
+    } catch (e) {
+      toast.error("Failed to confirm pickup: " + (e.message || e));
+    }
+    setPickupScan(null);
   };
 
   const getPlatformLabel = (pid) => {
@@ -722,17 +745,33 @@ export default function Builds() {
                               <p className="text-sm text-slate-600 mt-1">{getCustomerName(build)}</p>
                             )}
                           </div>
-                          <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>
+                          <div className="flex items-center gap-1">
+                            {build.picked_up && (
+                              <Badge className="bg-slate-100 text-slate-600 border-0">Picked Up</Badge>
+                            )}
+                            <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>
+                          </div>
                         </div>
-                        <div className="mt-3 flex justify-between items-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs border-emerald-400 text-emerald-700 hover:bg-emerald-50"
-                            onClick={() => handleConvertToInvoice(build)}
-                          >
-                            <Receipt className="w-3.5 h-3.5 mr-1" /> Create Invoice
-                          </Button>
+                        <div className="mt-3 flex justify-between items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => handleConvertToInvoice(build)}
+                            >
+                              <Receipt className="w-3.5 h-3.5 mr-1" /> Invoice
+                            </Button>
+                            {build.status === "complete" && !build.picked_up && (
+                              <Button
+                                size="sm"
+                                className="text-xs bg-[#e20404] hover:bg-[#c00303] text-white"
+                                onClick={() => setPickupScan(build)}
+                              >
+                                <PackageCheck className="w-3.5 h-3.5 mr-1" /> Confirm Pickup
+                              </Button>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1">
                             <Link to={createPageUrl(`BuildDetail?id=${build.id}`)}>
                               <Button variant="ghost" size="sm">
@@ -774,6 +813,24 @@ export default function Builds() {
 
       {/* Check In Engine Modal */}
       <EngineCheckInModal open={showCheckInModal} onClose={() => setShowCheckInModal(false)} />
+
+      {/* Pickup Scan Verification */}
+      {pickupScan && (
+        <BarcodeVerifyModal
+          open={!!pickupScan}
+          onClose={() => setPickupScan(null)}
+          expectedSerial={pickupScan.engine_serial_number}
+          engineInfo={{
+            serial: pickupScan.engine_serial_number,
+            eedId: pickupScan.eed_id,
+            customerName: getCustomerName(pickupScan),
+            platformName: getPlatformLabel(pickupScan.platform_id),
+          }}
+          title="Confirm Engine Pickup"
+          description="Scan the barcode on the completed engine label to confirm the customer is picking up the correct engine."
+          onVerified={() => handlePickupVerified()}
+        />
+      )}
 
       {/* Storage Location Prompt */}
       {storagePrompt && (
