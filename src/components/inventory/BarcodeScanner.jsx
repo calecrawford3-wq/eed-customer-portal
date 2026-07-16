@@ -52,7 +52,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
         (decoded) => {
           if (decoded && decoded !== lastScan.current) {
             lastScan.current = decoded;
-            onScan(decoded);
+            onScan(normalizeBarcode(decoded));
             setTimeout(() => (lastScan.current = ""), 1200);
           }
         },
@@ -65,11 +65,18 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
     }
   };
 
+  // Code 128 barcodes may include a "-0000" suffix after the part number;
+  // keep only the first 11 characters so lookups match the stored part number.
+  const normalizeBarcode = (val) => {
+    const trimmed = val.trim();
+    return trimmed.length > 11 ? trimmed.slice(0, 11) : trimmed;
+  };
+
   const submitManual = (e) => {
     e.preventDefault();
     const val = manual.trim();
     if (val) {
-      onScan(val);
+      onScan(normalizeBarcode(val));
       setManual("");
     }
   };
