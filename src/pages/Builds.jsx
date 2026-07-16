@@ -124,8 +124,13 @@ export default function Builds() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.EngineBuild.create(data),
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["builds"] });
+      queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+      if (created.customer_engine_id) {
+        base44.entities.CustomerEngine.update(created.customer_engine_id, { check_in_status: "in_build" })
+          .catch(e => console.warn("Failed to update engine check-in status:", e));
+      }
       setShowCreateDialog(false);
       setNewBuild({
         engine_serial_number: "",
