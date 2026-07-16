@@ -269,46 +269,32 @@ export default function Builds() {
 
   const handleMoveUp = async (build) => {
     const currentPos = build.queue_position;
-    if (currentPos <= 1) return;
+    if (!currentPos || currentPos <= 1) return;
 
     const buildAbove = builds.find(b => b.queue_position === currentPos - 1);
-    if (buildAbove) {
-      await updateMutation.mutateAsync({ id: buildAbove.id, data: { queue_position: currentPos } });
-    }
-    await updateMutation.mutateAsync({ 
-      id: build.id, 
-      data: { 
-        queue_position: currentPos - 1,
-        status: currentPos - 1 === 1 ? "in_progress" : "queued"
-      } 
-    });
-    if (buildAbove && currentPos === 2) {
-      await updateMutation.mutateAsync({ id: buildAbove.id, data: { status: "queued" } });
-    }
+    if (!buildAbove) return;
+
+    await base44.entities.EngineBuild.bulkUpdate([
+      { id: buildAbove.id, queue_position: currentPos, status: "queued" },
+      { id: build.id, queue_position: currentPos - 1, status: currentPos - 1 === 1 ? "in_progress" : "queued" },
+    ]);
+    queryClient.invalidateQueries({ queryKey: ["builds"] });
   };
 
   const handleMoveDown = async (build) => {
     const currentPos = build.queue_position;
-    const maxPos = Math.max(...builds.filter(b => b.queue_position).map(b => b.queue_position));
-    if (currentPos >= maxPos) return;
+    const queuedWithPos = builds.filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status) && b.queue_position);
+    const maxPos = queuedWithPos.length > 0 ? Math.max(...queuedWithPos.map(b => b.queue_position)) : 0;
+    if (!currentPos || currentPos >= maxPos) return;
 
     const buildBelow = builds.find(b => b.queue_position === currentPos + 1);
-    if (buildBelow) {
-      await updateMutation.mutateAsync({ 
-        id: buildBelow.id, 
-        data: { 
-          queue_position: currentPos,
-          status: currentPos === 1 ? "in_progress" : "queued"
-        } 
-      });
-    }
-    await updateMutation.mutateAsync({ 
-      id: build.id, 
-      data: { 
-        queue_position: currentPos + 1,
-        status: "queued"
-      } 
-    });
+    if (!buildBelow) return;
+
+    await base44.entities.EngineBuild.bulkUpdate([
+      { id: buildBelow.id, queue_position: currentPos, status: currentPos === 1 ? "in_progress" : "queued" },
+      { id: build.id, queue_position: currentPos + 1, status: "queued" },
+    ]);
+    queryClient.invalidateQueries({ queryKey: ["builds"] });
   };
 
   const handleConvertToInvoice = async (build) => {
