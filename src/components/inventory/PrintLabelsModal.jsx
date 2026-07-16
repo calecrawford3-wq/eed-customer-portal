@@ -13,18 +13,18 @@ const buildPrintHtml = (labels, startPos = 1) => {
   const blanks = Math.max(0, Math.min(9, startPos - 1));
   const blankHtml = Array.from({ length: blanks }).map(() => `<div class="label empty"></div>`).join("");
   const labelHtml = labels.map((l) => {
-    const barcode = generateBarcodeSVG(l.code, { width: 1.6, height: 40, fontSize: 12 });
-    return `
-      <div class="label">
-        <div class="label-title">${esc(l.name)}</div>
-        <div class="barcode">${barcode || `<div class="no-bc">No barcode</div>`}</div>
-        <div class="label-footer">
-          <span class="loc">${esc(l.location ? `📍 ${l.location}` : "")}</span>
-          <span class="code">${esc(l.code)}</span>
-        </div>
-        ${l.platforms ? `<div class="label-line">${esc(l.platforms)}</div>` : ""}
-        ${l.notes ? `<div class="label-line notes">📝 ${esc(l.notes)}</div>` : ""}
-      </div>`;
+  const barcode = generateBarcodeSVG(l.code, { width: 1.6, height: 40, fontSize: 12 });
+  return `
+    <div class="label">
+      <div class="label-title">${esc(l.name)}${l.bagQty ? ` <span class="bag-qty">QTY: ${esc(l.bagQty)}</span>` : ""}</div>
+      <div class="barcode">${barcode || `<div class="no-bc">No barcode</div>`}</div>
+      <div class="label-footer">
+        <span class="loc">${esc(l.location ? `📍 ${l.location}` : "")}</span>
+        <span class="code">${esc(l.code)}</span>
+      </div>
+      ${l.platforms ? `<div class="label-line">${esc(l.platforms)}</div>` : ""}
+      ${l.notes ? `<div class="label-line notes">📝 ${esc(l.notes)}</div>` : ""}
+    </div>`;
   }).join("");
 
   return `<!DOCTYPE html>
@@ -49,6 +49,7 @@ const buildPrintHtml = (labels, startPos = 1) => {
   }
   .label.empty { border: none; padding: 0; }
   .label-title { font-size: 11px; font-weight: 700; line-height: 1.2; max-height: 40px; overflow: hidden; }
+  .bag-qty { display: inline-block; margin-left: 6px; padding: 1px 5px; background: #e20404; color: #fff; border-radius: 4px; font-size: 11px; font-weight: 700; }
   .barcode { text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 0; }
   .barcode svg { max-width: 100%; height: auto; }
   .no-bc { font-size: 11px; color: #999; }
@@ -66,14 +67,17 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [quantities, setQuantities] = useState({});
+  const [bagQuantities, setBagQuantities] = useState({});
   const [startPos, setStartPos] = useState(1);
   const qtyRefs = useRef({});
 
   React.useEffect(() => {
     if (open) {
       const q = {};
-      items.forEach((i) => { q[i.id] = 1; });
+      const bq = {};
+      items.forEach((i) => { q[i.id] = 1; bq[i.id] = ""; });
       setQuantities(q);
+      setBagQuantities(bq);
       if (preselectId) {
         setSelected(new Set([preselectId]));
         setTimeout(() => { qtyRefs.current[preselectId]?.focus(); qtyRefs.current[preselectId]?.select(); }, 100);
@@ -111,8 +115,9 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
     const labels = [];
     chosen.forEach((i) => {
       const qty = Math.max(1, Number(quantities[i.id]) || 1);
+      const bagQty = Number(bagQuantities[i.id]) || 0;
       for (let c = 0; c < qty; c++) {
-        labels.push({ code: i.code, name: i.name, location: i.location, platforms: i.platforms, notes: i.notes });
+        labels.push({ code: i.code, name: i.name, location: i.location, platforms: i.platforms, notes: i.notes, bagQty: bagQty > 0 ? bagQty : null });
       }
     });
     if (labels.length === 0) return;
@@ -166,17 +171,31 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
                       {i.platforms && <div className="text-[11px] text-blue-600 truncate mt-0.5">{i.platforms}</div>}
                       {i.notes && <div className="text-[11px] text-slate-500 truncate">📝 {i.notes}</div>}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-xs text-slate-500">Qty</span>
-                      <Input
-                        ref={(el) => { qtyRefs.current[i.id] = el; }}
-                        type="number"
-                        min="1"
-                        className="w-16 h-8 text-center"
-                        value={quantities[i.id] ?? 1}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
-                      />
+                    <div className="flex flex-col gap-1 flex-shrink-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 w-10">Copies</span>
+                        <Input
+                          ref={(el) => { qtyRefs.current[i.id] = el; }}
+                          type="number"
+                          min="1"
+                          className="w-14 h-8 text-center text-sm"
+                          value={quantities[i.id] ?? 1}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setQuantities((q) => ({ ...q, [i.id]: Math.max(1, Number(e.target.value) || 1) }))}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 w-10">Bag Qty</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="—"
+                          className="w-14 h-8 text-center text-sm"
+                          value={bagQuantities[i.id] ?? ""}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setBagQuantities((q) => ({ ...q, [i.id]: e.target.value }))}
+                        />
+                      </div>
                     </div>
                   </label>
                 );
