@@ -11,20 +11,39 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 
 const buildPrintHtml = (labels, startPos = 1) => {
   const blanks = Math.max(0, Math.min(9, startPos - 1));
-  const blankHtml = Array.from({ length: blanks }).map(() => `<div class="label empty"></div>`).join("");
-  const labelHtml = labels.map((l) => {
-  const barcode = generateBarcodeSVG(l.code, { width: 1.6, height: 40, fontSize: 12 });
-  return `
-    <div class="label">
-      <div class="label-title">${esc(l.name)}${l.bagQty ? ` <span class="bag-qty">QTY: ${esc(l.bagQty)}</span>` : ""}</div>
-      <div class="barcode">${barcode || `<div class="no-bc">No barcode</div>`}</div>
-      <div class="label-footer">
-        <span class="loc">${esc(l.location ? `📍 ${l.location}` : "")}</span>
-        <span class="code">${esc(l.code)}</span>
-      </div>
-      ${l.platforms ? `<div class="label-line">${esc(l.platforms)}</div>` : ""}
-      ${l.notes ? `<div class="label-line notes">📝 ${esc(l.notes)}</div>` : ""}
-    </div>`;
+  // Build a flat cell list: leading blanks + real labels
+  const cells = [
+    ...Array.from({ length: blanks }).map(() => ({ empty: true })),
+    ...labels.map((l) => ({ ...l })),
+  ];
+  // Chunk into pages of 10, padding each page with empties so every page is a full 2×5 grid
+  const pages = [];
+  for (let i = 0; i < cells.length; i += 10) {
+    const slice = cells.slice(i, i + 10);
+    while (slice.length < 10) slice.push({ empty: true });
+    pages.push(slice);
+  }
+  if (pages.length === 0) return "";
+
+  const renderCell = (c) => {
+    if (c.empty) return `<div class="label empty"></div>`;
+    const barcode = generateBarcodeSVG(c.code, { width: 1.6, height: 40, fontSize: 12 });
+    return `
+      <div class="label">
+        <div class="label-title">${esc(c.name)}${c.bagQty ? ` <span class="bag-qty">QTY: ${esc(c.bagQty)}</span>` : ""}</div>
+        <div class="barcode">${barcode || `<div class="no-bc">No barcode</div>`}</div>
+        <div class="label-footer">
+          <span class="loc">${esc(c.location ? `📍 ${c.location}` : "")}</span>
+          <span class="code">${esc(c.code)}</span>
+        </div>
+        ${c.platforms ? `<div class="label-line">${esc(c.platforms)}</div>` : ""}
+        ${c.notes ? `<div class="label-line notes">📝 ${esc(c.notes)}</div>` : ""}
+      </div>`;
+  };
+
+  const pageHtml = pages.map((pageCells, pIdx) => {
+    const isLast = pIdx === pages.length - 1;
+    return `<div class="labels${isLast ? "" : " page-break"}">${pageCells.map(renderCell).join("")}</div>`;
   }).join("");
 
   return `<!DOCTYPE html>
@@ -32,7 +51,8 @@ const buildPrintHtml = (labels, startPos = 1) => {
 <style>
   @page { size: 8.5in 11in; margin: 0.5in 0.15625in; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   /* Avery 18163: 2 columns × 5 rows = 10 labels per page, 4in × 2in each */
   .labels {
     display: grid;
@@ -40,12 +60,16 @@ const buildPrintHtml = (labels, startPos = 1) => {
     grid-template-rows: repeat(5, 2in);
     column-gap: 0.1875in;
     row-gap: 0in;
+    width: 8.1875in;
+    height: 10in;
   }
+  .labels.page-break { break-after: page; }
   .label {
     width: 4in; height: 2in;
     padding: 5px 8px;
     display: flex; flex-direction: column; justify-content: space-between;
     overflow: hidden;
+    break-inside: avoid;
   }
   .label.empty { border: none; padding: 0; }
   .label-title { font-size: 11px; font-weight: 700; line-height: 1.2; max-height: 40px; overflow: hidden; }
@@ -58,7 +82,7 @@ const buildPrintHtml = (labels, startPos = 1) => {
   .label-line { font-size: 8.5px; color: #444; line-height: 1.15; max-height: 26px; overflow: hidden; }
   .label-line.notes { color: #333; font-style: italic; }
 </style></head>
-<body><div class="labels">${blankHtml}${labelHtml}</div>
+<body>${pageHtml}
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
 </body></html>`;
 };
