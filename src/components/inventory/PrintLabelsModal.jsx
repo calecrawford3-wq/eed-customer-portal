@@ -41,19 +41,27 @@ const buildPrintHtml = (labels, startPos = 1) => {
       </div>`;
   };
 
-  const pageHtml = pages.map((pageCells, pIdx) => {
-    const isLast = pIdx === pages.length - 1;
-    return `<div class="labels${isLast ? "" : " page-break"}">${pageCells.map(renderCell).join("")}</div>`;
+  const pageHtml = pages.map((pageCells) => {
+    return `<div class="page"><div class="labels">${pageCells.map(renderCell).join("")}</div></div>`;
   }).join("");
 
   return `<!DOCTYPE html>
 <html><head><title>Print Labels</title>
 <style>
-  @page { size: 8.5in 11in; margin: 0.5in 0.15625in; }
+  @page { size: 8.5in 11in; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-  /* Avery 18163: 2 columns × 5 rows = 10 labels per page, 4in × 2in each */
+  /* Each physical sheet = one .page with Avery 18163 margins as padding (reliable,
+     not dependent on @page margin support). Content area = 8.1875in × 10in. */
+  .page {
+    width: 8.5in; height: 11in;
+    padding: 0.5in 0.15625in;
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+  .page:last-child { page-break-after: auto; }
+  /* Avery 18163: 2 columns × 5 rows = 10 labels per sheet, 4in × 2in each */
   .labels {
     display: grid;
     grid-template-columns: repeat(2, 4in);
@@ -63,7 +71,6 @@ const buildPrintHtml = (labels, startPos = 1) => {
     width: 8.1875in;
     height: 10in;
   }
-  .labels.page-break { break-after: page; }
   .label {
     width: 4in; height: 2in;
     padding: 5px 8px;
