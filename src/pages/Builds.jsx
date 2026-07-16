@@ -109,6 +109,11 @@ export default function Builds() {
     queryFn: () => base44.entities.EngineBuild.list("queue_position", 100),
   });
 
+  // Full queue sorted by position (nulls last) — used for reorder regardless of filters
+  const sortedQueue = builds
+    .filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status))
+    .sort((a, b) => (a.queue_position ?? Infinity) - (b.queue_position ?? Infinity));
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
@@ -268,32 +273,24 @@ export default function Builds() {
   });
 
   const handleMoveUp = async (build) => {
-    const currentPos = build.queue_position;
-    if (!currentPos || currentPos <= 1) return;
-
-    const buildAbove = builds.find(b => b.queue_position === currentPos - 1);
-    if (!buildAbove) return;
-
-    await base44.entities.EngineBuild.bulkUpdate([
-      { id: buildAbove.id, queue_position: currentPos, status: "queued" },
-      { id: build.id, queue_position: currentPos - 1, status: currentPos - 1 === 1 ? "in_progress" : "queued" },
-    ]);
+    const index = sortedQueue.findIndex(b => b.id === build.id);
+    if (index <= 0) return;
+    const reordered = [...sortedQueue];
+    [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+    await base44.entities.EngineBuild.bulkUpdate(
+      reordered.map((b, i) => ({ id: b.id, queue_position: i + 1 }))
+    );
     queryClient.invalidateQueries({ queryKey: ["builds"] });
   };
 
   const handleMoveDown = async (build) => {
-    const currentPos = build.queue_position;
-    const queuedWithPos = builds.filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status) && b.queue_position);
-    const maxPos = queuedWithPos.length > 0 ? Math.max(...queuedWithPos.map(b => b.queue_position)) : 0;
-    if (!currentPos || currentPos >= maxPos) return;
-
-    const buildBelow = builds.find(b => b.queue_position === currentPos + 1);
-    if (!buildBelow) return;
-
-    await base44.entities.EngineBuild.bulkUpdate([
-      { id: buildBelow.id, queue_position: currentPos, status: currentPos === 1 ? "in_progress" : "queued" },
-      { id: build.id, queue_position: currentPos + 1, status: "queued" },
-    ]);
+    const index = sortedQueue.findIndex(b => b.id === build.id);
+    if (index < 0 || index >= sortedQueue.length - 1) return;
+    const reordered = [...sortedQueue];
+    [reordered[index + 1], reordered[index]] = [reordered[index], reordered[index + 1]];
+    await base44.entities.EngineBuild.bulkUpdate(
+      reordered.map((b, i) => ({ id: b.id, queue_position: i + 1 }))
+    );
     queryClient.invalidateQueries({ queryKey: ["builds"] });
   };
 
@@ -596,7 +593,7 @@ export default function Builds() {
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() => handleMoveUp(build)}
-                                disabled={build.queue_position === 1}
+                                disabled={index === 0}
                               >
                                 <ChevronUp className="w-4 h-4" />
                               </Button>
@@ -605,7 +602,7 @@ export default function Builds() {
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() => handleMoveDown(build)}
-                                disabled={build.queue_position === Math.max(...queuedBuilds.map(b => b.queue_position))}
+                                disabled={index === queuedBuilds.length - 1}
                               >
                                 <ChevronDown className="w-4 h-4" />
                               </Button>
