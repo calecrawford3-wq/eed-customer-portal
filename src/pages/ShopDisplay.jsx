@@ -26,11 +26,6 @@ export default function ShopDisplay() {
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
   });
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list("-created_date", 500),
-  });
-
   const { data: checkedInEngines = [] } = useQuery({
     queryKey: ["checked-in-engines"],
     queryFn: () => base44.entities.CustomerEngine.list("-created_date", 200),
@@ -58,11 +53,6 @@ export default function ShopDisplay() {
   const getPlatformName = (id) => {
     const p = platforms.find(p => p.id === id);
     return p ? `${p.manufacturer} ${p.name}` : "—";
-  };
-
-  const getCustomerName = (id) => {
-    const c = customers.find(c => c.id === id);
-    return c ? `${c.first_name} ${c.last_name}` : "—";
   };
 
   const getQueueLabel = (position, status) => {
@@ -129,9 +119,6 @@ export default function ShopDisplay() {
                       <div className="text-slate-400 text-base">
                         {getPlatformName(engine.platform_id)}
                       </div>
-                      <div className="text-slate-300 text-sm mt-1">
-                        {getCustomerName(engine.customer_id)}
-                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -191,9 +178,6 @@ export default function ShopDisplay() {
                       <div className="text-slate-400 text-lg">
                         {getPlatformName(build.platform_id)}
                       </div>
-                      <div className="text-slate-300 text-sm mt-0.5">
-                        {getCustomerName(build.customer_id)}
-                      </div>
                       {build.storage_location && (
                         <div className="flex items-center gap-1.5 mt-1.5">
                           <MapPin className="w-4 h-4 text-amber-400" />
@@ -242,7 +226,6 @@ export default function ShopDisplay() {
                   <div>
                     <div className="text-xl font-bold text-white mb-1">{build.engine_serial_number}</div>
                     <div className="text-slate-400 text-base">{getPlatformName(build.platform_id)}</div>
-                    <div className="text-slate-300 text-sm mt-0.5">{getCustomerName(build.customer_id)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
