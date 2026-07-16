@@ -12,9 +12,13 @@ import {
   Plus,
   Trash2,
   FileText,
-  User
+  User,
+  PackageCheck,
+  CheckCircle2,
+  ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
+import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +67,8 @@ export default function BuildDetail() {
   const [localChanges, setLocalChanges] = useState({});
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);
+  const [showPickupScan, setShowPickupScan] = useState(false);
   const printRef = useRef();
 
   const queryClient = useQueryClient();
@@ -128,8 +134,38 @@ export default function BuildDetail() {
   });
 
   const handleSave = () => {
+    if (Object.keys(localChanges).length === 0) return;
+    setShowBarcodeVerify(true);
+  };
+
+  const handleVerified = () => {
     updateMutation.mutate(localChanges);
   };
+
+  const handlePickupVerified = () => {
+    const now = new Date().toISOString();
+    base44.entities.EngineBuild.update(buildId, { picked_up: true, picked_up_at: now })
+      .then(() => {
+        if (build?.customer_engine_id) {
+          base44.entities.CustomerEngine.update(build.customer_engine_id, {
+            check_in_status: "picked_up",
+            picked_up_at: now,
+          }).catch(e => console.warn("Failed to update engine check-in status:", e));
+        }
+        queryClient.invalidateQueries({ queryKey: ["build", buildId] });
+        queryClient.invalidateQueries({ queryKey: ["builds"] });
+        queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+        toast.success("Pickup confirmed! Engine marked as picked up.");
+      })
+      .catch(e => toast.error("Failed to confirm pickup: " + (e.message || e)));
+  };
+
+  const engineInfo = build ? {
+    serial: build.engine_serial_number,
+    eedId: build.eed_id,
+    customerName: linkedCustomer ? `${linkedCustomer.first_name} ${linkedCustomer.last_name}` : build.customer_name,
+    platformName: platform ? `${platform.manufacturer} ${platform.name}` : "",
+  } : null;
 
   const handleChange = (field, value) => {
     setLocalChanges(prev => ({ ...prev, [field]: value }));
@@ -282,6 +318,11 @@ export default function BuildDetail() {
                 {build.engine_serial_number}
               </h1>
               <Badge variant="outline">{STATUS_OPTIONS.find(s => s.value === build.status)?.label}</Badge>
+              {build.picked_up && (
+                <Badge className="bg-slate-100 text-slate-600 border-0">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Picked Up
+                </Badge>
+              )}
             </div>
             <p className="text-slate-500 mt-1">
               {platform?.manufacturer} {platform?.name}
@@ -290,6 +331,16 @@ export default function BuildDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {build.status === "complete" && !build.picked_up && (
+            <Button
+              variant="outline"
+              className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+              onClick={() => setShowPickupScan(true)}
+            >
+              <PackageCheck className="w-4 h-4 mr-2" />
+              Confirm Pickup
+            </Button>
+          )}
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
             Print Build Sheet
@@ -448,9 +499,22 @@ export default function BuildDetail() {
                   <Input
                     value={getValue("storage_location")}
                     onChange={(e) => handleChange("storage_location", e.target.value)}
-                    placeholder="e.g., Rack A-3, Bench 2"
+                    placeholder="e.g., Cart 1, Tote 3, Rack A-2"
                   />
                 </div>
+                {build.picked_up && (
+                  <div className="bg-slate-100 rounded-lg p-3 space-y-1">
+                    <div className="flex items-center gap-2 text-emerald-700 font-semibold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Picked Up
+                    </div>
+                    {build.picked_up_at && (
+                      <p className="text-xs text-slate-500">
+                        Confirmed: {new Date(build.picked_up_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div>
                   <Label>Build Date</Label>
                   <Input
@@ -1034,6 +1098,34 @@ export default function BuildDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Barcode Verification for Save */}
+      <BarcodeVerifyModal
+        open={showBarcodeVerify}
+        onClose={() => setShowBarcodeVerify(false)}
+        expectedSerial={build?.engine_serial_number}
+        engineInfo={engineInfo}
+        title="Verify Engine Before Saving"
+        description="Scan the barcode on the engine label to confirm you are editing the correct engine before saving changes."
+        onVerified={() => {
+          setShowBarcodeVerify(false);
+          handleVerified();
+        }}
+      />
+
+      {/* Pickup Scan Verification */}
+      <BarcodeVerifyModal
+        open={showPickupScan}
+        onClose={() => setShowPickupScan(false)}
+        expectedSerial={build?.engine_serial_number}
+        engineInfo={engineInfo}
+        title="Confirm Engine Pickup"
+        description="Scan the barcode on the completed engine label to confirm the customer is picking up the correct engine."
+        onVerified={() => {
+          setShowPickupScan(false);
+          handlePickupVerified();
+        }}
+      />
     </div>
   );
 }

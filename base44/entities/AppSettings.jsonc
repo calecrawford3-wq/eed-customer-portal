@@ -107,6 +107,10 @@
     "po_smtp_from_email": {
       "type": "string",
       "description": "From address for purchase order emails"
+    },
+    "admin_override_password": {
+      "type": "string",
+      "description": "Admin password to bypass barcode verification for engine build edits and pickup. If empty, any non-empty input bypasses."
     }
   },
   "required": [

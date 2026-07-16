@@ -107,6 +107,16 @@
       "type": "string",
       "description": "Physical storage location where this customer engine is kept in the shop (e.g., Rack A-3, Bench 2) so it can be found quickly without searching by serial number"
     },
+    "picked_up": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the customer has picked up this engine (confirmed via barcode scan)"
+    },
+    "picked_up_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the final pickup scan was confirmed"
+    },
     "cam_info": {
       "type": "object",
       "description": "Camshaft advance/retard information",

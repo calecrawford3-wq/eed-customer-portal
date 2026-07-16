@@ -17,7 +17,8 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
-  Receipt
+  Receipt,
+  PackageCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import EngineSelector from "@/components/EngineSelector";
+import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
+import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -81,6 +84,8 @@ export default function Builds() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [storagePrompt, setStoragePrompt] = useState(null);
   const [newBuild, setNewBuild] = useState({
     engine_serial_number: "",
     eed_id: "",
@@ -183,12 +188,30 @@ export default function Builds() {
       id: build.id,
       data: { work_tag: tag }
     });
+    if (tag === "cleaning") {
+      setStoragePrompt({
+        build,
+        statusLabel: "CLEANING",
+        title: "Storage Location for Cleaning",
+        description: "Enter where this engine is being stored during cleaning (e.g., Cart 1). A new label will be printed for the cart or tote.",
+      });
+    }
   };
 
-  const handleMarkComplete = async (build) => {
+  const handleMarkComplete = (build) => {
+    setStoragePrompt({
+      build,
+      statusLabel: "COMPLETED",
+      title: "Storage Location for Completed Engine",
+      description: "Enter where this completed engine is being stored for customer pickup. A completed label will be printed.",
+      onComplete: true,
+    });
+  };
+
+  const executeMarkComplete = async (build, storageLocation) => {
     await updateMutation.mutateAsync({
       id: build.id,
-      data: { status: "complete", queue_position: null, completion_date: new Date().toISOString().split('T')[0] }
+      data: { status: "complete", queue_position: null, completion_date: new Date().toISOString().split('T')[0], storage_location: storageLocation }
     });
 
     // Reorder remaining queue
@@ -203,7 +226,39 @@ export default function Builds() {
         data: { queue_position: i + 1, status: newStatus }
       });
     }
+
+    // Update CustomerEngine check-in status to build_complete
+    if (build.customer_engine_id) {
+      try {
+        await base44.entities.CustomerEngine.update(build.customer_engine_id, { check_in_status: "build_complete", storage_location: storageLocation });
+        queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+      } catch (e) { console.warn("Failed to update engine check-in status:", e); }
+    }
   };
+
+  const handleStorageConfirm = (location) => {
+    if (!storagePrompt) return;
+    if (storagePrompt.onComplete) {
+      executeMarkComplete(storagePrompt.build, location);
+    } else {
+      updateMutation.mutate({ id: storagePrompt.build.id, data: { storage_location: location } });
+      if (storagePrompt.build.customer_engine_id) {
+        try {
+          base44.entities.CustomerEngine.update(storagePrompt.build.customer_engine_id, { storage_location: location });
+          queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+        } catch (e) {}
+      }
+    }
+    setStoragePrompt(null);
+  };
+
+  const getEngineInfo = (build) => ({
+    serial: build.engine_serial_number,
+    eedId: build.eed_id,
+    customerName: getCustomerName(build),
+    platformName: getPlatformLabel(build.platform_id),
+    storageLocation: build.storage_location,
+  });
 
   const handleMoveUp = async (build) => {
     const currentPos = build.queue_position;
@@ -326,13 +381,17 @@ export default function Builds() {
           <h1 className="text-2xl font-bold text-slate-900">Engine Builds</h1>
           <p className="text-slate-500 mt-1">Manage build queue and track progress</p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              New Build
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setShowCheckInModal(true)}>
+            <PackageCheck className="w-4 h-4 mr-2" /> Check In Engine
+          </Button>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                New Build
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create New Engine Build</DialogTitle>
@@ -459,7 +518,8 @@ export default function Builds() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -705,6 +765,22 @@ export default function Builds() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Check In Engine Modal */}
+      <EngineCheckInModal open={showCheckInModal} onClose={() => setShowCheckInModal(false)} />
+
+      {/* Storage Location Prompt */}
+      {storagePrompt && (
+        <StorageLocationPrompt
+          open={!!storagePrompt}
+          onClose={() => setStoragePrompt(null)}
+          engineInfo={getEngineInfo(storagePrompt.build)}
+          statusLabel={storagePrompt.statusLabel}
+          title={storagePrompt.title}
+          description={storagePrompt.description}
+          onConfirm={handleStorageConfirm}
+        />
       )}
     </div>
   );
