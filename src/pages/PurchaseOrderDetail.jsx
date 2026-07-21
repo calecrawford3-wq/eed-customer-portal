@@ -94,7 +94,7 @@ export default function PurchaseOrderDetail() {
     if (field === "quantity" || field === "unit_cost") {
       lines[idx].total = (Number(lines[idx].quantity) || 0) * (Number(lines[idx].unit_cost) || 0);
     }
-    recalc(lines, form.shipping_cost);
+    recalc(lines, form.shipping_cost, form.tax_amount);
   };
 
   const recalc = (lines, shippingCost, taxAmount) => {
@@ -215,7 +215,7 @@ export default function PurchaseOrderDetail() {
       ...form,
       line_items: updatedLines,
       subtotal,
-      total: subtotal + (Number(form.shipping_cost) || 0),
+      total: subtotal + (Number(form.shipping_cost) || 0) + (Number(form.tax_amount) || 0),
       status: newStatus,
       received_date: allReceived ? new Date().toISOString().split("T")[0] : form.received_date,
     };
@@ -264,7 +264,7 @@ export default function PurchaseOrderDetail() {
       } else {
         lines = [...(f.line_items || []), { ...newLine }];
       }
-      recalc(lines, f.shipping_cost);
+      recalc(lines, f.shipping_cost, f.tax_amount);
       return { ...f, line_items: lines };
     });
     toast.success(`${newLine.description} added to PO`);
@@ -298,7 +298,7 @@ export default function PurchaseOrderDetail() {
       };
     });
     const subtotal = newLines.reduce((s, l) => s + l.total, 0);
-    const total = subtotal + (Number(form.shipping_cost) || 0);
+    const total = subtotal + (Number(form.shipping_cost) || 0) + (Number(form.tax_amount) || 0);
     setForm(f => ({ ...f, line_items: newLines, subtotal, total }));
     toast.success(`Added ${newLines.length} low stock item(s) to order`);
   };
