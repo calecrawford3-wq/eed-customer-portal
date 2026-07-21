@@ -143,7 +143,8 @@ export default function Expenses() {
   const handleExpensePO = async (po) => {
     const supplier = suppliers.find(s => s.id === po.supplier_id);
     const lineTotal = (po.line_items || []).reduce((s, l) => s + (l.total || 0), 0);
-    const totalCost = lineTotal + (po.shipping_cost || 0);
+    const poTax = po.tax_amount || 0;
+    const totalCost = lineTotal + (po.shipping_cost || 0) + poTax;
     const desc = (po.line_items || []).map(l => l.description || l.part_number).filter(Boolean).join(", ");
     await saveMutation.mutateAsync({
       expense_number: `EXP-${po.po_number}`,
@@ -151,7 +152,7 @@ export default function Expenses() {
       description: `PO ${po.po_number}${desc ? `: ${desc.substring(0, 80)}` : ""}`,
       vendor: supplier?.name || "",
       amount: totalCost,
-      tax_amount: 0,
+      tax_amount: poTax,
       date: po.received_date || new Date().toISOString().split("T")[0],
       payment_method: "other",
       is_deductible: true,
@@ -227,7 +228,7 @@ export default function Expenses() {
           <CardContent className="space-y-2">
             {receivedPOs.map(po => {
               const supplier = suppliers.find(s => s.id === po.supplier_id);
-              const total = (po.line_items || []).reduce((s, l) => s + (l.total || 0), 0) + (po.shipping_cost || 0);
+              const total = (po.line_items || []).reduce((s, l) => s + (l.total || 0), 0) + (po.shipping_cost || 0) + (po.tax_amount || 0);
               return (
                 <div key={po.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                   <div>
