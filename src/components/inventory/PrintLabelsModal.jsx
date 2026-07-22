@@ -164,7 +164,7 @@ export default function PrintLabelsModal({ open, onClose, items, title = "Print 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Printer className="w-5 h-5" /> {title}</DialogTitle>
         </DialogHeader>
