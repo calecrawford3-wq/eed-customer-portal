@@ -1,0 +1,94 @@
+{
+  "name": "CallLog",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked customer"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Number dialed"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "outbound",
+        "inbound"
+      ],
+      "default": "outbound"
+    },
+    "call_status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "no_answer",
+        "voicemail",
+        "busy",
+        "failed",
+        "missed"
+      ],
+      "description": "Result of the call attempt"
+    },
+    "outcome": {
+      "type": "string",
+      "description": "Short outcome summary"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "satisfaction": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "good",
+        "needs_attention",
+        "problem"
+      ]
+    },
+    "followup_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "click_to_call",
+        "customer_success",
+        "manual"
+      ],
+      "default": "click_to_call"
+    },
+    "related_build_id": {
+      "type": "string"
+    },
+    "related_task_id": {
+      "type": "string",
+      "description": "Linked CustomerSuccessTask when source=customer_success"
+    },
+    "via_voip": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the call was initiated through VoIP.ms click2call (desk phone)"
+    }
+  },
+  "required": [
+    "customer_id",
+    "phone_number"
+  ]
+}
