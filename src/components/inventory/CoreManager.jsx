@@ -127,8 +127,8 @@ export default function CoreManager() {
           <p className="text-sm mt-1">Track rebuildable engine cores (blocks, heads, cranks) and offer core credits when buying from customers or doing core swaps.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Core #</th>
