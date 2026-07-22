@@ -21,6 +21,8 @@ import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
 import CustomerCreditsTab from "@/components/customer/CustomerCreditsTab";
 import CountrySelect, { getCountryName } from "@/components/CountrySelect";
+import CallButton from "@/components/CallButton";
+import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicationsTab";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -63,6 +65,13 @@ export default function CustomerDetail() {
     queryKey: ["platforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
+
+  const { data: callLogs = [] } = useQuery({
+    queryKey: ["call-logs", id],
+    queryFn: () => base44.entities.CallLog.filter({ customer_id: id }, "-started_at", 200),
+    enabled: !!id,
+  });
+  const commCount = callLogs.length;
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Customer.update(id, data),
@@ -181,7 +190,13 @@ export default function CustomerDetail() {
           <CardHeader className="pb-3"><CardTitle className="text-base">Contact Info</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {customer.email && <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-slate-400" /><span>{customer.email}</span></div>}
-            {customer.phone && <div className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-slate-400" /><span>{customer.phone}</span></div>}
+            {customer.phone && (
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4 text-slate-400" />
+                <span>{customer.phone}</span>
+                <CallButton customer={customer} builds={builds} iconOnly />
+              </div>
+            )}
             {customer.address_line1 && (
               <div className="flex items-start gap-2 text-sm">
                 <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
@@ -211,6 +226,7 @@ export default function CustomerDetail() {
               <TabsTrigger value="estimates">Estimates ({customerEstimates.length})</TabsTrigger>
               <TabsTrigger value="invoices">Invoices ({customerInvoices.length})</TabsTrigger>
               <TabsTrigger value="credits">Credits</TabsTrigger>
+              <TabsTrigger value="comms">Calls ({commCount})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="engines">
@@ -322,6 +338,10 @@ export default function CustomerDetail() {
 
                 <TabsContent value="credits">
                 <CustomerCreditsTab customer={customer} />
+                </TabsContent>
+
+                <TabsContent value="comms">
+                <CustomerCommunicationsTab customerId={id} />
                 </TabsContent>
                 </Tabs>
                 </div>

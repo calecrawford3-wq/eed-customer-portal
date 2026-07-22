@@ -9,10 +9,12 @@ import { Phone, CheckCircle, Clock, AlertTriangle, Calendar as CalendarIcon, Use
 import { Input } from "@/components/ui/input";
 import { TIMEFRAME_LABELS, SATISFACTION_OPTIONS, todayStr, addDaysStr, daysOverdue } from "@/lib/customerSuccess";
 import CustomerSuccessCallForm from "@/components/customersuccess/CustomerSuccessCallForm";
+import ActiveCallModal from "@/components/ActiveCallModal";
 
 export default function CustomerSuccess() {
   const qc = useQueryClient();
   const [activeTask, setActiveTask] = useState(null);
+  const [callTask, setCallTask] = useState(null);
   const [search, setSearch] = useState("");
   const today = todayStr();
   const in30 = addDaysStr(today, 30);
@@ -50,9 +52,13 @@ export default function CustomerSuccess() {
           <p className="text-xs text-slate-500 mt-0.5">{TIMEFRAME_LABELS[t.timeframe] || "Follow-up"} · due {t.due_date}{showOverdue && od > 0 && <span className="text-red-600 font-medium"> · {od}d overdue</span>}</p>
         </button>
         {t.customer_phone && (
-          <a href={`tel:${t.customer_phone}`} title="Quick call" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex-shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); setCallTask(t); }}
+            title="Start call (timer + satisfaction)"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex-shrink-0"
+          >
             <Phone className="w-4 h-4" />
-          </a>
+          </button>
         )}
         <Button size="sm" variant="outline" className="flex-shrink-0" onClick={() => setActiveTask(t)}>
           <CheckCircle className="w-3.5 h-3.5 mr-1" /> Open
@@ -157,6 +163,17 @@ export default function CustomerSuccess() {
       </div>
 
       <CustomerSuccessCallForm open={!!activeTask} onClose={() => setActiveTask(null)} task={activeTask} onSaved={() => qc.invalidateQueries({ queryKey: ["cs-tasks"] })} />
+
+      {callTask && (
+        <ActiveCallModal
+          open={!!callTask}
+          onClose={() => setCallTask(null)}
+          customer={{ id: callTask.customer_id, name: callTask.customer_name, phone: callTask.customer_phone }}
+          customerSuccessTask={callTask}
+          builds={builds}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["cs-tasks"] })}
+        />
+      )}
     </div>
   );
 }
