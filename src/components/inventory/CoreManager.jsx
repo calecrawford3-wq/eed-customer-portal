@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag, Images } from "lucide-react";
 import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
+import CorePhotoManager from "@/components/inventory/CorePhotoManager";
 
 const CATEGORIES = ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"];
 const CONDITIONS = ["rebuildable","needs_inspection","good","scrap"];
@@ -21,7 +22,7 @@ const emptyCore = {
   core_number: "", name: "", description: "", category: "block",
   platform_ids: [], condition: "rebuildable",
   quantity_on_hand: 0, unit_cost: 0, sell_price: 0, core_credit: 0,
-  location: "", notes: "", status: "active"
+  location: "", photos: [], notes: "", status: "active"
 };
 
 const CONDITION_STYLES = {
@@ -38,6 +39,7 @@ export default function CoreManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyCore);
+  const [photosViewer, setPhotosViewer] = useState(null);
   const qc = useQueryClient();
 
   const { data: cores = [], isLoading } = useQuery({
@@ -188,6 +190,11 @@ export default function CoreManager() {
                           return `${pl.manufacturer} ${pl.name}${years ? ` ${years}` : ""}`;
                         }).filter(Boolean).join(", "),
                       })}><Tag className="w-3.5 h-3.5" /></Button>
+                      {(c.photos && c.photos.length > 0) && (
+                        <Button size="sm" variant="ghost" title={`View ${c.photos.length} photo(s)`} onClick={() => setPhotosViewer(c)}>
+                          <Images className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
@@ -267,6 +274,10 @@ export default function CoreManager() {
             </div>
             <div className="col-span-2"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
+            <div className="col-span-2">
+              <Label>Damage / Condition Photos</Label>
+              <CorePhotoManager photos={form.photos} onChange={(photos) => setForm({ ...form, photos })} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
@@ -302,6 +313,15 @@ export default function CoreManager() {
         title={`Print Label — ${singleLabelItem?.name || ""}`}
         items={singleLabelItem ? [singleLabelItem] : []}
       />
+      <Dialog open={!!photosViewer} onOpenChange={() => setPhotosViewer(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="flex items-center gap-2">
+            <Images className="w-5 h-5 text-slate-600" />
+            {photosViewer?.name} — Photos
+          </DialogTitle>
+          <CorePhotoManager photos={photosViewer?.photos || []} onChange={() => {}} readOnly />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

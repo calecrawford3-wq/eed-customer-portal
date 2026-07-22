@@ -67,6 +67,13 @@
       "type": "string",
       "description": "Physical storage location"
     },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photo URLs of the core for visual damage reference without opening the storage box"
+    },
     "notes": {
       "type": "string"
     },
