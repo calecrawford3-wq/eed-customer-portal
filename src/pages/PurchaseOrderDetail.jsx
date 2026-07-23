@@ -48,6 +48,12 @@ export default function PurchaseOrderDetail() {
   const [receiveCosts, setReceiveCosts] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const { data: settingsList = [] } = useQuery({
+    queryKey: ["appSettings"],
+    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
+  });
+  const settings = settingsList[0];
+
   const { data: po } = useQuery({
     queryKey: ["po", id],
     queryFn: () => base44.entities.PurchaseOrder.filter({ id }),
@@ -303,6 +309,109 @@ export default function PurchaseOrderDetail() {
     toast.success(`Added ${newLines.length} low stock item(s) to order`);
   };
 
+  const printPO = (poData, supplierData, settingsData) => {
+    const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : "N/A";
+    const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+    const companyAddress = [
+      settingsData?.company_address,
+      settingsData?.company_city ? `${settingsData.company_city}, ${settingsData.company_state} ${settingsData.company_zip}` : null,
+      settingsData?.company_phone,
+      settingsData?.company_email,
+    ].filter(Boolean).join("<br/>");
+
+    const supplierLines = [
+      supplierData?.name,
+      supplierData?.contact_name,
+      supplierData?.address_line1,
+      supplierData?.address_line2,
+      supplierData?.city ? `${supplierData.city}, ${supplierData.state} ${supplierData.zip}` : null,
+      supplierData?.phone,
+      supplierData?.email,
+    ].filter(Boolean).map(l => `<p style="margin:2px 0">${l}</p>`).join("");
+
+    const itemRows = (poData.line_items || []).map((line, idx) => `
+      <tr style="border-bottom:1px solid #eee">
+        <td style="padding:8px 12px;color:#999">${idx + 1}</td>
+        <td style="padding:8px 12px;font-family:monospace;font-size:12px">${line.part_number || "—"}</td>
+        <td style="padding:8px 12px">${line.description || ""}</td>
+        <td style="padding:8px 12px;text-align:center">${line.quantity}</td>
+        <td style="padding:8px 12px;text-align:right">${money(line.unit_cost)}</td>
+        <td style="padding:8px 12px;text-align:right;font-weight:500">${money(line.total)}</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><title>PO ${poData.po_number}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 32px; max-width: 800px; margin: 0 auto; color: #1a1a1a; }
+        @media print { @page { margin: 0.5in; } body { padding: 0; } }
+      </style>
+    </head><body>
+      <div style="border-bottom:3px solid #e20404;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end">
+        <div>
+          <img src="${LOGO_URL}" alt="Logo" style="height:56px;margin-bottom:8px"/>
+          <h1 style="font-size:26px;font-weight:bold;margin:0;letter-spacing:1px">PURCHASE ORDER</h1>
+          <p style="font-size:13px;color:#666;margin-top:4px">${settingsData?.company_name || "Elite Engine Development"}</p>
+        </div>
+        <div style="text-align:right">
+          <p style="font-size:20px;font-weight:bold;color:#e20404;margin-bottom:6px">${poData.po_number}</p>
+          <p style="font-size:13px;color:#666;margin:2px 0">Order Date: ${fmtDate(poData.order_date)}</p>
+          <p style="font-size:13px;color:#666;margin:2px 0">Expected: ${fmtDate(poData.expected_date)}</p>
+          <p style="font-size:13px;color:#666;margin:2px 0;text-transform:capitalize">Status: ${poData.status}</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">
+        <div>
+          <h2 style="font-size:11px;font-weight:bold;text-transform:uppercase;color:#999;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px">Supplier / Vendor</h2>
+          ${supplierLines}
+        </div>
+        <div>
+          <h2 style="font-size:11px;font-weight:bold;text-transform:uppercase;color:#999;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px">Ship To</h2>
+          <p style="font-size:13px;font-weight:bold;margin:2px 0">${settingsData?.company_name || "Elite Engine Development"}</p>
+          <p style="font-size:13px;color:#555;margin:2px 0">${companyAddress}</p>
+          ${poData.shipping_address ? `<p style="font-size:13px;margin-top:6px;color:#555;font-style:italic">Attn: ${poData.shipping_address.replace(/\n/g, ", ")}</p>` : ""}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+        <thead>
+          <tr style="background:#1a1a1a;color:#fff">
+            <th style="text-align:left;padding:10px 12px;font-size:12px;text-transform:uppercase">#</th>
+            <th style="text-align:left;padding:10px 12px;font-size:12px;text-transform:uppercase">Part Number</th>
+            <th style="text-align:left;padding:10px 12px;font-size:12px;text-transform:uppercase">Description</th>
+            <th style="text-align:center;padding:10px 12px;font-size:12px;text-transform:uppercase">Qty</th>
+            <th style="text-align:right;padding:10px 12px;font-size:12px;text-transform:uppercase">Unit Cost</th>
+            <th style="text-align:right;padding:10px 12px;font-size:12px;text-transform:uppercase">Total</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:28px">
+        <div style="width:280px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee"><span style="color:#666">Subtotal</span><span>${money(poData.subtotal)}</span></div>
+          ${Number(poData.shipping_cost) > 0 ? `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee"><span style="color:#666">Shipping</span><span>${money(poData.shipping_cost)}</span></div>` : ""}
+          ${Number(poData.tax_amount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee"><span style="color:#666">Tax</span><span>${money(poData.tax_amount)}</span></div>` : ""}
+          <div style="display:flex;justify-content:space-between;padding:10px 0;font-weight:bold;font-size:16px;color:#e20404;border-top:2px solid #e20404"><span>Total</span><span>${money(poData.total)}</span></div>
+        </div>
+      </div>
+      ${poData.notes ? `<div style="margin-bottom:32px"><h3 style="font-size:11px;font-weight:bold;text-transform:uppercase;color:#999;margin-bottom:6px">Notes / Special Instructions</h3><p style="font-size:13px;color:#555;white-space:pre-wrap;padding:10px 14px;background:#f8f8f8;border-left:3px solid #e20404">${poData.notes}</p></div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px;padding-top:20px;border-top:1px solid #eee">
+        <div><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;color:#666">Authorized Signature</div><div style="font-size:11px;color:#999;margin-top:2px">${settingsData?.company_name || "Elite Engine Development"}</div></div>
+        <div><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;color:#666">Date</div><div style="font-size:11px;color:#999;margin-top:2px">&nbsp;</div></div>
+      </div>
+      <div style="margin-top:40px;padding-top:12px;border-top:2px solid #e20404;text-align:center">
+        <p style="font-size:11px;color:#999">${settingsData?.company_name || "Elite Engine Development"}${settingsData?.company_website ? ` · ${settingsData.company_website}` : ""}${settingsData?.company_email ? ` · ${settingsData.company_email}` : ""}</p>
+        <p style="font-size:10px;color:#bbb;margin-top:4px">Please reference PO number ${poData.po_number} on all correspondence and shipments.</p>
+      </div>
+    </body></html>`;
+
+    const win = window.open("", "_blank", "width=850,height=600");
+    if (!win) { toast.error("Pop-up blocked — allow pop-ups to print the PO"); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 250);
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
@@ -314,7 +423,7 @@ export default function PurchaseOrderDetail() {
         <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" onClick={fillLowStockItems} disabled={!form.supplier_id}>
           <AlertTriangle className="w-4 h-4 mr-1" /> Order Low Stock
         </Button>
-        <Button variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
+        <Button variant="outline" onClick={() => printPO(form, supplier, settings)}><Printer className="w-4 h-4 mr-1" /> Print</Button>
         <Button variant="outline" onClick={sendPO} disabled={sending || !form.supplier_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}
         </Button>
