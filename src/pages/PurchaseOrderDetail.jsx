@@ -329,6 +329,7 @@ export default function PurchaseOrderDetail() {
       supplierData?.city ? `${supplierData.city}, ${supplierData.state} ${supplierData.zip}` : null,
       supplierData?.phone,
       supplierData?.email,
+      supplierData?.account_number ? `<strong style="color:#e20404">Account #: ${supplierData.account_number}</strong>` : null,
     ].filter(Boolean).map(l => `<p style="margin:2px 0">${l}</p>`).join("");
 
     const itemRows = (poData.line_items || []).map((line, idx) => `
