@@ -10,12 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload } from "lucide-react";
+import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useRef } from "react";
 import CustomerCsvImportModal from "@/components/customers/CustomerCsvImportModal";
 import CountrySelect from "@/components/CountrySelect";
+import CallButton from "@/components/CallButton";
+
+function normalizePhone(p) { if (!p) return ""; let d = p.replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return d; }
 
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
@@ -140,6 +143,12 @@ export default function Customers() {
                   </div>
                 )}
                 <div className="flex gap-2 mt-4">
+                   <CallButton customer={c} iconOnly size="sm" />
+                   <Link to={`/Messaging?phone=${normalizePhone(c.phone || "")}&compose=1`}>
+                     <Button size="sm" variant="outline" className="w-8 h-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title={`Message ${c.first_name}`}>
+                       <MessageSquare className="w-3.5 h-3.5" />
+                     </Button>
+                   </Link>
                    <Link to={`/CustomerDetail?id=${c.id}`} className="flex-1">
                      <Button size="sm" variant="outline" className="w-full">
                        <Eye className="w-3.5 h-3.5 mr-1" /> View

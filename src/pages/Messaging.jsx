@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import CallsView from "@/components/messaging/CallsView";
 
 function normalizePhone(p) {
   if (!p) return "";
@@ -52,7 +53,23 @@ export default function Messaging() {
   const [composePhone, setComposePhone] = useState("");
   const [composeMessage, setComposeMessage] = useState("");
   const [composeSearch, setComposeSearch] = useState("");
+  const [tab, setTab] = useState("messages");
   const scrollRef = useRef(null);
+
+  // Deep-link: /Messaging?phone=...&compose=1 (from customer cards)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const phoneParam = params.get("phone");
+    if (phoneParam) {
+      const norm = normalizePhone(phoneParam);
+      setSelectedPhone(norm);
+      setTab("messages");
+      if (params.get("compose")) {
+        setComposePhone(norm);
+        setComposeOpen(true);
+      }
+    }
+  }, []);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
@@ -182,30 +199,32 @@ export default function Messaging() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-[#e20404]" />
-          <h1 className="text-lg font-semibold text-slate-900">Messages</h1>
-          <span className="text-sm text-slate-400 hidden sm:inline">via VoIP.ms</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[#e20404]" />
+            <h1 className="text-lg font-semibold text-slate-900 hidden sm:inline">Communications</h1>
+          </div>
+          <div className="flex bg-slate-100 rounded-lg p-0.5">
+            <button onClick={() => setTab("messages")} className={cn("px-3 py-1 text-sm rounded-md font-medium transition-colors", tab === "messages" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>Messages</button>
+            <button onClick={() => setTab("calls")} className={cn("px-3 py-1 text-sm rounded-md font-medium transition-colors", tab === "calls" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>Calls</button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setComposeOpen(true)}
-          >
-            <PenSquare className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">New</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["messages"] })}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          {tab === "messages" && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setComposeOpen(true)}>
+                <PenSquare className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">New</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["messages"] })}>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
+      {tab === "messages" && (
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Conversation list */}
         <div className={cn(
@@ -407,6 +426,8 @@ export default function Messaging() {
           </div>
         )}
       </div>
+      )}
+      {tab === "calls" && <CallsView />}
 
       {/* Compose dialog */}
       <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
