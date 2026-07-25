@@ -70,9 +70,11 @@
       "enum": [
         "click_to_call",
         "customer_success",
-        "manual"
+        "manual",
+        "voip_cdr"
       ],
-      "default": "click_to_call"
+      "default": "click_to_call",
+      "description": "Origin of the call log: click_to_call = outbound via desk phone, customer_success = CS follow-up, manual = logged by hand, voip_cdr = auto-imported from VoIP.ms Call Detail Records"
     },
     "related_build_id": {
       "type": "string"
@@ -85,6 +87,10 @@
       "type": "boolean",
       "default": false,
       "description": "True when the call was initiated through VoIP.ms click2call (desk phone)"
+    },
+    "voip_call_id": {
+      "type": "string",
+      "description": "VoIP.ms CDR callid \u2014 used to dedupe auto-imported inbound calls"
     }
   },
   "required": [

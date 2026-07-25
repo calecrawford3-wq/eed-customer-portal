@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Phone, PhoneCall, PhoneIncoming, Clock, User, Search, ArrowLeft, PhoneOutgoing, FilePlus2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ActiveCallModal from "@/components/ActiveCallModal";
 import LogInboundCallModal from "./LogInboundCallModal";
@@ -74,6 +76,26 @@ export default function CallsView() {
   }, [calls, search]);
 
   const selected = calls.find((c) => c.id === selectedId) || null;
+
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  useEffect(() => {
+    setNoteDraft(selected?.notes || "");
+  }, [selected?.id]);
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setSavingNotes(true);
+    try {
+      await base44.entities.CallLog.update(selected.id, { notes: noteDraft });
+      qc.invalidateQueries({ queryKey: ["call-logs"] });
+      toast.success("Notes saved");
+    } catch (e) {
+      toast.error("Failed to save notes");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const matchedCustomers = useMemo(() => {
     if (!ncSearch) return customers.filter((c) => c.phone).slice(0, 12);
@@ -178,12 +200,15 @@ export default function CallsView() {
               {selected.outcome && <div className="text-sm"><span className="text-slate-500">Result: </span><span>{selected.outcome}</span></div>}
               {selected.followup_date && <div className="flex justify-between text-sm"><span className="text-slate-500">Follow-up</span><span className="font-medium">{selected.followup_date}</span></div>}
             </div>
-            {selected.notes && (
-              <div className="bg-white rounded-lg border border-slate-200 p-4">
-                <div className="text-xs font-medium text-slate-400 mb-1">NOTES</div>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{selected.notes}</p>
+            <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="text-xs font-medium text-slate-400 mb-1">NOTES</div>
+              <Textarea rows={3} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Add call notes..." />
+              <div className="flex justify-end mt-2">
+                <Button size="sm" variant="outline" onClick={saveNotes} disabled={savingNotes || noteDraft === (selected.notes || "")}>
+                  {savingNotes ? "Saving…" : "Save Notes"}
+                </Button>
               </div>
-            )}
+            </div>
             <div className="flex gap-2 flex-wrap">
               {selected.phone_number && (
                 <Button variant="outline" size="sm" onClick={() => setActiveCall({ id: selected.customer_id || "", name: selected.customer_name || formatPhoneDisplay(selected.phone_number), phone: selected.phone_number })}>
