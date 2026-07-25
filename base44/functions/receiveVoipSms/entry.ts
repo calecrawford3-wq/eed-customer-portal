@@ -89,7 +89,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const sentAt = date ? new Date(date.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')).toISOString() : new Date().toISOString();
+    // VoIP.ms sends the date in an ambiguous timezone; use the actual server receipt time (UTC)
+    const sentAt = new Date().toISOString();
 
     await base44.asServiceRole.entities.Message.create({
       customer_id: customerId,
