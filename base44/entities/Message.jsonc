@@ -1,0 +1,68 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked customer (resolved from phone number when possible)"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Snapshot of customer name for display"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "The other party's phone number (normalized: digits only, 11-char for US/CA)"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "inbound",
+        "outbound"
+      ],
+      "description": "Inbound = received from customer; outbound = sent by shop"
+    },
+    "from_number": {
+      "type": "string",
+      "description": "Sender phone number"
+    },
+    "to_number": {
+      "type": "string",
+      "description": "Recipient phone number"
+    },
+    "body": {
+      "type": "string",
+      "description": "Message text content"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "VoIP.ms SMS ID (for incoming messages)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "received",
+        "sent",
+        "delivered",
+        "failed"
+      ],
+      "default": "sent",
+      "description": "Delivery status"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the shop has read/viewed this message"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the message was sent or received"
+    }
+  },
+  "required": [
+    "phone_number",
+    "direction",
+    "body"
+  ]
+}
