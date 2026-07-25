@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&function=click2call&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&method=click2call&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     const resp = await fetch(url);
     const data = await resp.json().catch(() => null);
 
