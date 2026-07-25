@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import CallsView from "@/components/messaging/CallsView";
+import useMessageNotifications from "@/hooks/useMessageNotifications";
+import { Bell, BellOff } from "lucide-react";
 
 function normalizePhone(p) {
   if (!p) return "";
@@ -55,6 +57,7 @@ export default function Messaging() {
   const [composeSearch, setComposeSearch] = useState("");
   const [tab, setTab] = useState("messages");
   const scrollRef = useRef(null);
+  const { permission, requestPermission } = useMessageNotifications();
 
   // Deep-link: /Messaging?phone=...&compose=1 (from customer cards)
   useEffect(() => {
@@ -113,6 +116,18 @@ export default function Messaging() {
   }, [conversations, search]);
 
   const selectedConversation = conversations.find((c) => c.phone === selectedPhone) || null;
+
+  // Update document title with total unread count
+  const totalUnread = useMemo(
+    () => conversations.reduce((sum, c) => sum + (c.unread || 0), 0),
+    [conversations]
+  );
+  useEffect(() => {
+    document.title =
+      totalUnread > 0
+        ? `(${totalUnread}) Communications — EED`
+        : "Communications — EED";
+  }, [totalUnread]);
 
   // Mark unread messages as read when conversation is opened
   useEffect(() => {
@@ -212,6 +227,20 @@ export default function Messaging() {
         <div className="flex items-center gap-2">
           {tab === "messages" && (
             <>
+              {permission !== "granted" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={requestPermission}
+                  title="Enable push notifications"
+                >
+                  <BellOff className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">Enable Alerts</span>
+                </Button>
+              )}
+              {permission === "granted" && (
+                <Bell className="w-4 h-4 text-[#e20404]" />
+              )}
               <Button variant="outline" size="sm" onClick={() => setComposeOpen(true)}>
                 <PenSquare className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">New</span>
