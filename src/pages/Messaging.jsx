@@ -205,7 +205,7 @@ export default function Messaging() {
             <h1 className="text-lg font-semibold text-slate-900 hidden sm:inline">Communications</h1>
           </div>
           <div className="flex bg-slate-100 rounded-lg p-0.5">
-            <button onClick={() => setTab("messages")} className={cn("px-3 py-1 text-sm rounded-md font-medium transition-colors", tab === "messages" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>Messages</button>
+            <button onClick={() => setTab("messages")} className={cn("px-3 py-1 text-sm rounded-md font-medium transition-colors", tab === "messages" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>Communications</button>
             <button onClick={() => setTab("calls")} className={cn("px-3 py-1 text-sm rounded-md font-medium transition-colors", tab === "calls" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>Calls</button>
           </div>
         </div>
