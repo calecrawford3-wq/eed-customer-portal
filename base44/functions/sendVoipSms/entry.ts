@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'VoIP.ms not configured' }, { status: 500 });
     }
 
-    const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&function=sendSMS&did=${encodeURIComponent(from)}&dst=${encodeURIComponent(to)}&message=${encodeURIComponent(message)}`;
+    const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&method=sendSMS&did=${encodeURIComponent(from)}&dst=${encodeURIComponent(to)}&message=${encodeURIComponent(message)}`;
     const resp = await fetch(url);
     const data = await resp.json().catch(() => null);
 
