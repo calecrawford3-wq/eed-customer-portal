@@ -83,6 +83,10 @@
       "type": "string",
       "description": "From address for general outgoing emails (e.g. noreply@yourdomain.com)"
     },
+    "custom_from_email": {
+      "type": "string",
+      "description": "Additional 'From' address offered in the email composer (e.g. a personal address like cale@eedpower.com). Must be a verified sender alias in the connected Zoho Mail account."
+    },
     "po_smtp_host": {
       "type": "string",
       "description": "SMTP host for purchase order emails"

@@ -26,9 +26,11 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
   });
   const noreply = settings?.smtp_from_email || "";
   const regular = settings?.company_email || "";
+  const personal = settings?.custom_from_email || "";
   const fromOptions = [
     ...(noreply ? [{ key: "noreply", label: `Do not reply (${noreply})`, value: noreply }] : []),
     ...(regular ? [{ key: "regular", label: `Regular (${regular})`, value: regular }] : []),
+    ...(personal ? [{ key: "personal", label: `Personal (${personal})`, value: personal }] : []),
   ];
   const [fromKey, setFromKey] = useState("noreply");
   const selectedFrom = fromOptions.find((o) => o.key === fromKey) || fromOptions[0];

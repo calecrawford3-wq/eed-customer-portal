@@ -35,6 +35,7 @@ const defaultSettings = {
   smtp_password: "",
   smtp_from_name: "Elite Engine Development",
   smtp_from_email: "",
+  custom_from_email: "",
   po_smtp_host: "",
   po_smtp_port: 587,
   po_smtp_username: "",
@@ -232,6 +233,17 @@ export default function Settings() {
                     <Textarea value={form.email_signature} onChange={e => set("email_signature", e.target.value)} rows={3} placeholder="Your email signature..." />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader><CardTitle className="text-base">Additional "From" Address (Zoho)</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <div>
+                  <Label>Personal / Custom From Email</Label>
+                  <Input type="email" value={form.custom_from_email} onChange={e => set("custom_from_email", e.target.value)} placeholder="cale@eedpower.com" />
+                </div>
+                <p className="text-xs text-slate-400">Shows up as a "From" choice when composing emails. This address <strong>must be added as a verified sender alias</strong> in your Zoho Mail account (Settings → Mail Accounts → Email Aliases) or Zoho will reject sends from it.</p>
               </CardContent>
             </Card>
 
