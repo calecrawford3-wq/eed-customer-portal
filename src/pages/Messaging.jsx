@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import CallsView from "@/components/messaging/CallsView";
-import useMessageNotifications from "@/hooks/useMessageNotifications";
+import usePushNotifications from "@/hooks/usePushNotifications";
 import { Bell, BellOff } from "lucide-react";
 
 function normalizePhone(p) {
@@ -57,7 +57,7 @@ export default function Messaging() {
   const [composeSearch, setComposeSearch] = useState("");
   const [tab, setTab] = useState("messages");
   const scrollRef = useRef(null);
-  const { permission, requestPermission } = useMessageNotifications();
+  const { permission, requestPermission } = usePushNotifications();
 
   // Deep-link: /Messaging?phone=...&compose=1 (from customer cards)
   useEffect(() => {

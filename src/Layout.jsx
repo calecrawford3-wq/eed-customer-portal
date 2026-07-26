@@ -33,10 +33,14 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
+import usePushNotifications from "@/hooks/usePushNotifications";
 
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Register push notification service worker globally on all admin pages
+  usePushNotifications();
 
   const { data: refreshRequests = [] } = useQuery({
     queryKey: ["refreshRequests"],

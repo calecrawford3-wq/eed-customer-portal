@@ -107,6 +107,21 @@ Deno.serve(async (req) => {
     });
 
     console.log('SMS stored from', normalizedFrom, '-', message.substring(0, 50));
+
+    // Send push notification to all subscribed devices
+    try {
+      const pushTitle = customerName ? 'New SMS from ' + customerName : 'New SMS from ' + normalizedFrom;
+      const pushBody = message.substring(0, 200);
+      await base44.asServiceRole.functions.invoke('sendPushNotification', {
+        title: pushTitle,
+        body: pushBody,
+        phone: normalizedFrom,
+        url: '/Messaging?phone=' + normalizedFrom,
+      });
+    } catch (pushErr) {
+      console.error('Push notification failed:', pushErr?.message || pushErr);
+    }
+
     return Response.json({ success: true });
   } catch (error) {
     console.error('receiveVoipSms error:', error?.message || error);
