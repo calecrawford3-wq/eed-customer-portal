@@ -1,0 +1,71 @@
+{
+  "name": "EmailThreadLink",
+  "type": "object",
+  "properties": {
+    "thread_id": {
+      "type": "string",
+      "description": "Zoho thread ID this link applies to"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "supplier",
+        "invoice",
+        "estimate",
+        "purchase_order",
+        "build"
+      ]
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "entity_label": {
+      "type": "string",
+      "description": "Display label (customer name, invoice number, etc.)"
+    },
+    "link_source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "ai",
+        "auto"
+      ],
+      "default": "manual",
+      "description": "manual = confirmed by a user, ai = suggested by AI, auto = inferred from thread context"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 100
+    },
+    "linked_by": {
+      "type": "string",
+      "description": "User who created/confirmed this thread link"
+    },
+    "linked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "False once removed \u2014 kept for audit history. Inactive links do not apply to future messages."
+    },
+    "removed_by": {
+      "type": "string"
+    },
+    "removed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "thread_id",
+    "account_id",
+    "entity_type",
+    "entity_id"
+  ]
+}

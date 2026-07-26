@@ -285,6 +285,7 @@ export default async function(req) {
               supplier_id: supplier?.id || '',
               supplier_name: supplierName,
               link_type: 'none',
+              direction,
             });
             if (direction === 'inbound') {
               newInbound.push({ from: fromParsed.name || fromParsed.email, subject });
@@ -309,11 +310,52 @@ export default async function(req) {
       }
     }
 
+    // --- Inherit thread-level links onto new messages (so replies don't need relinking) ---
+    let threadLinksApplied = 0;
+    try {
+      const newThreadKeys = [...new Set(newEmails.map((ne) => `${ne.account_id}|${ne.thread_id}`).filter((k) => k && k !== '|'))];
+      const linksByThread = {};
+      if (newThreadKeys.length) {
+        const allThreadLinks = await base44.asServiceRole.entities.EmailThreadLink.filter({ is_active: true }, '-created_date', 2000);
+        const keySet = new Set(newThreadKeys);
+        for (const tl of (allThreadLinks || [])) {
+          const k = `${tl.account_id}|${tl.thread_id}`;
+          if (!keySet.has(k)) continue;
+          (linksByThread[k] = linksByThread[k] || []).push(tl);
+        }
+      }
+      const inheritUpdates = [];
+      const inheritLinks = [];
+      for (const ne of newEmails) {
+        const k = `${ne.account_id}|${ne.thread_id}`;
+        const links = linksByThread[k];
+        if (!links || !links.length) continue;
+        let customerId = ne.customer_id || '', customerName = ne.customer_name || '';
+        let supplierId = ne.supplier_id || '', supplierName = ne.supplier_name || '';
+        let linkType = 'none', linkId = '', linkNumber = '';
+        let changed = false;
+        for (const l of links) {
+          if (l.entity_type === 'customer' && !customerId) { customerId = l.entity_id; customerName = l.entity_label || ''; changed = true; }
+          else if (l.entity_type === 'supplier' && !supplierId) { supplierId = l.entity_id; supplierName = l.entity_label || ''; changed = true; }
+          else if (['invoice','estimate','purchase_order','build'].includes(l.entity_type) && linkType === 'none') {
+            linkType = l.entity_type; linkId = l.entity_id; linkNumber = l.entity_label || ''; changed = true;
+            inheritLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: l.entity_type, entity_id: l.entity_id, entity_label: l.entity_label || '', link_source: 'auto', matched_by: 'thread_inherit', confidence_score: l.confidence_score || 100, match_status: 'confirmed' });
+          }
+        }
+        if (changed) {
+          inheritUpdates.push({ id: ne.id, customer_id: customerId, customer_name: customerName, supplier_id: supplierId, supplier_name: supplierName, link_type: linkType, link_id: linkId, link_number: linkNumber, is_linked: true });
+        }
+      }
+      if (inheritUpdates.length) { await base44.asServiceRole.entities.Email.bulkUpdate(inheritUpdates); threadLinksApplied = inheritUpdates.length; }
+      if (inheritLinks.length) { try { await base44.asServiceRole.entities.EmailLink.bulkCreate(inheritLinks); } catch (_) {} }
+    } catch (e) { errors.push('thread-inherit: ' + (e.message || e)); }
+
     // --- Build / refresh EmailThread aggregates from all known emails ---
     let threadsCreated = 0;
     let threadsUpdated = 0;
     try {
       const allEmails = (existing || []).concat(newEmails);
+      const newEmailIdSet = new Set(newEmails.map((n) => n.id).filter(Boolean));
       const threadsMap = {};
       for (const e of allEmails) {
         const key = `${e.account_id || ''}|${e.thread_id || ''}`;
@@ -334,6 +376,7 @@ export default async function(req) {
           supplier_name: '',
           link_type: 'none',
           link_number: '',
+          hasNewInbound: false,
         };
         const ra = e.received_at || '';
         if (ra && (!t.last_message_at || new Date(ra) > new Date(t.last_message_at))) {
@@ -348,6 +391,7 @@ export default async function(req) {
           }
         }
         t.message_count++;
+        if (e.direction === 'inbound' && newEmailIdSet.has(e.id)) t.hasNewInbound = true;
         if (!e.is_read) t.unread_count++;
         if (e.has_attachments) t.has_attachments = true;
         if (e.customer_id && !t.customer_id) { t.customer_id = e.customer_id; t.customer_name = e.customer_name || ''; }
@@ -383,7 +427,12 @@ export default async function(req) {
         };
         const existingT = tMap[key];
         if (existingT) {
-          toUpdate.push({ id: existingT.id, ...data });
+          const patch = { id: existingT.id, ...data };
+          // Reopen a tracked thread when the customer replies after it was resolved/closed/waiting
+          if (agg.hasNewInbound && existingT.action_required && ['resolved', 'closed', 'waiting_on_customer'].includes(existingT.workflow_status)) {
+            patch.workflow_status = 'open';
+          }
+          toUpdate.push(patch);
         } else {
           toCreate.push({ account_id: agg.account_id, thread_id: agg.thread_id, assigned_user_id: '', ...data });
         }

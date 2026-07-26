@@ -74,6 +74,15 @@ export default function EmailLinkPanel({ open, onClose, email }) {
     enabled: !!email?.id && open,
   });
 
+  // Thread-level links (auto-applied to all current + future messages in this thread)
+  const { data: threadLinks = [] } = useQuery({
+    queryKey: ["email-thread-links", email?.thread_id, email?.account_id],
+    queryFn: () => (email?.thread_id && email?.account_id ? base44.entities.EmailThreadLink.filter({ thread_id: email.thread_id, account_id: email.account_id, is_active: true }, "-linked_at", 100) : []),
+    enabled: !!email?.thread_id && !!email?.account_id && open,
+  });
+
+  const [applyToThread, setApplyToThread] = useState(true);
+
   const switchParty = (p) => {
     setParty(p);
     const types = p === "supplier" ? SUPPLIER_DOC_TYPES : CUSTOMER_DOC_TYPES;
@@ -141,8 +150,53 @@ export default function EmailLinkPanel({ open, onClose, email }) {
 
   const selectedDoc = docs.find((d) => d.id === selectedDocId);
 
+  const handleThreadLink = async () => {
+    setSaving(true);
+    try {
+      const jobs = [];
+      if (dt && selectedDoc) {
+        jobs.push({ action: "add", thread_id: email.thread_id, account_id: email.account_id, entity_type: linkType, entity_id: selectedDoc.id, entity_label: String(selectedDoc[dt.field] || ""), link_source: "manual" });
+        if (linkType === "purchase_order" && selectedDoc.supplier_id) {
+          try { const sups = await base44.entities.Supplier.list("-created_date", 200); const sup = sups.find((s) => s.id === selectedDoc.supplier_id); if (sup) jobs.push({ action: "add", thread_id: email.thread_id, account_id: email.account_id, entity_type: "supplier", entity_id: sup.id, entity_label: sup.name || "", link_source: "auto" }); } catch (_) {}
+        }
+      }
+      if (selectedCust?.id) jobs.push({ action: "add", thread_id: email.thread_id, account_id: email.account_id, entity_type: "customer", entity_id: selectedCust.id, entity_label: selectedCust.name, link_source: "manual" });
+      if (selectedSup?.id) jobs.push({ action: "add", thread_id: email.thread_id, account_id: email.account_id, entity_type: "supplier", entity_id: selectedSup.id, entity_label: selectedSup.name, link_source: "manual" });
+      for (const j of jobs) { await base44.functions.invoke("linkEmailThread", j); }
+      toast.success(`Linked to thread (${jobs.length} ${jobs.length === 1 ? "link" : "links"}) — future replies inherit automatically`);
+      qc.invalidateQueries({ queryKey: ["email-thread-links", email.thread_id, email.account_id] });
+      qc.invalidateQueries({ queryKey: ["emails"] });
+      qc.invalidateQueries({ queryKey: ["emails-section"] });
+      qc.invalidateQueries({ queryKey: ["email-threads"] });
+      onClose();
+    } catch (e) {
+      toast.error("Thread link failed: " + (e?.message || "error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeThreadLink = async (tl) => {
+    if (!confirm(`Remove ${LINK_LABEL[tl.entity_type] || tl.entity_type}: ${tl.entity_label || tl.entity_id} from this thread?\n\nThis removes the entire conversation, including future replies, from that record. Direct message links remain.`)) return;
+    setSaving(true);
+    try {
+      await base44.functions.invoke("linkEmailThread", { action: "remove", thread_id: tl.thread_id, account_id: tl.account_id, entity_type: tl.entity_type, entity_id: tl.entity_id });
+      qc.invalidateQueries({ queryKey: ["email-thread-links", email.thread_id, email.account_id] });
+      qc.invalidateQueries({ queryKey: ["emails"] });
+      qc.invalidateQueries({ queryKey: ["email-threads"] });
+      toast.success("Thread link removed");
+    } catch (e) {
+      toast.error("Remove failed: " + (e?.message || "error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleLink = async () => {
     if (!email) return;
+    if (applyToThread && email.thread_id && email.account_id) {
+      return handleThreadLink();
+    }
     setSaving(true);
     try {
       const newLinks = [];
@@ -269,6 +323,23 @@ export default function EmailLinkPanel({ open, onClose, email }) {
           <DialogTitle className="flex items-center gap-2"><Link2 className="w-4 h-4" /> Link Email</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Thread-level links (inherited by all current + future messages) */}
+          {threadLinks.length > 0 && (
+            <div className="rounded-md border border-blue-200 bg-blue-50/50 p-2">
+              <div className="text-xs font-semibold text-blue-800 mb-1">Thread links (auto-applied to all messages)</div>
+              <div className="flex flex-wrap gap-1.5">
+                {threadLinks.map((l) => (
+                  <Badge key={l.id} variant="outline" className="text-xs py-1 px-2 flex items-center gap-1 bg-white">
+                    <span className="text-slate-400">{LINK_LABEL[l.entity_type] || l.entity_type}:</span>
+                    <span className="font-medium">{l.entity_label || l.entity_id}</span>
+                    {l.linked_by && <span className="text-[10px] text-slate-400" title={`Linked by ${l.linked_by}`}>·{l.linked_by.split(" ")[0]}</span>}
+                    <button onClick={() => removeThreadLink(l)} disabled={saving} className="ml-0.5 text-slate-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Existing links (multi-link) */}
           {existingLinks.length > 0 && (
             <div>
@@ -401,6 +472,11 @@ export default function EmailLinkPanel({ open, onClose, email }) {
               </>
             )}
           </div>
+
+          <label className="flex items-start gap-2 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" checked={applyToThread} onChange={(e) => setApplyToThread(e.target.checked)} className="rounded mt-0.5" />
+            <span>Apply to entire thread — all current and future messages inherit these links automatically (recommended). Uncheck to link only this single message.</span>
+          </label>
         </div>
         <DialogFooter className="flex justify-between">
           <div>
