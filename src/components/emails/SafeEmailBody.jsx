@@ -40,8 +40,9 @@ export default function SafeEmailBody({ html, text }) {
           <FileText className="w-3.5 h-3.5" /> Block images
         </button>
       )}
+      <style>{`.email-body p, .email-body div { margin-top: 0 !important; margin-bottom: 0 !important; }`}</style>
       <div
-        className="email-body text-sm text-slate-800 break-words prose prose-sm max-w-none [&_img]:max-w-full [&_a]:text-[#e20404] [&_a]:underline"
+        className="email-body text-sm text-slate-800 break-words max-w-none [&_img]:max-w-full [&_a]:text-[#e20404] [&_a]:underline"
         dangerouslySetInnerHTML={{ __html: safe }}
       />
     </div>

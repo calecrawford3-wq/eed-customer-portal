@@ -11,6 +11,7 @@ import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, Messages
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
+import EmailAttachments from "@/components/emails/EmailAttachments";
 import ZohoMailConnect from "@/components/emails/ZohoMailConnect";
 import { toast } from "sonner";
 
@@ -463,6 +464,12 @@ export default function Emails() {
                     <span>{new Date(m.received_at).toLocaleString()}</span>
                   </div>
                   <SafeEmailBody html={m.body_html} text={m.body_text || m.preview} />
+                  <EmailAttachments
+                    attachments={m.attachments || []}
+                    accountId={m.account_id}
+                    folderId={m.folder_id}
+                    messageId={m.message_id}
+                  />
                 </div>
               ))}
             </div>

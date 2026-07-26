@@ -176,3 +176,30 @@ export function truncate(s, max) {
   if (!s) return "";
   return s.length > max ? s.slice(0, max) : s;
 }
+
+/** Download a raw attachment binary from Zoho Mail (authenticated). */
+export async function downloadAttachment(token, accountId, folderId, messageId, attachmentId) {
+  const url = `${ZOHO_MAIL_API}/accounts/${accountId}/folders/${folderId}/messages/${messageId}/attachments/${attachmentId}`;
+  const resp = await fetch(url, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`Zoho attachment download HTTP ${resp.status}: ${text.slice(0, 200)}`);
+  }
+  return resp;
+}
+
+/** Normalize a Zoho attachment object into the metadata we store on the Email record. */
+export function parseAttachment(a, accountId, folderId, messageId) {
+  if (!a) return null;
+  const attachmentId = String(a.attachmentId || a.id || a.attachment_id || "");
+  if (!attachmentId) return null;
+  return {
+    filename: a.filename || a.fileName || "attachment",
+    size: Number(a.size || 0),
+    content_type: a.mimeType || a.attachmentType || a.contentType || a.mime || "",
+    attachment_id: attachmentId,
+    account_id: String(accountId),
+    folder_id: String(folderId),
+    message_id: String(messageId),
+  };
+}

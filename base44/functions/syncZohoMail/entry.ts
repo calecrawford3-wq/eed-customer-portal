@@ -6,6 +6,7 @@ import {
   listMessages,
   getMessageDetail,
   parseAddress,
+  parseAttachment,
   htmlToText,
   truncate,
 } from '../../shared/zohoMail.ts';
@@ -163,6 +164,9 @@ export default async function(req) {
           const supplierName = supplier ? (supplier.name || '') : '';
           const isRead = !String(msg.flags || '').toLowerCase().includes('unread');
           const hasAttachments = String(msg.hasAttachment) === "1" || msg.hasAttachment === true;
+          const attachments = Array.isArray(detail.attachments)
+            ? detail.attachments.map((a) => parseAttachment(a, accountId, folderId, messageId)).filter(Boolean)
+            : [];
           const threadId = String(msg.threadId || msg.thread_id || messageId);
 
           try {
@@ -187,6 +191,7 @@ export default async function(req) {
               received_at: receivedAt,
               is_read: isRead,
               has_attachments: hasAttachments,
+              attachments,
               customer_id: customer?.id || '',
               customer_name: customerName,
               supplier_id: supplier?.id || '',

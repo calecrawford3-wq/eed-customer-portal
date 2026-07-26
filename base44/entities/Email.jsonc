@@ -80,6 +80,37 @@
       "type": "boolean",
       "default": false
     },
+    "attachments": {
+      "type": "array",
+      "description": "Attachment metadata captured at sync time (filename, size, content type, and Zoho IDs used to download via the getEmailAttachment function)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "default": 0
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "attachment_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "customer_id": {
       "type": "string",
       "description": "Auto-matched customer (by sender/recipient email) or manually linked"
