@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,17 +8,25 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Link2, Search } from "lucide-react";
+import { Link2, Search, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const DOC_TYPES = [
-  { value: "purchase_order", label: "Purchase Order", field: "po_number" },
-  { value: "invoice", label: "Invoice", field: "invoice_number" },
-  { value: "estimate", label: "Estimate", field: "estimate_number" },
-  { value: "build", label: "Engine Build", field: "engine_serial_number" },
+  { value: "purchase_order", label: "Purchase Order", entity: "PurchaseOrder", field: "po_number", custField: null },
+  { value: "invoice", label: "Invoice", entity: "Invoice", field: "invoice_number", custField: "customer_id" },
+  { value: "estimate", label: "Estimate", entity: "Estimate", field: "estimate_number", custField: "customer_id" },
+  { value: "build", label: "Engine Build", entity: "EngineBuild", field: "engine_serial_number", custField: "customer_id" },
 ];
+
+function docLabel(doc, dt) {
+  const num = doc[dt.field] || "(no number)";
+  let sub = "";
+  if (dt.value === "build") sub = doc.eed_id || doc.build_number || "";
+  else sub = doc.status || "";
+  return sub ? `${num} · ${sub}` : num;
+}
 
 export default function EmailLinkPanel({ open, onClose, email }) {
   const qc = useQueryClient();
@@ -27,9 +35,47 @@ export default function EmailLinkPanel({ open, onClose, email }) {
     email?.customer_id ? { id: email.customer_id, name: email.customer_name } : null
   );
   const [linkType, setLinkType] = useState(email?.link_type && email.link_type !== "none" ? email.link_type : "purchase_order");
-  const [docNumber, setDocNumber] = useState(email?.link_number || "");
   const [custResults, setCustResults] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  const [docs, setDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState(email?.link_id || "");
+
+  useEffect(() => {
+    let cancelled = false;
+    const dt = DOC_TYPES.find((d) => d.value === linkType);
+    if (!dt) { setDocs([]); return; }
+    // Document types tied to a customer require a customer selection first.
+    if (dt.custField && !selectedCust?.id) {
+      setDocs([]); setSelectedDocId("");
+      return;
+    }
+    setLoadingDocs(true);
+    (async () => {
+      try {
+        let list;
+        if (dt.custField && selectedCust?.id) {
+          list = await base44.entities[dt.entity].filter({ [dt.custField]: selectedCust.id }, "-created_date", 200);
+        } else {
+          list = await base44.entities[dt.entity].list("-created_date", 200);
+        }
+        if (cancelled) return;
+        setDocs(list || []);
+        // Preserve the existing link if it's still present in the list.
+        if (email?.link_type === linkType && email?.link_id && (list || []).some((d) => d.id === email.link_id)) {
+          setSelectedDocId(email.link_id);
+        } else {
+          setSelectedDocId("");
+        }
+      } catch (_) {
+        if (!cancelled) setDocs([]);
+      } finally {
+        if (!cancelled) setLoadingDocs(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [linkType, selectedCust?.id, email?.link_id, email?.link_type]);
 
   const searchCustomers = async (q) => {
     setCustQuery(q);
@@ -50,35 +96,23 @@ export default function EmailLinkPanel({ open, onClose, email }) {
     setSaving(true);
     try {
       const dt = DOC_TYPES.find((d) => d.value === linkType);
+      const selectedDoc = docs.find((d) => d.id === selectedDocId);
       let linkId = "";
-      let linkNumber = docNumber.trim();
+      let linkNumber = "";
       let matchedSupplierId = "";
       let matchedSupplierName = "";
-      if (dt && linkNumber) {
-        const entityName =
-          dt.value === "purchase_order" ? "PurchaseOrder" :
-          dt.value === "invoice" ? "Invoice" :
-          dt.value === "estimate" ? "Estimate" :
-          dt.value === "build" ? "EngineBuild" : null;
-        if (entityName) {
-          const matches = await base44.entities[entityName].list("-created_date", 200);
-          const found = matches.find((m) => String(m[dt.field] || "") === linkNumber);
-          if (!found) {
-            toast.error(`No ${dt.label} found with number "${linkNumber}"`);
-            setSaving(false);
-            return;
-          }
-          linkId = found.id;
-          // When linking to a purchase order, capture the PO's supplier so the
-          // email also appears on that vendor's profile.
-          if (linkType === "purchase_order" && found.supplier_id) {
-            matchedSupplierId = found.supplier_id;
-            try {
-              const sups = await base44.entities.Supplier.list("-created_date", 200);
-              const sup = sups.find((s) => s.id === found.supplier_id);
-              if (sup) matchedSupplierName = sup.name || "";
-            } catch (_) { /* ignore */ }
-          }
+      if (dt && selectedDoc) {
+        linkId = selectedDoc.id;
+        linkNumber = String(selectedDoc[dt.field] || "");
+        // When linking to a purchase order, capture the PO's supplier so the
+        // email also appears on that vendor's profile.
+        if (linkType === "purchase_order" && selectedDoc.supplier_id) {
+          matchedSupplierId = selectedDoc.supplier_id;
+          try {
+            const sups = await base44.entities.Supplier.list("-created_date", 200);
+            const sup = sups.find((s) => s.id === selectedDoc.supplier_id);
+            if (sup) matchedSupplierName = sup.name || "";
+          } catch (_) { /* ignore */ }
         }
       }
       await base44.entities.Email.update(email.id, {
@@ -117,6 +151,9 @@ export default function EmailLinkPanel({ open, onClose, email }) {
       setSaving(false);
     }
   };
+
+  const dt = DOC_TYPES.find((d) => d.value === linkType);
+  const needsCustomer = dt?.custField && !selectedCust?.id;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -163,8 +200,28 @@ export default function EmailLinkPanel({ open, onClose, email }) {
                 {DOC_TYPES.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input className="mt-2" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} placeholder="Document number (e.g. PO-1024, INV-205, serial #)" />
-            <p className="text-xs text-slate-400 mt-1">Leave the number blank to link only the customer.</p>
+
+            {needsCustomer ? (
+              <p className="text-xs text-amber-600 mt-2">Select a customer first to see their {dt.label.toLowerCase()}s.</p>
+            ) : loadingDocs ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400 mt-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading {dt.label.toLowerCase()}s…</div>
+            ) : (
+              <>
+                <Select value={selectedDocId || "none"} onValueChange={(v) => setSelectedDocId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No specific document</SelectItem>
+                    {docs.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{docLabel(d, dt)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {docs.length === 0 && (
+                  <p className="text-xs text-slate-400 mt-1">No {dt.label.toLowerCase()}s found for this customer.</p>
+                )}
+                <p className="text-xs text-slate-400 mt-1">Pick "No specific document" to link only the customer.</p>
+              </>
+            )}
           </div>
         </div>
         <DialogFooter className="flex justify-between">
