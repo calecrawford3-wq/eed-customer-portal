@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Mail, Phone, Globe, Trash2, Edit, Truck } from "lucide-react";
+import EmailsSection from "@/components/emails/EmailsSection";
 import { toast } from "sonner";
 
 const emptySupplier = {
@@ -23,6 +24,7 @@ export default function Suppliers() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptySupplier);
+  const [emailsFor, setEmailsFor] = useState(null);
   const qc = useQueryClient();
 
   const { data: suppliers = [], isLoading } = useQuery({
@@ -104,6 +106,9 @@ export default function Suppliers() {
                   <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(s)}>
                     <Edit className="w-3.5 h-3.5 mr-1" /> Edit
                   </Button>
+                  <Button size="sm" variant="outline" title="View emails" onClick={() => setEmailsFor(s)}>
+                    <Mail className="w-3.5 h-3.5" />
+                  </Button>
                   <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(s.id)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -141,6 +146,15 @@ export default function Suppliers() {
               {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Supplier"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!emailsFor} onOpenChange={(o) => { if (!o) setEmailsFor(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Mail className="w-4 h-4 text-[#e20404]" /> Emails — {emailsFor?.name}</DialogTitle>
+          </DialogHeader>
+          {emailsFor && <EmailsSection supplierId={emailsFor.id} title={`All email threads with ${emailsFor.name}`} />}
         </DialogContent>
       </Dialog>
     </div>

@@ -34,6 +34,7 @@ import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 import ContractEngineModal from "@/components/legal/ContractEngineModal";
 import { AlertTriangle as AlertTriangleIcon, ShieldAlert, FileText } from "lucide-react";
 import HistoryModal from "@/components/HistoryModal";
+import EmailsSection from "@/components/emails/EmailsSection";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -1896,6 +1897,12 @@ export default function EstimateDetail() {
         <div><Label>Customer Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Notes visible to customer..." /></div>
         <div><Label>Internal Notes</Label><Textarea value={form.internal_notes} onChange={e => setForm({...form, internal_notes: e.target.value})} rows={4} placeholder="Internal only..." /></div>
       </div>
+
+      {id && (
+        <div className="mt-6">
+          <EmailsSection linkType="estimate" linkId={id} docNumber={form.estimate_number} title="Emails linked to this estimate" />
+        </div>
+      )}
     </div>
   );
 }

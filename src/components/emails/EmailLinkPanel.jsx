@@ -52,6 +52,8 @@ export default function EmailLinkPanel({ open, onClose, email }) {
       const dt = DOC_TYPES.find((d) => d.value === linkType);
       let linkId = "";
       let linkNumber = docNumber.trim();
+      let matchedSupplierId = "";
+      let matchedSupplierName = "";
       if (dt && linkNumber) {
         const entityName =
           dt.value === "purchase_order" ? "PurchaseOrder" :
@@ -67,11 +69,23 @@ export default function EmailLinkPanel({ open, onClose, email }) {
             return;
           }
           linkId = found.id;
+          // When linking to a purchase order, capture the PO's supplier so the
+          // email also appears on that vendor's profile.
+          if (linkType === "purchase_order" && found.supplier_id) {
+            matchedSupplierId = found.supplier_id;
+            try {
+              const sups = await base44.entities.Supplier.list("-created_date", 200);
+              const sup = sups.find((s) => s.id === found.supplier_id);
+              if (sup) matchedSupplierName = sup.name || "";
+            } catch (_) { /* ignore */ }
+          }
         }
       }
       await base44.entities.Email.update(email.id, {
         customer_id: selectedCust?.id || "",
         customer_name: selectedCust?.name || "",
+        supplier_id: matchedSupplierId,
+        supplier_name: matchedSupplierName,
         link_type: linkId ? linkType : "none",
         link_id: linkId,
         link_number: linkId ? linkNumber : "",

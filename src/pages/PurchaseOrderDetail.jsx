@@ -13,6 +13,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
 import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
+import EmailsSection from "@/components/emails/EmailsSection";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
@@ -628,6 +629,12 @@ export default function PurchaseOrderDetail() {
       )}
 
       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Special instructions, notes for supplier..." /></div>
+
+      {id && (
+        <div className="mt-6">
+          <EmailsSection linkType="purchase_order" linkId={id} docNumber={form.po_number} title="Emails linked to this PO" />
+        </div>
+      )}
 
       <PoPartPickerModal
         open={pickerOpen}

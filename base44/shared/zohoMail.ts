@@ -108,17 +108,17 @@ export async function listFolders(token, accountId) {
 }
 
 export async function listMessages(token, accountId, folderId, limit = 50) {
-  const url = `${ZOHO_MAIL_API}/accounts/${accountId}/folders/${folderId}/messages?start=0&limit=${limit}&sortorder=false`;
+  const url = `${ZOHO_MAIL_API}/accounts/${accountId}/messages/view?folderId=${folderId}&start=0&limit=${limit}`;
   const resp = await fetch(url, { headers: authHeaders(token) });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    throw new Error(`Zoho /messages HTTP ${resp.status}: ${JSON.stringify(data)}`);
+    throw new Error(`Zoho /messages/view HTTP ${resp.status}: ${JSON.stringify(data)}`);
   }
   return pickList(data, 'messages');
 }
 
 export async function getMessageDetail(token, accountId, folderId, messageId) {
-  const url = `${ZOHO_MAIL_API}/accounts/${accountId}/folders/${folderId}/messages/${messageId}`;
+  const url = `${ZOHO_MAIL_API}/accounts/${accountId}/folders/${folderId}/messages/${messageId}/content`;
   const resp = await fetch(url, { headers: authHeaders(token) });
   const data = await resp.json().catch(() => ({}));
   const d = data?.data;

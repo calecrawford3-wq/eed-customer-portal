@@ -24,11 +24,16 @@ export default async function(req) {
       return Response.json({ success: true, accounts: 0, scanned: 0, newMessages: 0, note: 'No mailboxes found' });
     }
 
-    // Customer email -> customer map for auto-association
+    // Customer & Supplier email -> contact maps for auto-association
     const customers = await base44.asServiceRole.entities.Customer.list('-created_date', 500);
+    const suppliers = await base44.asServiceRole.entities.Supplier.list('-created_date', 500);
     const emailMap = {};
     for (const c of customers) {
-      if (c.email) emailMap[String(c.email).trim().toLowerCase()] = c;
+      if (c.email) emailMap[String(c.email).trim().toLowerCase()] = { type: 'customer', ref: c };
+    }
+    const supplierMap = {};
+    for (const s of suppliers) {
+      if (s.email) supplierMap[String(s.email).trim().toLowerCase()] = s;
     }
 
     // Dedupe by message_id
@@ -52,6 +57,7 @@ export default async function(req) {
         errors.push(`folders(${accountId}): ${e.message || e}`);
         continue;
       }
+
 
       for (const folder of folders) {
         const folderId = folder.folderId || folder.folder_id || folder.id;
@@ -80,8 +86,8 @@ export default async function(req) {
             /* keep metadata-only */
           }
 
-          const fromParsed = parseAddress(msg.from || msg.sender || detail.from);
-          const toParsed = parseAddress(msg.to || msg.toAddress || detail.to);
+          const fromParsed = parseAddress(msg.fromAddress || msg.from || msg.sender || detail.from);
+          const toParsed = parseAddress(msg.toAddress || msg.to || detail.to);
           const subject = msg.subject || detail.subject || '(no subject)';
           const isSent = fname.includes('sent');
           const direction = isSent ? 'outbound' : 'inbound';
@@ -92,16 +98,20 @@ export default async function(req) {
 
           let receivedAt = '';
           try {
-            receivedAt = msg.receivedTime || msg.sentDate || detail.receivedTime || detail.sentDate || '';
-            if (receivedAt) receivedAt = new Date(receivedAt).toISOString();
+            const rt = msg.receivedTime || msg.sentDateInGMT || msg.sentDate || detail.receivedTime || detail.sentDate || '';
+            if (rt) {
+              receivedAt = /^\d+$/.test(String(rt)) ? new Date(Number(rt)).toISOString() : new Date(rt).toISOString();
+            }
           } catch (_) { receivedAt = ''; }
           if (!receivedAt) receivedAt = new Date().toISOString();
 
           const matchEmail = isSent ? toParsed.email : fromParsed.email;
-          const customer = matchEmail ? emailMap[matchEmail] : null;
-          const customerName = customer
-            ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
-            : fromParsed.name || '';
+          const matchLower = matchEmail ? String(matchEmail).trim().toLowerCase() : '';
+          const custEntry = matchLower ? emailMap[matchLower] : null;
+          const customer = custEntry?.type === 'customer' ? custEntry.ref : null;
+          const customerName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : '';
+          const supplier = matchLower ? supplierMap[matchLower] : null;
+          const supplierName = supplier ? (supplier.name || '') : '';
 
           try {
             await base44.asServiceRole.entities.Email.create({
@@ -111,10 +121,10 @@ export default async function(req) {
               folder_id: String(folderId),
               folder_name: folder.folderName || folder.name || '',
               thread_id: String(msg.threadId || msg.thread_id || messageId),
-              from_address: msg.from || fromParsed.email || '',
+              from_address: msg.fromAddress || msg.from || fromParsed.email || '',
               from_email: fromParsed.email,
               from_name: fromParsed.name,
-              to_address: msg.to || toParsed.email || '',
+              to_address: msg.toAddress || msg.to || toParsed.email || '',
               to_email: toParsed.email,
               cc_address: msg.cc || detail.cc || '',
               subject,
@@ -123,9 +133,11 @@ export default async function(req) {
               direction,
               received_at: receivedAt,
               is_read: !String(msg.flags || '').toLowerCase().includes('unread'),
-              has_attachments: !!msg.hasAttachment,
+              has_attachments: String(msg.hasAttachment) === "1" || msg.hasAttachment === true,
               customer_id: customer?.id || '',
               customer_name: customerName,
+              supplier_id: supplier?.id || '',
+              supplier_name: supplierName,
               link_type: 'none',
               link_id: '',
               link_number: '',

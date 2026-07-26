@@ -23,6 +23,7 @@ import CustomerCreditsTab from "@/components/customer/CustomerCreditsTab";
 import CountrySelect, { getCountryName } from "@/components/CountrySelect";
 import CallButton from "@/components/CallButton";
 import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicationsTab";
+import EmailsSection from "@/components/emails/EmailsSection";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -227,6 +228,7 @@ export default function CustomerDetail() {
               <TabsTrigger value="invoices">Invoices ({customerInvoices.length})</TabsTrigger>
               <TabsTrigger value="credits">Credits</TabsTrigger>
               <TabsTrigger value="comms">Calls ({commCount})</TabsTrigger>
+              <TabsTrigger value="emails">Emails</TabsTrigger>
             </TabsList>
 
             <TabsContent value="engines">
@@ -342,6 +344,10 @@ export default function CustomerDetail() {
 
                 <TabsContent value="comms">
                 <CustomerCommunicationsTab customerId={id} />
+                </TabsContent>
+
+                <TabsContent value="emails">
+                <EmailsSection customerId={id} title="All email threads with this customer" />
                 </TabsContent>
                 </Tabs>
                 </div>

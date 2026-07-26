@@ -24,6 +24,7 @@ import PrintableInvoice from "@/components/PrintableInvoice";
 import EngineSelector from "@/components/EngineSelector";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 import HistoryModal from "@/components/HistoryModal";
+import EmailsSection from "@/components/emails/EmailsSection";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -1194,6 +1195,12 @@ export default function InvoiceDetail() {
         <div><Label>Notes for Customer</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} /></div>
         <div><Label>Payment Notes</Label><Textarea value={form.payment_notes} onChange={e => setForm({...form, payment_notes: e.target.value})} rows={4} /></div>
       </div>
+
+      {id && (
+        <div className="mt-6">
+          <EmailsSection linkType="invoice" linkId={id} docNumber={form.invoice_number} title="Emails linked to this invoice" />
+        </div>
+      )}
     </div>
   );
 }

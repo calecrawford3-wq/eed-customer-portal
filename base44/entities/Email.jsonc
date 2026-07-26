@@ -83,6 +83,13 @@
     "customer_name": {
       "type": "string"
     },
+    "supplier_id": {
+      "type": "string",
+      "description": "Auto-matched supplier/vendor (by sender/recipient email) or set when linked to a purchase order"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
     "link_type": {
       "type": "string",
       "enum": [
