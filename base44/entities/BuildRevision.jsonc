@@ -4,7 +4,7 @@
   "properties": {
     "build_id": {
       "type": "string",
-      "description": "Linked EngineBuild (existing source of truth)"
+      "description": "Linked EngineBuild. Empty for spec-sheet-only simulation revisions."
     },
     "engine_serial_number": {
       "type": "string"
@@ -107,7 +107,6 @@
     }
   },
   "required": [
-    "build_id",
     "revision_type"
   ],
   "rls": {

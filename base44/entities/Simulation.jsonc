@@ -6,7 +6,16 @@
       "type": "string"
     },
     "build_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Linked EngineBuild. Empty for spec-sheet-only simulations."
+    },
+    "spec_sheet_id": {
+      "type": "string",
+      "description": "Linked SpecSheet when the simulation is based on a spec sheet instead of a build"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform the simulation is based on (always populated, even for spec-sheet runs)"
     },
     "engine_serial_number": {
       "type": "string"
@@ -161,9 +170,7 @@
       "type": "string"
     }
   },
-  "required": [
-    "build_id"
-  ],
+  "required": [],
   "rls": {
     "read": {
       "user_condition": {
