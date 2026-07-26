@@ -66,9 +66,15 @@ export default function Emails() {
     return Array.from(set.values());
   }, [emails]);
 
-  const threadCategoryMap = useMemo(() => {
+  const threadMetaMap = useMemo(() => {
     const m = new Map();
-    for (const t of threadRecords) m.set(`${t.account_id}|${t.thread_id}`, t.category || "uncategorized");
+    for (const t of threadRecords) {
+      m.set(`${t.account_id}|${t.thread_id}`, {
+        id: t.id,
+        category: t.category || "uncategorized",
+        category_source: t.category_source || "uncategorized",
+      });
+    }
     return m;
   }, [threadRecords]);
 
@@ -117,12 +123,12 @@ export default function Emails() {
         link_type: linkMsg?.link_type,
         link_number: linkMsg?.link_number,
         has_attachments: msgs.some((m) => m.has_attachments),
-        category: threadCategoryMap.get(key) || "uncategorized",
+        category: threadMetaMap.get(key)?.category || "uncategorized",
       });
     }
     arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
     return arr;
-  }, [emails, threadCategoryMap]);
+  }, [emails, threadMetaMap]);
 
   // Counts shown on category chips are unread emails only
   const categoryUnreadCounts = useMemo(() => {
@@ -203,6 +209,26 @@ export default function Emails() {
     if (unread.length) qc.invalidateQueries({ queryKey: ["emails"] });
   };
   const onSelect = (thread) => { setSelectedKey(thread.key); markThreadRead(thread); };
+
+  const recategorize = async (newCat) => {
+    if (!selectedThread) return;
+    const rec = threadMetaMap.get(selectedThread.key);
+    if (!rec?.id) {
+      toast.error("Thread record not synced yet — sync first so the category can be saved.");
+      return;
+    }
+    try {
+      await base44.entities.EmailThread.update(rec.id, {
+        category: newCat,
+        category_source: "manual",
+        categorized_at: new Date().toISOString(),
+      });
+      qc.invalidateQueries({ queryKey: ["email-threads"] });
+      toast.success(`Moved to ${CATEGORY_META[newCat]?.label || newCat} (AI will learn from this)`);
+    } catch (e) {
+      toast.error("Couldn't save category: " + (e?.message || "error"));
+    }
+  };
 
   // Multi-select + bulk mark read / unread
   const toggleSelected = (key) => {
@@ -429,9 +455,21 @@ export default function Emails() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold text-slate-900 truncate">{selectedThread.subject}</h2>
-                    <Badge variant="outline" className={`text-[10px] py-0 px-1.5 ${(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).cls}`}>
-                      {(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).label}
-                    </Badge>
+                    <Select value={selectedThread.category} onValueChange={recategorize}>
+                      <SelectTrigger className="h-7 w-[150px] text-xs">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).cls}`}>
+                          {(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).label}
+                          {threadMetaMap.get(selectedThread.key)?.category_source === "manual" && <span className="opacity-60" title="Manually set">✎</span>}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORY_ORDER.map((cat) => (
+                          <SelectItem key={cat} value={cat} className="text-xs">
+                            {CATEGORY_META[cat].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {selectedThread.account_address} · {selectedThread.participants.length} participants · {selectedThread.message_count} message{selectedThread.message_count !== 1 ? "s" : ""}

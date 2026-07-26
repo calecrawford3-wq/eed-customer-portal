@@ -84,7 +84,17 @@
         "other"
       ],
       "default": "uncategorized",
-      "description": "AI-assigned category used to sort the inbox (promotional vs work, etc.)"
+      "description": "AI-assigned or user-set category used to sort the inbox (promotional vs work, etc.)"
+    },
+    "category_source": {
+      "type": "string",
+      "enum": [
+        "uncategorized",
+        "ai",
+        "manual"
+      ],
+      "default": "uncategorized",
+      "description": "Provenance of the category: 'manual' = set by a user (used as AI training examples and never overwritten by AI), 'ai' = assigned by the LLM"
     },
     "categorized_at": {
       "type": "string",
