@@ -12,11 +12,26 @@ import {
 } from "@/components/ui/dialog";
 import { Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 export default function EmailComposer({ open, onClose, prefillTo = "", prefillSubject = "" }) {
   const qc = useQueryClient();
+  const { data: settings } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: async () => (await base44.entities.AppSettings.filter({ key: "global" }))[0],
+  });
+  const noreply = settings?.smtp_from_email || "";
+  const regular = settings?.company_email || "";
+  const fromOptions = [
+    ...(noreply ? [{ key: "noreply", label: `Do not reply (${noreply})`, value: noreply }] : []),
+    ...(regular ? [{ key: "regular", label: `Regular (${regular})`, value: regular }] : []),
+  ];
+  const [fromKey, setFromKey] = useState("noreply");
+  const selectedFrom = fromOptions.find((o) => o.key === fromKey) || fromOptions[0];
   const [to, setTo] = useState(prefillTo);
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState(prefillSubject);
@@ -42,7 +57,7 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
       toast.error("Recipient and subject are required");
       return;
     }
-    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body });
+    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value });
   };
 
   return (
@@ -52,6 +67,19 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
           <DialogTitle className="flex items-center gap-2"><Send className="w-4 h-4" /> New Email</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {fromOptions.length > 0 && (
+            <div>
+              <Label className="text-xs text-slate-500">From</Label>
+              <Select value={selectedFrom?.key} onValueChange={setFromKey}>
+                <SelectTrigger><SelectValue placeholder="Select sender" /></SelectTrigger>
+                <SelectContent>
+                  {fromOptions.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-xs text-slate-500">To</Label>
             <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
