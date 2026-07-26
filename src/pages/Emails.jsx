@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -47,6 +47,8 @@ export default function Emails() {
   const [selectedKey, setSelectedKey] = useState(null);
   const [selectedSet, setSelectedSet] = useState(new Set());
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeMode, setComposeMode] = useState("compose");
+  const [composeSource, setComposeSource] = useState(null);
   const [linkTarget, setLinkTarget] = useState(null);
   const [connectOpen, setConnectOpen] = useState(false);
 
@@ -230,6 +232,12 @@ export default function Emails() {
     }
   };
 
+  const openCompose = (mode, source = null) => {
+    setComposeMode(mode);
+    setComposeSource(source);
+    setComposeOpen(true);
+  };
+
   // Multi-select + bulk mark read / unread
   const toggleSelected = (key) => {
     setSelectedSet((prev) => {
@@ -320,7 +328,7 @@ export default function Emails() {
             <Sparkles className={`w-4 h-4 mr-1 ${categorizeMut.isPending ? "animate-spin" : ""}`} />
             {categorizeMut.isPending ? "Sorting…" : "Sort with AI"}
           </Button>
-          <Button onClick={() => setComposeOpen(true)} className="bg-[#e20404] hover:bg-[#c00303]">
+          <Button onClick={() => openCompose("compose")} className="bg-[#e20404] hover:bg-[#c00303]">
             <Send className="w-4 h-4 mr-1" /> Compose
           </Button>
         </div>
@@ -512,16 +520,22 @@ export default function Emails() {
                     {selectedThread.account_address} · {selectedThread.participants.length} participants · {selectedThread.message_count} message{selectedThread.message_count !== 1 ? "s" : ""}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={toggleThreadRead} title={selectedThread.unread_count > 0 ? "Mark thread as read" : "Mark thread as unread"}>
                     {selectedThread.unread_count > 0 ? <MailOpen className="w-3.5 h-3.5 mr-1" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
-                    {selectedThread.unread_count > 0 ? "Mark read" : "Mark unread"}
+                    {selectedThread.unread_count > 0 ? "Read" : "Unread"}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setLinkTarget(replyTarget || selectedThread.messages[selectedThread.messages.length - 1])}>
                     <Link2 className="w-3.5 h-3.5 mr-1" /> Link
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setComposeOpen(true)}>
+                  <Button size="sm" variant="outline" onClick={() => openCompose("reply", replyTarget)} title="Reply to sender">
                     <CornerUpLeft className="w-3.5 h-3.5 mr-1" /> Reply
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openCompose("replyAll", replyTarget)} title="Reply to sender and all recipients">
+                    <ReplyAll className="w-3.5 h-3.5 mr-1" /> Reply All
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openCompose("forward", replyTarget)} title="Forward this message">
+                    <Forward className="w-3.5 h-3.5 mr-1" /> Forward
                   </Button>
                 </div>
               </div>
@@ -556,9 +570,7 @@ export default function Emails() {
         </div>
       </div>
 
-      <EmailComposer open={composeOpen} onClose={() => setComposeOpen(false)}
-        prefillTo={replyTarget && replyTarget.direction === "inbound" ? replyTarget.from_email : ""}
-        prefillSubject={selectedThread ? (selectedThread.subject?.startsWith("Re:") ? selectedThread.subject : `Re: ${selectedThread.subject || ""}`) : ""} />
+      <EmailComposer open={composeOpen} onClose={() => setComposeOpen(false)} mode={composeMode} sourceMessage={composeSource} />
       <EmailLinkPanel open={!!linkTarget} onClose={() => { setLinkTarget(null); qc.invalidateQueries({ queryKey: ["emails"] }); }} email={linkTarget} />
       <ZohoMailConnect open={connectOpen} onClose={() => setConnectOpen(false)} />
     </div>

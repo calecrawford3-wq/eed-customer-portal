@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,22 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export default function EmailComposer({ open, onClose, prefillTo = "", prefillSubject = "" }) {
+function buildQuote(src) {
+  if (!src) return "";
+  const lines = ["-----Original Message-----"];
+  if (src.from_name || src.from_email) {
+    lines.push(`From: ${src.from_name ? `${src.from_name} <${src.from_email || ""}>` : src.from_email || ""}`);
+  }
+  if (src.to_email) lines.push(`To: ${src.to_email}`);
+  if (src.cc_address) lines.push(`Cc: ${src.cc_address}`);
+  if (src.subject) lines.push(`Subject: ${src.subject}`);
+  if (src.received_at) lines.push(`Date: ${new Date(src.received_at).toLocaleString()}`);
+  lines.push("");
+  lines.push((src.body_text || src.preview || "").trim());
+  return lines.join("\n");
+}
+
+export default function EmailComposer({ open, onClose, mode = "compose", sourceMessage = null }) {
   const qc = useQueryClient();
   const { data: settings } = useQuery({
     queryKey: ["app-settings"],
@@ -34,10 +49,41 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
   ];
   const [fromKey, setFromKey] = useState("noreply");
   const selectedFrom = fromOptions.find((o) => o.key === fromKey) || fromOptions[0];
-  const [to, setTo] = useState(prefillTo);
+  const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
-  const [subject, setSubject] = useState(prefillSubject);
+  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+
+  // Seed fields when the dialog opens (or when mode/source changes while open)
+  useEffect(() => {
+    if (!open) return;
+    if (mode === "compose" || !sourceMessage) {
+      setTo(""); setCc(""); setSubject(""); setBody("");
+      return;
+    }
+    const src = sourceMessage;
+    const baseSubject = (src.subject || "").replace(/^(\s*(re|fwd|fw):\s*)+/i, "");
+    const quote = buildQuote(src);
+    if (mode === "forward") {
+      setTo(""); setCc(""); setSubject(`Fwd: ${baseSubject}`); setBody(`\n\n${quote}`);
+    } else {
+      // Reply / Reply All — address the sender (or, for an outbound msg, its recipient)
+      const replyTo = src.direction === "outbound" ? (src.to_email || "") : (src.from_email || "");
+      if (mode === "replyAll") {
+        const own = (src.account_address || "").toLowerCase();
+        const others = new Set();
+        if (replyTo) others.add(replyTo);
+        const addrs = [src.to_email, src.cc_address].filter(Boolean).join(",").split(",").map((s) => s.trim()).filter(Boolean);
+        for (const a of addrs) { if (a && a.toLowerCase() !== own) others.add(a); }
+        setTo(Array.from(others).join(", "));
+      } else {
+        setTo(replyTo);
+      }
+      setCc("");
+      setSubject(`Re: ${baseSubject}`);
+      setBody(`\n\n${quote}`);
+    }
+  }, [open, mode, sourceMessage]);
 
   const sendMut = useMutation({
     mutationFn: (payload) => base44.functions.invoke("sendZohoMail", payload),
@@ -52,7 +98,7 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
     onError: (e) => toast.error("Send failed: " + (e?.response?.data?.error || e?.message || "error")),
   });
 
-  const reset = () => { setTo(prefillTo); setCc(""); setSubject(prefillSubject); setBody(""); };
+  const reset = () => { setTo(""); setCc(""); setSubject(""); setBody(""); };
 
   const handleSend = () => {
     if (!to.trim() || !subject.trim()) {
@@ -66,7 +112,7 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Send className="w-4 h-4" /> New Email</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Send className="w-4 h-4" /> {mode === "forward" ? "Forward" : mode === "reply" || mode === "replyAll" ? "Reply" : "New Email"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {fromOptions.length > 0 && (
