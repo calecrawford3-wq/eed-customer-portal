@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ import EmailDraftsModal from "@/components/emails/EmailDraftsModal";
 import ThreadNotesEditor from "@/components/emails/ThreadNotesEditor";
 import ThreadActionPanel from "@/components/emails/ThreadActionPanel";
 import CreateTaskFromEmailModal from "@/components/emails/CreateTaskFromEmailModal";
+import ScheduleCallFromEmailModal from "@/components/emails/ScheduleCallFromEmailModal";
+import SavedViewsBar from "@/components/emails/SavedViewsBar";
 import { toast } from "sonner";
 
 function fmtDate(iso) {
@@ -67,6 +69,7 @@ export default function Emails() {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskSourceEmail, setTaskSourceEmail] = useState(null);
   const [taskPrefill, setTaskPrefill] = useState("");
+  const [callModalOpen, setCallModalOpen] = useState(false);
 
   const PAGE_SIZE = 200;
   const { data: firstPage = [], isLoading } = useQuery({
@@ -105,6 +108,11 @@ export default function Emails() {
     queryFn: () => base44.entities.User.list(),
   });
 
+  const { data: savedViews = [] } = useQuery({
+    queryKey: ["inbox-views"],
+    queryFn: () => base44.entities.InboxView.list("-created_date", 50),
+  });
+
   const mailboxes = useMemo(() => {
     const set = new Map();
     for (const e of allEmails) if (e.account_address) set.set(e.account_address, e.account_address);
@@ -119,9 +127,9 @@ export default function Emails() {
     return m;
   }, [threadRecords]);
 
-  const threads = useMemo(() => {
+  function buildThreadList(emails) {
     const map = new Map();
-    for (const e of allEmails) {
+    for (const e of emails) {
       const key = `${e.account_id || ""}|${e.thread_id || e.message_id || e.id}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(e);
@@ -184,19 +192,108 @@ export default function Emails() {
     }
     arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
     return arr;
-  }, [allEmails, threadMetaMap]);
+  }
+
+  const baseThreads = useMemo(() => buildThreadList(allEmails), [allEmails, threadMetaMap]);
+
+  // Server-side full-text search with cursor pagination
+  const [serverQ, setServerQ] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchHasMore, setSearchHasMore] = useState(false);
+  const [searchBefore, setSearchBefore] = useState(null);
+  const [loadingMoreSearch, setLoadingMoreSearch] = useState(false);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 3) {
+      setServerQ(""); setSearchResults([]); setSearchHasMore(false); setSearchBefore(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await base44.functions.invoke("searchEmails", { q, limit: 60 });
+        const emails = res?.data?.emails || [];
+        setSearchResults(emails);
+        setSearchHasMore(!!res?.data?.has_more);
+        setSearchBefore(emails.length ? emails[emails.length - 1]?.received_at : null);
+        setServerQ(q);
+      } catch (e) {
+        toast.error("Search failed: " + (e?.message || "error"));
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const loadMoreSearch = async () => {
+    if (!serverQ || loadingMoreSearch || !searchBefore) return;
+    setLoadingMoreSearch(true);
+    try {
+      const res = await base44.functions.invoke("searchEmails", { q: serverQ, limit: 60, before: searchBefore });
+      const emails = res?.data?.emails || [];
+      setSearchResults((prev) => [...prev, ...emails]);
+      setSearchHasMore(!!res?.data?.has_more);
+      setSearchBefore(emails.length ? emails[emails.length - 1]?.received_at : null);
+    } catch (e) {
+      toast.error("Couldn't load more: " + (e?.message || "error"));
+    } finally {
+      setLoadingMoreSearch(false);
+    }
+  };
+
+  const searchThreads = useMemo(() => buildThreadList(searchResults), [searchResults, threadMetaMap]);
+  const serverSearchActive = !!serverQ;
+  const threads = serverSearchActive ? searchThreads : baseThreads;
 
   // Counts shown on category chips are unread emails only
   const categoryUnreadCounts = useMemo(() => {
     const c = {};
-    for (const t of threads) c[t.category] = (c[t.category] || 0) + t.unread_count;
+    for (const t of baseThreads) c[t.category] = (c[t.category] || 0) + t.unread_count;
     return c;
-  }, [threads]);
+  }, [baseThreads]);
   const totalUnread = useMemo(
     () => Object.values(categoryUnreadCounts).reduce((a, b) => a + b, 0),
     [categoryUnreadCounts]
   );
-  const needsActionCount = useMemo(() => threads.filter((t) => t.needsAction).length, [threads]);
+  const needsActionCount = useMemo(() => baseThreads.filter((t) => t.needsAction).length, [baseThreads]);
+
+  // Saved inbox views
+  const [activeViewId, setActiveViewId] = useState(null);
+  const applyView = (v) => {
+    setDirFilter(v.dirFilter || "all");
+    setMailboxFilter(v.mailboxFilter || "all");
+    setCategoryFilter(v.categoryFilter || "all");
+    setUnreadOnly(!!v.unreadOnly);
+    setNeedsActionOnly(!!v.needsActionOnly);
+    setSearch(v.search || "");
+    setActiveViewId(v.id);
+  };
+  const saveView = async () => {
+    const name = prompt("Name this view");
+    if (!name || !name.trim()) return;
+    try {
+      const created = await base44.entities.InboxView.create({
+        name: name.trim(), dirFilter, mailboxFilter, categoryFilter, unreadOnly, needsActionOnly, search,
+      });
+      qc.invalidateQueries({ queryKey: ["inbox-views"] });
+      setActiveViewId(created.id);
+      toast.success("Saved view");
+    } catch (e) {
+      toast.error("Couldn't save view: " + (e?.message || "error"));
+    }
+  };
+  const deleteView = async (id) => {
+    try {
+      await base44.entities.InboxView.delete(id);
+      if (activeViewId === id) setActiveViewId(null);
+      qc.invalidateQueries({ queryKey: ["inbox-views"] });
+    } catch (e) {
+      toast.error("Couldn't delete view");
+    }
+  };
 
   const filteredThreads = useMemo(() => {
     return threads.filter((t) => {
@@ -205,14 +302,14 @@ export default function Emails() {
       if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
       if (unreadOnly && t.unread_count === 0) return false;
       if (needsActionOnly && !t.needsAction) return false;
-      if (search) {
+      if (search && !serverSearchActive) {
         const q = search.toLowerCase();
         const hay = `${t.subject} ${t.participants.join(" ")} ${t.customer_name || ""} ${t.supplier_name || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [threads, dirFilter, mailboxFilter, categoryFilter, unreadOnly, needsActionOnly, search]);
+  }, [threads, dirFilter, mailboxFilter, categoryFilter, unreadOnly, needsActionOnly, search, serverSearchActive]);
 
   const selectedThread = filteredThreads.find((t) => t.key === selectedKey) || null;
 
@@ -448,6 +545,8 @@ export default function Emails() {
         })}
       </div>
 
+      <SavedViewsBar views={savedViews} activeViewId={activeViewId} onApply={applyView} onSave={saveView} onDelete={deleteView} />
+
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="relative flex-1 min-w-[200px]">
@@ -523,6 +622,7 @@ export default function Emails() {
             </Button>
           </div>
 
+          {searching && <div className="text-xs text-slate-400 mb-1">Searching across all mail…</div>}
           <div className="border rounded-lg bg-white max-h-[62vh] overflow-y-auto min-w-0">
             {isLoading ? (
               <div className="p-8 text-center text-slate-400 text-sm">Loading emails…</div>
@@ -587,11 +687,17 @@ export default function Emails() {
               })
             )}
           </div>
-          {canLoadMore && (
+          {serverSearchActive ? (
+            searchHasMore ? (
+              <Button variant="outline" onClick={loadMoreSearch} disabled={loadingMoreSearch} className="w-full mt-2 text-xs">
+                {loadingMoreSearch ? "Loading…" : "Load more results"}
+              </Button>
+            ) : null
+          ) : canLoadMore ? (
             <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="w-full mt-2 text-xs">
               {loadingMore ? "Loading…" : "Load older emails"}
             </Button>
-          )}
+          ) : null}
         </div>
 
         {/* Thread / detail */}
@@ -669,6 +775,7 @@ export default function Emails() {
                 threadRecord={threadMetaMap.get(selectedThread.key)}
                 users={users}
                 onCreateTask={() => { setTaskSourceEmail(replyTarget); setTaskModalOpen(true); }}
+                onScheduleCall={() => setCallModalOpen(true)}
                 onReply={() => openCompose("reply", replyTarget)}
               />
 
@@ -711,6 +818,13 @@ export default function Emails() {
         users={users}
         threadRecord={selectedThread ? threadMetaMap.get(selectedThread.key) : null}
         prefillDescription={taskPrefill}
+      />
+      <ScheduleCallFromEmailModal
+        open={callModalOpen}
+        onClose={() => setCallModalOpen(false)}
+        thread={selectedThread}
+        threadRecord={selectedThread ? threadMetaMap.get(selectedThread.key) : null}
+        users={users}
       />
     </div>
   );

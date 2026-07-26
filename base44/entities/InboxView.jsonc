@@ -1,0 +1,37 @@
+{
+  "name": "InboxView",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name for this saved inbox filter preset"
+    },
+    "dirFilter": {
+      "type": "string",
+      "default": "all"
+    },
+    "mailboxFilter": {
+      "type": "string",
+      "default": "all"
+    },
+    "categoryFilter": {
+      "type": "string",
+      "default": "all"
+    },
+    "unreadOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "needsActionOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "search": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

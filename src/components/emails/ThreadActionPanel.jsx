@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock, Phone } from "lucide-react";
 import { toast } from "sonner";
 import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
 
@@ -44,7 +44,7 @@ function Field({ label, value, highlight }) {
   );
 }
 
-export default function ThreadActionPanel({ thread, threadRecord, users, onCreateTask, onReply }) {
+export default function ThreadActionPanel({ thread, threadRecord, users, onCreateTask, onScheduleCall, onReply }) {
   const qc = useQueryClient();
   const recId = threadRecord?.id;
   const status = threadRecord?.workflow_status || "new";
@@ -122,6 +122,7 @@ export default function ThreadActionPanel({ thread, threadRecord, users, onCreat
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => onReply(thread)}><CornerUpLeft className="w-3.5 h-3.5 mr-1" />Reply</Button>
         <Button size="sm" variant="outline" onClick={() => onCreateTask(thread)}><ListTodo className="w-3.5 h-3.5 mr-1" />Create task</Button>
+        <Button size="sm" variant="outline" onClick={() => onScheduleCall(thread)}><Phone className="w-3.5 h-3.5 mr-1" />Schedule call</Button>
         <Button size="sm" variant="outline" onClick={() => update({ workflow_status: "resolved" })} disabled={status === "resolved" || status === "closed"}><CheckCircle2 className="w-3.5 h-3.5 mr-1" />Resolve</Button>
       </div>
     </div>
