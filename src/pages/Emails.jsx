@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell, FileText, Edit3 } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -15,6 +15,9 @@ import EmailAttachments from "@/components/emails/EmailAttachments";
 import ZohoMailConnect from "@/components/emails/ZohoMailConnect";
 import EmailSendLogModal from "@/components/emails/EmailSendLogModal";
 import EmailNotifySettingsModal from "@/components/emails/EmailNotifySettingsModal";
+import EmailTemplatesModal from "@/components/emails/EmailTemplatesModal";
+import EmailDraftsModal from "@/components/emails/EmailDraftsModal";
+import ThreadNotesEditor from "@/components/emails/ThreadNotesEditor";
 import { toast } from "sonner";
 
 function fmtDate(iso) {
@@ -55,6 +58,9 @@ export default function Emails() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [sendLogOpen, setSendLogOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [composeDraft, setComposeDraft] = useState(null);
 
   const PAGE_SIZE = 200;
   const { data: firstPage = [], isLoading } = useQuery({
@@ -271,9 +277,10 @@ export default function Emails() {
     }
   };
 
-  const openCompose = (mode, source = null) => {
+  const openCompose = (mode, source = null, draft = null) => {
     setComposeMode(mode);
     setComposeSource(source);
+    setComposeDraft(draft);
     setComposeOpen(true);
   };
 
@@ -375,6 +382,12 @@ export default function Emails() {
           </Button>
           <Button variant="outline" onClick={() => setNotifyOpen(true)} className="text-xs" title="Notification quiet hours and resync alerts">
             <Bell className="w-4 h-4 mr-1" /> Notify
+          </Button>
+          <Button variant="outline" onClick={() => setTemplatesOpen(true)} className="text-xs">
+            <FileText className="w-4 h-4 mr-1" /> Templates
+          </Button>
+          <Button variant="outline" onClick={() => setDraftsOpen(true)} className="text-xs">
+            <Edit3 className="w-4 h-4 mr-1" /> Drafts
           </Button>
           <Button variant="outline" onClick={() => categorizeMut.mutate()} disabled={categorizeMut.isPending}
             title="Use AI to sort uncategorized threads into categories">
@@ -606,6 +619,8 @@ export default function Emails() {
                 </div>
               )}
 
+              <ThreadNotesEditor thread={selectedThread} threadRecord={threadMetaMap.get(selectedThread.key)} />
+
               {selectedThread.messages.map((m) => (
                 <div key={m.id} className={`border rounded p-3 ${m.direction === "outbound" ? "bg-blue-50/40 border-blue-100" : "bg-slate-50"}`}>
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -628,11 +643,13 @@ export default function Emails() {
         </div>
       </div>
 
-      <EmailComposer open={composeOpen} onClose={() => setComposeOpen(false)} mode={composeMode} sourceMessage={composeSource} />
+      <EmailComposer open={composeOpen} onClose={() => { setComposeOpen(false); setComposeDraft(null); }} mode={composeMode} sourceMessage={composeSource} draft={composeDraft} />
       <EmailLinkPanel open={!!linkTarget} onClose={() => { setLinkTarget(null); qc.invalidateQueries({ queryKey: ["emails"] }); }} email={linkTarget} />
       <ZohoMailConnect open={connectOpen} onClose={() => setConnectOpen(false)} />
       <EmailSendLogModal open={sendLogOpen} onClose={() => setSendLogOpen(false)} />
       <EmailNotifySettingsModal open={notifyOpen} onClose={() => setNotifyOpen(false)} />
+      <EmailTemplatesModal open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
+      <EmailDraftsModal open={draftsOpen} onClose={() => setDraftsOpen(false)} onResume={(d) => openCompose(d.reply_mode || "compose", null, d)} />
     </div>
   );
 }

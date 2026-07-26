@@ -104,6 +104,10 @@
       "type": "string",
       "description": "Staff member assigned to handle this thread"
     },
+    "internal_notes": {
+      "type": "string",
+      "description": "Staff-only notes about this thread (not sent to customers, not synced to Zoho)"
+    },
     "status": {
       "type": "string",
       "enum": [

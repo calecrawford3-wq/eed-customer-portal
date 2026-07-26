@@ -1,0 +1,48 @@
+{
+  "name": "EmailDraft",
+  "type": "object",
+  "properties": {
+    "client_draft_id": {
+      "type": "string",
+      "description": "Stable id used to upsert a draft across repeated saves"
+    },
+    "to": {
+      "type": "string"
+    },
+    "cc": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "from_address": {
+      "type": "string"
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "reply_mode": {
+      "type": "string",
+      "enum": [
+        "compose",
+        "reply",
+        "replyAll",
+        "forward"
+      ],
+      "default": "compose"
+    },
+    "source_message_id": {
+      "type": "string",
+      "description": "Zoho message ID used to thread a reply draft on send"
+    },
+    "thread_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_draft_id"
+  ]
+}

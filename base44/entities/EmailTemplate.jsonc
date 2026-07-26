@@ -1,0 +1,26 @@
+{
+  "name": "EmailTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name shown in the picker"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Prefilled subject (optional)"
+    },
+    "body": {
+      "type": "string",
+      "description": "Prefilled message body"
+    },
+    "category": {
+      "type": "string",
+      "description": "Optional grouping label"
+    }
+  },
+  "required": [
+    "name",
+    "body"
+  ]
+}

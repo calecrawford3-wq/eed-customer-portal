@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Send } from "lucide-react";
+import { Send, Save } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -33,7 +33,7 @@ function buildQuote(src) {
   return lines.join("\n");
 }
 
-export default function EmailComposer({ open, onClose, mode = "compose", sourceMessage = null }) {
+export default function EmailComposer({ open, onClose, mode = "compose", sourceMessage = null, draft = null }) {
   const qc = useQueryClient();
   const { data: settings } = useQuery({
     queryKey: ["app-settings"],
@@ -54,9 +54,27 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  // Seed fields when the dialog opens (or when mode/source changes while open)
+  const { data: templates = [] } = useQuery({
+    queryKey: ["email-templates"],
+    queryFn: () => base44.entities.EmailTemplate.list("-created_date", 200),
+  });
+  const [activeDraftId, setActiveDraftId] = useState(null);
+
+  // Seed fields when the dialog opens (from a resumed draft, a reply/forward, or blank)
   useEffect(() => {
     if (!open) return;
+    if (draft) {
+      setTo(draft.to || "");
+      setCc(draft.cc || "");
+      setSubject(draft.subject || "");
+      setBody(draft.body || "");
+      setActiveDraftId(draft.id || null);
+      const match = fromOptions.find((o) => o.value === draft.from_address);
+      if (match) setFromKey(match.key);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      return;
+    }
+    setActiveDraftId(null);
     if (mode === "compose" || !sourceMessage) {
       setTo(""); setCc(""); setSubject(""); setBody("");
       return;
@@ -83,12 +101,14 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       setSubject(`Re: ${baseSubject}`);
       setBody(`\n\n${quote}`);
     }
-  }, [open, mode, sourceMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft, mode, sourceMessage]);
 
   const sendMut = useMutation({
     mutationFn: (payload) => base44.functions.invoke("sendZohoMail", payload),
     onSuccess: async () => {
       toast.success("Email sent");
+      if (activeDraftId) { try { await base44.entities.EmailDraft.delete(activeDraftId); qc.invalidateQueries({ queryKey: ["email-drafts"] }); } catch (_) {} }
       // Trigger a sync so the sent message appears in the list from the Sent folder
       try { await base44.functions.invoke("syncZohoMail"); } catch (_) {}
       qc.invalidateQueries({ queryKey: ["emails"] });
@@ -114,8 +134,41 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       fromName: selectedFrom?.name,
       clientSendId: crypto.randomUUID(),
       // For replies, Zoho threads the message with the original (sets In-Reply-To / References)
-      replyToMessageId: (mode === "reply" || mode === "replyAll") ? sourceMessage?.message_id : undefined,
+      replyToMessageId: (mode === "reply" || mode === "replyAll") ? sourceMessage?.message_id : (draft?.source_message_id || undefined),
     });
+  };
+
+  const insertTemplate = (id) => {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    if (t.subject) setSubject(t.subject);
+    if (t.body) setBody(t.body);
+  };
+
+  const handleSaveDraft = async () => {
+    const cid = draft?.client_draft_id || crypto.randomUUID();
+    const payload = {
+      client_draft_id: cid,
+      to, cc, subject, body,
+      from_address: selectedFrom?.value,
+      from_name: selectedFrom?.name,
+      reply_mode: mode,
+      source_message_id: (mode === "reply" || mode === "replyAll") ? sourceMessage?.message_id : (draft?.source_message_id || undefined),
+      thread_id: sourceMessage?.thread_id || draft?.thread_id || undefined,
+    };
+    try {
+      if (activeDraftId) {
+        await base44.entities.EmailDraft.update(activeDraftId, payload);
+      } else {
+        const rec = await base44.entities.EmailDraft.create(payload);
+        setActiveDraftId(rec.id);
+      }
+      qc.invalidateQueries({ queryKey: ["email-drafts"] });
+      toast.success("Draft saved");
+      onClose();
+    } catch (e) {
+      toast.error("Couldn't save draft: " + (e?.message || "error"));
+    }
   };
 
   return (
@@ -150,12 +203,26 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
             <Label className="text-xs text-slate-500">Subject</Label>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
+          {templates.length > 0 && (
+            <div>
+              <Label className="text-xs text-slate-500">Insert template</Label>
+              <Select value="" onValueChange={insertTemplate}>
+                <SelectTrigger><SelectValue placeholder="Choose a template…" /></SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-xs text-slate-500">Message</Label>
             <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="resize-y" />
           </div>
         </div>
         <DialogFooter>
+          <Button variant="outline" onClick={handleSaveDraft}><Save className="w-4 h-4 mr-1" /> Save draft</Button>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
           <Button onClick={handleSend} disabled={sendMut.isPending} className="bg-[#e20404] hover:bg-[#c00303]">
             {sendMut.isPending ? "Sending…" : "Send"}
