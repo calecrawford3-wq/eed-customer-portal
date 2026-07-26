@@ -21,6 +21,8 @@ import Approvals from './pages/Approvals';
 import Simulator from './pages/Simulator';
 import DynoImport from './pages/DynoImport';
 import DevelopmentData from './pages/DevelopmentData';
+import ModelAccuracy from './pages/ModelAccuracy';
+import DynoComparison from './pages/DynoComparison';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -96,6 +98,8 @@ const AuthenticatedApp = () => {
       <Route path="/Simulator" element={<LayoutWrapper currentPageName="Simulator"><Simulator /></LayoutWrapper>} />
       <Route path="/DynoImport" element={<LayoutWrapper currentPageName="DynoImport"><DynoImport /></LayoutWrapper>} />
       <Route path="/DevelopmentData" element={<LayoutWrapper currentPageName="DevelopmentData"><DevelopmentData /></LayoutWrapper>} />
+      <Route path="/ModelAccuracy" element={<LayoutWrapper currentPageName="ModelAccuracy"><ModelAccuracy /></LayoutWrapper>} />
+      <Route path="/DynoComparison" element={<LayoutWrapper currentPageName="DynoComparison"><DynoComparison /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -33,7 +33,8 @@ import {
   ClipboardCheck,
   FlaskConical,
   FileBarChart,
-  Database
+  Database,
+  Target
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
