@@ -157,6 +157,22 @@ export async function sendMessage(token, accountId, payload) {
   return { ok: resp.ok, status: resp.status, data };
 }
 
+/**
+ * Reply to a specific message using Zoho's dedicated reply endpoint.
+ * Zoho automatically sets In-Reply-To / References headers and threads the
+ * reply with the original conversation, so it groups correctly on re-sync.
+ * @param {string} originalMessageId  Zoho internal message ID of the email being replied to
+ */
+export async function replyToMessage(token, accountId, originalMessageId, payload) {
+  const resp = await fetch(`${ZOHO_MAIL_API}/accounts/${accountId}/messages/${originalMessageId}`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ...payload, action: "reply" }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  return { ok: resp.ok, status: resp.status, data };
+}
+
 /** Parse a Zoho address like 'Name' <email> into { name, email }. */
 export function parseAddress(addr) {
   if (!addr) return { name: "", email: "" };
@@ -221,4 +237,29 @@ export function parseAttachment(a, accountId, folderId, messageId) {
     folder_id: String(folderId),
     message_id: String(messageId),
   };
+}
+
+/**
+ * Mark one or more messages as read or unread in Zoho Mail.
+ * Zoho message IDs exceed Number.MAX_SAFE_INTEGER, so we build the JSON body
+ * as a raw string to preserve full-precision integer literals.
+ * @param {string} token  Zoho OAuth access token
+ * @param {string} accountId
+ * @param {Array<string|number>} messageIds  Zoho message IDs
+ * @param {boolean} read  true = markAsRead, false = markAsUnread
+ */
+export async function markMessagesReadStatus(token, accountId, messageIds, read) {
+  const ids = (messageIds || [])
+    .map((id) => String(id || "").trim())
+    .filter((id) => /^\d+$/.test(id));
+  if (!ids.length) return { ok: true, status: 200, data: { skipped: true } };
+  const mode = read ? "markAsRead" : "markAsUnread";
+  const body = `{"mode":${JSON.stringify(mode)},"messageId":[${ids.join(",")}]}`;
+  const resp = await fetch(`${ZOHO_MAIL_API}/accounts/${accountId}/updatemessage`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body,
+  });
+  const data = await resp.json().catch(() => ({}));
+  return { ok: resp.ok, status: resp.status, data };
 }

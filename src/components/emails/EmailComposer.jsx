@@ -105,7 +105,17 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       toast.error("Recipient and subject are required");
       return;
     }
-    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value, fromName: selectedFrom?.name, clientSendId: crypto.randomUUID() });
+    sendMut.mutate({
+      to: to.trim(),
+      cc: cc.trim() || undefined,
+      subject: subject.trim(),
+      text: body,
+      fromAddress: selectedFrom?.value,
+      fromName: selectedFrom?.name,
+      clientSendId: crypto.randomUUID(),
+      // For replies, Zoho threads the message with the original (sets In-Reply-To / References)
+      replyToMessageId: (mode === "reply" || mode === "replyAll") ? sourceMessage?.message_id : undefined,
+    });
   };
 
   return (

@@ -121,6 +121,13 @@ export default async function(req) {
     // Dedupe by account_id + message_id (composite key — message IDs are not globally unique)
     const existing = await base44.asServiceRole.entities.Email.list('-received_at', 500);
     const seen = new Set((existing || []).map((e) => `${e.account_id || ''}|${e.message_id || ''}`).filter((k) => k && k !== '|'));
+    const existingByDedupe = {};
+    for (const e of (existing || [])) {
+      const k = `${e.account_id || ''}|${e.message_id || ''}`;
+      if (k && k !== '|') existingByDedupe[k] = e;
+    }
+    const readUpdates = [];
+    let readStateUpdates = 0;
 
     let newCount = 0;
     let scanned = 0;
@@ -178,7 +185,16 @@ export default async function(req) {
           if (!fullResync && folderCp?.last_message_time && msgMs && msgMs <= folderCp.last_message_time) continue;
           scanned++;
           const dedupeKey = `${accountId}|${messageId}`;
-          if (seen.has(dedupeKey)) continue;
+          const isRead = !String(msg.flags || '').toLowerCase().includes('unread');
+          if (seen.has(dedupeKey)) {
+            // Inbound read/unread sync: refresh flags on already-stored messages when Zoho's state changed
+            const ex = existingByDedupe[dedupeKey];
+            if (ex && !!ex.is_read !== isRead) {
+              ex.is_read = isRead; // mutate in-memory so the thread aggregate below is accurate
+              readUpdates.push({ id: ex.id, is_read: isRead });
+            }
+            continue;
+          }
           seen.add(dedupeKey);
 
           let detail = {};
@@ -213,7 +229,6 @@ export default async function(req) {
           const customerName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : '';
           const supplier = matchLower ? supplierMap[matchLower] : null;
           const supplierName = supplier ? (supplier.name || '') : '';
-          const isRead = !String(msg.flags || '').toLowerCase().includes('unread');
           const hasAttachments = String(msg.hasAttachment) === "1" || msg.hasAttachment === true;
           const attachments = Array.isArray(detail.attachments)
             ? detail.attachments.map((a) => parseAttachment(a, accountId, folderId, messageId)).filter(Boolean)
@@ -281,6 +296,16 @@ export default async function(req) {
         if (folderMaxMs > (folderCp?.last_message_time || 0)) {
           newCheckpoints[cpKey] = { last_message_time: folderMaxMs, last_message_id: '' };
         }
+      }
+    }
+
+    // --- Apply inbound read/unread state changes (Zoho -> app) ---
+    if (readUpdates.length) {
+      try {
+        await base44.asServiceRole.entities.Email.bulkUpdate(readUpdates);
+        readStateUpdates = readUpdates.length;
+      } catch (e) {
+        errors.push('readStateUpdate: ' + (e.message || e));
       }
     }
 
@@ -430,6 +455,7 @@ export default async function(req) {
       threadsCreated,
       threadsUpdated,
       linksCreated,
+      readStateUpdates,
       errors: errors.slice(0, 20),
     });
   } catch (error) {

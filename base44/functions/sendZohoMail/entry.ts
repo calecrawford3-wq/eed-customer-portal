@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { getZohoMailAccessToken, sendMessage } from '../../shared/zohoMail.ts';
+import { getZohoMailAccessToken, sendMessage, replyToMessage } from '../../shared/zohoMail.ts';
 
 export default async function(req) {
   try {
@@ -9,7 +9,7 @@ export default async function(req) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { to, cc, subject, html, text, fromAddress, fromName: fromNameParam, clientSendId } = await req.json();
+    const { to, cc, subject, html, text, fromAddress, fromName: fromNameParam, clientSendId, replyToMessageId } = await req.json();
     if (!to || !subject) {
       return Response.json({ error: 'to and subject are required' }, { status: 400 });
     }
@@ -80,7 +80,10 @@ export default async function(req) {
       } catch (_) { /* logging is best-effort */ }
     }
 
-    const result = await sendMessage(token, accountId, payload);
+    // Use Zoho's dedicated reply endpoint when replying so the message threads with the original
+    const result = replyToMessageId
+      ? await replyToMessage(token, accountId, replyToMessageId, payload)
+      : await sendMessage(token, accountId, payload);
     const providerMessageId = result.data?.data?.messageId || result.data?.messageId || '';
     if (!result.ok || result.data?.status?.code !== 200) {
       const reason = result.data?.status?.description || 'Send failed';

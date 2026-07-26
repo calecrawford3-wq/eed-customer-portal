@@ -206,13 +206,26 @@ export default function Emails() {
     onError: (e) => toast.error("Sort failed: " + (e?.message || "error")),
   });
 
+  // Best-effort: propagate read/unread changes to Zoho Mail so other clients stay in sync
+  const pushReadStateToZoho = (messages, read) => {
+    const items = (messages || [])
+      .filter((m) => m.account_id && m.message_id)
+      .map((m) => ({ account_id: m.account_id, message_id: m.message_id }));
+    if (!items.length) return;
+    base44.functions.invoke("markZohoMailRead", { messages: items, read })
+      .catch((e) => toast.error("Couldn't sync read state to Zoho: " + (e?.message || "error")));
+  };
+
   const markThreadRead = (thread) => {
     if (!thread) return;
     const unread = thread.messages.filter((m) => !m.is_read);
     unread.forEach((m) => {
       base44.entities.Email.update(m.id, { is_read: true }).catch(() => {});
     });
-    if (unread.length) qc.invalidateQueries({ queryKey: ["emails"] });
+    if (unread.length) {
+      pushReadStateToZoho(unread, true);
+      qc.invalidateQueries({ queryKey: ["emails"] });
+    }
   };
   const onSelect = (thread) => { setSelectedKey(thread.key); markThreadRead(thread); };
 
@@ -263,6 +276,8 @@ export default function Emails() {
           { $set: { is_read: read } }
         )
       ));
+      const msgs = targets.flatMap((t) => t.messages || []);
+      if (msgs.length) pushReadStateToZoho(msgs, read);
       toast.success(`Marked ${targets.length} thread${targets.length !== 1 ? "s" : ""} as ${read ? "read" : "unread"}`);
       setSelectedSet(new Set());
       qc.invalidateQueries({ queryKey: ["emails"] });
@@ -281,6 +296,8 @@ export default function Emails() {
           { $set: { is_read: true } }
         )
       ));
+      const msgs = targets.flatMap((t) => t.messages || []);
+      if (msgs.length) pushReadStateToZoho(msgs, true);
       toast.success(`Marked ${targets.length} thread${targets.length !== 1 ? "s" : ""} as read`);
       qc.invalidateQueries({ queryKey: ["emails"] });
     } catch (e) {
@@ -296,6 +313,7 @@ export default function Emails() {
         { account_id: selectedThread.account_id, thread_id: selectedThread.thread_id },
         { $set: { is_read: makeRead } }
       );
+      pushReadStateToZoho(selectedThread.messages || [], makeRead);
       qc.invalidateQueries({ queryKey: ["emails"] });
       toast.success(makeRead ? "Marked as read" : "Marked as unread");
     } catch (e) {
