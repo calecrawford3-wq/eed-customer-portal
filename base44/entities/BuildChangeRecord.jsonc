@@ -1,0 +1,126 @@
+{
+  "name": "BuildChangeRecord",
+  "type": "object",
+  "properties": {
+    "build_id": {
+      "type": "string"
+    },
+    "previous_revision_id": {
+      "type": "string"
+    },
+    "new_revision_id": {
+      "type": "string"
+    },
+    "previous_dyno_pull_id": {
+      "type": "string"
+    },
+    "new_dyno_pull_id": {
+      "type": "string"
+    },
+    "change_category": {
+      "type": "string",
+      "enum": [
+        "cam_timing",
+        "camshaft",
+        "compression",
+        "cylinder_head",
+        "valve_job",
+        "valve_lash",
+        "valve_spring",
+        "fuel",
+        "lambda",
+        "fuel_pressure",
+        "ignition",
+        "intake",
+        "restrictor",
+        "exhaust",
+        "rotating_assembly",
+        "friction",
+        "oiling",
+        "crankcase_vacuum",
+        "cooling",
+        "other"
+      ]
+    },
+    "component_changed": {
+      "type": "string"
+    },
+    "field": {
+      "type": "string",
+      "description": "Config field path that changed"
+    },
+    "previous_value": {
+      "type": "string"
+    },
+    "new_value": {
+      "type": "string"
+    },
+    "expected_result": {
+      "type": "string"
+    },
+    "one_variable": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when exactly one major variable changed between revisions"
+    },
+    "variables_changed": {
+      "type": "number",
+      "default": 0
+    },
+    "test_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "approved_as_controlled": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once an owner confirms this is a valid controlled test"
+    },
+    "detected_by": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "auto"
+      ],
+      "default": "auto"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "detected",
+        "confirmed",
+        "rejected"
+      ],
+      "default": "detected"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "build_id",
+    "change_category"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

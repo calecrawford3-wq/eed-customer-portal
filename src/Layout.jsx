@@ -34,7 +34,10 @@ import {
   FlaskConical,
   FileBarChart,
   Database,
-  Target
+  Target,
+  Search,
+  Sliders,
+  GitCompare
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -89,6 +92,11 @@ export default function Layout({ children, currentPageName }) {
     { type: "divider" },
     { name: "Engine Simulator", page: "Simulator", icon: FlaskConical },
     { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },
+    { name: "Dyno Comparison", page: "DynoComparison", icon: BarChart2 },
+    { name: "Similar Builds", page: "SimilarBuilds", icon: Search },
+    { name: "Prediction Rules", page: "PredictionRules", icon: Sliders },
+    { name: "Controlled Changes", page: "ControlledChanges", icon: GitCompare },
+    { name: "Model Accuracy", page: "ModelAccuracy", icon: Target },
     { name: "Dev Data Library", page: "DevelopmentData", icon: Database },
     { type: "divider" },
     { name: "Credits", page: "Credits", icon: Award },

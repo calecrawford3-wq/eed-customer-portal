@@ -23,6 +23,9 @@ import DynoImport from './pages/DynoImport';
 import DevelopmentData from './pages/DevelopmentData';
 import ModelAccuracy from './pages/ModelAccuracy';
 import DynoComparison from './pages/DynoComparison';
+import PredictionRules from './pages/PredictionRules';
+import SimilarBuilds from './pages/SimilarBuilds';
+import ControlledChanges from './pages/ControlledChanges';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -100,6 +103,9 @@ const AuthenticatedApp = () => {
       <Route path="/DevelopmentData" element={<LayoutWrapper currentPageName="DevelopmentData"><DevelopmentData /></LayoutWrapper>} />
       <Route path="/ModelAccuracy" element={<LayoutWrapper currentPageName="ModelAccuracy"><ModelAccuracy /></LayoutWrapper>} />
       <Route path="/DynoComparison" element={<LayoutWrapper currentPageName="DynoComparison"><DynoComparison /></LayoutWrapper>} />
+      <Route path="/PredictionRules" element={<LayoutWrapper currentPageName="PredictionRules"><PredictionRules /></LayoutWrapper>} />
+      <Route path="/SimilarBuilds" element={<LayoutWrapper currentPageName="SimilarBuilds"><SimilarBuilds /></LayoutWrapper>} />
+      <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
