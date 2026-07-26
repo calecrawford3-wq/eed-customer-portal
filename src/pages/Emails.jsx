@@ -56,10 +56,32 @@ export default function Emails() {
   const [sendLogOpen, setSendLogOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
 
-  const { data: emails = [], isLoading } = useQuery({
+  const PAGE_SIZE = 200;
+  const { data: firstPage = [], isLoading } = useQuery({
     queryKey: ["emails"],
-    queryFn: () => base44.entities.Email.list("-received_at", 500),
+    queryFn: () => base44.entities.Email.list("-received_at", PAGE_SIZE),
   });
+  const [olderPages, setOlderPages] = useState([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const allEmails = useMemo(() => [...firstPage, ...olderPages], [firstPage, olderPages]);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    const cursor = allEmails.length ? allEmails[allEmails.length - 1]?.received_at : null;
+    if (!cursor) return;
+    setLoadingMore(true);
+    try {
+      const page = await base44.entities.Email.filter({ received_at: { $lt: cursor } }, "-received_at", PAGE_SIZE);
+      setOlderPages((prev) => [...prev, ...(page || [])]);
+      if (!page || page.length < PAGE_SIZE) setHasMore(false);
+    } catch (e) {
+      toast.error("Couldn't load more: " + (e?.message || "error"));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  const canLoadMore = hasMore && firstPage.length >= PAGE_SIZE;
 
   const { data: threadRecords = [] } = useQuery({
     queryKey: ["email-threads"],
@@ -68,9 +90,9 @@ export default function Emails() {
 
   const mailboxes = useMemo(() => {
     const set = new Map();
-    for (const e of emails) if (e.account_address) set.set(e.account_address, e.account_address);
+    for (const e of allEmails) if (e.account_address) set.set(e.account_address, e.account_address);
     return Array.from(set.values());
-  }, [emails]);
+  }, [allEmails]);
 
   const threadMetaMap = useMemo(() => {
     const m = new Map();
@@ -86,7 +108,7 @@ export default function Emails() {
 
   const threads = useMemo(() => {
     const map = new Map();
-    for (const e of emails) {
+    for (const e of allEmails) {
       const key = `${e.account_id || ""}|${e.thread_id || e.message_id || e.id}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(e);
@@ -134,7 +156,7 @@ export default function Emails() {
     }
     arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
     return arr;
-  }, [emails, threadMetaMap]);
+  }, [allEmails, threadMetaMap]);
 
   // Counts shown on category chips are unread emails only
   const categoryUnreadCounts = useMemo(() => {
@@ -460,7 +482,7 @@ export default function Emails() {
               <div className="p-8 text-center text-slate-400 text-sm">Loading emails…</div>
             ) : filteredThreads.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-sm">
-                {emails.length === 0 ? "No emails yet. Click Sync now to pull from Zoho Mail." : "No threads match your filters."}
+                {allEmails.length === 0 ? "No emails yet. Click Sync now to pull from Zoho Mail." : "No threads match your filters."}
               </div>
             ) : (
               filteredThreads.map((t) => {
@@ -519,6 +541,11 @@ export default function Emails() {
               })
             )}
           </div>
+          {canLoadMore && (
+            <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="w-full mt-2 text-xs">
+              {loadingMore ? "Loading…" : "Load older emails"}
+            </Button>
+          )}
         </div>
 
         {/* Thread / detail */}
