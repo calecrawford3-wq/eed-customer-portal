@@ -28,9 +28,9 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
   const regular = settings?.company_email || "";
   const customAddrs = Array.isArray(settings?.custom_from_emails) ? settings.custom_from_emails.filter(Boolean) : [];
   const fromOptions = [
-    ...(noreply ? [{ key: "noreply", label: `Do not reply (${noreply})`, value: noreply }] : []),
-    ...(regular ? [{ key: "regular", label: `Regular (${regular})`, value: regular }] : []),
-    ...customAddrs.map((a, i) => ({ key: `custom-${i}`, label: a, value: a })),
+    ...(noreply ? [{ key: "noreply", label: `Do not reply (${noreply})`, value: noreply, name: settings?.smtp_from_name || "Do Not Reply" }] : []),
+    ...(regular ? [{ key: "regular", label: `Regular (${regular})`, value: regular, name: settings?.company_name || "" }] : []),
+    ...customAddrs.map((a, i) => ({ key: `custom-${i}`, label: a, value: a, name: settings?.company_name || "" })),
   ];
   const [fromKey, setFromKey] = useState("noreply");
   const selectedFrom = fromOptions.find((o) => o.key === fromKey) || fromOptions[0];
@@ -59,7 +59,7 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
       toast.error("Recipient and subject are required");
       return;
     }
-    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value });
+    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value, fromName: selectedFrom?.name });
   };
 
   return (
