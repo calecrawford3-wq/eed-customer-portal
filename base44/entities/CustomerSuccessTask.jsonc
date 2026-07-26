@@ -109,6 +109,10 @@
       "type": "string",
       "description": "Subject of the source email, captured for display"
     },
+    "source_thread_id": {
+      "type": "string",
+      "description": "EmailThread this follow-up task was generated from \u2014 used to dedupe automated reminders"
+    },
     "customer_name": {
       "type": "string"
     },

@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import EngineSelector from "@/components/EngineSelector";
+import BuildTimeline from "@/components/engines/BuildTimeline";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued" },
@@ -369,6 +370,7 @@ export default function BuildDetail() {
           <TabsTrigger value="valve_lash">Valve Lash</TabsTrigger>
           <TabsTrigger value="internal">Internal Measurements</TabsTrigger>
           <TabsTrigger value="specs">Specifications</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-6">
@@ -1042,6 +1044,10 @@ export default function BuildDetail() {
               <p className="text-slate-500 mt-1">Assign a spec sheet to this build</p>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-6">
+          <BuildTimeline buildId={buildId} />
         </TabsContent>
       </Tabs>
 
