@@ -277,7 +277,6 @@ export default function Emails() {
         </button>
         {CATEGORY_ORDER.map((cat) => {
           const count = categoryUnreadCounts[cat] || 0;
-          if (count === 0 && categoryFilter !== cat) return null;
           const meta = CATEGORY_META[cat];
           const active = categoryFilter === cat;
           return (
