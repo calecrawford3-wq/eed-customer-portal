@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock, Phone, Flag } from "lucide-react";
 import { toast } from "sonner";
 import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
+import ThreadLinkSuggestions from "./ThreadLinkSuggestions";
 
 export const THREAD_STATUS_META = {
   new: { label: "New", cls: "bg-slate-100 text-slate-700 border-slate-200" },
@@ -78,6 +79,8 @@ export default function ThreadActionPanel({ thread, threadRecord, users, onCreat
         {actionEnabled && <Badge className="bg-[#e20404] text-white text-[10px]">Needs action</Badge>}
         {overdue && <Badge className="bg-red-600 text-white text-[10px]"><AlertTriangle className="w-3 h-3 mr-0.5" />Overdue</Badge>}
       </div>
+
+      <ThreadLinkSuggestions thread={thread} threadRecord={threadRecord} />
 
       {!actionEnabled ? (
         <div className="flex items-center gap-2 flex-wrap">

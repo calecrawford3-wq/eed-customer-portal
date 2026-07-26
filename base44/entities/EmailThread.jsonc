@@ -156,6 +156,10 @@
       "default": "none",
       "description": "Kind of follow-up reminder attached to the thread"
     },
+    "dismissed_link_suggestions": {
+      "type": "string",
+      "description": "JSON array of 'entity_type|entity_id' keys the user dismissed from the link-suggestion prompt. Kept so dismissed suggestions don't reappear on the next scan."
+    },
     "last_action_owner_id": {
       "type": "string",
       "description": "User who last changed the thread's workflow state"
