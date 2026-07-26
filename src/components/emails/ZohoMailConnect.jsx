@@ -15,7 +15,6 @@ const SCOPES = "ZohoMail.accounts.READ,ZohoMail.folders.READ,ZohoMail.messages.R
 export default function ZohoMailConnect({ open, onClose, onConnected }) {
   const qc = useQueryClient();
   const [code, setCode] = useState("");
-  const [redirectUri, setRedirectUri] = useState("http://localhost");
 
   const connectMut = useMutation({
     mutationFn: (payload) => base44.functions.invoke("zohoMailOAuth", payload),
@@ -32,7 +31,7 @@ export default function ZohoMailConnect({ open, onClose, onConnected }) {
 
   const handleConnect = () => {
     if (!code.trim()) { toast.error("Paste the grant token first"); return; }
-    connectMut.mutate({ code: code.trim(), redirectUri: redirectUri.trim() || "http://localhost" });
+    connectMut.mutate({ code: code.trim() });
   };
 
   return (
@@ -44,20 +43,17 @@ export default function ZohoMailConnect({ open, onClose, onConnected }) {
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <ol className="list-decimal list-inside space-y-1.5 text-slate-600">
-            <li>Open the <a href="https://api-console.zoho.com" target="_blank" rel="noreferrer" className="text-[#e20404] underline inline-flex items-center gap-1">Zoho API Console <ExternalLink className="w-3 h-3" /></a> and choose <strong>Self Client</strong>.</li>
-            <li>Paste these scopes:
+            <li>Open the <a href="https://api-console.zoho.com" target="_blank" rel="noreferrer" className="text-[#e20404] underline inline-flex items-center gap-1">Zoho API Console <ExternalLink className="w-3 h-3" /></a> and choose your <strong>Self Client</strong>.</li>
+            <li>Go to the <strong>Generate Code</strong> tab and paste these scopes:
               <code className="block bg-slate-100 px-2 py-1 rounded mt-1 text-xs break-all">{SCOPES}</code>
             </li>
-            <li>Set <strong>Redirect URI</strong> to <code>http://localhost</code>, then click <strong>Create</strong> / Generate Token and approve.</li>
-            <li>Copy the <strong>grant token</strong> shown, paste it below, and click Connect.</li>
+            <li>Set <strong>Code expiry</strong> to <strong>10 minutes</strong>, then click <strong>Create</strong> and approve access.</li>
+            <li>Copy the <strong>grant token</strong> it shows, paste it below, and click Connect.</li>
           </ol>
+          <p className="text-xs text-slate-400">Self Client doesn't use a redirect URL — the grant token is all that's needed.</p>
           <div>
             <Label className="text-xs text-slate-500">Grant token</Label>
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the grant token / code" />
-          </div>
-          <div>
-            <Label className="text-xs text-slate-500">Redirect URI (must match what you entered above)</Label>
-            <Input value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)} />
           </div>
         </div>
         <DialogFooter>

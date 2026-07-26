@@ -51,16 +51,18 @@ export async function exchangeZohoMailGrantToken(base44, { code, redirectUri }) 
   if (!clientId || !clientSecret) {
     throw new Error("Zoho OAuth client not configured (ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET secrets)");
   }
+  const params = {
+    grant_type: "authorization_code",
+    client_id: clientId,
+    client_secret: clientSecret,
+    code,
+  };
+  // Self Client grants don't use a redirect URI; only include it if one was provided.
+  if (redirectUri) params.redirect_uri = redirectUri;
   const resp = await fetch(ZOHO_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUri || "http://localhost",
-    }),
+    body: new URLSearchParams(params),
   });
   const data = await resp.json().catch(() => ({}));
   if (!data.refresh_token) {
