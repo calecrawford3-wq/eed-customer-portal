@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock, Phone } from "lucide-react";
+import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock, Phone, Flag } from "lucide-react";
 import { toast } from "sonner";
 import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
 
@@ -69,15 +69,25 @@ export default function ThreadActionPanel({ thread, threadRecord, users, onCreat
   const inboundMsgs = (thread.messages || []).filter((m) => m.direction === "inbound");
   const lastInbound = inboundMsgs[inboundMsgs.length - 1];
   const overdue = dueDate && new Date(dueDate) < new Date() && !["resolved", "closed"].includes(status);
+  const actionEnabled = !!threadRecord?.action_required;
 
   return (
     <div className="border rounded-lg bg-white p-3 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-slate-700">Action center</span>
-        {thread.needsAction && <Badge className="bg-[#e20404] text-white text-[10px]">Needs action</Badge>}
+        {actionEnabled && <Badge className="bg-[#e20404] text-white text-[10px]">Needs action</Badge>}
         {overdue && <Badge className="bg-red-600 text-white text-[10px]"><AlertTriangle className="w-3 h-3 mr-0.5" />Overdue</Badge>}
       </div>
 
+      {!actionEnabled ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => update({ action_required: true, workflow_status: "open" })}>
+            <Flag className="w-3.5 h-3.5 mr-1" /> Mark as needing action
+          </Button>
+          <span className="text-xs text-slate-400">Most promotional or notification emails don't need one — enable tracking only when follow-up is required.</span>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <Field label="Customer" value={thread.customer_name || (thread.supplier_name ? `Supplier: ${thread.supplier_name}` : "")} />
         <Field label="Engine build" value={thread.link_type === "build" ? thread.link_number : ""} />
@@ -124,7 +134,10 @@ export default function ThreadActionPanel({ thread, threadRecord, users, onCreat
         <Button size="sm" variant="outline" onClick={() => onCreateTask(thread)}><ListTodo className="w-3.5 h-3.5 mr-1" />Create task</Button>
         <Button size="sm" variant="outline" onClick={() => onScheduleCall(thread)}><Phone className="w-3.5 h-3.5 mr-1" />Schedule call</Button>
         <Button size="sm" variant="outline" onClick={() => update({ workflow_status: "resolved" })} disabled={status === "resolved" || status === "closed"}><CheckCircle2 className="w-3.5 h-3.5 mr-1" />Resolve</Button>
+        <Button size="sm" variant="outline" onClick={() => update({ action_required: false })} title="Turn off action tracking for this thread">Clear action</Button>
       </div>
+      </>
+      )}
     </div>
   );
 }

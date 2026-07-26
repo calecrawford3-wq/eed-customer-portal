@@ -104,6 +104,11 @@
       "type": "string",
       "description": "Staff member assigned to handle this thread"
     },
+    "action_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicitly enabled by staff when this thread needs follow-up. Drives the 'Needs action' view and the action center. Most promotional/notification threads stay false."
+    },
     "workflow_status": {
       "type": "string",
       "enum": [
@@ -116,7 +121,7 @@
         "closed"
       ],
       "default": "new",
-      "description": "Action-center workflow status. A thread stays actionable until it reaches resolved/closed, even after being read."
+      "description": "Action-center workflow status. Only meaningful once action_required is enabled."
     },
     "priority": {
       "type": "string",

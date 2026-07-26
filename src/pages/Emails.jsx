@@ -156,10 +156,7 @@ export default function Emails() {
       const rec = threadMetaMap.get(key);
       const wfStatus = rec?.workflow_status || "new";
       const lastDir = latest.direction;
-      const needsAction =
-        wfStatus === "new" ||
-        (lastDir === "inbound" && !["resolved", "closed", "waiting_on_customer"].includes(wfStatus)) ||
-        (rec?.due_date && new Date(rec.due_date) < new Date() && !["resolved", "closed"].includes(wfStatus));
+      const needsAction = !!rec?.action_required;
       arr.push({
         key,
         account_id: latest.account_id,
