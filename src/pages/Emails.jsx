@@ -259,6 +259,38 @@ export default function Emails() {
     }
   };
 
+  const markAllRead = async () => {
+    const targets = filteredThreads.filter((t) => t.unread_count > 0);
+    if (!targets.length) { toast.info("No unread threads in this view"); return; }
+    try {
+      await Promise.all(targets.map((t) =>
+        base44.entities.Email.updateMany(
+          { account_id: t.account_id, thread_id: t.thread_id },
+          { $set: { is_read: true } }
+        )
+      ));
+      toast.success(`Marked ${targets.length} thread${targets.length !== 1 ? "s" : ""} as read`);
+      qc.invalidateQueries({ queryKey: ["emails"] });
+    } catch (e) {
+      toast.error("Failed: " + (e?.message || "error"));
+    }
+  };
+
+  const toggleThreadRead = async () => {
+    if (!selectedThread) return;
+    const makeRead = selectedThread.unread_count > 0;
+    try {
+      await base44.entities.Email.updateMany(
+        { account_id: selectedThread.account_id, thread_id: selectedThread.thread_id },
+        { $set: { is_read: makeRead } }
+      );
+      qc.invalidateQueries({ queryKey: ["emails"] });
+      toast.success(makeRead ? "Marked as read" : "Marked as unread");
+    } catch (e) {
+      toast.error("Failed: " + (e?.message || "error"));
+    }
+  };
+
   const replyTarget = selectedThread
     ? (selectedThread.messages.find((m) => m.direction === "inbound") || selectedThread.messages[selectedThread.messages.length - 1])
     : null;
@@ -355,28 +387,33 @@ export default function Emails() {
         {/* Thread list */}
         <div className="lg:col-span-5 xl:col-span-4 min-w-0">
           {/* Selection toolbar */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={() => (allFilteredSelected ? clearSelection() : selectAllFiltered())}
-                className="accent-[#e20404]"
-              />
-              Select all
-            </label>
-            {selectedSet.size > 0 && (
-              <>
-                <span className="text-xs font-medium text-slate-700">{selectedSet.size} selected</span>
-                <Button size="sm" variant="outline" onClick={() => markSelectedReadState(true)} className="text-emerald-700 h-7">
-                  <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark read
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => markSelectedReadState(false)} className="text-slate-600 h-7">
-                  <MailOpen className="w-3.5 h-3.5 mr-1" /> Mark unread
-                </Button>
-                <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7">Clear</Button>
-              </>
-            )}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={() => (allFilteredSelected ? clearSelection() : selectAllFiltered())}
+                  className="accent-[#e20404]"
+                />
+                Select all
+              </label>
+              {selectedSet.size > 0 && (
+                <>
+                  <span className="text-xs font-medium text-slate-700">{selectedSet.size} selected</span>
+                  <Button size="sm" variant="outline" onClick={() => markSelectedReadState(true)} className="text-emerald-700 h-7">
+                    <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark read
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => markSelectedReadState(false)} className="text-slate-600 h-7">
+                    <MailOpen className="w-3.5 h-3.5 mr-1" /> Mark unread
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7">Clear</Button>
+                </>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={markAllRead} className="text-emerald-700 h-7" title="Mark every thread in this view as read">
+              <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
+            </Button>
           </div>
 
           <div className="border rounded-lg bg-white max-h-[62vh] overflow-y-auto min-w-0">
@@ -476,6 +513,10 @@ export default function Emails() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={toggleThreadRead} title={selectedThread.unread_count > 0 ? "Mark thread as read" : "Mark thread as unread"}>
+                    {selectedThread.unread_count > 0 ? <MailOpen className="w-3.5 h-3.5 mr-1" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
+                    {selectedThread.unread_count > 0 ? "Mark read" : "Mark unread"}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setLinkTarget(replyTarget || selectedThread.messages[selectedThread.messages.length - 1])}>
                     <Link2 className="w-3.5 h-3.5 mr-1" /> Link
                   </Button>
