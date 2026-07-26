@@ -1,0 +1,95 @@
+{
+  "name": "EmailThread",
+  "type": "object",
+  "properties": {
+    "thread_id": {
+      "type": "string",
+      "description": "Zoho Mail thread/conversation ID"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "account_address": {
+      "type": "string",
+      "description": "Mailbox address this thread belongs to"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject of the latest message in the thread"
+    },
+    "normalized_subject": {
+      "type": "string",
+      "description": "Subject with Re:/Fwd: prefixes stripped, used for grouping and search"
+    },
+    "participant_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "All unique email addresses that sent or received a message in this thread"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "message_count": {
+      "type": "number",
+      "default": 0
+    },
+    "unread_count": {
+      "type": "number",
+      "default": 0
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "has_attachments": {
+      "type": "boolean",
+      "default": false
+    },
+    "link_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "purchase_order",
+        "invoice",
+        "estimate",
+        "build"
+      ],
+      "default": "none",
+      "description": "Denormalized primary document link for quick list badges"
+    },
+    "link_number": {
+      "type": "string"
+    },
+    "assigned_user_id": {
+      "type": "string",
+      "description": "Staff member assigned to handle this thread"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "last_synced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "thread_id",
+    "account_id"
+  ]
+}

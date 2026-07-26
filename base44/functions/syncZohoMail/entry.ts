@@ -32,10 +32,17 @@ async function releaseLock(base44, jobId) {
   }
 }
 
+function normalizeSubject(s) {
+  return String(s || '').replace(/^((re|fwd|fw)\s*:\s*)+/gi, '').trim();
+}
+
 export default async function(req) {
+  const startedAt = new Date().toISOString();
+  const startMs = Date.now();
   let base44;
   const jobId = crypto.randomUUID();
   let settings;
+  let skipped = false;
   try {
     base44 = createClientFromRequest(req);
 
@@ -45,6 +52,7 @@ export default async function(req) {
     let lock = null;
     try { lock = lockRaw ? JSON.parse(lockRaw) : null; } catch (_) { lock = null; }
     if (lock && lock.job_id && (Date.now() - (lock.locked_at || 0)) < SYNC_LOCK_TTL_MS) {
+      skipped = true;
       return Response.json({ success: true, skipped: true, note: 'A sync is already in progress — try again in a moment.' });
     }
     const lockVal = JSON.stringify({ job_id: jobId, locked_at: Date.now() });
@@ -57,6 +65,7 @@ export default async function(req) {
     const token = await getZohoMailAccessToken(base44);
     const accounts = await listAccounts(token);
     if (!accounts.length) {
+      await writeSyncLog(base44, { started_at: startedAt, status: 'success', accounts: 0, triggered_by: 'manual', startMs, errors: [] });
       return Response.json({ success: true, accounts: 0, scanned: 0, newMessages: 0, note: 'No mailboxes found' });
     }
 
@@ -84,6 +93,7 @@ export default async function(req) {
     let scanned = 0;
     const errors = [];
     const newInbound = [];
+    const newEmails = []; // captured for thread + auto-link building
 
     for (const account of accounts) {
       const accountId = account.accountId || account.account_id || account.mailAccountId || account.id;
@@ -119,13 +129,10 @@ export default async function(req) {
           if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
 
-          // Fetch full message detail for the body (only for new messages)
           let detail = {};
           try {
             detail = await getMessageDetail(token, accountId, folderId, messageId);
-          } catch (_) {
-            /* keep metadata-only */
-          }
+          } catch (_) { /* keep metadata-only */ }
 
           const fromParsed = parseAddress(msg.fromAddress || msg.from || msg.sender || detail.from);
           const toParsed = parseAddress(msg.toAddress || msg.to || detail.to);
@@ -154,15 +161,18 @@ export default async function(req) {
           const customerName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : '';
           const supplier = matchLower ? supplierMap[matchLower] : null;
           const supplierName = supplier ? (supplier.name || '') : '';
+          const isRead = !String(msg.flags || '').toLowerCase().includes('unread');
+          const hasAttachments = String(msg.hasAttachment) === "1" || msg.hasAttachment === true;
+          const threadId = String(msg.threadId || msg.thread_id || messageId);
 
           try {
-            await base44.asServiceRole.entities.Email.create({
+            const created = await base44.asServiceRole.entities.Email.create({
               message_id: messageId,
               account_id: String(accountId),
               account_address: accountAddress,
               folder_id: String(folderId),
               folder_name: folder.folderName || folder.name || '',
-              thread_id: String(msg.threadId || msg.thread_id || messageId),
+              thread_id: threadId,
               from_address: msg.fromAddress || msg.from || fromParsed.email || '',
               from_email: fromParsed.email,
               from_name: fromParsed.name,
@@ -175,8 +185,8 @@ export default async function(req) {
               body_html: bodyHtml,
               direction,
               received_at: receivedAt,
-              is_read: !String(msg.flags || '').toLowerCase().includes('unread'),
-              has_attachments: String(msg.hasAttachment) === "1" || msg.hasAttachment === true,
+              is_read: isRead,
+              has_attachments: hasAttachments,
               customer_id: customer?.id || '',
               customer_name: customerName,
               supplier_id: supplier?.id || '',
@@ -187,6 +197,23 @@ export default async function(req) {
               is_linked: false,
             });
             newCount++;
+            newEmails.push({
+              id: created?.id || '',
+              account_id: String(accountId),
+              account_address: accountAddress,
+              thread_id: threadId,
+              subject,
+              from_email: fromParsed.email,
+              to_email: toParsed.email,
+              received_at: receivedAt,
+              is_read: isRead,
+              has_attachments: hasAttachments,
+              customer_id: customer?.id || '',
+              customer_name: customerName,
+              supplier_id: supplier?.id || '',
+              supplier_name: supplierName,
+              link_type: 'none',
+            });
             if (direction === 'inbound') {
               newInbound.push({ from: fromParsed.name || fromParsed.email, subject });
             }
@@ -195,6 +222,114 @@ export default async function(req) {
           }
         }
       }
+    }
+
+    // --- Build / refresh EmailThread aggregates from all known emails ---
+    let threadsCreated = 0;
+    let threadsUpdated = 0;
+    try {
+      const allEmails = (existing || []).concat(newEmails);
+      const threadsMap = {};
+      for (const e of allEmails) {
+        const key = `${e.account_id || ''}|${e.thread_id || ''}`;
+        if (!key || key === '|') continue;
+        const t = threadsMap[key] || {
+          account_id: e.account_id || '',
+          account_address: e.account_address || '',
+          thread_id: e.thread_id || '',
+          subject: '',
+          participant_emails: new Set(),
+          last_message_at: null,
+          message_count: 0,
+          unread_count: 0,
+          has_attachments: false,
+          customer_id: '',
+          customer_name: '',
+          supplier_id: '',
+          supplier_name: '',
+          link_type: 'none',
+          link_number: '',
+        };
+        const ra = e.received_at || '';
+        if (ra && (!t.last_message_at || new Date(ra) > new Date(t.last_message_at))) {
+          t.last_message_at = ra;
+          if (e.subject) t.subject = e.subject;
+        }
+        if (e.from_email) t.participant_emails.add(String(e.from_email).toLowerCase());
+        if (e.to_email) {
+          for (const x of String(e.to_email).split(',')) {
+            const v = x.trim().toLowerCase();
+            if (v) t.participant_emails.add(v);
+          }
+        }
+        t.message_count++;
+        if (!e.is_read) t.unread_count++;
+        if (e.has_attachments) t.has_attachments = true;
+        if (e.customer_id && !t.customer_id) { t.customer_id = e.customer_id; t.customer_name = e.customer_name || ''; }
+        if (e.supplier_id && !t.supplier_id) { t.supplier_id = e.supplier_id; t.supplier_name = e.supplier_name || ''; }
+        if (e.link_type && e.link_type !== 'none' && t.link_type === 'none') { t.link_type = e.link_type; t.link_number = e.link_number || ''; }
+        threadsMap[key] = t;
+      }
+
+      const existingThreads = await base44.asServiceRole.entities.EmailThread.list('-last_message_at', 500);
+      const tMap = {};
+      for (const t of existingThreads) tMap[`${t.account_id}|${t.thread_id}`] = t;
+      const nowIso = new Date().toISOString();
+      const toCreate = [];
+      const toUpdate = [];
+      for (const [key, agg] of Object.entries(threadsMap)) {
+        const data = {
+          account_address: agg.account_address || '',
+          subject: agg.subject || '(no subject)',
+          normalized_subject: normalizeSubject(agg.subject),
+          participant_emails: Array.from(agg.participant_emails),
+          last_message_at: agg.last_message_at || nowIso,
+          message_count: agg.message_count,
+          unread_count: agg.unread_count,
+          has_attachments: agg.has_attachments,
+          customer_id: agg.customer_id,
+          customer_name: agg.customer_name,
+          supplier_id: agg.supplier_id,
+          supplier_name: agg.supplier_name,
+          link_type: agg.link_type,
+          link_number: agg.link_number,
+          status: 'active',
+          last_synced_at: nowIso,
+        };
+        const existingT = tMap[key];
+        if (existingT) {
+          toUpdate.push({ id: existingT.id, ...data });
+        } else {
+          toCreate.push({ account_id: agg.account_id, thread_id: agg.thread_id, assigned_user_id: '', ...data });
+        }
+      }
+      if (toCreate.length) {
+        await base44.asServiceRole.entities.EmailThread.bulkCreate(toCreate);
+        threadsCreated = toCreate.length;
+      }
+      if (toUpdate.length) {
+        await base44.asServiceRole.entities.EmailThread.bulkUpdate(toUpdate);
+        threadsUpdated = toUpdate.length;
+      }
+    } catch (e) {
+      errors.push('threads: ' + (e.message || e));
+    }
+
+    // --- Auto EmailLink records for newly matched customer/supplier ---
+    let linksCreated = 0;
+    try {
+      const autoLinks = [];
+      for (const ne of newEmails) {
+        if (!ne.id) continue;
+        if (ne.customer_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'customer', entity_id: ne.customer_id, entity_label: ne.customer_name || '', link_source: 'auto' });
+        if (ne.supplier_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'supplier', entity_id: ne.supplier_id, entity_label: ne.supplier_name || '', link_source: 'auto' });
+      }
+      if (autoLinks.length) {
+        await base44.asServiceRole.entities.EmailLink.bulkCreate(autoLinks);
+        linksCreated = autoLinks.length;
+      }
+    } catch (e) {
+      errors.push('auto links: ' + (e.message || e));
     }
 
     // Push a summary notification for new inbound mail
@@ -207,19 +342,53 @@ export default async function(req) {
       } catch (_) { /* push is best-effort */ }
     }
 
+    await writeSyncLog(base44, {
+      started_at: startedAt, status: errors.length ? 'partial' : 'success',
+      accounts: accounts.length, messages_found: scanned, messages_created: newCount,
+      threads_created: threadsCreated, threads_updated: threadsUpdated, links_created: linksCreated,
+      triggered_by: 'manual', startMs, errors: errors.slice(0, 20),
+    });
+
     return Response.json({
       success: true,
       accounts: accounts.length,
       scanned,
       newMessages: newCount,
+      threadsCreated,
+      threadsUpdated,
+      linksCreated,
       errors: errors.slice(0, 20),
     });
   } catch (error) {
     console.error('syncZohoMail error:', error?.message || error);
+    if (base44) {
+      try {
+        await writeSyncLog(base44, { started_at: startedAt, status: 'failed', triggered_by: 'manual', startMs, errors: [error?.message || String(error)] });
+      } catch (_) { /* best-effort */ }
+    }
     return Response.json({ error: error?.message || 'Internal error' }, { status: 500 });
   } finally {
-    if (base44) {
+    if (base44 && !skipped) {
       try { await releaseLock(base44, jobId); } catch (_) { /* best-effort */ }
     }
   }
+}
+
+async function writeSyncLog(base44, { started_at, status, accounts = 0, messages_found = 0, messages_created = 0, threads_created = 0, threads_updated = 0, links_created = 0, triggered_by = 'manual', startMs, errors = [] }) {
+  try {
+    await base44.asServiceRole.entities.EmailSyncLog.create({
+      started_at,
+      completed_at: new Date().toISOString(),
+      status,
+      duration_ms: Date.now() - startMs,
+      accounts,
+      messages_found,
+      messages_created,
+      threads_created,
+      threads_updated,
+      links_created,
+      errors,
+      triggered_by,
+    });
+  } catch (_) { /* logging is best-effort */ }
 }

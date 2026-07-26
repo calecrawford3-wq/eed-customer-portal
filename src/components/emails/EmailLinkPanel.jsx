@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Link2, Search, Loader2, Eye } from "lucide-react";
+import { Link2, Search, Loader2, Eye, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,6 +24,11 @@ const CUSTOMER_DOC_TYPES = [
 const SUPPLIER_DOC_TYPES = [
   { value: "purchase_order", label: "Purchase Order", entity: "PurchaseOrder", field: "po_number", filterField: "supplier_id" },
 ];
+
+const LINK_LABEL = {
+  customer: "Customer", supplier: "Supplier", invoice: "INV",
+  estimate: "EST", purchase_order: "PO", build: "Build",
+};
 
 function docLabel(doc, dt) {
   const num = doc[dt.field] || "(no number)";
@@ -60,7 +67,13 @@ export default function EmailLinkPanel({ open, onClose, email }) {
   const docTypes = party === "supplier" ? SUPPLIER_DOC_TYPES : CUSTOMER_DOC_TYPES;
   const dt = docTypes.find((d) => d.value === linkType) || docTypes[0];
 
-  // Reset link type when switching party so it stays valid for the available types.
+  // Existing flexible links for this email (multi-link)
+  const { data: existingLinks = [] } = useQuery({
+    queryKey: ["email-links", email?.id],
+    queryFn: () => (email?.id ? base44.entities.EmailLink.filter({ email_id: email.id }, "-created_date", 100) : []),
+    enabled: !!email?.id && open,
+  });
+
   const switchParty = (p) => {
     setParty(p);
     const types = p === "supplier" ? SUPPLIER_DOC_TYPES : CUSTOMER_DOC_TYPES;
@@ -132,15 +145,28 @@ export default function EmailLinkPanel({ open, onClose, email }) {
     if (!email) return;
     setSaving(true);
     try {
-      let linkId = "";
-      let linkNumber = "";
+      const newLinks = [];
       let customerId = selectedCust?.id || "";
       let customerName = selectedCust?.name || "";
       let supplierId = selectedSup?.id || "";
       let supplierName = selectedSup?.name || "";
+      let primaryLinkType = "none";
+      let primaryLinkId = "";
+      let primaryLinkNumber = "";
+
       if (dt && selectedDoc) {
-        linkId = selectedDoc.id;
-        linkNumber = String(selectedDoc[dt.field] || "");
+        primaryLinkId = selectedDoc.id;
+        primaryLinkNumber = String(selectedDoc[dt.field] || "");
+        primaryLinkType = linkType;
+        newLinks.push({
+          email_id: email.id,
+          thread_id: email.thread_id || "",
+          account_id: email.account_id || "",
+          entity_type: linkType,
+          entity_id: selectedDoc.id,
+          entity_label: primaryLinkNumber,
+          link_source: "manual",
+        });
         if (linkType === "purchase_order" && selectedDoc.supplier_id) {
           supplierId = selectedDoc.supplier_id;
           try {
@@ -150,18 +176,35 @@ export default function EmailLinkPanel({ open, onClose, email }) {
           } catch (_) { /* ignore */ }
         }
       }
+      if (selectedCust?.id) {
+        newLinks.push({ email_id: email.id, thread_id: email.thread_id || "", account_id: email.account_id || "", entity_type: "customer", entity_id: selectedCust.id, entity_label: customerName, link_source: "manual" });
+      }
+      if (selectedSup?.id) {
+        newLinks.push({ email_id: email.id, thread_id: email.thread_id || "", account_id: email.account_id || "", entity_type: "supplier", entity_id: selectedSup.id, entity_label: supplierName, link_source: "manual" });
+      }
+
+      // Dedupe against existing links (same entity_type+entity_id)
+      const existingKeys = new Set((existingLinks || []).map((l) => `${l.entity_type}|${l.entity_id}`));
+      const toCreate = newLinks.filter((l) => !existingKeys.has(`${l.entity_type}|${l.entity_id}`));
+      if (toCreate.length) {
+        await base44.entities.EmailLink.bulkCreate(toCreate);
+      }
+
+      // Keep the Email denormalized "primary" link in sync for list badges/back-compat
       await base44.entities.Email.update(email.id, {
         customer_id: customerId,
         customer_name: customerName,
         supplier_id: supplierId,
         supplier_name: supplierName,
-        link_type: linkId ? linkType : "none",
-        link_id: linkId,
-        link_number: linkId ? linkNumber : "",
-        is_linked: !!(linkId || customerId || supplierId),
+        link_type: primaryLinkId ? primaryLinkType : "none",
+        link_id: primaryLinkId,
+        link_number: primaryLinkId ? primaryLinkNumber : "",
+        is_linked: !!(primaryLinkId || customerId || supplierId),
       });
-      toast.success("Email linked");
+      toast.success(toCreate.length ? `Linked (${toCreate.length} new)` : "Links up to date");
+      qc.invalidateQueries({ queryKey: ["email-links", email.id] });
       qc.invalidateQueries({ queryKey: ["emails"] });
+      qc.invalidateQueries({ queryKey: ["emails-section"] });
       onClose();
     } catch (e) {
       toast.error("Link failed: " + (e?.message || "error"));
@@ -170,14 +213,43 @@ export default function EmailLinkPanel({ open, onClose, email }) {
     }
   };
 
-  const handleUnlink = async () => {
+  const removeLink = async (link) => {
+    setSaving(true);
+    try {
+      await base44.entities.EmailLink.delete(link.id);
+      // If this was the primary document link, recompute primary from remaining links
+      const remaining = existingLinks.filter((l) => l.id !== link.id);
+      const docLink = remaining.find((l) => ["invoice", "estimate", "purchase_order", "build"].includes(l.entity_type));
+      await base44.entities.Email.update(email.id, {
+        link_type: docLink ? docLink.entity_type : "none",
+        link_id: docLink ? docLink.entity_id : "",
+        link_number: docLink ? docLink.entity_label : "",
+        is_linked: remaining.length > 0,
+      });
+      qc.invalidateQueries({ queryKey: ["email-links", email.id] });
+      qc.invalidateQueries({ queryKey: ["emails"] });
+      toast.success("Link removed");
+    } catch (e) {
+      toast.error("Remove failed: " + (e?.message || "error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnlinkAll = async () => {
     if (!email) return;
     setSaving(true);
     try {
+      // Delete all EmailLink records for this email
+      const links = existingLinks || [];
+      for (const l of links) {
+        try { await base44.entities.EmailLink.delete(l.id); } catch (_) { /* best-effort */ }
+      }
       await base44.entities.Email.update(email.id, {
         link_type: "none", link_id: "", link_number: "", is_linked: false,
       });
-      toast.success("Link removed");
+      toast.success("All links removed");
+      qc.invalidateQueries({ queryKey: ["email-links", email.id] });
       qc.invalidateQueries({ queryKey: ["emails"] });
       onClose();
     } catch (e) {
@@ -197,20 +269,33 @@ export default function EmailLinkPanel({ open, onClose, email }) {
           <DialogTitle className="flex items-center gap-2"><Link2 className="w-4 h-4" /> Link Email</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Existing links (multi-link) */}
+          {existingLinks.length > 0 && (
+            <div>
+              <Label className="text-xs text-slate-500">Current links</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {existingLinks.map((l) => (
+                  <Badge key={l.id} variant="outline" className="text-xs py-1 px-2 flex items-center gap-1">
+                    <span className="text-slate-400">{LINK_LABEL[l.entity_type] || l.entity_type}:</span>
+                    <span className="font-medium">{l.entity_label || l.entity_id}</span>
+                    {l.link_source === "auto" && <span className="text-[10px] text-slate-400">·auto</span>}
+                    <button onClick={() => removeLink(l)} disabled={saving} className="ml-0.5 text-slate-400 hover:text-red-600">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Party toggle */}
           <div className="flex gap-2">
-            <Button
-              size="sm" variant={party === "customer" ? "default" : "outline"}
-              onClick={() => switchParty("customer")}
-              className={party === "customer" ? "bg-[#e20404] hover:bg-[#c00303]" : ""}
-            >
+            <Button size="sm" variant={party === "customer" ? "default" : "outline"} onClick={() => switchParty("customer")}
+              className={party === "customer" ? "bg-[#e20404] hover:bg-[#c00303]" : ""}>
               Customer
             </Button>
-            <Button
-              size="sm" variant={party === "supplier" ? "default" : "outline"}
-              onClick={() => switchParty("supplier")}
-              className={party === "supplier" ? "bg-[#e20404] hover:bg-[#c00303]" : ""}
-            >
+            <Button size="sm" variant={party === "supplier" ? "default" : "outline"} onClick={() => switchParty("supplier")}
+              className={party === "supplier" ? "bg-[#e20404] hover:bg-[#c00303]" : ""}>
               Supplier
             </Button>
           </div>
@@ -305,12 +390,7 @@ export default function EmailLinkPanel({ open, onClose, email }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    type="button" variant="outline" size="icon"
-                    disabled={!selectedDocId}
-                    onClick={() => setPreviewOpen(true)}
-                    title="Preview selected document"
-                  >
+                  <Button type="button" variant="outline" size="icon" disabled={!selectedDocId} onClick={() => setPreviewOpen(true)} title="Preview selected document">
                     <Eye className="w-4 h-4" />
                   </Button>
                 </div>
@@ -324,8 +404,8 @@ export default function EmailLinkPanel({ open, onClose, email }) {
         </div>
         <DialogFooter className="flex justify-between">
           <div>
-            {email?.is_linked && (
-              <Button variant="ghost" onClick={handleUnlink} disabled={saving} className="text-red-600">Remove link</Button>
+            {existingLinks.length > 0 && (
+              <Button variant="ghost" onClick={handleUnlinkAll} disabled={saving} className="text-red-600">Remove all links</Button>
             )}
           </div>
           <div className="flex gap-2">

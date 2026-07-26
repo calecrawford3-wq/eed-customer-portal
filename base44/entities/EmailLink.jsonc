@@ -1,0 +1,58 @@
+{
+  "name": "EmailLink",
+  "type": "object",
+  "properties": {
+    "email_id": {
+      "type": "string",
+      "description": "Linked Email record ID"
+    },
+    "thread_id": {
+      "type": "string",
+      "description": "Zoho thread ID \u2014 lets a link apply to a whole conversation"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "supplier",
+        "invoice",
+        "estimate",
+        "purchase_order",
+        "build"
+      ],
+      "description": "Kind of record this email is linked to"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the linked Customer/Supplier/Invoice/Estimate/PurchaseOrder/EngineBuild"
+    },
+    "entity_label": {
+      "type": "string",
+      "description": "Display label (customer name, invoice number, PO number, etc.)"
+    },
+    "link_source": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "manual",
+        "ai"
+      ],
+      "default": "auto",
+      "description": "auto = matched by email address during sync; manual = linked by a user; ai = suggested by AI"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "email_id",
+    "entity_type",
+    "entity_id"
+  ]
+}
