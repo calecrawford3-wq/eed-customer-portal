@@ -108,6 +108,10 @@
       "type": "string",
       "description": "From address for purchase order emails"
     },
+    "zoho_mail_refresh_token": {
+      "type": "string",
+      "description": "Zoho Mail OAuth refresh token (with Mail read+send scopes) \u2014 generated via the Connect Zoho Mail flow on the Emails page."
+    },
     "admin_override_password": {
       "type": "string",
       "description": "Admin password to bypass barcode verification for engine build edits and pickup. If empty, any non-empty input bypasses."

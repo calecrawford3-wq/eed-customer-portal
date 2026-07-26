@@ -1,0 +1,115 @@
+{
+  "name": "Email",
+  "type": "object",
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "description": "Zoho Mail message ID \u2014 used to dedupe during sync"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Zoho Mail account ID (which mailbox)"
+    },
+    "account_address": {
+      "type": "string",
+      "description": "The mailbox email address this message belongs to (e.g. sales@, support@)"
+    },
+    "folder_id": {
+      "type": "string"
+    },
+    "folder_name": {
+      "type": "string"
+    },
+    "thread_id": {
+      "type": "string",
+      "description": "Zoho Mail conversation/thread ID \u2014 groups messages in a thread"
+    },
+    "from_address": {
+      "type": "string",
+      "description": "Raw From header"
+    },
+    "from_email": {
+      "type": "string"
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "to_address": {
+      "type": "string",
+      "description": "Raw To header"
+    },
+    "to_email": {
+      "type": "string"
+    },
+    "cc_address": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "preview": {
+      "type": "string",
+      "description": "First ~300 chars of the message body"
+    },
+    "body_text": {
+      "type": "string",
+      "description": "Plain-text body (truncated to ~10KB). Full rich HTML is fetched live from Zoho if needed later."
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "inbound",
+        "outbound"
+      ],
+      "description": "inbound = received; outbound = sent by the shop"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the message was sent or received"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "has_attachments": {
+      "type": "boolean",
+      "default": false
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Auto-matched customer (by sender/recipient email) or manually linked"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "link_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "purchase_order",
+        "invoice",
+        "estimate",
+        "build"
+      ],
+      "default": "none",
+      "description": "Which kind of document this email is linked to"
+    },
+    "link_id": {
+      "type": "string",
+      "description": "ID of the linked PurchaseOrder/Invoice/Estimate/EngineBuild"
+    },
+    "link_number": {
+      "type": "string",
+      "description": "Display number of the linked document (PO #, invoice #, etc.)"
+    },
+    "is_linked": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "message_id",
+    "direction"
+  ]
+}

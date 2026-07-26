@@ -27,6 +27,7 @@ import {
   LifeBuoy,
   Calendar,
   MessageSquare,
+  Mail,
   Menu,
   X
 } from "lucide-react";
@@ -78,6 +79,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
     { name: "Calendar", page: "Calendar", icon: Calendar },
     { name: "Messages", page: "Messaging", icon: MessageSquare },
+    { name: "Emails", page: "Emails", icon: Mail },
     { type: "divider" },
     { name: "Credits", page: "Credits", icon: Award },
     { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
