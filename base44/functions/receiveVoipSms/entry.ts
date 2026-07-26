@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -112,10 +113,9 @@ Deno.serve(async (req) => {
     try {
       const pushTitle = customerName ? 'New SMS from ' + customerName : 'New SMS from ' + normalizedFrom;
       const pushBody = message.substring(0, 200);
-      await base44.asServiceRole.functions.invoke('sendPushNotification', {
+      await sendPushToAllSubscriptions(base44, {
         title: pushTitle,
         body: pushBody,
-        phone: normalizedFrom,
         url: '/Messaging?phone=' + normalizedFrom,
       });
     } catch (pushErr) {

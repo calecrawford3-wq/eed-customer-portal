@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
+import { sendPushToAllSubscriptions } from "../../shared/sendPush.ts";
 
 const ADMIN_EMAIL = "admin@eedpower.com";
 
@@ -61,6 +62,17 @@ Deno.serve(async (req) => {
       });
     } catch (e) {
       console.error("[sendAdminNotification] Failed to send email:", e.message);
+    }
+
+    // 3. Send push notification to all subscribed devices
+    try {
+      await sendPushToAllSubscriptions(base44, {
+        title,
+        body: message,
+        url: link_url || "/Dashboard",
+      });
+    } catch (e) {
+      console.error("[sendAdminNotification] Push failed:", e.message);
     }
 
     return Response.json({ success: true });
