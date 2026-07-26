@@ -30,7 +30,10 @@ import {
   Mail,
   Menu,
   X,
-  ClipboardCheck
+  ClipboardCheck,
+  FlaskConical,
+  FileBarChart,
+  Database
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -82,6 +85,10 @@ export default function Layout({ children, currentPageName }) {
     { name: "Calendar", page: "Calendar", icon: Calendar },
     { name: "Messages", page: "Messaging", icon: MessageSquare },
     { name: "Emails", page: "Emails", icon: Mail },
+    { type: "divider" },
+    { name: "Engine Simulator", page: "Simulator", icon: FlaskConical },
+    { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },
+    { name: "Dev Data Library", page: "DevelopmentData", icon: Database },
     { type: "divider" },
     { name: "Credits", page: "Credits", icon: Award },
     { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },

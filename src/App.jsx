@@ -18,6 +18,9 @@ import BarcodeScan from './pages/BarcodeScan';
 import Messaging from './pages/Messaging';
 import Emails from './pages/Emails';
 import Approvals from './pages/Approvals';
+import Simulator from './pages/Simulator';
+import DynoImport from './pages/DynoImport';
+import DevelopmentData from './pages/DevelopmentData';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -90,6 +93,9 @@ const AuthenticatedApp = () => {
       <Route path="/Messaging" element={<LayoutWrapper currentPageName="Messaging"><Messaging /></LayoutWrapper>} />
       <Route path="/Emails" element={<LayoutWrapper currentPageName="Emails"><Emails /></LayoutWrapper>} />
       <Route path="/Approvals" element={<LayoutWrapper currentPageName="Approvals"><Approvals /></LayoutWrapper>} />
+      <Route path="/Simulator" element={<LayoutWrapper currentPageName="Simulator"><Simulator /></LayoutWrapper>} />
+      <Route path="/DynoImport" element={<LayoutWrapper currentPageName="DynoImport"><DynoImport /></LayoutWrapper>} />
+      <Route path="/DevelopmentData" element={<LayoutWrapper currentPageName="DevelopmentData"><DevelopmentData /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

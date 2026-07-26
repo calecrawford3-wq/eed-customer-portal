@@ -1,0 +1,220 @@
+{
+  "name": "DynoPull",
+  "type": "object",
+  "properties": {
+    "pull_number": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked EngineBuild. Blank for external/imported pulls not tied to a customer build."
+    },
+    "revision_id": {
+      "type": "string",
+      "description": "Linked BuildRevision"
+    },
+    "engine_serial_number": {
+      "type": "string"
+    },
+    "eed_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "platform_id": {
+      "type": "string"
+    },
+    "engine_family": {
+      "type": "string"
+    },
+    "model_year": {
+      "type": "string"
+    },
+    "racing_class": {
+      "type": "string"
+    },
+    "fuel_type": {
+      "type": "string"
+    },
+    "restrictor_size": {
+      "type": "string"
+    },
+    "pull_name": {
+      "type": "string"
+    },
+    "test_purpose": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "external",
+        "imported",
+        "manual",
+        "digitized"
+      ],
+      "default": "internal"
+    },
+    "dyno_name": {
+      "type": "string"
+    },
+    "dyno_type": {
+      "type": "string",
+      "description": "engine, wheel, hub, axle; inertia or load-bearing"
+    },
+    "correction_standard": {
+      "type": "string"
+    },
+    "correction_factor": {
+      "type": "number",
+      "default": 1
+    },
+    "smoothing": {
+      "type": "number",
+      "default": 0
+    },
+    "gear": {
+      "type": "string"
+    },
+    "air_temp": {
+      "type": "number"
+    },
+    "baro": {
+      "type": "number"
+    },
+    "humidity": {
+      "type": "number"
+    },
+    "elevation": {
+      "type": "number"
+    },
+    "density_altitude": {
+      "type": "number"
+    },
+    "start_rpm": {
+      "type": "number"
+    },
+    "end_rpm": {
+      "type": "number"
+    },
+    "peak_torque": {
+      "type": "number"
+    },
+    "peak_torque_rpm": {
+      "type": "number"
+    },
+    "peak_hp": {
+      "type": "number"
+    },
+    "peak_hp_rpm": {
+      "type": "number"
+    },
+    "avg_torque": {
+      "type": "number"
+    },
+    "avg_hp": {
+      "type": "number"
+    },
+    "lambda_avg": {
+      "type": "number"
+    },
+    "curve": {
+      "type": "string",
+      "description": "JSON array of RPM points: {rpm, torque, hp, lambda, afr, fuel_pressure, fuel_flow, oil_pressure, ignition_timing, throttle_position, egt}"
+    },
+    "is_valid": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_repeatable": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_warmup": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_approved_for_reference": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_approved_for_training": {
+      "type": "boolean",
+      "default": false
+    },
+    "invalid_reason": {
+      "type": "string"
+    },
+    "trust_level": {
+      "type": "number",
+      "default": 6,
+      "description": "1 (verified controlled) ... 6 (unverified)"
+    },
+    "training_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "incomplete",
+        "reference_only",
+        "eligible",
+        "approved_for_training",
+        "rejected",
+        "archived"
+      ],
+      "default": "not_reviewed"
+    },
+    "data_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "test_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "is_digitized": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the curve was read/digitized from an image rather than original numeric data"
+    },
+    "original_file_url": {
+      "type": "string"
+    },
+    "source_name": {
+      "type": "string"
+    },
+    "learning_source_id": {
+      "type": "string",
+      "description": "Linked DevelopmentDataSource when imported from the Development Data Library"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "name": "Simulation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "engine_serial_number": {
+      "type": "string"
+    },
+    "eed_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "baseline_revision_id": {
+      "type": "string"
+    },
+    "baseline_dyno_pull_id": {
+      "type": "string"
+    },
+    "proposed_revision_id": {
+      "type": "string"
+    },
+    "rpm_start": {
+      "type": "number",
+      "default": 4000
+    },
+    "rpm_end": {
+      "type": "number",
+      "default": 15000
+    },
+    "rpm_step": {
+      "type": "number",
+      "default": 250
+    },
+    "racing_class": {
+      "type": "string"
+    },
+    "intended_use": {
+      "type": "string"
+    },
+    "track_type": {
+      "type": "string"
+    },
+    "prediction_method": {
+      "type": "string",
+      "default": "rule_based_v1"
+    },
+    "model_version": {
+      "type": "string",
+      "default": "rule_based_v1"
+    },
+    "ruleset_version": {
+      "type": "string"
+    },
+    "data_index_version": {
+      "type": "string"
+    },
+    "predicted_curve": {
+      "type": "string",
+      "description": "JSON array of {rpm, baseline_torque, predicted_torque, predicted_min, predicted_max, baseline_hp, predicted_hp, predicted_hp_min, predicted_hp_max, torque_diff, hp_diff, confidence, factors}"
+    },
+    "predicted_peak_torque": {
+      "type": "number"
+    },
+    "predicted_peak_torque_rpm": {
+      "type": "number"
+    },
+    "predicted_peak_hp": {
+      "type": "number"
+    },
+    "predicted_peak_hp_rpm": {
+      "type": "number"
+    },
+    "predicted_avg_torque": {
+      "type": "number"
+    },
+    "predicted_avg_hp": {
+      "type": "number"
+    },
+    "predicted_peak_hp_min": {
+      "type": "number"
+    },
+    "predicted_peak_hp_max": {
+      "type": "number"
+    },
+    "predicted_powerband": {
+      "type": "string"
+    },
+    "predicted_rpm_ceiling": {
+      "type": "number"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "insufficient"
+      ],
+      "default": "low"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0
+    },
+    "prediction_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "data_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "similar_build_count": {
+      "type": "number",
+      "default": 0
+    },
+    "baseline_sources": {
+      "type": "string",
+      "description": "JSON array of {label, weight, source_id}"
+    },
+    "factors": {
+      "type": "string",
+      "description": "JSON array of {label, weight}"
+    },
+    "rules_applied": {
+      "type": "string",
+      "description": "JSON array of rule names + adjustments"
+    },
+    "warnings": {
+      "type": "string",
+      "description": "JSON array of warning strings"
+    },
+    "missing_data": {
+      "type": "string",
+      "description": "JSON array of strings"
+    },
+    "suggested_tests": {
+      "type": "string",
+      "description": "JSON array of strings"
+    },
+    "validation_dyno_pull_id": {
+      "type": "string",
+      "description": "Actual dyno pull linked after physical testing"
+    },
+    "validated": {
+      "type": "boolean",
+      "default": false
+    },
+    "validation_error": {
+      "type": "string",
+      "description": "JSON of validation errors after actual testing"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "build_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "name": "DevelopmentDataSource",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "internal_elite_build",
+        "internal_elite_dyno",
+        "historical_elite",
+        "customer_supplied",
+        "manufacturer",
+        "supplier",
+        "development_partner",
+        "external_shop",
+        "published_test",
+        "public_reference",
+        "manually_entered",
+        "unknown"
+      ],
+      "default": "manually_entered"
+    },
+    "data_type": {
+      "type": "string",
+      "enum": [
+        "dyno",
+        "flow",
+        "camshaft",
+        "build_sheet",
+        "component",
+        "track",
+        "reliability",
+        "fuel_test",
+        "ignition_test",
+        "exhaust_test",
+        "restrictor_test",
+        "reference",
+        "notes",
+        "other"
+      ],
+      "default": "dyno"
+    },
+    "source_owner": {
+      "type": "string"
+    },
+    "source_organization": {
+      "type": "string"
+    },
+    "source_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "engine_family": {
+      "type": "string"
+    },
+    "engine_generation": {
+      "type": "string"
+    },
+    "model_year": {
+      "type": "string"
+    },
+    "racing_class": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "confidentiality": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "confidential",
+        "public"
+      ],
+      "default": "internal"
+    },
+    "permission_to_use": {
+      "type": "boolean",
+      "default": true
+    },
+    "file_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "extracted_data": {
+      "type": "string",
+      "description": "JSON of manually confirmed extracted values (unverified until approved)"
+    },
+    "data_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "trust_level": {
+      "type": "number",
+      "default": 6,
+      "description": "1 (verified controlled) ... 6 (unverified)"
+    },
+    "training_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "incomplete",
+        "reference_only",
+        "eligible",
+        "approved_for_training",
+        "rejected",
+        "archived"
+      ],
+      "default": "not_reviewed"
+    },
+    "linked_dyno_pull_id": {
+      "type": "string"
+    },
+    "linked_revision_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "source_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

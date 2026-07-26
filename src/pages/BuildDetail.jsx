@@ -15,7 +15,8 @@ import {
   User,
   PackageCheck,
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  FlaskConical
 } from "lucide-react";
 import { toast } from "sonner";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
@@ -350,6 +351,12 @@ export default function BuildDetail() {
               Confirm Pickup
             </Button>
           )}
+          <Link to={`/Simulator?buildId=${buildId}`}>
+            <Button variant="outline" className="border-[#e20404] text-[#e20404] hover:bg-red-50">
+              <FlaskConical className="w-4 h-4 mr-2" />
+              Simulate Changes
+            </Button>
+          </Link>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
             Print Build Sheet

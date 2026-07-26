@@ -1,0 +1,150 @@
+{
+  "name": "PredictionRule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "cam_timing",
+        "camshaft",
+        "compression",
+        "cylinder_head",
+        "valve_job",
+        "valve_lash",
+        "valve_spring",
+        "fuel",
+        "lambda",
+        "fuel_pressure",
+        "ignition",
+        "intake",
+        "restrictor",
+        "exhaust",
+        "rotating_assembly",
+        "friction",
+        "oiling",
+        "crankcase_vacuum",
+        "cooling",
+        "other"
+      ]
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "engine_family_filter": {
+      "type": "string"
+    },
+    "racing_class_filter": {
+      "type": "string"
+    },
+    "fuel_filter": {
+      "type": "string"
+    },
+    "restrictor_filter": {
+      "type": "string"
+    },
+    "input_field": {
+      "type": "string",
+      "description": "Config field this rule reads, e.g. cam_timing.intake_centerline"
+    },
+    "operator": {
+      "type": "string",
+      "enum": [
+        "changed",
+        "increased",
+        "decreased",
+        "equals",
+        "gt",
+        "lt",
+        "gte",
+        "lte"
+      ],
+      "default": "changed"
+    },
+    "previous_value_min": {
+      "type": "number"
+    },
+    "previous_value_max": {
+      "type": "number"
+    },
+    "new_value_min": {
+      "type": "number"
+    },
+    "new_value_max": {
+      "type": "number"
+    },
+    "rpm_start": {
+      "type": "number",
+      "default": 4000
+    },
+    "rpm_end": {
+      "type": "number",
+      "default": 15000
+    },
+    "torque_fixed_adj": {
+      "type": "number",
+      "default": 0,
+      "description": "Nm or ft-lb added to baseline torque in the RPM range"
+    },
+    "torque_pct_adj": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentage adjustment to baseline torque in the RPM range (e.g. 3 = +3%)"
+    },
+    "confidence_impact": {
+      "type": "number",
+      "default": 0,
+      "description": "Points added to/subtracted from confidence score"
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "number",
+      "default": 0
+    },
+    "supporting_sources": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

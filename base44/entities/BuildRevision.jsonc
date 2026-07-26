@@ -1,0 +1,135 @@
+{
+  "name": "BuildRevision",
+  "type": "object",
+  "properties": {
+    "build_id": {
+      "type": "string",
+      "description": "Linked EngineBuild (existing source of truth)"
+    },
+    "engine_serial_number": {
+      "type": "string"
+    },
+    "eed_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "platform_id": {
+      "type": "string"
+    },
+    "revision_name": {
+      "type": "string"
+    },
+    "revision_number": {
+      "type": "number",
+      "default": 1
+    },
+    "parent_revision_id": {
+      "type": "string"
+    },
+    "revision_type": {
+      "type": "string",
+      "enum": [
+        "actual",
+        "historical",
+        "proposed",
+        "simulated",
+        "imported_reference",
+        "external_test",
+        "manufacturer_reference"
+      ],
+      "default": "actual"
+    },
+    "revision_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "planned",
+        "assembled",
+        "dyno_tested",
+        "approved",
+        "rejected",
+        "archived",
+        "reference_only"
+      ],
+      "default": "draft"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "test_category": {
+      "type": "string"
+    },
+    "is_current_config": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_simulated": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_assembled": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_dyno_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_approved_for_training": {
+      "type": "boolean",
+      "default": false
+    },
+    "data_completeness_pct": {
+      "type": "number",
+      "default": 0
+    },
+    "data_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "config": {
+      "type": "object",
+      "description": "Protected snapshot of the full configuration: foundation, compression, head, cam, cam_timing, valvetrain, induction, fuel, ignition, exhaust, oiling, cooling. Editable only on proposed/simulated revisions; actual revisions are read-only snapshots.",
+      "properties": {}
+    },
+    "changes_summary": {
+      "type": "string",
+      "description": "JSON array of field-level diffs vs the parent revision"
+    },
+    "source_refs": {
+      "type": "string",
+      "description": "JSON array of source-tracking entries: {entity_type, record_id, field, status, verified}"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "build_id",
+    "revision_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
