@@ -182,6 +182,9 @@ export default function Emails() {
                   {e.customer_name && (
                     <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{e.customer_name}</Badge>
                   )}
+                  {e.supplier_name && (
+                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-amber-100 text-amber-700">{e.supplier_name}</Badge>
+                  )}
                 </div>
               </button>
             ))
@@ -215,6 +218,7 @@ export default function Emails() {
                 <div className="text-xs bg-red-50 border border-red-200 rounded p-2 text-red-700">
                   Linked to <strong>{LINK_LABELS[selected.link_type]}</strong> {selected.link_number}
                   {selected.customer_name ? ` · ${selected.customer_name}` : ""}
+                  {selected.supplier_name ? ` · ${selected.supplier_name}` : ""}
                 </div>
               )}
 
