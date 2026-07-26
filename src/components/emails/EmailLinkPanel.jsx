@@ -106,7 +106,7 @@ export default function EmailLinkPanel({ open, onClose, email }) {
       const ql = q.toLowerCase();
       setCustResults(
         all.filter((c) =>
-          `${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""}`.toLowerCase().includes(ql)
+          `${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""} ${(c.additional_emails || []).join(" ")}`.toLowerCase().includes(ql)
         ).slice(0, 8)
       );
     } catch (_) { setCustResults([]); }

@@ -30,6 +30,10 @@ export default async function(req) {
     const emailMap = {};
     for (const c of customers) {
       if (c.email) emailMap[String(c.email).trim().toLowerCase()] = { type: 'customer', ref: c };
+      for (const ae of (c.additional_emails || [])) {
+        const v = String(ae || '').trim().toLowerCase();
+        if (v) emailMap[v] = { type: 'customer', ref: c };
+      }
     }
     const supplierMap = {};
     for (const s of suppliers) {

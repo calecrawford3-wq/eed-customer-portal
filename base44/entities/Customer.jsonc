@@ -13,7 +13,16 @@
     },
     "email": {
       "type": "string",
-      "format": "email"
+      "format": "email",
+      "description": "Primary email address (used for portal invites and statements)"
+    },
+    "additional_emails": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "description": "Extra email addresses for this customer (auto-matched against inbound/outbound emails)"
     },
     "phone": {
       "type": "string"

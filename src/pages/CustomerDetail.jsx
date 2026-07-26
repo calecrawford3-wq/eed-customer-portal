@@ -22,6 +22,7 @@ import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
 import CustomerCreditsTab from "@/components/customer/CustomerCreditsTab";
 import CountrySelect, { getCountryName } from "@/components/CountrySelect";
 import CallButton from "@/components/CallButton";
+import AdditionalEmailsField from "@/components/customers/AdditionalEmailsField";
 import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicationsTab";
 import EmailsSection from "@/components/emails/EmailsSection";
 import { toast } from "sonner";
@@ -191,6 +192,9 @@ export default function CustomerDetail() {
           <CardHeader className="pb-3"><CardTitle className="text-base">Contact Info</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {customer.email && <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-slate-400" /><span>{customer.email}</span></div>}
+            {(customer.additional_emails || []).filter(Boolean).map((e, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-slate-400 opacity-50" /><span className="text-slate-600">{e}</span></div>
+            ))}
             {customer.phone && (
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="w-4 h-4 text-slate-400" />
@@ -370,7 +374,14 @@ export default function CustomerDetail() {
             <div><Label>First Name</Label><Input value={editForm.first_name || ""} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
             <div><Label>Last Name</Label><Input value={editForm.last_name || ""} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
             <div><Label>Company</Label><Input value={editForm.company_name || ""} onChange={e => setEditForm({ ...editForm, company_name: e.target.value })} /></div>
-            <div><Label>Email</Label><Input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
+            <div className="col-span-2">
+              <Label>Primary Email</Label>
+              <Input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs text-slate-500">Additional Emails</Label>
+              <AdditionalEmailsField emails={editForm.additional_emails || []} onChange={(arr) => setEditForm({ ...editForm, additional_emails: arr })} />
+            </div>
             <div><Label>Phone</Label><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: formatPhone(e.target.value) })} placeholder="(999) 999-9999" /></div>
             <div>
               <Label>Status</Label>
@@ -390,7 +401,7 @@ export default function CustomerDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => updateMutation.mutate({ ...editForm, additional_emails: (editForm.additional_emails || []).map(e => (e || "").trim()).filter(Boolean) })} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
