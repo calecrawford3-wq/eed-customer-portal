@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send } from "lucide-react";
 import { toast } from "sonner";
+import FromAddressesEditor from "@/components/settings/FromAddressesEditor";
 
 const defaultSettings = {
   key: "global",
@@ -35,7 +36,7 @@ const defaultSettings = {
   smtp_password: "",
   smtp_from_name: "Elite Engine Development",
   smtp_from_email: "",
-  custom_from_email: "",
+  custom_from_emails: [],
   po_smtp_host: "",
   po_smtp_port: 587,
   po_smtp_username: "",
@@ -237,13 +238,9 @@ export default function Settings() {
             </Card>
 
             <Card className="border-0 shadow-sm">
-              <CardHeader><CardTitle className="text-base">Additional "From" Address (Zoho)</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <div>
-                  <Label>Personal / Custom From Email</Label>
-                  <Input type="email" value={form.custom_from_email} onChange={e => set("custom_from_email", e.target.value)} placeholder="cale@eedpower.com" />
-                </div>
-                <p className="text-xs text-slate-400">Shows up as a "From" choice when composing emails. This address <strong>must be added as a verified sender alias</strong> in your Zoho Mail account (Settings → Mail Accounts → Email Aliases) or Zoho will reject sends from it.</p>
+              <CardHeader><CardTitle className="text-base">Additional "From" Addresses (Zoho)</CardTitle></CardHeader>
+              <CardContent>
+                <FromAddressesEditor value={form.custom_from_emails || []} onChange={(arr) => set("custom_from_emails", arr)} />
               </CardContent>
             </Card>
 

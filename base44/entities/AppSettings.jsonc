@@ -83,9 +83,13 @@
       "type": "string",
       "description": "From address for general outgoing emails (e.g. noreply@yourdomain.com)"
     },
-    "custom_from_email": {
-      "type": "string",
-      "description": "Additional 'From' address offered in the email composer (e.g. a personal address like cale@eedpower.com). Must be a verified sender alias in the connected Zoho Mail account."
+    "custom_from_emails": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "description": "Additional 'From' addresses offered in the email composer (e.g. a personal address like cale@eedpower.com). Each must be a verified sender address in the connected Zoho Mail account (Settings \u2192 Send Mail As)."
     },
     "po_smtp_host": {
       "type": "string",
