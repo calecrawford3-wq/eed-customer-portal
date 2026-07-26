@@ -170,6 +170,7 @@ export default function Emails() {
         supplier_name: supMsg?.supplier_name || "",
         is_linked: msgs.some((m) => m.is_linked),
         link_type: linkMsg?.link_type,
+        link_id: linkMsg?.link_id || "",
         link_number: linkMsg?.link_number,
         build_id: buildMsg?.link_id || "",
         has_attachments: msgs.some((m) => m.has_attachments),

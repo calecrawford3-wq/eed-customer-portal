@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CornerUpLeft, ListTodo, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { toast } from "sonner";
+import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
 
 export const THREAD_STATUS_META = {
   new: { label: "New", cls: "bg-slate-100 text-slate-700 border-slate-200" },
@@ -113,6 +114,10 @@ export default function ThreadActionPanel({ thread, threadRecord, users, onCreat
           <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} onBlur={() => { if (due !== dueDate) update({ due_date: due || undefined }); }} className="h-8 w-[140px] text-xs" />
         </div>
       </div>
+
+      {thread.link_type === "estimate" && thread.link_id && (
+        <EstimateApprovalActions estimateId={thread.link_id} compact />
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => onReply(thread)}><CornerUpLeft className="w-3.5 h-3.5 mr-1" />Reply</Button>

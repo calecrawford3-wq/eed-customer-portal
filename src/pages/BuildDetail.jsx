@@ -43,6 +43,7 @@ import {
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import EngineSelector from "@/components/EngineSelector";
 import BuildTimeline from "@/components/engines/BuildTimeline";
+import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued" },
@@ -107,6 +108,12 @@ export default function BuildDetail() {
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
+  });
+
+  const { data: linkedEstimates = [] } = useQuery({
+    queryKey: ["build-estimate", buildId],
+    queryFn: () => base44.entities.Estimate.filter({ build_id: buildId }, "-issue_date", 5),
+    enabled: !!buildId,
   });
 
   const build = buildData?.[0];
@@ -589,6 +596,17 @@ export default function BuildDetail() {
                 />
               </CardContent>
             </Card>
+
+            {linkedEstimates[0] && (
+              <Card className="border-0 shadow-sm md:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Linked Estimate Approval</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EstimateApprovalActions estimateId={linkedEstimates[0].id} />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Spec Sheet Quick Reference */}
             {specSheet && (

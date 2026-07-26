@@ -29,7 +29,8 @@ import {
   MessageSquare,
   Mail,
   Menu,
-  X
+  X,
+  ClipboardCheck
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -60,6 +61,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Customers", page: "Customers", icon: Users },
     { name: "Estimates", page: "Estimates", icon: ClipboardList },
     { name: "Invoices", page: "Invoices", icon: Receipt },
+    { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
     { type: "divider" },
     { name: "Engine Builds", page: "Builds", icon: Wrench },
     { name: "Platforms", page: "Platforms", icon: Layers },
