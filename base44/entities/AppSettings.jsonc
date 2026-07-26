@@ -118,11 +118,15 @@
     },
     "zoho_mail_refresh_token": {
       "type": "string",
-      "description": "Zoho Mail OAuth refresh token (with Mail read+send scopes) \u2014 generated via the Connect Zoho Mail flow on the Emails page."
+      "description": "DEPRECATED \u2014 migrated to the admin-only EmailCredential entity. Kept only so a one-time migration can copy any legacy token into EmailCredential and then clear it here."
     },
     "email_sync_lock": {
       "type": "string",
       "description": "JSON lock string ({job_id, locked_at}) used to prevent overlapping Zoho Mail sync jobs. Cleared when a sync finishes."
+    },
+    "email_sync_checkpoints": {
+      "type": "string",
+      "description": "JSON map of incremental sync checkpoints keyed by accountId|folderId, each {last_message_time, last_message_id}. Lets the sync skip folders whose newest message is not newer than the last sync. Cleared by a full resync."
     },
     "recent_send_ids": {
       "type": "array",
@@ -130,6 +134,15 @@
         "type": "string"
       },
       "description": "Recent client-generated send IDs (max 100) used for idempotent email sending \u2014 prevents duplicate sends on retries."
+    },
+    "email_notify_quiet_hours": {
+      "type": "string",
+      "description": "JSON {enabled, start, end} for push-notification quiet hours in shop local time (America/Chicago). When active, new-email push alerts are suppressed during this window."
+    },
+    "email_notify_on_full_resync": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, push alerts fire for old emails pulled during a full historical resync. Default false (suppressed) so a resync doesn't spam admins with old mail."
     },
     "admin_override_password": {
       "type": "string",

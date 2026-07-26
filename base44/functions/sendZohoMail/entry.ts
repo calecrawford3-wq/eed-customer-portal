@@ -22,6 +22,15 @@ export default async function(req) {
     if (clientSendId && recent.includes(clientSendId)) {
       return Response.json({ success: true, duplicate: true });
     }
+    // Also dedupe against the send log (authoritative send-state)
+    if (clientSendId) {
+      try {
+        const prior = await base44.asServiceRole.entities.EmailSendLog.filter({ client_send_id: clientSendId });
+        if (prior && prior.some((l) => l.send_status === 'sent')) {
+          return Response.json({ success: true, duplicate: true });
+        }
+      } catch (_) { /* send log not available yet — ignore */ }
+    }
 
     // --- Server-side sender validation: only approved addresses may send ---
     const allowed = new Set(
@@ -55,9 +64,34 @@ export default async function(req) {
       mailFormat: html ? 'html' : 'plaintext',
     };
 
+    // Track this send attempt in the send log
+    let logId = null;
+    const nowIso = new Date().toISOString();
+    if (clientSendId) {
+      try {
+        const log = await base44.asServiceRole.entities.EmailSendLog.create({
+          client_send_id: clientSendId,
+          to, cc: cc || '', subject,
+          from_address: fromEmail, from_name: fromName || '',
+          send_status: 'sending', queued_at: nowIso,
+          created_by: user?.email || '',
+        });
+        logId = log?.id || null;
+      } catch (_) { /* logging is best-effort */ }
+    }
+
     const result = await sendMessage(token, accountId, payload);
+    const providerMessageId = result.data?.data?.messageId || result.data?.messageId || '';
     if (!result.ok || result.data?.status?.code !== 200) {
-      return Response.json({ error: result.data?.status?.description || 'Send failed', details: result.data }, { status: 500 });
+      const reason = result.data?.status?.description || 'Send failed';
+      if (logId) {
+        try { await base44.asServiceRole.entities.EmailSendLog.update(logId, { send_status: 'failed', failed_at: new Date().toISOString(), failure_reason: reason }); } catch (_) {}
+      }
+      return Response.json({ error: reason, details: result.data }, { status: 500 });
+    }
+    // Mark the send log as sent
+    if (logId) {
+      try { await base44.asServiceRole.entities.EmailSendLog.update(logId, { send_status: 'sent', sent_at: new Date().toISOString(), provider_message_id: providerMessageId }); } catch (_) {}
     }
     // Record the send id to prevent duplicate sends on retry (keep last 100)
     if (clientSendId && settings?.id) {

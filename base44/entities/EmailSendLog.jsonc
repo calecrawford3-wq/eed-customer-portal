@@ -1,0 +1,68 @@
+{
+  "name": "EmailSendLog",
+  "type": "object",
+  "properties": {
+    "client_send_id": {
+      "type": "string",
+      "description": "Client-generated idempotency key \u2014 prevents duplicate sends on retry and links log entries to one send attempt"
+    },
+    "to": {
+      "type": "string"
+    },
+    "cc": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "from_address": {
+      "type": "string"
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "send_status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "sending",
+        "sent",
+        "failed"
+      ],
+      "default": "queued",
+      "description": "Lifecycle state of this outgoing message: queued = waiting to submit, sending = in flight to Zoho, sent = accepted by provider, failed = rejected or errored"
+    },
+    "queued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure_reason": {
+      "type": "string",
+      "description": "Provider error description or exception message when send_status = failed"
+    },
+    "provider_message_id": {
+      "type": "string",
+      "description": "Message ID returned by Zoho Mail on success, when available"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of the user who initiated the send"
+    }
+  },
+  "required": [
+    "client_send_id",
+    "send_status"
+  ]
+}

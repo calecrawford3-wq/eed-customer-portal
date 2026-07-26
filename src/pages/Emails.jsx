@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
 import EmailAttachments from "@/components/emails/EmailAttachments";
 import ZohoMailConnect from "@/components/emails/ZohoMailConnect";
+import EmailSendLogModal from "@/components/emails/EmailSendLogModal";
+import EmailNotifySettingsModal from "@/components/emails/EmailNotifySettingsModal";
 import { toast } from "sonner";
 
 function fmtDate(iso) {
@@ -51,6 +53,8 @@ export default function Emails() {
   const [composeSource, setComposeSource] = useState(null);
   const [linkTarget, setLinkTarget] = useState(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [sendLogOpen, setSendLogOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
   const { data: emails = [], isLoading } = useQuery({
     queryKey: ["emails"],
@@ -161,7 +165,7 @@ export default function Emails() {
   const selectedThread = filteredThreads.find((t) => t.key === selectedKey) || null;
 
   const syncMut = useMutation({
-    mutationFn: () => base44.functions.invoke("syncZohoMail"),
+    mutationFn: (vars) => base44.functions.invoke("syncZohoMail", vars || {}),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["emails"] });
       qc.invalidateQueries({ queryKey: ["email-threads"] });
@@ -322,6 +326,15 @@ export default function Emails() {
           <Button variant="outline" onClick={() => syncMut.mutate()} disabled={syncMut.isPending}>
             <RefreshCw className={`w-4 h-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync now"}
+          </Button>
+          <Button variant="outline" onClick={() => { if (confirm("Run a FULL resync? This re-fetches every message and ignores sync checkpoints. Use only to repair missing history.")) syncMut.mutate({ fullResync: true }); }} disabled={syncMut.isPending} title="Re-fetch all history, ignoring incremental checkpoints" className="text-xs">
+            <RefreshCw className="w-4 h-4 mr-1" /> Full resync
+          </Button>
+          <Button variant="outline" onClick={() => setSendLogOpen(true)} className="text-xs">
+            <Send className="w-4 h-4 mr-1" /> Send log
+          </Button>
+          <Button variant="outline" onClick={() => setNotifyOpen(true)} className="text-xs" title="Notification quiet hours and resync alerts">
+            <Bell className="w-4 h-4 mr-1" /> Notify
           </Button>
           <Button variant="outline" onClick={() => categorizeMut.mutate()} disabled={categorizeMut.isPending}
             title="Use AI to sort uncategorized threads into categories">
@@ -573,6 +586,8 @@ export default function Emails() {
       <EmailComposer open={composeOpen} onClose={() => setComposeOpen(false)} mode={composeMode} sourceMessage={composeSource} />
       <EmailLinkPanel open={!!linkTarget} onClose={() => { setLinkTarget(null); qc.invalidateQueries({ queryKey: ["emails"] }); }} email={linkTarget} />
       <ZohoMailConnect open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <EmailSendLogModal open={sendLogOpen} onClose={() => setSendLogOpen(false)} />
+      <EmailNotifySettingsModal open={notifyOpen} onClose={() => setNotifyOpen(false)} />
     </div>
   );
 }

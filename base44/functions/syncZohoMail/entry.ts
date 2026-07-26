@@ -37,6 +37,30 @@ function normalizeSubject(s) {
   return String(s || '').replace(/^((re|fwd|fw)\s*:\s*)+/gi, '').trim();
 }
 
+function parseMsgTimeMs(msg) {
+  try {
+    const rt = msg.receivedTime || msg.sentDateInGMT || msg.sentDate || '';
+    if (!rt) return 0;
+    return /^\d+$/.test(String(rt)) ? Number(rt) : new Date(rt).getTime();
+  } catch (_) { return 0; }
+}
+
+// Quiet-hours check in shop local time (America/Chicago). cfg: {enabled, start, end} (HH:MM).
+function inQuietHours(cfg) {
+  if (!cfg || !cfg.enabled || !cfg.start || !cfg.end) return false;
+  try {
+    const now = new Date();
+    const chicago = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+    const [h, m] = chicago.split(':').map(Number);
+    const cur = h * 60 + m;
+    const [sh, sm] = cfg.start.split(':').map(Number);
+    const [eh, em] = cfg.end.split(':').map(Number);
+    const s = sh * 60 + sm, e = eh * 60 + em;
+    if (s === e) return false;
+    return s < e ? (cur >= s && cur < e) : (cur >= s || cur < e);
+  } catch (_) { return false; }
+}
+
 export default async function(req) {
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
@@ -47,8 +71,16 @@ export default async function(req) {
   try {
     base44 = createClientFromRequest(req);
 
+    // Optional full historical resync (admin action) — ignores and resets checkpoints
+    let fullResync = false;
+    try { const body = await req.json(); fullResync = !!body?.fullResync; } catch (_) { /* no body */ }
+
     // --- Overlap protection: refuse to run while another sync is active ---
     settings = await getSettings(base44);
+    let checkpoints = {};
+    try { checkpoints = settings?.email_sync_checkpoints ? JSON.parse(settings.email_sync_checkpoints) : {}; } catch (_) { checkpoints = {}; }
+    const startCheckpoints = fullResync ? {} : checkpoints;
+    const newCheckpoints = { ...startCheckpoints };
     const lockRaw = settings?.email_sync_lock || '';
     let lock = null;
     try { lock = lockRaw ? JSON.parse(lockRaw) : null; } catch (_) { lock = null; }
@@ -122,10 +154,29 @@ export default async function(req) {
           continue;
         }
 
+        // Incremental checkpoint: skip this folder entirely if its newest message
+        // is not newer than the last sync (unless this is a full resync).
+        const cpKey = `${accountId}|${folderId}`;
+        const folderCp = startCheckpoints[cpKey];
+        const msgTimeById = {};
+        let batchMaxMs = 0;
         for (const msg of messages) {
-          scanned++;
+          const t = parseMsgTimeMs(msg);
+          const mid = String(msg.messageId || msg.message_id || msg.id || '');
+          if (mid) msgTimeById[mid] = t;
+          if (t > batchMaxMs) batchMaxMs = t;
+        }
+        if (!fullResync && folderCp?.last_message_time && batchMaxMs && batchMaxMs <= folderCp.last_message_time) {
+          continue;
+        }
+        let folderMaxMs = folderCp?.last_message_time || 0;
+
+        for (const msg of messages) {
           const messageId = String(msg.messageId || msg.message_id || msg.id || '');
           if (!messageId) continue;
+          const msgMs = msgTimeById[messageId] || 0;
+          if (!fullResync && folderCp?.last_message_time && msgMs && msgMs <= folderCp.last_message_time) continue;
+          scanned++;
           const dedupeKey = `${accountId}|${messageId}`;
           if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
@@ -202,6 +253,7 @@ export default async function(req) {
               is_linked: false,
             });
             newCount++;
+            if (msgMs > folderMaxMs) folderMaxMs = msgMs;
             newEmails.push({
               id: created?.id || '',
               account_id: String(accountId),
@@ -225,6 +277,9 @@ export default async function(req) {
           } catch (e) {
             errors.push(`store(${messageId}): ${e.message || e}`);
           }
+        }
+        if (folderMaxMs > (folderCp?.last_message_time || 0)) {
+          newCheckpoints[cpKey] = { last_message_time: folderMaxMs, last_message_id: '' };
         }
       }
     }
@@ -326,8 +381,8 @@ export default async function(req) {
       const autoLinks = [];
       for (const ne of newEmails) {
         if (!ne.id) continue;
-        if (ne.customer_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'customer', entity_id: ne.customer_id, entity_label: ne.customer_name || '', link_source: 'auto' });
-        if (ne.supplier_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'supplier', entity_id: ne.supplier_id, entity_label: ne.supplier_name || '', link_source: 'auto' });
+        if (ne.customer_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'customer', entity_id: ne.customer_id, entity_label: ne.customer_name || '', link_source: 'auto', confidence_score: 100, matched_by: 'email_address', match_status: 'confirmed' });
+        if (ne.supplier_id) autoLinks.push({ email_id: ne.id, thread_id: ne.thread_id, account_id: ne.account_id, entity_type: 'supplier', entity_id: ne.supplier_id, entity_label: ne.supplier_name || '', link_source: 'auto', confidence_score: 100, matched_by: 'email_address', match_status: 'confirmed' });
       }
       if (autoLinks.length) {
         await base44.asServiceRole.entities.EmailLink.bulkCreate(autoLinks);
@@ -337,15 +392,28 @@ export default async function(req) {
       errors.push('auto links: ' + (e.message || e));
     }
 
-    // Push a summary notification for new inbound mail
+    // Push a summary notification for new inbound mail — respecting quiet hours + resync suppression
     if (newInbound.length) {
-      try {
-        const first = newInbound[0];
-        const title = newInbound.length === 1 ? `New email from ${first.from}` : `${newInbound.length} new emails`;
-        const body = newInbound.slice(0, 3).map((n) => `${n.from}: ${n.subject}`).join('\n');
-        await sendPushToAllSubscriptions(base44, { title, body, url: '/Emails' });
-      } catch (_) { /* push is best-effort */ }
+      let quietCfg = null;
+      try { quietCfg = settings?.email_notify_quiet_hours ? JSON.parse(settings.email_notify_quiet_hours) : null; } catch (_) { quietCfg = null; }
+      const notifyOnFullResync = settings?.email_notify_on_full_resync === true;
+      const suppressDueResync = fullResync && !notifyOnFullResync;
+      const suppressDueQuiet = inQuietHours(quietCfg);
+      if (!suppressDueResync && !suppressDueQuiet) {
+        try {
+          const first = newInbound[0];
+          const title = newInbound.length === 1 ? `New email from ${first.from}` : `${newInbound.length} new emails`;
+          const body = newInbound.slice(0, 3).map((n) => `${n.from}: ${n.subject}`).join('\n');
+          await sendPushToAllSubscriptions(base44, { title, body, url: '/Emails' });
+        } catch (_) { /* push is best-effort */ }
+      }
     }
+
+    // Persist updated sync checkpoints
+    try {
+      const sEnd = await getSettings(base44);
+      if (sEnd) await base44.asServiceRole.entities.AppSettings.update(sEnd.id, { email_sync_checkpoints: JSON.stringify(newCheckpoints) });
+    } catch (e) { errors.push('checkpoints: ' + (e.message || e)); }
 
     await writeSyncLog(base44, {
       started_at: startedAt, status: errors.length ? 'partial' : 'success',

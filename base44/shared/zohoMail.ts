@@ -7,6 +7,20 @@
 const ZOHO_TOKEN_URL = "https://accounts.zoho.com/oauth/v2/token";
 const ZOHO_MAIL_API = "https://mail.zoho.com/api";
 
+async function getEmailCredential(base44, key) {
+  const list = await base44.asServiceRole.entities.EmailCredential.filter({ key });
+  return list && list[0];
+}
+
+async function setEmailCredential(base44, key, refreshToken) {
+  const existing = await getEmailCredential(base44, key);
+  if (existing) {
+    await base44.asServiceRole.entities.EmailCredential.update(existing.id, { refresh_token: refreshToken });
+  } else {
+    await base44.asServiceRole.entities.EmailCredential.create({ key, refresh_token: refreshToken });
+  }
+}
+
 export async function getZohoMailAccessToken(base44) {
   const clientId = Deno.env.get("ZOHO_CLIENT_ID");
   const clientSecret = Deno.env.get("ZOHO_CLIENT_SECRET");
@@ -14,12 +28,23 @@ export async function getZohoMailAccessToken(base44) {
     throw new Error("Zoho OAuth client not configured (ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET secrets)");
   }
   let refreshToken = "";
-  // Prefer the AppSettings-stored Mail refresh token, fall back to env secrets
+  // Primary source: the admin-only EmailCredential entity
   if (base44) {
+    try {
+      const cred = await getEmailCredential(base44, "zoho_mail");
+      if (cred && cred.refresh_token) refreshToken = cred.refresh_token;
+    } catch (_) { /* ignore — fall back */ }
+  }
+  // One-time migration: copy any legacy token from AppSettings into EmailCredential, then clear it
+  if (!refreshToken && base44) {
     try {
       const list = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
       const s = list && list[0];
-      if (s && s.zoho_mail_refresh_token) refreshToken = s.zoho_mail_refresh_token;
+      if (s && s.zoho_mail_refresh_token) {
+        refreshToken = s.zoho_mail_refresh_token;
+        await setEmailCredential(base44, "zoho_mail", refreshToken);
+        try { await base44.asServiceRole.entities.AppSettings.update(s.id, { zoho_mail_refresh_token: "" }); } catch (_) { /* best-effort */ }
+      }
     } catch (_) { /* ignore — fall back to env */ }
   }
   if (!refreshToken) refreshToken = Deno.env.get("ZOHO_MAIL_REFRESH_TOKEN") || "";
@@ -68,13 +93,7 @@ export async function exchangeZohoMailGrantToken(base44, { code, redirectUri }) 
   if (!data.refresh_token) {
     throw new Error("Token exchange failed: " + JSON.stringify(data));
   }
-  const list = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
-  const settings = list && list[0];
-  if (settings) {
-    await base44.asServiceRole.entities.AppSettings.update(settings.id, { zoho_mail_refresh_token: data.refresh_token });
-  } else {
-    await base44.asServiceRole.entities.AppSettings.create({ key: "global", zoho_mail_refresh_token: data.refresh_token });
-  }
+  await setEmailCredential(base44, "zoho_mail", data.refresh_token);
   return { success: true };
 }
 

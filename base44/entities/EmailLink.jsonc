@@ -43,6 +43,25 @@
       "default": "auto",
       "description": "auto = matched by email address during sync; manual = linked by a user; ai = suggested by AI"
     },
+    "confidence_score": {
+      "type": "number",
+      "default": 100,
+      "description": "Match confidence 0\u2013100. Auto address matches start at 100; lower-confidence (e.g. domain-based suggestions) would score lower and warrant review."
+    },
+    "matched_by": {
+      "type": "string",
+      "description": "How the link was matched, e.g. 'primary_email', 'additional_email', 'supplier_email', 'manual', 'ai'"
+    },
+    "match_status": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "suggested",
+        "review"
+      ],
+      "default": "confirmed",
+      "description": "confirmed = exact match accepted; suggested = lower-confidence, may need review; review = flagged for a human"
+    },
     "created_by": {
       "type": "string"
     },
