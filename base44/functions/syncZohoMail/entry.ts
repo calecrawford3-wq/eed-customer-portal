@@ -9,14 +9,50 @@ import {
   htmlToText,
   truncate,
 } from '../../shared/zohoMail.ts';
+import { sanitizeStoredHtml } from '../../shared/emailSanitizer.ts';
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 
 // Folders we never sync into the app
 const SKIP_FOLDERS = ['junk', 'spam', 'trash', 'draft', 'outbox', 'archive'];
+const SYNC_LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getSettings(base44) {
+  const list = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
+  return list && list[0];
+}
+
+/** Release the sync lock only if it still belongs to this job. */
+async function releaseLock(base44, jobId) {
+  const s = await getSettings(base44);
+  if (!s) return;
+  let lock = null;
+  try { lock = s.email_sync_lock ? JSON.parse(s.email_sync_lock) : null; } catch (_) { lock = null; }
+  if (lock && lock.job_id === jobId) {
+    await base44.asServiceRole.entities.AppSettings.update(s.id, { email_sync_lock: '' });
+  }
+}
 
 export default async function(req) {
+  let base44;
+  const jobId = crypto.randomUUID();
+  let settings;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
+
+    // --- Overlap protection: refuse to run while another sync is active ---
+    settings = await getSettings(base44);
+    const lockRaw = settings?.email_sync_lock || '';
+    let lock = null;
+    try { lock = lockRaw ? JSON.parse(lockRaw) : null; } catch (_) { lock = null; }
+    if (lock && lock.job_id && (Date.now() - (lock.locked_at || 0)) < SYNC_LOCK_TTL_MS) {
+      return Response.json({ success: true, skipped: true, note: 'A sync is already in progress — try again in a moment.' });
+    }
+    const lockVal = JSON.stringify({ job_id: jobId, locked_at: Date.now() });
+    if (settings) {
+      await base44.asServiceRole.entities.AppSettings.update(settings.id, { email_sync_lock: lockVal });
+    } else {
+      settings = await base44.asServiceRole.entities.AppSettings.create({ key: 'global', email_sync_lock: lockVal });
+    }
 
     const token = await getZohoMailAccessToken(base44);
     const accounts = await listAccounts(token);
@@ -40,9 +76,9 @@ export default async function(req) {
       if (s.email) supplierMap[String(s.email).trim().toLowerCase()] = s;
     }
 
-    // Dedupe by message_id
+    // Dedupe by account_id + message_id (composite key — message IDs are not globally unique)
     const existing = await base44.asServiceRole.entities.Email.list('-received_at', 500);
-    const seen = new Set((existing || []).map((e) => e.message_id).filter(Boolean));
+    const seen = new Set((existing || []).map((e) => `${e.account_id || ''}|${e.message_id || ''}`).filter((k) => k && k !== '|'));
 
     let newCount = 0;
     let scanned = 0;
@@ -62,7 +98,6 @@ export default async function(req) {
         continue;
       }
 
-
       for (const folder of folders) {
         const folderId = folder.folderId || folder.folder_id || folder.id;
         const fname = String(folder.folderName || folder.name || '').toLowerCase();
@@ -79,8 +114,10 @@ export default async function(req) {
         for (const msg of messages) {
           scanned++;
           const messageId = String(msg.messageId || msg.message_id || msg.id || '');
-          if (!messageId || seen.has(messageId)) continue;
-          seen.add(messageId);
+          if (!messageId) continue;
+          const dedupeKey = `${accountId}|${messageId}`;
+          if (seen.has(dedupeKey)) continue;
+          seen.add(dedupeKey);
 
           // Fetch full message detail for the body (only for new messages)
           let detail = {};
@@ -97,6 +134,7 @@ export default async function(req) {
           const direction = isSent ? 'outbound' : 'inbound';
 
           const rawHtml = detail.content || detail.htmlContent || detail.html || '';
+          const bodyHtml = sanitizeStoredHtml(rawHtml);
           const bodyText = truncate(htmlToText(detail.content || detail.textContent || detail.text || rawHtml || msg.summary || ''), 10000);
           const preview = truncate(bodyText.replace(/\s+/g, ' '), 300);
 
@@ -134,6 +172,7 @@ export default async function(req) {
               subject,
               preview,
               body_text: bodyText,
+              body_html: bodyHtml,
               direction,
               received_at: receivedAt,
               is_read: !String(msg.flags || '').toLowerCase().includes('unread'),
@@ -178,5 +217,9 @@ export default async function(req) {
   } catch (error) {
     console.error('syncZohoMail error:', error?.message || error);
     return Response.json({ error: error?.message || 'Internal error' }, { status: 500 });
+  } finally {
+    if (base44) {
+      try { await releaseLock(base44, jobId); } catch (_) { /* best-effort */ }
+    }
   }
 }

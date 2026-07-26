@@ -59,7 +59,7 @@ export default function EmailComposer({ open, onClose, prefillTo = "", prefillSu
       toast.error("Recipient and subject are required");
       return;
     }
-    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value, fromName: selectedFrom?.name });
+    sendMut.mutate({ to: to.trim(), cc: cc.trim() || undefined, subject: subject.trim(), text: body, fromAddress: selectedFrom?.value, fromName: selectedFrom?.name, clientSendId: crypto.randomUUID() });
   };
 
   return (

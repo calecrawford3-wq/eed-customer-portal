@@ -120,6 +120,17 @@
       "type": "string",
       "description": "Zoho Mail OAuth refresh token (with Mail read+send scopes) \u2014 generated via the Connect Zoho Mail flow on the Emails page."
     },
+    "email_sync_lock": {
+      "type": "string",
+      "description": "JSON lock string ({job_id, locked_at}) used to prevent overlapping Zoho Mail sync jobs. Cleared when a sync finishes."
+    },
+    "recent_send_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recent client-generated send IDs (max 100) used for idempotent email sending \u2014 prevents duplicate sends on retries."
+    },
     "admin_override_password": {
       "type": "string",
       "description": "Admin password to bypass barcode verification for engine build edits and pickup. If empty, any non-empty input bypasses."

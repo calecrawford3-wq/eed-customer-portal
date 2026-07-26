@@ -53,7 +53,11 @@
     },
     "body_text": {
       "type": "string",
-      "description": "Plain-text body (truncated to ~10KB). Full rich HTML is fetched live from Zoho if needed later."
+      "description": "Plain-text body (truncated to ~10KB). Used for previews and as a fallback when body_html is empty."
+    },
+    "body_html": {
+      "type": "string",
+      "description": "Sanitized HTML body (scripts, iframes, forms, event handlers and tracking pixels stripped at sync time). Rendered safely in the viewer with remote images blocked until the user loads them."
     },
     "direction": {
       "type": "string",

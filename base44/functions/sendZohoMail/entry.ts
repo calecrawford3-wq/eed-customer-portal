@@ -9,17 +9,31 @@ export default async function(req) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { to, cc, subject, html, text, fromAddress, fromName: fromNameParam } = await req.json();
+    const { to, cc, subject, html, text, fromAddress, fromName: fromNameParam, clientSendId } = await req.json();
     if (!to || !subject) {
       return Response.json({ error: 'to and subject are required' }, { status: 400 });
     }
 
     const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
     const settings = settingsList[0];
-    const fromEmail = fromAddress || settings?.smtp_from_email || settings?.company_email;
-    if (!fromEmail) {
-      return Response.json({ error: 'No from address configured — set SMTP From Email in Settings' }, { status: 400 });
+
+    // --- Idempotency: a duplicate send for the same client-generated id is a no-op ---
+    const recent = Array.isArray(settings?.recent_send_ids) ? settings.recent_send_ids : [];
+    if (clientSendId && recent.includes(clientSendId)) {
+      return Response.json({ success: true, duplicate: true });
     }
+
+    // --- Server-side sender validation: only approved addresses may send ---
+    const allowed = new Set(
+      [settings?.smtp_from_email, settings?.company_email, ...(settings?.custom_from_emails || [])]
+        .filter(Boolean)
+        .map((a) => String(a).trim().toLowerCase())
+    );
+    const fromEmailRaw = fromAddress || settings?.smtp_from_email || settings?.company_email;
+    if (!fromEmailRaw || !allowed.has(String(fromEmailRaw).trim().toLowerCase())) {
+      return Response.json({ error: 'Sender address not authorized — add it in Settings (From addresses) and verify it in Zoho Mail (Send Mail As).' }, { status: 400 });
+    }
+    const fromEmail = fromEmailRaw;
     // Display name per selected sender: noreply name for the noreply address, company name otherwise.
     const fromName = fromNameParam
       || (fromEmail === settings?.smtp_from_email
@@ -44,6 +58,13 @@ export default async function(req) {
     const result = await sendMessage(token, accountId, payload);
     if (!result.ok || result.data?.status?.code !== 200) {
       return Response.json({ error: result.data?.status?.description || 'Send failed', details: result.data }, { status: 500 });
+    }
+    // Record the send id to prevent duplicate sends on retry (keep last 100)
+    if (clientSendId && settings?.id) {
+      try {
+        const updated = [...recent, clientSendId].slice(-100);
+        await base44.asServiceRole.entities.AppSettings.update(settings.id, { recent_send_ids: updated });
+      } catch (_) { /* non-fatal */ }
     }
     return Response.json({ success: true });
   } catch (error) {

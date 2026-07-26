@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Send, Link2, Search, Paperclip, CornerUpLeft, RefreshCw } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
+import SafeEmailBody from "@/components/emails/SafeEmailBody";
 import { toast } from "sonner";
 
 const LINK_LABELS = { purchase_order: "PO", invoice: "INV", estimate: "EST", build: "Build" };
@@ -179,7 +180,7 @@ export default function EmailsSection({ customerId, supplierId, linkType, linkId
                         </span>
                         <span>{new Date(m.received_at).toLocaleString()}</span>
                       </div>
-                      <div className="text-sm text-slate-800 whitespace-pre-wrap break-words">{m.body_text || m.preview || "(no body)"}</div>
+                      <SafeEmailBody html={m.body_html} text={m.body_text || m.preview} />
                     </div>
                   ))}
                 </div>
