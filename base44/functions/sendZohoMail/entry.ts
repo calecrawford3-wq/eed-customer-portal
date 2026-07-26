@@ -9,7 +9,7 @@ export default async function(req) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { to, cc, subject, html, text, fromAddress } = await req.json();
+    const { to, cc, subject, html, text, fromAddress, fromName: fromNameParam } = await req.json();
     if (!to || !subject) {
       return Response.json({ error: 'to and subject are required' }, { status: 400 });
     }
@@ -20,6 +20,11 @@ export default async function(req) {
     if (!fromEmail) {
       return Response.json({ error: 'No from address configured — set SMTP From Email in Settings' }, { status: 400 });
     }
+    // Display name per selected sender: noreply name for the noreply address, company name otherwise.
+    const fromName = fromNameParam
+      || (fromEmail === settings?.smtp_from_email
+        ? (settings?.smtp_from_name || settings?.company_name || '')
+        : (settings?.company_name || settings?.smtp_from_name || ''));
 
     const accountId = Deno.env.get('ZOHO_ACCOUNT_ID');
     if (!accountId) {
@@ -27,11 +32,8 @@ export default async function(req) {
     }
 
     const token = await getZohoMailAccessToken(base44);
-    // Zoho's send API expects a bare email address in fromAddress. The sender display name
-    // is controlled per-address in Zoho Mail (Settings → Send Mail As → the Display name set
-    // when the from address was added/verified), not here.
     const payload = {
-      fromAddress: fromEmail,
+      fromAddress: fromName ? `${fromName} <${fromEmail}>` : fromEmail,
       toAddress: to,
       ccAddress: cc || undefined,
       subject,
