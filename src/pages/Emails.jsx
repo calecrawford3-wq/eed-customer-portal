@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell, FileText, Edit3 } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell, FileText, Edit3, ListTodo } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -18,6 +18,8 @@ import EmailNotifySettingsModal from "@/components/emails/EmailNotifySettingsMod
 import EmailTemplatesModal from "@/components/emails/EmailTemplatesModal";
 import EmailDraftsModal from "@/components/emails/EmailDraftsModal";
 import ThreadNotesEditor from "@/components/emails/ThreadNotesEditor";
+import ThreadActionPanel from "@/components/emails/ThreadActionPanel";
+import CreateTaskFromEmailModal from "@/components/emails/CreateTaskFromEmailModal";
 import { toast } from "sonner";
 
 function fmtDate(iso) {
@@ -61,6 +63,9 @@ export default function Emails() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [composeDraft, setComposeDraft] = useState(null);
+  const [needsActionOnly, setNeedsActionOnly] = useState(false);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskSourceEmail, setTaskSourceEmail] = useState(null);
 
   const PAGE_SIZE = 200;
   const { data: firstPage = [], isLoading } = useQuery({
@@ -94,6 +99,11 @@ export default function Emails() {
     queryFn: () => base44.entities.EmailThread.list("-last_message_at", 500),
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => base44.entities.User.list(),
+  });
+
   const mailboxes = useMemo(() => {
     const set = new Map();
     for (const e of allEmails) if (e.account_address) set.set(e.account_address, e.account_address);
@@ -103,11 +113,7 @@ export default function Emails() {
   const threadMetaMap = useMemo(() => {
     const m = new Map();
     for (const t of threadRecords) {
-      m.set(`${t.account_id}|${t.thread_id}`, {
-        id: t.id,
-        category: t.category || "uncategorized",
-        category_source: t.category_source || "uncategorized",
-      });
+      m.set(`${t.account_id}|${t.thread_id}`, t);
     }
     return m;
   }, [threadRecords]);
@@ -137,6 +143,14 @@ export default function Emails() {
       const custMsg = msgs.find((m) => m.customer_id);
       const supMsg = msgs.find((m) => m.supplier_id);
       const linkMsg = msgs.find((m) => m.link_type && m.link_type !== "none");
+      const buildMsg = msgs.find((m) => m.link_type === "build" && m.link_id);
+      const rec = threadMetaMap.get(key);
+      const wfStatus = rec?.workflow_status || "new";
+      const lastDir = latest.direction;
+      const needsAction =
+        wfStatus === "new" ||
+        (lastDir === "inbound" && !["resolved", "closed", "waiting_on_customer"].includes(wfStatus)) ||
+        (rec?.due_date && new Date(rec.due_date) < new Date() && !["resolved", "closed"].includes(wfStatus));
       arr.push({
         key,
         account_id: latest.account_id,
@@ -145,7 +159,7 @@ export default function Emails() {
         subject: latest.subject || first.subject || "(no subject)",
         participants: Array.from(participants),
         last_message_at: latest.received_at,
-        last_direction: latest.direction,
+        last_direction: lastDir,
         message_count: msgs.length,
         unread_count: msgs.filter((m) => !m.is_read).length,
         messages: msgs,
@@ -156,8 +170,14 @@ export default function Emails() {
         is_linked: msgs.some((m) => m.is_linked),
         link_type: linkMsg?.link_type,
         link_number: linkMsg?.link_number,
+        build_id: buildMsg?.link_id || "",
         has_attachments: msgs.some((m) => m.has_attachments),
-        category: threadMetaMap.get(key)?.category || "uncategorized",
+        category: rec?.category || "uncategorized",
+        workflow_status: wfStatus,
+        priority: rec?.priority || "normal",
+        assigned_user_id: rec?.assigned_user_id || "",
+        due_date: rec?.due_date || "",
+        needsAction,
       });
     }
     arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
@@ -174,6 +194,7 @@ export default function Emails() {
     () => Object.values(categoryUnreadCounts).reduce((a, b) => a + b, 0),
     [categoryUnreadCounts]
   );
+  const needsActionCount = useMemo(() => threads.filter((t) => t.needsAction).length, [threads]);
 
   const filteredThreads = useMemo(() => {
     return threads.filter((t) => {
@@ -181,6 +202,7 @@ export default function Emails() {
       if (mailboxFilter !== "all" && t.account_address !== mailboxFilter) return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
       if (unreadOnly && t.unread_count === 0) return false;
+      if (needsActionOnly && !t.needsAction) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = `${t.subject} ${t.participants.join(" ")} ${t.customer_name || ""} ${t.supplier_name || ""}`.toLowerCase();
@@ -188,7 +210,7 @@ export default function Emails() {
       }
       return true;
     });
-  }, [threads, dirFilter, mailboxFilter, categoryFilter, unreadOnly, search]);
+  }, [threads, dirFilter, mailboxFilter, categoryFilter, unreadOnly, needsActionOnly, search]);
 
   const selectedThread = filteredThreads.find((t) => t.key === selectedKey) || null;
 
@@ -438,6 +460,15 @@ export default function Emails() {
         >
           <MailOpen className="w-4 h-4 mr-1" /> Unread only
         </Button>
+        <Button
+          size="sm"
+          variant={needsActionOnly ? "default" : "outline"}
+          onClick={() => setNeedsActionOnly((v) => !v)}
+          className={needsActionOnly ? "bg-[#e20404] hover:bg-[#c00303] h-9" : "h-9"}
+          title="Threads awaiting a staff reply or action — unread status alone is not enough"
+        >
+          <ListTodo className="w-4 h-4 mr-1" /> Needs action {needsActionCount > 0 && <span className="ml-1 opacity-90">{needsActionCount}</span>}
+        </Button>
         <Select value={dirFilter} onValueChange={setDirFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -608,6 +639,9 @@ export default function Emails() {
                   <Button size="sm" variant="outline" onClick={() => openCompose("forward", replyTarget)} title="Forward this message">
                     <Forward className="w-3.5 h-3.5 mr-1" /> Forward
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setTaskSourceEmail(replyTarget); setTaskModalOpen(true); }} title="Create a shop task from this email">
+                    <ListTodo className="w-3.5 h-3.5 mr-1" /> Task
+                  </Button>
                 </div>
               </div>
 
@@ -618,6 +652,14 @@ export default function Emails() {
                   {selectedThread.supplier_name ? ` · ${selectedThread.supplier_name}` : ""}
                 </div>
               )}
+
+              <ThreadActionPanel
+                thread={selectedThread}
+                threadRecord={threadMetaMap.get(selectedThread.key)}
+                users={users}
+                onCreateTask={() => { setTaskSourceEmail(replyTarget); setTaskModalOpen(true); }}
+                onReply={() => openCompose("reply", replyTarget)}
+              />
 
               <ThreadNotesEditor thread={selectedThread} threadRecord={threadMetaMap.get(selectedThread.key)} />
 
@@ -650,6 +692,14 @@ export default function Emails() {
       <EmailNotifySettingsModal open={notifyOpen} onClose={() => setNotifyOpen(false)} />
       <EmailTemplatesModal open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
       <EmailDraftsModal open={draftsOpen} onClose={() => setDraftsOpen(false)} onResume={(d) => openCompose(d.reply_mode || "compose", null, d)} />
+      <CreateTaskFromEmailModal
+        open={taskModalOpen}
+        onClose={() => setTaskModalOpen(false)}
+        thread={selectedThread}
+        email={taskSourceEmail}
+        users={users}
+        threadRecord={selectedThread ? threadMetaMap.get(selectedThread.key) : null}
+      />
     </div>
   );
 }

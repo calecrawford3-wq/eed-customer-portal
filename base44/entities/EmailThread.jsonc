@@ -104,6 +104,62 @@
       "type": "string",
       "description": "Staff member assigned to handle this thread"
     },
+    "workflow_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "open",
+        "waiting_on_customer",
+        "waiting_on_supplier",
+        "scheduled_followup",
+        "resolved",
+        "closed"
+      ],
+      "default": "new",
+      "description": "Action-center workflow status. A thread stays actionable until it reaches resolved/closed, even after being read."
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date by which this thread must be handled or replied to"
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next planned follow-up date (used by reminder automations)"
+    },
+    "follow_up_reminder_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "tomorrow",
+        "three_days",
+        "specific_date",
+        "no_reply",
+        "snooze_engine"
+      ],
+      "default": "none",
+      "description": "Kind of follow-up reminder attached to the thread"
+    },
+    "last_action_owner_id": {
+      "type": "string",
+      "description": "User who last changed the thread's workflow state"
+    },
+    "last_action_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the thread's workflow state last changed"
+    },
     "internal_notes": {
       "type": "string",
       "description": "Staff-only notes about this thread (not sent to customers, not synced to Zoho)"

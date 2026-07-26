@@ -97,6 +97,18 @@
     "completed_by": {
       "type": "string"
     },
+    "assigned_user_id": {
+      "type": "string",
+      "description": "Staff member assigned to this task"
+    },
+    "source_email_id": {
+      "type": "string",
+      "description": "Email record this task was created from (email-to-task conversion)"
+    },
+    "source_email_subject": {
+      "type": "string",
+      "description": "Subject of the source email, captured for display"
+    },
     "customer_name": {
       "type": "string"
     },
