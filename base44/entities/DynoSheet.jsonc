@@ -1,0 +1,61 @@
+{
+  "name": "DynoSheet",
+  "type": "object",
+  "properties": {
+    "build_id": {
+      "type": "string",
+      "description": "Linked engine build"
+    },
+    "customer_engine_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "engine_serial_number": {
+      "type": "string"
+    },
+    "eed_id": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Uploaded dyno sheet file URL (image or PDF)"
+    },
+    "filename": {
+      "type": "string"
+    },
+    "file_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "pdf"
+      ],
+      "default": "image"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Admin email/name, or 'Customer' when uploaded from the portal"
+    },
+    "uploaded_by_role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "customer"
+      ],
+      "default": "admin"
+    },
+    "is_current": {
+      "type": "boolean",
+      "default": true,
+      "description": "True for the most recent sheet on a build. Previous sheets are kept (history) but not current."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "build_id",
+    "file_url"
+  ]
+}

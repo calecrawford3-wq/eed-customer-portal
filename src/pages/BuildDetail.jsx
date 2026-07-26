@@ -43,6 +43,7 @@ import {
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import EngineSelector from "@/components/EngineSelector";
 import BuildTimeline from "@/components/engines/BuildTimeline";
+import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
 import EstimateApprovalActions from "@/components/estimates/EstimateApprovalActions";
 
 const STATUS_OPTIONS = [
@@ -378,6 +379,7 @@ export default function BuildDetail() {
           <TabsTrigger value="internal">Internal Measurements</TabsTrigger>
           <TabsTrigger value="specs">Specifications</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="dyno">Dyno Sheet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-6">
@@ -1066,6 +1068,10 @@ export default function BuildDetail() {
 
         <TabsContent value="timeline" className="mt-6">
           <BuildTimeline buildId={buildId} />
+        </TabsContent>
+
+        <TabsContent value="dyno" className="mt-6">
+          <BuildDynoSheets buildId={buildId} />
         </TabsContent>
       </Tabs>
 

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
+import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -165,6 +166,12 @@ export default function CustomerPortal() {
   const { data: legalDocs = [] } = useQuery({
     queryKey: ["portal-legal-docs", customer?.id],
     queryFn: () => base44.entities.LegalDocument.filter({ customer_id: customer.id }),
+    enabled: !!customer,
+  });
+
+  const { data: currentDynoSheets = [] } = useQuery({
+    queryKey: ["portal-dyno-sheets", customer?.id],
+    queryFn: () => base44.entities.DynoSheet.filter({ customer_id: customer.id, is_current: true }, "-created_date", 200),
     enabled: !!customer,
   });
 
@@ -697,6 +704,12 @@ export default function CustomerPortal() {
                             )}
                           </div>
                         )}
+
+                        <PortalDynoSheet
+                          buildId={b.id}
+                          currentSheet={currentDynoSheets.find((s) => s.build_id === b.id)}
+                          onUploaded={() => qc.invalidateQueries({ queryKey: ["portal-dyno-sheets", customer?.id] })}
+                        />
                       </CardContent>
                     </Card>
                   );
