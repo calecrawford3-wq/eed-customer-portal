@@ -66,6 +66,7 @@ export default function Emails() {
   const [needsActionOnly, setNeedsActionOnly] = useState(false);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskSourceEmail, setTaskSourceEmail] = useState(null);
+  const [taskPrefill, setTaskPrefill] = useState("");
 
   const PAGE_SIZE = 200;
   const { data: firstPage = [], isLoading } = useQuery({
@@ -642,6 +643,15 @@ export default function Emails() {
                   <Button size="sm" variant="outline" onClick={() => { setTaskSourceEmail(replyTarget); setTaskModalOpen(true); }} title="Create a shop task from this email">
                     <ListTodo className="w-3.5 h-3.5 mr-1" /> Task
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const sel = (window.getSelection?.()?.toString() || "").trim();
+                    if (!sel) { toast.info("Highlight some text in an email, then click here to turn it into a task."); return; }
+                    setTaskSourceEmail(replyTarget);
+                    setTaskPrefill(sel);
+                    setTaskModalOpen(true);
+                  }} title="Turn the text you highlighted into a task">
+                    <ListTodo className="w-3.5 h-3.5 mr-1" /> From selection
+                  </Button>
                 </div>
               </div>
 
@@ -694,11 +704,12 @@ export default function Emails() {
       <EmailDraftsModal open={draftsOpen} onClose={() => setDraftsOpen(false)} onResume={(d) => openCompose(d.reply_mode || "compose", null, d)} />
       <CreateTaskFromEmailModal
         open={taskModalOpen}
-        onClose={() => setTaskModalOpen(false)}
+        onClose={() => { setTaskModalOpen(false); setTaskPrefill(""); }}
         thread={selectedThread}
         email={taskSourceEmail}
         users={users}
         threadRecord={selectedThread ? threadMetaMap.get(selectedThread.key) : null}
+        prefillDescription={taskPrefill}
       />
     </div>
   );

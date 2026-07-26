@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ListTodo, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 
-export default function CreateTaskFromEmailModal({ open, onClose, thread, email, users, threadRecord }) {
+export default function CreateTaskFromEmailModal({ open, onClose, thread, email, users, threadRecord, prefillDescription }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -23,12 +23,12 @@ export default function CreateTaskFromEmailModal({ open, onClose, thread, email,
     if (!open) return;
     const src = email || thread?.messages?.[thread.messages.length - 1];
     setTitle(src?.subject || thread?.subject || "");
-    setDescription((src?.body_text || src?.preview || "").slice(0, 800));
+    setDescription(prefillDescription ? String(prefillDescription).slice(0, 4000) : (src?.body_text || src?.preview || "").slice(0, 800));
     setDueDate("");
     setCallTime("");
     setAssignedUserId(threadRecord?.assigned_user_id || "");
     setAddToCalendar(false);
-  }, [open, thread, email, threadRecord]);
+  }, [open, thread, email, threadRecord, prefillDescription]);
 
   const submit = async () => {
     if (!title.trim()) { toast.error("Task title is required"); return; }
