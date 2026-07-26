@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -24,19 +24,38 @@ function fmtDate(iso) {
 
 const LINK_LABELS = { purchase_order: "PO", invoice: "INV", estimate: "EST", build: "Build" };
 
+const CATEGORY_META = {
+  priority: { label: "Priority", cls: "bg-red-100 text-red-700 border-red-200" },
+  customer: { label: "Customer", cls: "bg-blue-100 text-blue-700 border-blue-200" },
+  supplier: { label: "Supplier", cls: "bg-amber-100 text-amber-700 border-amber-200" },
+  billing: { label: "Billing", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  promotional: { label: "Promotional", cls: "bg-purple-100 text-purple-700 border-purple-200" },
+  notifications: { label: "Notifications", cls: "bg-slate-100 text-slate-600 border-slate-200" },
+  other: { label: "Other", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  uncategorized: { label: "Uncategorized", cls: "bg-gray-100 text-gray-500 border-gray-200" },
+};
+const CATEGORY_ORDER = ["priority", "customer", "supplier", "billing", "promotional", "notifications", "other", "uncategorized"];
+
 export default function Emails() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dirFilter, setDirFilter] = useState("all");
   const [mailboxFilter, setMailboxFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedKey, setSelectedKey] = useState(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [linkTarget, setLinkTarget] = useState(null);
   const [connectOpen, setConnectOpen] = useState(false);
 
-  const { data: emails = [], isLoading, isFetching } = useQuery({
+  const { data: emails = [], isLoading } = useQuery({
     queryKey: ["emails"],
     queryFn: () => base44.entities.Email.list("-received_at", 500),
+  });
+
+  // Thread records (carry the AI category) — merged into the client-side threads
+  const { data: threadRecords = [] } = useQuery({
+    queryKey: ["email-threads"],
+    queryFn: () => base44.entities.EmailThread.list("-last_message_at", 500),
   });
 
   const mailboxes = useMemo(() => {
@@ -44,6 +63,12 @@ export default function Emails() {
     for (const e of emails) if (e.account_address) set.set(e.account_address, e.account_address);
     return Array.from(set.values());
   }, [emails]);
+
+  const threadCategoryMap = useMemo(() => {
+    const m = new Map();
+    for (const t of threadRecords) m.set(`${t.account_id}|${t.thread_id}`, t.category || "uncategorized");
+    return m;
+  }, [threadRecords]);
 
   // Group emails into threads (client-side — robust even before EmailThread entity is populated)
   const threads = useMemo(() => {
@@ -90,16 +115,24 @@ export default function Emails() {
         link_type: linkMsg?.link_type,
         link_number: linkMsg?.link_number,
         has_attachments: msgs.some((m) => m.has_attachments),
+        category: threadCategoryMap.get(key) || "uncategorized",
       });
     }
     arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
     return arr;
-  }, [emails]);
+  }, [emails, threadCategoryMap]);
+
+  const categoryCounts = useMemo(() => {
+    const c = {};
+    for (const t of threads) c[t.category] = (c[t.category] || 0) + 1;
+    return c;
+  }, [threads]);
 
   const filteredThreads = useMemo(() => {
     return threads.filter((t) => {
       if (dirFilter !== "all" && !t.messages.some((m) => m.direction === dirFilter)) return false;
       if (mailboxFilter !== "all" && t.account_address !== mailboxFilter) return false;
+      if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = `${t.subject} ${t.participants.join(" ")} ${t.customer_name || ""} ${t.supplier_name || ""}`.toLowerCase();
@@ -107,7 +140,7 @@ export default function Emails() {
       }
       return true;
     });
-  }, [threads, dirFilter, mailboxFilter, search]);
+  }, [threads, dirFilter, mailboxFilter, categoryFilter, search]);
 
   const selectedThread = filteredThreads.find((t) => t.key === selectedKey) || null;
 
@@ -115,6 +148,7 @@ export default function Emails() {
     mutationFn: () => base44.functions.invoke("syncZohoMail"),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["emails"] });
+      qc.invalidateQueries({ queryKey: ["email-threads"] });
       const d = res?.data;
       if (d?.skipped) { toast.info(d.note || "Sync already running"); return; }
       const scopeErr = (d?.errors || []).find((x) => /INVALID_OAUTHSCOPE|not connected|ZohoMail/i.test(String(x)));
@@ -141,6 +175,17 @@ export default function Emails() {
     },
   });
 
+  const categorizeMut = useMutation({
+    mutationFn: () => base44.functions.invoke("categorizeEmailThreads"),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["email-threads"] });
+      const d = res?.data;
+      if (d?.error) { toast.error("Sort error: " + d.error); return; }
+      toast.success(d?.categorized ? `Sorted ${d.categorized} thread${d.categorized !== 1 ? "s" : ""} with AI` : "All threads already sorted");
+    },
+    onError: (e) => toast.error("Sort failed: " + (e?.message || "error")),
+  });
+
   const markThreadRead = (thread) => {
     if (!thread) return;
     const unread = thread.messages.filter((m) => !m.is_read);
@@ -163,9 +208,9 @@ export default function Emails() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Mail className="w-6 h-6 text-[#e20404]" /> Emails
           </h1>
-          <p className="text-sm text-slate-500">Zoho Mail — threaded inbox & document linking</p>
+          <p className="text-sm text-slate-500">Zoho Mail — threaded inbox with AI sorting & document linking</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setConnectOpen(true)} className="text-xs">
             <Mail className="w-4 h-4 mr-1" /> Connect Zoho Mail
           </Button>
@@ -173,10 +218,40 @@ export default function Emails() {
             <RefreshCw className={`w-4 h-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync now"}
           </Button>
+          <Button variant="outline" onClick={() => categorizeMut.mutate()} disabled={categorizeMut.isPending}
+            title="Use AI to sort uncategorized threads into categories">
+            <Sparkles className={`w-4 h-4 mr-1 ${categorizeMut.isPending ? "animate-spin" : ""}`} />
+            {categorizeMut.isPending ? "Sorting…" : "Sort with AI"}
+          </Button>
           <Button onClick={() => setComposeOpen(true)} className="bg-[#e20404] hover:bg-[#c00303]">
             <Send className="w-4 h-4 mr-1" /> Compose
           </Button>
         </div>
+      </div>
+
+      {/* Category filter chips */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <button
+          onClick={() => setCategoryFilter("all")}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${categoryFilter === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+        >
+          All {threads.length > 0 && <span className="opacity-60">{threads.length}</span>}
+        </button>
+        {CATEGORY_ORDER.map((cat) => {
+          const count = categoryCounts[cat] || 0;
+          if (count === 0 && categoryFilter !== cat) return null;
+          const meta = CATEGORY_META[cat];
+          const active = categoryFilter === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(active ? "all" : cat)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${active ? "ring-2 ring-offset-1 ring-slate-400 " : ""}${meta.cls}`}
+            >
+              {meta.label} <span className="opacity-60">{count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
@@ -214,43 +289,47 @@ export default function Emails() {
               {emails.length === 0 ? "No emails yet. Click Sync now to pull from Zoho Mail." : "No threads match your filters."}
             </div>
           ) : (
-            filteredThreads.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => onSelect(t)}
-                className={`w-full text-left px-4 py-3 border-b hover:bg-slate-50 transition-colors ${t.key === selectedKey ? "bg-red-50" : ""} ${t.unread_count > 0 ? "bg-slate-50/60" : ""}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-sm truncate flex items-center gap-1.5 ${t.unread_count > 0 ? "font-semibold text-slate-900" : "text-slate-700"}`}>
-                    <MessagesSquare className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    {t.participants.filter((p) => p && !t.account_address?.includes(p)).slice(0, 2).join(", ") || t.account_address || "Unknown"}
-                  </span>
-                  <span className="text-xs text-slate-400 flex-shrink-0">{fmtDate(t.last_message_at)}</span>
-                </div>
-                <div className="text-sm text-slate-800 truncate">{t.subject}</div>
-                <div className="text-xs text-slate-400 truncate mt-0.5">
-                  {t.message_count > 1 && <span className="text-slate-500">({t.message_count} msgs) </span>}
-                  {t.messages[t.messages.length - 1]?.preview}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {t.unread_count > 0 && (
-                    <Badge className="text-[10px] py-0 px-1.5 bg-[#e20404] text-white">{t.unread_count} new</Badge>
-                  )}
-                  {t.has_attachments && <Paperclip className="w-3 h-3 text-slate-400" />}
-                  {t.is_linked && t.link_type && (
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-[#e20404] text-[#e20404]">
-                      {LINK_LABELS[t.link_type]} {t.link_number}
-                    </Badge>
-                  )}
-                  {t.customer_name && (
-                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t.customer_name}</Badge>
-                  )}
-                  {t.supplier_name && (
-                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-amber-100 text-amber-700">{t.supplier_name}</Badge>
-                  )}
-                </div>
-              </button>
-            ))
+            filteredThreads.map((t) => {
+              const catMeta = CATEGORY_META[t.category] || CATEGORY_META.uncategorized;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => onSelect(t)}
+                  className={`w-full text-left px-4 py-3 border-b hover:bg-slate-50 transition-colors ${t.key === selectedKey ? "bg-red-50" : ""} ${t.unread_count > 0 ? "bg-slate-50/60" : ""}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-sm truncate flex items-center gap-1.5 ${t.unread_count > 0 ? "font-semibold text-slate-900" : "text-slate-700"}`}>
+                      <MessagesSquare className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      {t.participants.filter((p) => p && !t.account_address?.includes(p)).slice(0, 2).join(", ") || t.account_address || "Unknown"}
+                    </span>
+                    <span className="text-xs text-slate-400 flex-shrink-0">{fmtDate(t.last_message_at)}</span>
+                  </div>
+                  <div className="text-sm text-slate-800 truncate">{t.subject}</div>
+                  <div className="text-xs text-slate-400 truncate mt-0.5">
+                    {t.message_count > 1 && <span className="text-slate-500">({t.message_count} msgs) </span>}
+                    {t.messages[t.messages.length - 1]?.preview}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <Badge variant="outline" className={`text-[10px] py-0 px-1.5 ${catMeta.cls}`}>{catMeta.label}</Badge>
+                    {t.unread_count > 0 && (
+                      <Badge className="text-[10px] py-0 px-1.5 bg-[#e20404] text-white">{t.unread_count} new</Badge>
+                    )}
+                    {t.has_attachments && <Paperclip className="w-3 h-3 text-slate-400" />}
+                    {t.is_linked && t.link_type && (
+                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-[#e20404] text-[#e20404]">
+                        {LINK_LABELS[t.link_type]} {t.link_number}
+                      </Badge>
+                    )}
+                    {t.customer_name && (
+                      <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{t.customer_name}</Badge>
+                    )}
+                    {t.supplier_name && (
+                      <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-amber-100 text-amber-700">{t.supplier_name}</Badge>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
 
@@ -262,7 +341,12 @@ export default function Emails() {
             <div className="p-4 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-2 border-b pb-3">
                 <div className="min-w-0">
-                  <h2 className="font-semibold text-slate-900 truncate">{selectedThread.subject}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-slate-900 truncate">{selectedThread.subject}</h2>
+                    <Badge variant="outline" className={`text-[10px] py-0 px-1.5 ${(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).cls}`}>
+                      {(CATEGORY_META[selectedThread.category] || CATEGORY_META.uncategorized).label}
+                    </Badge>
+                  </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {selectedThread.account_address} · {selectedThread.participants.length} participants · {selectedThread.message_count} message{selectedThread.message_count !== 1 ? "s" : ""}
                   </p>

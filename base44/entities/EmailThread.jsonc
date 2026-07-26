@@ -71,6 +71,25 @@
     "link_number": {
       "type": "string"
     },
+    "category": {
+      "type": "string",
+      "enum": [
+        "uncategorized",
+        "priority",
+        "customer",
+        "supplier",
+        "billing",
+        "promotional",
+        "notifications",
+        "other"
+      ],
+      "default": "uncategorized",
+      "description": "AI-assigned category used to sort the inbox (promotional vs work, etc.)"
+    },
+    "categorized_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "assigned_user_id": {
       "type": "string",
       "description": "Staff member assigned to handle this thread"
