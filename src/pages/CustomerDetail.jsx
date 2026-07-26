@@ -14,8 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu, Send
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu, Send,
+  ChevronDown, ChevronUp
 } from "lucide-react";
+import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
 import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
@@ -40,6 +42,7 @@ export default function CustomerDetail() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [dynoBuildId, setDynoBuildId] = useState(null);
 
   const { data: customerArr = [] } = useQuery({
     queryKey: ["customer", id],
@@ -253,25 +256,39 @@ export default function CustomerDetail() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {customerBuilds.map(b => (
-                    <Card key={b.id} className="border-0 shadow-sm">
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-sm">{b.engine_serial_number}</p>
-                          <p className="text-xs text-slate-500">{getPlatformName(b.platform_id)}{b.build_number ? ` · ${b.build_number}` : ""}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className="text-xs bg-slate-100 text-slate-700 border-0">{b.status}</Badge>
-                          <Link to={`/BuildDetail?id=${b.id}`}>
-                            <Button size="sm" variant="ghost" className="h-7 px-2"><ExternalLink className="w-3.5 h-3.5" /></Button>
-                          </Link>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400" title="Unassign" onClick={() => updateBuildMutation.mutate({ buildId: b.id, data: { customer_id: "", customer_name: "" } })}>
-                            <Unlink className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {customerBuilds.map(b => {
+                    const open = dynoBuildId === b.id;
+                    return (
+                      <Card key={b.id} className="border-0 shadow-sm">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-sm">{b.engine_serial_number}</p>
+                              <p className="text-xs text-slate-500">{getPlatformName(b.platform_id)}{b.build_number ? ` · ${b.build_number}` : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="text-xs bg-slate-100 text-slate-700 border-0">{b.status}</Badge>
+                              <Button size="sm" variant="ghost" className="h-7 px-2" title="Dyno sheets" onClick={() => setDynoBuildId(open ? null : b.id)}>
+                                {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                <span className="ml-1 text-xs">Dyno</span>
+                              </Button>
+                              <Link to={`/BuildDetail?id=${b.id}`}>
+                                <Button size="sm" variant="ghost" className="h-7 px-2"><ExternalLink className="w-3.5 h-3.5" /></Button>
+                              </Link>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400" title="Unassign" onClick={() => updateBuildMutation.mutate({ buildId: b.id, data: { customer_id: "", customer_name: "" } })}>
+                                <Unlink className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          {open && (
+                            <div className="mt-3">
+                              <BuildDynoSheets buildId={b.id} />
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
