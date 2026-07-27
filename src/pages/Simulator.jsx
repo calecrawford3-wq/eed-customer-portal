@@ -20,6 +20,7 @@ export default function Simulator() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [result, setResult] = useState(null);
   const [viewSim, setViewSim] = useState(null);
+  const [presetSimulation, setPresetSimulation] = useState(null);
   const [prepRunning, setPrepRunning] = useState(false);
   const [prepCounts, setPrepCounts] = useState(null);
 
@@ -167,10 +168,10 @@ export default function Simulator() {
         </TabsContent>
       </Tabs>
 
-      <SimulationSetup open={setupOpen} onClose={() => setSetupOpen(false)} presetBuildId={presetBuildId} onResult={(data) => {
+      <SimulationSetup open={setupOpen} onClose={() => { setSetupOpen(false); setPresetSimulation(null); }} presetBuildId={presetBuildId} presetSimulation={presetSimulation} onResult={(data) => {
         base44.entities.Simulation.list("-created_date", 1).then((latest) => setResult(latest[0] || data));
       }} />
-      <SimulationResults simulation={viewSim || result} onClose={() => { setViewSim(null); setResult(null); }} />
+      <SimulationResults simulation={viewSim || result} onClose={() => { setViewSim(null); setResult(null); }} onRerun={(sim) => { setPresetSimulation(sim); setViewSim(null); setResult(null); setSetupOpen(true); }} />
     </div>
   );
 }

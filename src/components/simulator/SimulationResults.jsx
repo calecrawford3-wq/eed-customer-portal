@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitCompare, FlaskConical, CheckCircle2, Loader2 } from "lucide-react";
+import { GitCompare, FlaskConical, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import DynoCurveChart from "./DynoCurveChart";
 import RevisionCompareModal from "./RevisionCompareModal";
@@ -21,7 +21,7 @@ function Stat({ label, value, sub }) {
   );
 }
 
-export default function SimulationResults({ simulation, onClose }) {
+export default function SimulationResults({ simulation, onClose, onRerun }) {
   const qc = useQueryClient();
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState(() => {
@@ -86,10 +86,18 @@ export default function SimulationResults({ simulation, onClose }) {
                   </ul>
                 </div>
               )}
+              <div className="mt-4">
+                <Button size="sm" variant="outline" onClick={() => onRerun?.(simulation)}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Adjust settings &amp; rerun
+                </Button>
+              </div>
             </div>
           ) : (
             <>
               <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => onRerun?.(simulation)}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Adjust &amp; Rerun
+                </Button>
                 {simulation.baseline_revision_id && simulation.proposed_revision_id && (
                   <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
                     <GitCompare className="w-3.5 h-3.5 mr-1" /> Compare revisions

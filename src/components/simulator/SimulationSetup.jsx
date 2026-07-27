@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Wrench, FileText, Info } from "lucide-react";
 import { toast } from "sonner";
 
-export default function SimulationSetup({ open, onClose, presetBuildId, onResult }) {
+export default function SimulationSetup({ open, onClose, presetBuildId, onResult, presetSimulation }) {
   const qc = useQueryClient();
   const [source, setSource] = useState("build");
   const [buildId, setBuildId] = useState("");
@@ -31,6 +31,12 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
   const { data: builds = [] } = useQuery({ queryKey: ["builds"], queryFn: () => base44.entities.EngineBuild.list("-created_date", 200) });
   const { data: platforms = [] } = useQuery({ queryKey: ["platforms"], queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200) });
   const { data: specSheets = [] } = useQuery({ queryKey: ["specsheets"], queryFn: () => base44.entities.SpecSheet.list("-created_date", 200) });
+
+  const { data: presetProposed } = useQuery({
+    queryKey: ["sim-preset-proposed", presetSimulation?.proposed_revision_id],
+    queryFn: () => base44.entities.BuildRevision.get(presetSimulation.proposed_revision_id),
+    enabled: !!open && !!presetSimulation?.proposed_revision_id,
+  });
 
   const selectedBuild = builds.find((b) => b.id === buildId);
   const selectedSpec = specSheets.find((s) => s.id === specSheetId);
@@ -54,6 +60,35 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
   });
 
   useEffect(() => { if (presetBuildId) { setBuildId(presetBuildId); setSource("build"); } }, [presetBuildId]);
+
+  // Pre-fill from a previous simulation when rerunning
+  useEffect(() => {
+    if (!open || !presetSimulation) return;
+    const p = presetSimulation;
+    setSource(p.build_id ? "build" : "spec_sheet");
+    if (p.build_id) setBuildId(p.build_id); else setSpecSheetId(p.spec_sheet_id || "");
+    setRpmStart(p.rpm_start || 4000);
+    setRpmEnd(p.rpm_end || 15000);
+    setRacingClass(p.racing_class || "");
+    setIntendedUse(p.intended_use || "");
+    setTrackType(p.track_type || "");
+    setRefPullId(p.baseline_dyno_pull_id || "");
+    setRefSheetId(p.baseline_dyno_sheet_id || "");
+    setName(p.name || "");
+  }, [open, presetSimulation]);
+
+  useEffect(() => {
+    if (!open || !presetSimulation || !presetProposed?.config) return;
+    const c = presetProposed.config;
+    setChanges({
+      cam: { intake_centerline: c.cam?.intake_centerline ?? "", exhaust_centerline: c.cam?.exhaust_centerline ?? "" },
+      compression: { static_cr: c.compression?.static_cr ?? "" },
+      induction: { restrictor_size: c.induction?.restrictor_size ?? "" },
+      fuel: { fuel_type: c.fuel?.fuel_type ?? "" },
+      ignition: { rev_limit: c.ignition?.rev_limit ?? "" },
+      cylinder_head: { intake_port_volume: c.cylinder_head?.intake_port_volume ?? "", porting_level: c.cylinder_head?.porting_level ?? "" },
+    });
+  }, [open, presetSimulation, presetProposed]);
 
   // "Additional information needed" — spec sheets don't capture these
   const specSpecs = selectedSpec?.specs || {};
