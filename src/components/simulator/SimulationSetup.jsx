@@ -151,15 +151,20 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
                 <Label>Spec sheet</Label>
                 <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={specSheetId} onChange={(e) => setSpecSheetId(e.target.value)}>
                   <option value="">— Select a spec sheet —</option>
-                  {specSheets.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.custom_name || `${s.spec_type} v${s.version}`}{s.is_current ? " (current)" : ""}
-                    </option>
-                  ))}
+                  {specSheets.map((s) => {
+                    const p = platforms.find((pl) => pl.id === s.platform_id);
+                    const yr = p && (p.year_range_start || p.year_range_end) ? ` (${p.year_range_start || "?"}-${p.year_range_end || "?"})` : "";
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {p ? `${p.name}${yr} — ` : ""}{s.custom_name || `${s.spec_type} v${s.version}`}{s.is_current ? " (current)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
                 {selectedSpec && (
                   <p className="text-xs text-slate-500 mt-1">
-                    {specPlatform ? `${specPlatform.manufacturer} ${specPlatform.name} · ` : ""}{selectedSpec.spec_type} v{selectedSpec.version}
+                    {specPlatform ? `${specPlatform.manufacturer} ${specPlatform.name}` : ""}{specPlatform && (specPlatform.year_range_start || specPlatform.year_range_end) ? ` (${specPlatform.year_range_start || "?"}-${specPlatform.year_range_end || "?"})` : ""}
+                    {specPlatform ? ` · ` : ""}{selectedSpec.spec_type} v{selectedSpec.version}
                     {platformPulls.length ? ` · ${platformPulls.length} dyno pull(s) on this platform` : " · No platform dyno pulls — prediction will use similar builds"}
                   </p>
                 )}
