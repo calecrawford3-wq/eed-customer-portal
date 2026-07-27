@@ -4,20 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function DynoSheetUploader({ buildId, role = "admin", onUploaded }) {
+export default function DynoSheetUploader({ buildId, specSheetId, role = "admin", onUploaded }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !buildId) return;
+    if (!file || (!buildId && !specSheetId)) return;
     setUploading(true);
     try {
       const res = await base44.integrations.Core.UploadFile({ file });
       const file_url = res.file_url;
       const isPdf = file.name.toLowerCase().endsWith(".pdf");
       await base44.functions.invoke("uploadDynoSheet", {
-        build_id: buildId,
+        build_id: buildId || "",
+        spec_sheet_id: specSheetId || "",
         file_url,
         filename: file.name,
         file_type: isPdf ? "pdf" : "image",

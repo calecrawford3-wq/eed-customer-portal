@@ -4,7 +4,11 @@
   "properties": {
     "build_id": {
       "type": "string",
-      "description": "Linked engine build"
+      "description": "Linked engine build (empty when attached to a spec sheet)"
+    },
+    "spec_sheet_id": {
+      "type": "string",
+      "description": "Linked spec sheet (used as a baseline/reference dyno for that configuration)"
     },
     "customer_engine_id": {
       "type": "string"
@@ -48,14 +52,13 @@
     "is_current": {
       "type": "boolean",
       "default": true,
-      "description": "True for the most recent sheet on a build. Previous sheets are kept (history) but not current."
+      "description": "True for the most recent sheet. Previous sheets are kept (history) but not current."
     },
     "notes": {
       "type": "string"
     }
   },
   "required": [
-    "build_id",
     "file_url"
   ]
 }

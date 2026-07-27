@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import SpecDynoSheets from "@/components/engines/SpecDynoSheets";
 
 const SPEC_SECTIONS = {
   block: {
@@ -275,6 +276,11 @@ export default function SpecView() {
             <p className="text-slate-500 mt-1">Edit this spec sheet to add specifications</p>
           </div>
         )}
+      </div>
+
+      {/* Baseline Dyno Sheets */}
+      <div className="mt-8 print:hidden">
+        <SpecDynoSheets specSheetId={spec.id} />
       </div>
 
       {/* Print Styles */}
