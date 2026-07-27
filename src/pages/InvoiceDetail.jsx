@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History, MessageSquare } from "lucide-react";
+import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -681,6 +682,37 @@ export default function InvoiceDetail() {
     toast.success(`Invoice sent to ${customer.email}`);
   };
 
+  const sendInvoiceByText = async () => {
+    const customer = customers.find(c => c.id === form.customer_id);
+    if (!customer?.phone) { toast.error("Customer has no phone number"); return; }
+    setSending(true);
+    try {
+      let accessToken = form.public_access_token;
+      if (!accessToken) {
+        accessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      }
+      const status = form.status === "draft" ? "sent" : form.status;
+      const formToSave = { ...form, public_access_token: accessToken, status };
+      setForm(f => ({ ...f, public_access_token: accessToken, status }));
+      const saved = await saveMutation.mutateAsync(formToSave);
+      const invoiceId = id || saved?.id;
+      try {
+        await base44.functions.invoke("syncInvoiceSnapshot", { invoiceId, publicAccessToken: accessToken });
+      } catch (e) { /* link still usable */ }
+      const viewUrl = `https://elite-viewer.base44.app/invoice/${accessToken}`;
+      const body = `Hi ${customer.first_name}, your invoice ${form.invoice_number} from Elite Engine Development is ready. Amount due: $${Number(form.balance_due ?? form.total ?? 0).toFixed(2)}. View & pay here: ${viewUrl}`;
+      if (openSmsDraft(customer.phone, body)) {
+        toast.success("Opening text message with invoice link…");
+      } else {
+        toast.error("Could not open messages — check the customer phone number");
+      }
+    } catch (e) {
+      toast.error("Failed to prepare text: " + (e?.message || "error"));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
   const customer = customers.find(c => c.id === form.customer_id);
@@ -787,6 +819,9 @@ export default function InvoiceDetail() {
         <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}><Printer className="w-4 h-4 mr-1" /> View</Button>
         <Button variant="outline" size="sm" onClick={sendInvoice} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Send"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={sendInvoiceByText} disabled={sending || !form.customer_id} title="Send invoice link via text message">
+          <MessageSquare className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Text"}
         </Button>
         {["draft","sent","partial","overdue"].includes(form.status) && (
           <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700" onClick={() => setPaymentModalOpen(true)}>

@@ -13,8 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare
 } from "lucide-react";
+import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -1082,6 +1083,52 @@ export default function EstimateDetail() {
     }
   };
 
+  const sendEstimateByText = async () => {
+    const customer = customers.find(c => c.id === form.customer_id);
+    if (!customer?.phone) { toast.error("Customer has no phone number"); return; }
+    if (!id) { toast.error("Save the estimate first"); return; }
+    setSending(true);
+    try {
+      let publicAccessToken = form.public_access_token;
+      let checkoutUrl = form.stripe_checkout_url;
+      if (!publicAccessToken) {
+        publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      }
+      if (!checkoutUrl) {
+        const amount = form.deposit_required ? form.deposit_amount : form.total;
+        try {
+          const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
+            type: "estimate", documentId: id, amount,
+            description: `Estimate ${form.estimate_number} - ${form.deposit_required ? "Deposit" : "Full Payment"}`,
+            publicAccessToken, customerEmail: customer.email,
+          });
+          if (stripeUrlRes?.data?.checkout_url) checkoutUrl = stripeUrlRes.data.checkout_url;
+        } catch (e) { /* link still usable without checkout */ }
+      }
+      const status = form.status === "draft" ? "sent" : form.status;
+      await base44.entities.Estimate.update(id, {
+        public_access_token: publicAccessToken,
+        ...(checkoutUrl ? { stripe_checkout_url: checkoutUrl } : {}),
+        status,
+      });
+      setForm(f => ({ ...f, public_access_token: publicAccessToken, ...(checkoutUrl ? { stripe_checkout_url: checkoutUrl } : {}), status }));
+      try {
+        await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken });
+      } catch (e) { /* link still usable */ }
+      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
+      const body = `Hi ${customer.first_name}, your estimate ${form.estimate_number} from Elite Engine Development is ready. Total: $${Number(form.total || 0).toFixed(2)}. Review & approve here: ${viewUrl}`;
+      if (openSmsDraft(customer.phone, body)) {
+        toast.success("Opening text message with estimate link…");
+      } else {
+        toast.error("Could not open messages — check the customer phone number");
+      }
+    } catch (e) {
+      toast.error("Failed to prepare text: " + (e?.message || "error"));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
   const customer = customers.find(c => c.id === form.customer_id);
@@ -1281,6 +1328,9 @@ export default function EstimateDetail() {
         </Button>
         <Button variant="outline" size="sm" onClick={sendEstimate} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" /> {sending ? "Sending..." : "Send"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={sendEstimateByText} disabled={sending || !form.customer_id} title="Send estimate link via text message">
+          <MessageSquare className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Text"}
         </Button>
         {id && form.status !== "approved" && form.status !== "declined" && (
           <Button
