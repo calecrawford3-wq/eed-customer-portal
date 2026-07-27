@@ -11,7 +11,7 @@ export default async function(req) {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const { source, build_id, spec_sheet_id, platform_id, baseline_revision_id, baseline_dyno_pull_id, proposed_config = {}, rpm_start = 4000, rpm_end = 15000, rpm_step = 250, racing_class, engine_family, fuel_type, restrictor_size, intended_use, track_type, name } = body;
+    const { source, build_id, spec_sheet_id, platform_id, baseline_revision_id, baseline_dyno_pull_id, baseline_dyno_sheet_id, proposed_config = {}, rpm_start = 4000, rpm_end = 15000, rpm_step = 250, racing_class, engine_family, fuel_type, restrictor_size, intended_use, track_type, name } = body;
 
     const useSpecSheet = source === 'spec_sheet' || (!build_id && !!spec_sheet_id);
     let build, platform, specSheet, baselineConfig, bid;
@@ -102,6 +102,16 @@ export default async function(req) {
       sameEngineBaseline = !useSpecSheet && baselinePull && baselinePull.build_id === bid;
     }
 
+    // Spec-sheet baseline: digitize an uploaded dyno sheet for this spec into a DynoPull
+    if (!baselinePull && useSpecSheet && baseline_dyno_sheet_id) {
+      const sheets = await base44.asServiceRole.entities.DynoSheet.filter({ id: baseline_dyno_sheet_id });
+      const sheet = sheets?.[0];
+      if (sheet?.file_url) {
+        const digitized = await digitizeDynoSheet(base44, sheet, platform, racing_class || baselineConfig.racing_class);
+        if (digitized) { baselinePull = digitized; sameEngineBaseline = true; }
+      }
+    }
+
     let baselineCurve = [];
     if (baselinePull?.curve) {
       try { baselineCurve = JSON.parse(baselinePull.curve); } catch (_) { baselineCurve = []; }
@@ -110,7 +120,7 @@ export default async function(req) {
       const sim = await persistSimulation(base44, {
         name: name || `Simulation ${build.engine_serial_number || specSheet?.custom_name || specSheet?.spec_type || ''}`,
         build_id: bid, spec_sheet_id: useSpecSheet ? spec_sheet_id : '', platform_id: platform?.id || build.platform_id || '',
-        build, baseline_revision_id: baselineRev.id, baseline_dyno_pull_id: baselinePull?.id || '',
+        build, baseline_revision_id: baselineRev.id, baseline_dyno_pull_id: baselinePull?.id || '', baseline_dyno_sheet_id: baseline_dyno_sheet_id || '',
         proposed_revision_id: proposedRev.id, rpm_start, rpm_end, rpm_step,
         racing_class: racing_class || baselineConfig.racing_class, intended_use, track_type,
         predicted_curve: '[]', predicted_peak_torque: 0, predicted_peak_torque_rpm: 0,
@@ -226,7 +236,7 @@ export default async function(req) {
     const sim = await persistSimulation(base44, {
       name: name || `Simulation ${build.engine_serial_number || specSheet?.custom_name || specSheet?.spec_type || ''}`,
       build_id: bid, spec_sheet_id: useSpecSheet ? spec_sheet_id : '', platform_id: platform?.id || build.platform_id || '',
-      build, baseline_revision_id: baselineRev.id, baseline_dyno_pull_id: baselinePull?.id || '',
+      build, baseline_revision_id: baselineRev.id, baseline_dyno_pull_id: baselinePull?.id || '', baseline_dyno_sheet_id: baseline_dyno_sheet_id || '',
       proposed_revision_id: proposedRev.id, rpm_start, rpm_end, rpm_step,
       racing_class: racing_class || baselineConfig.racing_class, intended_use, track_type,
       predicted_curve: JSON.stringify(curve),
@@ -445,6 +455,68 @@ function rankSimilarPulls(pulls, build, platform, racingClass) {
   return scored;
 }
 
+async function digitizeDynoSheet(base44, sheet, platform, racingClass) {
+  try {
+    const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt: "You are an engine dyno sheet reader. This image/PDF is a dyno graph showing horsepower and torque curves across an RPM range. Extract as many precise data points as possible across the full RPM range shown. Read the axis values carefully. Return points with rpm, torque (ft-lb), and hp. If one curve is missing, derive it: hp = torque * rpm / 5252 (or torque = hp * 5252 / rpm). Cover the curve from low to high RPM evenly.",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          points: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                rpm: { type: "number" },
+                torque: { type: "number" },
+                hp: { type: "number" },
+              },
+            },
+          },
+        },
+        required: ["points"],
+      },
+      file_urls: [sheet.file_url],
+      model: "gemini_3_flash",
+    });
+    const raw = res?.points || res?.data?.points || [];
+    const pts = raw.filter((p) => p && p.rpm != null).map((p) => {
+      const rpm = Math.round(Number(p.rpm));
+      const torque = p.torque != null ? Math.round(Number(p.torque) * 10) / 10 : null;
+      const hp = p.hp != null ? Math.round(Number(p.hp) * 10) / 10 : (torque != null ? Math.round(torque * rpm / 5252 * 10) / 10 : null);
+      return { rpm, torque, hp };
+    }).filter((p) => p.rpm > 0).sort((a, b) => a.rpm - b.rpm);
+    if (!pts.length) return null;
+    const peakTQ = pts.reduce((m, p) => Math.max(m, p.torque || 0), 0);
+    const peakHP = pts.reduce((m, p) => Math.max(m, p.hp || 0), 0);
+    return await base44.asServiceRole.entities.DynoPull.create({
+      pull_name: `Digitized from ${sheet.filename || 'spec dyno sheet'}`,
+      build_id: '',
+      platform_id: platform?.id || '',
+      engine_family: platform?.name || '',
+      racing_class: racingClass || '',
+      source_type: 'digitized',
+      is_digitized: true,
+      original_file_url: sheet.file_url,
+      start_rpm: pts[0].rpm,
+      end_rpm: pts[pts.length - 1].rpm,
+      peak_torque: peakTQ,
+      peak_torque_rpm: pts.find((p) => p.torque === peakTQ)?.rpm || 0,
+      peak_hp: peakHP,
+      peak_hp_rpm: pts.find((p) => p.hp === peakHP)?.rpm || 0,
+      curve: JSON.stringify(pts),
+      is_valid: true,
+      trust_level: 6,
+      data_quality_score: 40,
+      test_quality_score: 30,
+      training_status: 'not_reviewed',
+      notes: 'Auto-digitized from a spec sheet baseline dyno sheet for simulation reference.',
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
 function baselineSources(baselinePull, similarPulls, sameEngine) {
   const sources = [];
   if (baselinePull) {
@@ -462,6 +534,7 @@ async function persistSimulation(base44, d) {
     name: d.name, build_id: d.build_id, spec_sheet_id: d.spec_sheet_id || '', platform_id: d.platform_id || '',
     engine_serial_number: d.build.engine_serial_number || '', eed_id: d.build.eed_id || '', customer_id: d.build.customer_id || '',
     baseline_revision_id: d.baseline_revision_id, baseline_dyno_pull_id: d.baseline_dyno_pull_id,
+    baseline_dyno_sheet_id: d.baseline_dyno_sheet_id || '',
     proposed_revision_id: d.proposed_revision_id,
     rpm_start: d.rpm_start, rpm_end: d.rpm_end, rpm_step: d.rpm_step,
     racing_class: d.racing_class, intended_use: d.intended_use, track_type: d.track_type,

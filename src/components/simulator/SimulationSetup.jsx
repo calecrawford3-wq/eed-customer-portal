@@ -23,6 +23,7 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
   const [intendedUse, setIntendedUse] = useState("");
   const [trackType, setTrackType] = useState("");
   const [refPullId, setRefPullId] = useState("");
+  const [refSheetId, setRefSheetId] = useState("");
   const [name, setName] = useState("");
   const [changes, setChanges] = useState({});
   const [running, setRunning] = useState(false);
@@ -45,6 +46,11 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
     queryKey: ["sim-platform-pulls", specPlatformId],
     queryFn: () => base44.entities.DynoPull.filter({ platform_id: specPlatformId, is_valid: true }, "-created_date", 50),
     enabled: source === "spec_sheet" && !!specPlatformId,
+  });
+  const { data: specDynoSheets = [] } = useQuery({
+    queryKey: ["sim-spec-dyno-sheets", specSheetId],
+    queryFn: () => base44.entities.DynoSheet.filter({ spec_sheet_id: specSheetId }, "-created_date", 20),
+    enabled: source === "spec_sheet" && !!specSheetId,
   });
 
   useEffect(() => { if (presetBuildId) { setBuildId(presetBuildId); setSource("build"); } }, [presetBuildId]);
@@ -89,6 +95,7 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
         payload.intended_use = intendedUse;
         payload.track_type = trackType;
         payload.baseline_dyno_pull_id = refPullId;
+        payload.baseline_dyno_sheet_id = refSheetId;
       }
       const res = await base44.functions.invoke("runSimulation", payload);
       const data = res?.data || res;
@@ -169,6 +176,26 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
                   </p>
                 )}
               </div>
+
+              {/* Baseline dyno sheet uploaded to this spec */}
+              {selectedSpec && (
+                <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
+                  <Label className="text-xs">Baseline dyno sheet (uploaded to this spec)</Label>
+                  <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm mt-1" value={refSheetId} onChange={(e) => setRefSheetId(e.target.value)}>
+                    <option value="">— None —</option>
+                    {specDynoSheets.map((ds) => (
+                      <option key={ds.id} value={ds.id}>{ds.filename || "Dyno sheet"}{ds.is_current ? " (baseline)" : ""}</option>
+                    ))}
+                  </select>
+                  {specDynoSheets.length === 0 ? (
+                    <p className="text-xs text-slate-400 mt-1">No dyno sheets uploaded for this spec. Upload one on the spec sheet page to use it as the simulation baseline.</p>
+                  ) : refSheetId ? (
+                    <p className="text-xs text-slate-500 mt-1">The selected dyno sheet will be digitized (AI graph read) and used as the baseline curve for this configuration.</p>
+                  ) : (
+                    <p className="text-xs text-slate-400 mt-1">{specDynoSheets.length} sheet(s) available — select one to use it as the baseline reference.</p>
+                  )}
+                </div>
+              )}
 
               {/* Additional information needed */}
               {specSheetId && (

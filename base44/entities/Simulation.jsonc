@@ -32,6 +32,10 @@
     "baseline_dyno_pull_id": {
       "type": "string"
     },
+    "baseline_dyno_sheet_id": {
+      "type": "string",
+      "description": "Linked DynoSheet uploaded to the spec sheet and used as the baseline reference (digitized into a DynoPull at run time)"
+    },
     "proposed_revision_id": {
       "type": "string"
     },
