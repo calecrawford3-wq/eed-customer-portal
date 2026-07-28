@@ -6,7 +6,7 @@ import { getLatestInboundCdr } from '../../shared/voipMs.ts';
 
 // Secure webhook for the local Cisco→Node bridge.
 // The bridge POSTs { event: "cisco_call_state", phone, line, callId, callState, receivedAt }
-// with an x-webhook-secret header (or ?key= / body.secret) equal to the SYNC_API_KEY secret.
+// with an x-webhook-secret header (or ?key= / body.secret) equal to the BRIDGE_SECRET secret.
 //
 // VoIP.ms has no live-call API, so the caller number is fetched from getCDR with retries —
 // the CDR only appears once the call is Connected (answered) or Idle (terminated).
@@ -157,8 +157,8 @@ async function updateLinkedCallLog(base44, rec) {
 
 export default async function(req: Request): Promise<Response> {
   try {
-    // --- Auth: shared secret (SYNC_API_KEY) ---
-    const expected = Deno.env.get("SYNC_API_KEY") || "";
+    // --- Auth: shared secret (BRIDGE_SECRET) ---
+    const expected = Deno.env.get("BRIDGE_SECRET") || "";
     const url = new URL(req.url);
     const provided =
       req.headers.get("x-webhook-secret") ||
