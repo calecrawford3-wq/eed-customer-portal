@@ -59,9 +59,14 @@ export default function Messaging() {
   const scrollRef = useRef(null);
   const { permission, requestPermission } = usePushNotifications();
 
-  // Deep-link: /Messaging?phone=...&compose=1 (from customer cards)
+  // Deep-link: /Messaging?phone=...&compose=1 (from customer cards), or ?callId=... (from inbound-call push)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const callId = params.get("callId");
+    if (callId) {
+      setTab("calls");
+      return;
+    }
     const phoneParam = params.get("phone");
     if (phoneParam) {
       const norm = normalizePhone(phoneParam);

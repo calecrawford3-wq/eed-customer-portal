@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,9 +10,13 @@ import { formatPhone } from "@/lib/formatPhone";
 
 const empty = { name: "", contact_name: "", email: "", phone: "", website: "", account_number: "", payment_terms: "", status: "active" };
 
-export default function QuickCreateSupplierModal({ open, onClose, onCreated }) {
+export default function QuickCreateSupplierModal({ open, onClose, onCreated, defaultPhone }) {
   const [form, setForm] = useState(empty);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (open && defaultPhone) setForm((f) => ({ ...f, phone: formatPhone(defaultPhone) }));
+  }, [open, defaultPhone]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Supplier.create(data),

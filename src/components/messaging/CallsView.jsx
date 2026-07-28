@@ -2,18 +2,20 @@ import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Phone, PhoneCall, PhoneIncoming, Clock, User, Search, ArrowLeft, PhoneOutgoing, FilePlus2 } from "lucide-react";
+import { Phone, PhoneCall, PhoneIncoming, Clock, User, Search, ArrowLeft, PhoneOutgoing, FilePlus2, CalendarPlus, UserPlus, Truck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ActiveCallModal from "@/components/ActiveCallModal";
 import LogInboundCallModal from "./LogInboundCallModal";
+import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
+import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 
 function normalizePhone(p) {
   if (!p) return "";
@@ -56,6 +58,12 @@ export default function CallsView() {
   const [activeCall, setActiveCall] = useState(null);
   const [ncSearch, setNcSearch] = useState("");
   const [ncPhone, setNcPhone] = useState("");
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDate, setTaskDate] = useState("");
+  const [taskTime, setTaskTime] = useState("");
 
   const { data: calls = [], isLoading } = useQuery({
     queryKey: ["call-logs"],
@@ -94,6 +102,48 @@ export default function CallsView() {
       toast.error("Failed to save notes");
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  // Auto-select a call when opened via push-notification deep link (?callId=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cid = params.get("callId");
+    if (cid) setSelectedId(cid);
+  }, []);
+
+  const linkCustomerToCall = async (customer) => {
+    if (!selected) return;
+    try {
+      await base44.entities.CallLog.update(selected.id, {
+        customer_id: customer.id,
+        customer_name: `${customer.first_name} ${customer.last_name}`.trim(),
+      });
+      qc.invalidateQueries({ queryKey: ["call-logs"] });
+      toast.success("Customer created & linked to call");
+    } catch (e) {
+      toast.error("Customer created, but linking to call failed");
+    }
+  };
+
+  const createTask = async () => {
+    if (!selected) return;
+    if (!taskDate) { toast.error("Pick a date"); return; }
+    try {
+      await base44.entities.CalendarEvent.create({
+        title: taskTitle || `Follow-up call — ${selected.customer_name || formatPhoneDisplay(selected.phone_number)}`,
+        event_type: "followup",
+        customer_id: selected.customer_id || "",
+        start_date: taskDate,
+        start_time: taskTime || "",
+        all_day: !taskTime,
+        status: "scheduled",
+      });
+      qc.invalidateQueries({ queryKey: ["calendar-events"] });
+      toast.success("Task created");
+      setTaskOpen(false); setTaskTitle(""); setTaskDate(""); setTaskTime("");
+    } catch (e) {
+      toast.error("Failed to create task");
     }
   };
 
@@ -220,6 +270,19 @@ export default function CallsView() {
                   <Button variant="outline" size="sm"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Create Estimate</Button>
                 </Link>
               )}
+              {selected.direction === "inbound" && !selected.customer_id && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setQuickCustomerOpen(true)}>
+                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Create Customer
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setQuickSupplierOpen(true)}>
+                    <Truck className="w-3.5 h-3.5 mr-1" /> Create Vendor
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setTaskOpen(true)}>
+                <CalendarPlus className="w-3.5 h-3.5 mr-1" /> Create Task
+              </Button>
             </div>
           </div>
         </div>
@@ -260,6 +323,29 @@ export default function CallsView() {
       </Dialog>
 
       <LogInboundCallModal open={inboundOpen} onClose={() => setInboundOpen(false)} customers={customers} />
+
+      <QuickCreateCustomerModal open={quickCustomerOpen} onClose={() => setQuickCustomerOpen(false)} defaultPhone={selected?.phone_number} onCreated={linkCustomerToCall} />
+      <QuickCreateSupplierModal open={quickSupplierOpen} onClose={() => setQuickSupplierOpen(false)} defaultPhone={selected?.phone_number} onCreated={() => { qc.invalidateQueries({ queryKey: ["suppliers"] }); toast.success("Vendor created"); }} />
+
+      <Dialog open={taskOpen} onOpenChange={setTaskOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><CalendarPlus className="w-4 h-4" /> Create Follow-up Task</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Title</Label>
+              <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder={`Follow-up call — ${selected?.customer_name || formatPhoneDisplay(selected?.phone_number)}`} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Date *</Label><Input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} /></div>
+              <div><Label>Time (optional)</Label><Input type="time" value={taskTime} onChange={(e) => setTaskTime(e.target.value)} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTaskOpen(false)}>Cancel</Button>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={createTask} disabled={!taskDate}>Create Task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {activeCall && (
         <ActiveCallModal open={true} onClose={() => setActiveCall(null)} customer={activeCall} onSaved={() => { setActiveCall(null); qc.invalidateQueries({ queryKey: ["call-logs"] }); }} />
