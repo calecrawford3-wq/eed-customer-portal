@@ -74,6 +74,14 @@ export default function CallsView() {
     queryFn: () => base44.entities.Customer.list("-created_date", 500),
   });
 
+  // Live incoming-call records from the Cisco bridge (realtime interception)
+  const { data: incomingCalls = [] } = useQuery({
+    queryKey: ["incoming-calls"],
+    queryFn: () => base44.entities.IncomingCall.list("-created_date", 30),
+    refetchInterval: 5000,
+  });
+  const activeIncoming = incomingCalls.filter((i) => i.call_state === "ringing" || i.call_state === "connected");
+
   const filtered = useMemo(() => {
     if (!search) return calls;
     const q = search.toLowerCase();
@@ -110,6 +118,24 @@ export default function CallsView() {
     const params = new URLSearchParams(window.location.search);
     const cid = params.get("callId");
     if (cid) setSelectedId(cid);
+  }, []);
+
+  // Realtime: live incoming-call events from the Cisco bridge
+  const seenResolved = React.useRef(new Set());
+  useEffect(() => {
+    const unsub = base44.entities.IncomingCall.subscribe((event) => {
+      qc.invalidateQueries({ queryKey: ["incoming-calls"] });
+      const rec = event.data;
+      if (!rec) return;
+      if (rec.lookup_status === "resolved" && rec.caller_name && !seenResolved.current.has(rec.id)) {
+        seenResolved.current.add(rec.id);
+        toast("📞 Incoming call", {
+          description: rec.caller_name + (rec.customer_name && rec.match_type === "contact" ? ` (${rec.customer_name})` : ""),
+          action: rec.call_log_id ? { label: "View", onClick: () => setSelectedId(rec.call_log_id) } : undefined,
+        });
+      }
+    });
+    return unsub;
   }, []);
 
   const linkCustomerToCall = async (customer) => {
@@ -173,6 +199,25 @@ export default function CallsView() {
     <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Left: call history */}
       <div className={cn("w-full sm:w-80 border-r border-slate-200 bg-white flex flex-col", selected ? "hidden sm:flex" : "flex")}>
+        {activeIncoming.length > 0 && (
+          <div className="p-3 border-b border-slate-200 bg-blue-50 space-y-2">
+            {activeIncoming.map((ic) => (
+              <div key={ic.id} className="flex items-center gap-2 text-sm">
+                <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", ic.call_state === "ringing" ? "bg-blue-500 animate-pulse" : "bg-emerald-500")} />
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-slate-900 truncate">{ic.caller_name || "Looking up caller…"}</span>
+                  {ic.customer_name && ic.match_type === "contact" && <span className="text-slate-500"> ({ic.customer_name})</span>}
+                  <span className="text-xs text-slate-500 ml-2">{ic.call_state === "ringing" ? "Ringing" : "Connected"} · Line {ic.line}</span>
+                </div>
+                {ic.customer_id && (
+                  <Link to={`/CustomerDetail?id=${ic.customer_id}`}>
+                    <Button variant="outline" size="sm" className="h-7 px-2"><User className="w-3.5 h-3.5" /></Button>
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="p-3 border-b border-slate-100 flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

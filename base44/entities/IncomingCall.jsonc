@@ -1,0 +1,145 @@
+{
+  "name": "IncomingCall",
+  "type": "object",
+  "properties": {
+    "line": {
+      "type": "number",
+      "default": 1,
+      "description": "Cisco line number the call rang in on"
+    },
+    "cisco_call_id": {
+      "type": "number",
+      "default": 0,
+      "description": "Cisco Remote SDK callId (currently always 0 from the bridge, so dedup uses line + time window)"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Bridge/device identifier from the webhook payload (e.g. shop_cisco_8845)"
+    },
+    "call_state": {
+      "type": "string",
+      "enum": [
+        "ringing",
+        "connected",
+        "idle",
+        "missed"
+      ],
+      "default": "ringing",
+      "description": "Live Cisco call state tracked across webhook events"
+    },
+    "caller_number": {
+      "type": "string",
+      "description": "Caller phone number, resolved from VoIP.ms CDR once available"
+    },
+    "caller_name": {
+      "type": "string",
+      "description": "Display name resolved from customer/contact/supplier match"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Matched CustomerContact (driver's dad, crew chief, etc.) when the call came from an additional contact"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Matched Supplier/Vendor when the caller is a vendor"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "match_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "customer",
+        "contact",
+        "supplier"
+      ],
+      "default": "none"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Ringing event arrived"
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Connected event arrived (call answered)"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Idle event arrived (call ended)"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "lookup_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "resolved",
+        "not_found",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "VoIP.ms CDR lookup state: pending = retrying, resolved = caller found & matched, not_found = retries exhausted, failed = error"
+    },
+    "lookup_attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "voip_unique_id": {
+      "type": "string",
+      "description": "VoIP.ms CDR uniqueid \u2014 used to dedupe against CallLog and other IncomingCall records"
+    },
+    "call_log_id": {
+      "type": "string",
+      "description": "Linked CallLog created once the caller is resolved (keeps the Calls list + fetchVoipCdr in sync)"
+    },
+    "push_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once the incoming-call push notification was sent"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "line",
+    "call_state"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
