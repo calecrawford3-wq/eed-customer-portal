@@ -66,14 +66,14 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
       (async () => {
         try {
           setCallState("ringing");
-          setCallMsg("Ringing your desk phone…");
+          setCallMsg("Dialing from your Cisco phone…");
           const res = await base44.functions.invoke("voipClick2Call", { to: customer.phone });
           if (res?.data?.success) {
             setCallState("connected");
-            setCallMsg("Call connected — pick up your desk phone.");
+            setCallMsg("Call placed — your Cisco phone is dialing. Pick up to talk.");
           } else {
             setCallState("failed");
-            setCallMsg(res?.data?.error || "Click-to-call failed. You can still log the call manually.");
+            setCallMsg(res?.data?.error || "Dial failed. You can still log the call manually.");
           }
         } catch (err) {
           setCallState("failed");
