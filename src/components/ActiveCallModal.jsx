@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Phone, PhoneCall, PhoneOff, Clock, CalendarPlus, FilePlus2, Wrench, CheckCircle2, Loader2 } from "lucide-react";
+import { Phone, PhoneCall, PhoneOff, Clock, CalendarPlus, FilePlus2, Wrench, CheckCircle2, Loader2, Copy } from "lucide-react";
 import { SATISFACTION_OPTIONS, nextWeekdayStr, isWeekend } from "@/lib/customerSuccess";
 
 const OUTCOMES = [
@@ -30,7 +30,7 @@ function fmtTime(s) {
 export default function ActiveCallModal({ open, onClose, customer, customerSuccessTask, builds, onSaved }) {
   const qc = useQueryClient();
   const csMode = !!customerSuccessTask;
-  const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const [dialMethod, setDialMethod] = useState(null);
 
   const [seconds, setSeconds] = useState(0);
   const [notes, setNotes] = useState("");
@@ -45,7 +45,7 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
 
   const customerBuilds = (builds || []).filter((b) => b.customer_id === customer?.id);
 
-  // start timer + trigger call when modal opens
+  // start timer when modal opens; user picks dial method (no auto-dial)
   useEffect(() => {
     if (!open || !customer?.phone) return;
     setSeconds(0);
@@ -56,40 +56,44 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
     setFollowupDate("");
     setFollowupTime("");
     setSelectedBuildId(customerBuilds[0]?.id || "");
-    setCallState("dialing");
+    setDialMethod(null);
+    setCallState("idle");
     setCallMsg("");
-
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
-
-    if (!isMobile) {
-      // desktop: ring the desk phone via VoIP.ms
-      (async () => {
-        try {
-          setCallState("ringing");
-          setCallMsg("Dialing from your Cisco phone…");
-          const res = await base44.functions.invoke("voipClick2Call", { to: customer.phone });
-          if (res?.data?.success) {
-            setCallState("connected");
-            setCallMsg("Call placed — your Cisco phone is dialing. Pick up to talk.");
-          } else {
-            setCallState("failed");
-            setCallMsg(res?.data?.error || "Dial failed. You can still log the call manually.");
-          }
-        } catch (err) {
-          setCallState("failed");
-          setCallMsg(err?.message || "Click-to-call failed. You can still log the call manually.");
-        }
-      })();
-    } else {
-      setCallState("connected");
-      setCallMsg("");
-    }
-
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const telHref = customer ? `tel:${customer.phone.replace(/[^\d+]/g, "")}` : "";
+  const placeDeskCall = async () => {
+    setDialMethod("desk");
+    setCallState("ringing");
+    setCallMsg("Dialing from your Cisco phone…");
+    try {
+      const res = await base44.functions.invoke("voipClick2Call", { to: customer.phone });
+      if (res?.data?.success) {
+        setCallState("connected");
+        setCallMsg("Call placed — your Cisco phone is dialing. Pick up to talk.");
+      } else {
+        setCallState("failed");
+        setCallMsg(res?.data?.error || "Dial failed. You can still log the call manually.");
+      }
+    } catch (err) {
+      setCallState("failed");
+      setCallMsg(err?.message || "Click-to-call failed. You can still log the call manually.");
+    }
+  };
+
+  const copyNumber = async () => {
+    setDialMethod("copied");
+    setCallState("connected");
+    try {
+      await navigator.clipboard.writeText(customer.phone);
+      setCallMsg("Number copied — paste it into the VoIP.ms app to dial.");
+      toast.success("Phone number copied");
+    } catch {
+      setCallMsg(`Copy this number: ${customer.phone}`);
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -115,7 +119,7 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
         source: csMode ? "customer_success" : "click_to_call",
         related_build_id: selectedBuildId || "",
         related_task_id: csMode ? customerSuccessTask?.id || "" : "",
-        via_voip: !isMobile && callState !== "failed",
+        via_voip: dialMethod === "desk" && callState !== "failed",
       });
 
       if (csMode && customerSuccessTask) {
@@ -185,27 +189,42 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
 
         <div className="space-y-4">
           {/* Call status + timer */}
-          <div className="flex items-center justify-between rounded-lg border bg-slate-50 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${callState === "failed" ? "bg-red-100 text-red-600" : callState === "connected" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                {callState === "failed" ? <PhoneOff className="w-5 h-5" /> : callState === "connected" ? <PhoneCall className="w-5 h-5" /> : <Loader2 className="w-5 h-5 animate-spin" />}
-              </div>
-              <div>
+          {dialMethod === null ? (
+            <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-800">{customer.phone}</p>
-                {callMsg ? <p className="text-xs text-slate-500">{callMsg}</p> : <p className="text-xs text-slate-400">In progress…</p>}
+                <div className="flex items-center gap-1.5 text-lg font-bold text-slate-900 tabular-nums">
+                  <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">How do you want to place this call?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button type="button" onClick={placeDeskCall} disabled={callState === "ringing"} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-60">
+                  {callState === "ringing" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />} Dial desk phone
+                </button>
+                <button type="button" onClick={copyNumber} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-slate-200 text-slate-700 font-medium hover:bg-slate-100">
+                  <Copy className="w-4 h-4" /> Copy number
+                </button>
+              </div>
+              <p className="text-xs text-slate-400">Copy the number, then paste it into the VoIP.ms app to dial from your account.</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg border bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${callState === "failed" ? "bg-red-100 text-red-600" : callState === "connected" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                  {callState === "failed" ? <PhoneOff className="w-5 h-5" /> : callState === "connected" ? <PhoneCall className="w-5 h-5" /> : <Loader2 className="w-5 h-5 animate-spin" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{customer.phone}</p>
+                  {callMsg ? <p className="text-xs text-slate-500">{callMsg}</p> : <p className="text-xs text-slate-400">In progress…</p>}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 tabular-nums">
+                  <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 tabular-nums">
-                <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
-              </div>
-            </div>
-          </div>
-
-          {isMobile && (
-            <a href={telHref} className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700">
-              <Phone className="w-4 h-4" /> Call from this phone
-            </a>
           )}
 
           {/* Satisfaction (CS mode) or Outcome (general) */}
