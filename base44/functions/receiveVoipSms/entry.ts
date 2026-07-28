@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
+import { resolveCaller } from '../../shared/resolveCaller.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -59,23 +60,17 @@ Deno.serve(async (req) => {
     let normalizedFrom = fromNumber;
     if (normalizedFrom.length === 10) normalizedFrom = '1' + normalizedFrom;
 
-    // Try to resolve a matching customer by phone number
+    // Resolve a matching customer (and which additional contact) by phone number
     let customerId: string | null = null;
     let customerName: string | null = null;
+    let contactName: string | null = null;
     try {
-      const customers = await base44.asServiceRole.entities.Customer.list('-created_date', 500);
-      const match = customers.find(c => {
-        const custPhone = (c.phone || '').replace(/\D/g, '');
-        if (!custPhone) return false;
-        const normalizedCust = custPhone.length === 10 ? '1' + custPhone : custPhone;
-        return normalizedCust === normalizedFrom || custPhone === fromNumber || custPhone.endsWith(fromNumber) || fromNumber.endsWith(custPhone);
-      });
-      if (match) {
-        customerId = match.id;
-        customerName = `${match.first_name} ${match.last_name}`.trim();
-      }
+      const r = await resolveCaller(base44, normalizedFrom);
+      customerId = r.customer_id || null;
+      customerName = r.customer_name || null;
+      contactName = r.contact_name || null;
     } catch (e) {
-      console.error('Customer lookup failed:', e?.message || e);
+      console.error('Caller lookup failed:', e?.message || e);
     }
 
     // Avoid duplicate storage if VoIP.ms retries the same message ID
@@ -96,6 +91,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.Message.create({
       customer_id: customerId,
       customer_name: customerName,
+      contact_name: contactName,
       phone_number: normalizedFrom,
       direction: 'inbound',
       from_number: normalizedFrom,
@@ -111,7 +107,8 @@ Deno.serve(async (req) => {
 
     // Send push notification to all subscribed devices
     try {
-      const pushTitle = customerName ? 'New SMS from ' + customerName : 'New SMS from ' + normalizedFrom;
+      const who = contactName ? (contactName + (customerName ? ' (' + customerName + ')' : '')) : (customerName || normalizedFrom);
+      const pushTitle = 'New SMS from ' + who;
       const pushBody = message.substring(0, 200);
       await sendPushToAllSubscriptions(base44, {
         title: pushTitle,

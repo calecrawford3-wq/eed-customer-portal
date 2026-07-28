@@ -131,7 +131,7 @@ export default function CallsView() {
     if (!taskDate) { toast.error("Pick a date"); return; }
     try {
       await base44.entities.CalendarEvent.create({
-        title: taskTitle || `Follow-up call — ${selected.customer_name || formatPhoneDisplay(selected.phone_number)}`,
+        title: taskTitle || `Follow-up call — ${selected.contact_name ? `${selected.contact_name}${selected.customer_name ? ` (${selected.customer_name})` : ""}` : (selected.customer_name || formatPhoneDisplay(selected.phone_number))}`,
         event_type: "followup",
         customer_id: selected.customer_id || "",
         start_date: taskDate,
@@ -205,7 +205,7 @@ export default function CallsView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm text-slate-900 truncate">{c.customer_name || formatPhoneDisplay(c.phone_number)}</span>
+                        <span className="font-medium text-sm text-slate-900 truncate">{c.contact_name ? `${c.contact_name}${c.customer_name ? ` · ${c.customer_name}` : ""}` : (c.customer_name || formatPhoneDisplay(c.phone_number))}</span>
                         <span className="text-xs text-slate-400 flex-shrink-0">{formatTime(c.started_at || c.created_date)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
@@ -232,7 +232,7 @@ export default function CallsView() {
               {selected.direction === "inbound" ? <PhoneIncoming className="w-5 h-5" /> : <PhoneOutgoing className="w-5 h-5" />}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-slate-900 truncate">{selected.customer_name || formatPhoneDisplay(selected.phone_number)}</div>
+              <div className="font-semibold text-sm text-slate-900 truncate">{selected.contact_name ? `${selected.contact_name}${selected.customer_name ? ` · ${selected.customer_name}` : ""}` : (selected.customer_name || formatPhoneDisplay(selected.phone_number))}</div>
               <div className="text-xs text-slate-400">{formatPhoneDisplay(selected.phone_number)} · {selected.direction === "inbound" ? "Inbound" : "Outbound"}</div>
             </div>
             {selected.customer_id && (
@@ -261,7 +261,7 @@ export default function CallsView() {
             </div>
             <div className="flex gap-2 flex-wrap">
               {selected.phone_number && (
-                <Button variant="outline" size="sm" onClick={() => setActiveCall({ id: selected.customer_id || "", name: selected.customer_name || formatPhoneDisplay(selected.phone_number), phone: selected.phone_number })}>
+                <Button variant="outline" size="sm" onClick={() => setActiveCall({ id: selected.customer_id || "", name: selected.contact_name ? `${selected.contact_name}${selected.customer_name ? ` · ${selected.customer_name}` : ""}` : (selected.customer_name || formatPhoneDisplay(selected.phone_number)), phone: selected.phone_number })}>
                   <PhoneCall className="w-4 h-4 mr-1" /> Call again
                 </Button>
               )}

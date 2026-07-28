@@ -1,0 +1,63 @@
+{
+  "name": "CustomerContact",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer this contact belongs to"
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number for this contact (matched against inbound calls/SMS)"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "relationship": {
+      "type": "string",
+      "description": "e.g. Driver, Father, Crew Chief, Owner, Sponsor"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_id",
+    "first_name",
+    "last_name",
+    "phone"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -26,6 +26,7 @@ import CountrySelect, { getCountryName } from "@/components/CountrySelect";
 import CallButton from "@/components/CallButton";
 import AdditionalEmailsField from "@/components/customers/AdditionalEmailsField";
 import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicationsTab";
+import CustomerContactsCard from "@/components/customer/CustomerContactsCard";
 import EmailsSection from "@/components/emails/EmailsSection";
 import { toast } from "sonner";
 
@@ -190,6 +191,8 @@ export default function CustomerDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column: contact info + additional contacts */}
+        <div className="space-y-6">
         {/* Contact Info */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Contact Info</CardTitle></CardHeader>
@@ -224,6 +227,9 @@ export default function CustomerDetail() {
             )}
           </CardContent>
         </Card>
+
+        <CustomerContactsCard customerId={id} />
+        </div>
 
         {/* Tabs for related records */}
         <div className="lg:col-span-2">

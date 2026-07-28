@@ -289,6 +289,7 @@ export default function Messaging() {
                 {filteredConversations.map((conv) => {
                   const lastMsg = conv.messages[conv.messages.length - 1];
                   const name = conv.messages[0]?.customer_name;
+                  const contact = conv.messages.find((m) => m.contact_name)?.contact_name;
                   return (
                     <button
                       key={conv.phone}
@@ -310,7 +311,7 @@ export default function Messaging() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-sm text-slate-900 truncate">
-                            {name || formatPhoneDisplay(conv.phone)}
+                            {contact ? `${contact}${name ? ` · ${name}` : ""}` : (name || formatPhoneDisplay(conv.phone))}
                           </span>
                           <span className="text-xs text-slate-400 flex-shrink-0">
                             {formatTime(conv.lastAt)}
@@ -361,7 +362,7 @@ export default function Messaging() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-slate-900 truncate">
-                  {selectedConversation.messages[0]?.customer_name || formatPhoneDisplay(selectedPhone)}
+                  {(() => { const ct = selectedConversation.messages.find(m => m.contact_name)?.contact_name; const cn = selectedConversation.messages[0]?.customer_name; return ct ? `${ct}${cn ? ` · ${cn}` : ""}` : (cn || formatPhoneDisplay(selectedPhone)); })()}
                 </div>
                 <div className="text-xs text-slate-400">{formatPhoneDisplay(selectedPhone)}</div>
               </div>

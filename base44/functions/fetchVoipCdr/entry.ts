@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from "base44:runtime";
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
+import { resolveCaller } from '../../shared/resolveCaller.ts';
 
 function normalizePhone(p) {
   if (!p) return "";
@@ -87,8 +88,6 @@ Deno.serve(async (req) => {
     const dateFrom = fmt(from);
     const dateTo = fmt(now);
 
-    const customers = await base44.asServiceRole.entities.Customer.list("-created_date", 500);
-
     // Build a dedupe set from voip_call_id on existing logs
     const existing = await base44.asServiceRole.entities.CallLog.list("-created_date", 200);
     const seenIds = new Set((existing || []).map((l) => l.voip_call_id).filter(Boolean));
@@ -115,10 +114,10 @@ Deno.serve(async (req) => {
       if (callId && seenIds.has(callId)) continue;
       const phone = normalizePhone(extractDigits(c.callerid || ""));
       if (!phone) continue;
-      const matched = customers.find((cust) => {
-        const cp = normalizePhone(cust.phone || "");
-        return cp && (cp === phone || cp.endsWith(phone) || phone.endsWith(cp));
-      });
+      let resolved = { customer_id: "", customer_name: "", contact_name: "", relationship: "" };
+      try { resolved = await resolveCaller(base44, phone); } catch (e) { console.warn("resolveCaller failed:", e?.message || e); }
+      const matched = resolved.customer_id ? { id: resolved.customer_id } : null;
+      const contactName = resolved.contact_name || "";
       const duration = Number(c.seconds) || 0;
       let startedAt = new Date().toISOString();
       try {
@@ -129,8 +128,9 @@ Deno.serve(async (req) => {
         : startedAt;
       try {
         const rec = await base44.asServiceRole.entities.CallLog.create({
-          customer_id: matched?.id || "",
-          customer_name: matched ? `${matched.first_name || ""} ${matched.last_name || ""}`.trim() : "",
+          customer_id: resolved.customer_id || "",
+          customer_name: resolved.customer_name || "",
+          contact_name: contactName || "",
           phone_number: phone,
           direction: "inbound",
           call_status: dispositionToStatus(c.disposition),
@@ -149,7 +149,8 @@ Deno.serve(async (req) => {
         // Notify staff (push) + desk phone (Cisco caller-id screen) for new inbound calls
         const statusLabel = (rec.call_status || "incoming").replace(/_/g, " ");
         const dispPhone = formatPhoneDisplay(phone);
-        const pushTitle = matched ? `Call from ${rec.customer_name}` : `Call from ${dispPhone}`;
+        const who = contactName ? (contactName + (rec.customer_name ? ` (${rec.customer_name})` : "")) : (rec.customer_name || "");
+        const pushTitle = (contactName || rec.customer_name) ? `Call from ${who}` : `Call from ${dispPhone}`;
         const pushBody = `${dispPhone} · ${statusLabel}${duration > 0 ? ` · ${fmtDuration(duration)}` : ""}${matched ? "" : " · unknown caller"}`;
         try {
           await sendPushToAllSubscriptions(base44, { title: pushTitle, body: pushBody, url: `/Messaging?callId=${rec.id}` });
