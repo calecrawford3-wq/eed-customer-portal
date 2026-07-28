@@ -182,7 +182,9 @@ export default async function(req: Request): Promise<Response> {
     const line = Number(body.line ?? 1);
     const callId = Number(body.callId ?? 0);
     const callState = String(body.callState || "").toLowerCase();
-    const receivedAt = body.receivedAt || new Date().toISOString();
+    // Use server UTC time for all stored timestamps — the bridge clock may be
+    // misconfigured (e.g. wrong DST offset), which was shifting call times by an hour.
+    const receivedAt = new Date().toISOString();
 
     const base44 = createClientFromRequest(req);
     const now = new Date();
@@ -232,8 +234,8 @@ export default async function(req: Request): Promise<Response> {
           call_state: "idle", ended_at: receivedAt, duration_seconds: duration,
         });
         if (active.lookup_status === "pending") {
-          // CDR should exist now — final retry pass.
-          waitUntil(runLookupLoop(base44, active.id, 6, 1500, true));
+          // CDR should exist now — final retry pass (tighter polling to resolve faster).
+          waitUntil(runLookupLoop(base44, active.id, 12, 1000, true));
         } else {
           // Already resolved earlier — sync final duration/status onto the linked CallLog.
           const updated = { ...active, duration_seconds: duration, call_state: "idle" };

@@ -65,22 +65,26 @@ export default function CallsView() {
   const [taskDate, setTaskDate] = useState("");
   const [taskTime, setTaskTime] = useState("");
 
+  // Live incoming-call records from the Cisco bridge (realtime interception)
+  const { data: incomingCalls = [] } = useQuery({
+    queryKey: ["incoming-calls"],
+    queryFn: () => base44.entities.IncomingCall.list("-created_date", 30),
+    refetchInterval: 3000,
+  });
+  const activeIncoming = incomingCalls.filter((i) => i.call_state === "ringing" || i.call_state === "connected");
+  const hasPendingLookup = incomingCalls.some((i) => i.lookup_status === "pending");
+
   const { data: calls = [], isLoading } = useQuery({
     queryKey: ["call-logs"],
     queryFn: () => base44.entities.CallLog.list("-created_date", 300),
+    // Refresh the history list quickly while a call is resolving, so the new
+    // CallLog appears without a manual reload. Slow polling when the shop is idle.
+    refetchInterval: hasPendingLookup || activeIncoming.length ? 3000 : 15000,
   });
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 500),
   });
-
-  // Live incoming-call records from the Cisco bridge (realtime interception)
-  const { data: incomingCalls = [] } = useQuery({
-    queryKey: ["incoming-calls"],
-    queryFn: () => base44.entities.IncomingCall.list("-created_date", 30),
-    refetchInterval: 5000,
-  });
-  const activeIncoming = incomingCalls.filter((i) => i.call_state === "ringing" || i.call_state === "connected");
 
   const filtered = useMemo(() => {
     if (!search) return calls;
