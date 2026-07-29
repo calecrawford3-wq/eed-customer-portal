@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { secrets } from "base44:runtime";
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
 import { parseVoipCdrDateMs } from '../../shared/voipMs.ts';
@@ -43,33 +42,6 @@ function fmtDuration(s) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
-function escapeXml(s) {
-  return String(s || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[ch]));
-}
-
-// Push a caller-id screen to the Cisco desk phone (Trusted XML mode, unauthenticated POST)
-async function pushCiscoText({ title, text, prompt = "" }) {
-  const baseUrl = (secrets.get("CISCO_PHONE_URL") || "").trim().replace(/\/+$/, "");
-  if (!baseUrl) return { skipped: true };
-  const xml =
-    `<CiscoIPPhoneText>` +
-    `<Title>${escapeXml(title)}</Title>` +
-    (prompt ? `<Prompt>${escapeXml(prompt)}</Prompt>` : "") +
-    `<Text>${escapeXml(text)}</Text>` +
-    `</CiscoIPPhoneText>`;
-  try {
-    const resp = await fetch(`${baseUrl}/CGI/Execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ XML: xml }).toString(),
-    });
-    return { ok: resp.ok, status: resp.status };
-  } catch (e) {
-    console.warn("pushCiscoText failed:", e?.message || e);
-    return { ok: false, error: e?.message || String(e) };
-  }
 }
 
 Deno.serve(async (req) => {
@@ -155,9 +127,6 @@ Deno.serve(async (req) => {
         try {
           await sendPushToAllSubscriptions(base44, { title: pushTitle, body: pushBody, url: `/Messaging?callId=${rec.id}` });
         } catch (pe) { console.warn("push failed:", pe?.message || pe); }
-        try {
-          await pushCiscoText({ title: "Incoming Call", text: `${pushTitle}\n${pushBody}`, prompt: "Logged from VoIP.ms" });
-        } catch (ce) { console.warn("cisco caller-id push failed:", ce?.message || ce); }
       } catch (e) {
         console.warn("CallLog create failed for callid " + callId + ":", e?.message || e);
       }
