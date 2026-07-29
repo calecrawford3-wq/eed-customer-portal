@@ -147,6 +147,45 @@
     "admin_override_password": {
       "type": "string",
       "description": "Admin password to bypass barcode verification for engine build edits and pickup. If empty, any non-empty input bypasses."
+    },
+    "voipms_pb_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Master toggle for VoIP.ms Phone Book synchronization"
+    },
+    "voipms_pb_default_group": {
+      "type": "string",
+      "description": "Default VoIP.ms Phone Book group name for new entries",
+      "default": "Base44"
+    },
+    "voipms_pb_prefer_business_name": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, use the company/business name as the caller-ID name when available"
+    },
+    "voipms_pb_remove_inactive": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, remove the VoIP.ms Phone Book entry when a customer is deleted or marked inactive"
+    },
+    "voipms_pb_nightly_reconciliation": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, run a nightly reconciliation comparing all customer numbers against the VoIP.ms Phone Book"
+    },
+    "voipms_pb_last_successful_sync": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the last successful sync operation completed"
+    },
+    "voipms_pb_last_full_reconciliation": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the last full nightly reconciliation completed"
+    },
+    "voipms_pb_current_sync_status": {
+      "type": "string",
+      "description": "Current sync status text shown on the settings page (e.g. 'Syncing 45 customers\u2026', 'Idle', 'Last sync failed')"
     }
   },
   "required": [

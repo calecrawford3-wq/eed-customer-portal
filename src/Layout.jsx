@@ -37,7 +37,8 @@ import {
   Target,
   Search,
   Sliders,
-  GitCompare
+  GitCompare,
+  PhoneCall
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -89,6 +90,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Calendar", page: "Calendar", icon: Calendar },
     { name: "Messages", page: "Messaging", icon: MessageSquare },
     { name: "Emails", page: "Emails", icon: Mail },
+    { name: "VoIP Phonebook", page: "VoipPhonebookSettings", icon: PhoneCall },
     { type: "divider" },
     { name: "Engine Simulator", page: "Simulator", icon: FlaskConical },
     { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },

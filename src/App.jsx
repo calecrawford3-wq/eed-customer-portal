@@ -26,6 +26,8 @@ import DynoComparison from './pages/DynoComparison';
 import PredictionRules from './pages/PredictionRules';
 import SimilarBuilds from './pages/SimilarBuilds';
 import ControlledChanges from './pages/ControlledChanges';
+import VoipPhonebookSettings from './pages/VoipPhonebookSettings';
+import VoipPhonebookSyncHistory from './pages/VoipPhonebookSyncHistory';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -106,6 +108,8 @@ const AuthenticatedApp = () => {
       <Route path="/PredictionRules" element={<LayoutWrapper currentPageName="PredictionRules"><PredictionRules /></LayoutWrapper>} />
       <Route path="/SimilarBuilds" element={<LayoutWrapper currentPageName="SimilarBuilds"><SimilarBuilds /></LayoutWrapper>} />
       <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
+      <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
+      <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

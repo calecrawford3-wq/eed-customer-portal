@@ -1,0 +1,82 @@
+{
+  "name": "VoipmsSyncLog",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "created",
+        "updated",
+        "deleted",
+        "skipped",
+        "failed",
+        "noop"
+      ],
+      "description": "What happened during this sync operation"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer record"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Snapshot of the customer display name at sync time"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Normalized phone number that was synced (or attempted)"
+    },
+    "phonebook_id": {
+      "type": "string",
+      "description": "VoIP.ms Phone Book entry ID after the sync (if known)"
+    },
+    "previous_phone": {
+      "type": "string",
+      "description": "Previous phone number when a number changed and the old entry was removed"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Safe error message (no credentials) when action=failed"
+    },
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "event",
+        "nightly",
+        "manual",
+        "dry_run"
+      ],
+      "description": "What triggered this sync: event = customer create/update, nightly = reconciliation, manual = admin button, dry_run = preview only"
+    },
+    "synced_by": {
+      "type": "string",
+      "description": "Admin email or 'system' for automated syncs"
+    }
+  },
+  "required": [
+    "action",
+    "sync_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

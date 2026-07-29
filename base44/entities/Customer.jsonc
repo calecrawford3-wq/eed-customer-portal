@@ -69,6 +69,38 @@
     "portal_temp_password": {
       "type": "string",
       "description": "Temporary password for customer portal access"
+    },
+    "voipms_phonebook_id": {
+      "type": "string",
+      "description": "VoIP.ms Phone Book entry ID assigned when the customer was synced"
+    },
+    "voipms_sync_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "synced",
+        "error",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Current VoIP.ms Phone Book sync state for this customer"
+    },
+    "voipms_last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer was last successfully synced to the VoIP.ms Phone Book"
+    },
+    "voipms_sync_error": {
+      "type": "string",
+      "description": "Safe error message from the last failed sync attempt (no credentials)"
+    },
+    "voipms_synced_name": {
+      "type": "string",
+      "description": "Display name that was last written to the VoIP.ms Phone Book"
+    },
+    "voipms_synced_phone": {
+      "type": "string",
+      "description": "Normalized phone number that was last written to the VoIP.ms Phone Book"
     }
   },
   "required": [
