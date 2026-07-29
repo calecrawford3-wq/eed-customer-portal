@@ -23,9 +23,29 @@ function extractDigits(callerid) {
   return String(callerid).replace(/\D/g, "");
 }
 
-function parseDate(s) {
-  try { return new Date(String(s).replace(" ", "T") + "Z").getTime(); } catch (_) { return 0; }
+// VoIP.ms returns CDR `date` as "YYYY-MM-DD HH:MM:SS" in its server/account timezone,
+// which observes Europe/London time (GMT in winter, BST = UTC+1 in summer). Parsing it as
+// UTC (appending "Z") shifts every call +1h during summer. This interprets the wall-clock
+// string as Europe/London and returns true UTC epoch ms (DST-correct).
+export function parseVoipCdrDateMs(s: string): number {
+  const m = String(s || "").match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) { const d = new Date(s).getTime(); return isNaN(d) ? 0 : d; }
+  const [Y, Mo, D, H, Mi, S] = m.slice(1).map(Number);
+  const probe = Date.UTC(Y, Mo - 1, D, H, Mi, S);
+  try {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/London", hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const parts: Record<string, string> = {};
+    for (const p of dtf.formatToParts(new Date(probe))) parts[p.type] = p.value;
+    const wallMs = Date.UTC(+parts.year, +parts.month - 1, +parts.day, (+parts.hour % 24), +parts.minute, +parts.second);
+    const offsetMin = (wallMs - probe) / 60000;
+    return probe - offsetMin * 60000;
+  } catch (_) { return probe; }
 }
+function parseDate(s) { return parseVoipCdrDateMs(s); }
 
 // Returns the most recent inbound CDR to our DID within `withinMinutes`, or null.
 // `didNorm` is the normalized shop DID (from VOIP_MS_FROM_NUMBER). When the DID can't be

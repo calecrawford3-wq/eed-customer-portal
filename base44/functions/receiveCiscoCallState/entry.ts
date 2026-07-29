@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { waitUntil } from "base44:runtime";
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
-import { getLatestInboundCdr } from '../../shared/voipMs.ts';
+import { getLatestInboundCdr, parseVoipCdrDateMs } from '../../shared/voipMs.ts';
 
 // Secure webhook for the local Cisco→Node bridge.
 // The bridge POSTs { event: "cisco_call_state", phone, line, callId, callState, receivedAt }
@@ -96,7 +96,7 @@ async function applyResolution(base44, rec, cdr) {
     r.match_type === "supplier" ? (r.supplier_name || "Supplier") :
     fmtPhone(callerNumber);
 
-  const startedAt = rec.started_at || (cdr.date ? new Date(String(cdr.date).replace(" ", "T") + "Z").toISOString() : new Date().toISOString());
+  const startedAt = rec.started_at || (cdr.date ? new Date(parseVoipCdrDateMs(cdr.date)).toISOString() : new Date().toISOString());
   const status = dispToStatus(cdr.disposition);
 
   // Mirror into CallLog so the Calls list shows the call in real time and fetchVoipCdr dedupes it.

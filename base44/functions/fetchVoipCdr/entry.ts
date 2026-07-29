@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from "base44:runtime";
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
+import { parseVoipCdrDateMs } from '../../shared/voipMs.ts';
 
 function normalizePhone(p) {
   if (!p) return "";
@@ -119,10 +120,9 @@ Deno.serve(async (req) => {
       const matched = resolved.customer_id ? { id: resolved.customer_id } : null;
       const contactName = resolved.contact_name || "";
       const duration = Number(c.seconds) || 0;
-      let startedAt = new Date().toISOString();
-      try {
-        if (c.date) startedAt = new Date(String(c.date).replace(" ", "T") + "Z").toISOString();
-      } catch (_) { /* fall back to now */ }
+      // VoIP.ms CDR dates arrive in Europe/London time; parseVoipCdrDateMs converts to true UTC.
+      const startedMs = c.date ? parseVoipCdrDateMs(c.date) : 0;
+      const startedAt = startedMs ? new Date(startedMs).toISOString() : new Date().toISOString();
       const endedAt = duration > 0
         ? new Date(new Date(startedAt).getTime() + duration * 1000).toISOString()
         : startedAt;
