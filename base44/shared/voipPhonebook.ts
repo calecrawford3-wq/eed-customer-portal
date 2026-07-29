@@ -66,6 +66,75 @@ export function getBridgeUrl(): string {
   return Deno.env.get("VOIPMS_BRIDGE_URL") || "";
 }
 
+// ── Bridge error classification ────────────────────────────────────────
+
+export interface BridgeDiagnostic {
+  ok: boolean;
+  httpStatus: number;
+  method: string;
+  voipmsStatus: string;
+  voipmsMessage: string;
+  data: any;
+  params: Record<string, any>;
+  safeError: string;
+}
+
+const SENSITIVE_KEY_RE = /password|secret|token|api_?key|username|credential|auth/i;
+
+export function sanitizeParams(params: Record<string, any> | undefined): Record<string, any> {
+  if (!params || typeof params !== "object") return {};
+  const result: Record<string, any> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (SENSITIVE_KEY_RE.test(k)) continue;
+    if (v === null || v === undefined || v === "") continue;
+    result[k] = v;
+  }
+  return result;
+}
+
+export function classifyBridgeError(httpStatus: number, voipmsStatus: string, message: string): string {
+  if (httpStatus === 403) return `Method not permitted — bridge allowlist is blocking this method (${message})`;
+  if (httpStatus === 401) return `Bridge authentication/signature failure (${message})`;
+  if (httpStatus === 503) return `Bridge credentials incomplete — check local settings.env (${message})`;
+  if (httpStatus === 200 && voipmsStatus === "invalid_phonebook") return `VoIP.ms rejected request parameters: invalid_phonebook (${message})`;
+  return message || "Unknown bridge error";
+}
+
+export class BridgeError extends Error {
+  httpStatus: number;
+  method: string;
+  voipmsStatus: string;
+  voipmsMessage: string;
+  params: Record<string, any>;
+
+  constructor(message: string, opts: { httpStatus: number; method: string; voipmsStatus?: string; voipmsMessage?: string; params?: Record<string, any> }) {
+    super(message);
+    this.name = "BridgeError";
+    this.httpStatus = opts.httpStatus;
+    this.method = opts.method;
+    this.voipmsStatus = opts.voipmsStatus || "";
+    this.voipmsMessage = opts.voipmsMessage || "";
+    this.params = sanitizeParams(opts.params);
+  }
+
+  get safeError(): string {
+    return classifyBridgeError(this.httpStatus, this.voipmsStatus, this.message);
+  }
+
+  toDiagnostic(): BridgeDiagnostic {
+    return {
+      ok: false,
+      httpStatus: this.httpStatus,
+      method: this.method,
+      voipmsStatus: this.voipmsStatus,
+      voipmsMessage: this.voipmsMessage,
+      data: null,
+      params: this.params,
+      safeError: this.safeError,
+    };
+  }
+}
+
 // ── HMAC signing ─────────────────────────────────────────────────────
 
 async function signHmac(secret: string, message: string): Promise<string> {
@@ -120,8 +189,9 @@ export async function bridgeCall(method: string, params: Record<string, any> = {
 
   if (!contentType.includes("application/json")) {
     const preview = text.substring(0, 150).replace(/\n/g, " ");
-    throw new Error(
-      `Bridge at ${bridgeUrl} returned non-JSON (${resp.status} ${resp.statusText}, content-type: ${contentType || "unknown"}). Preview: ${preview}`
+    throw new BridgeError(
+      `Bridge returned non-JSON (${resp.status} ${resp.statusText}, content-type: ${contentType || "unknown"}). Preview: ${preview}`,
+      { httpStatus: resp.status, method, params }
     );
   }
 
@@ -129,13 +199,21 @@ export async function bridgeCall(method: string, params: Record<string, any> = {
   try {
     parsed = JSON.parse(text);
   } catch (e: any) {
-    throw new Error(`Bridge returned invalid JSON: ${String(e?.message || e).substring(0, 200)}`);
+    throw new BridgeError(`Bridge returned invalid JSON: ${String(e?.message || e).substring(0, 200)}`, { httpStatus: resp.status, method, params });
   }
 
   // The ElitePhoneBridge wraps responses: { ok, method, requestId, voipmsHttpStatus, data }
-  // Bridge-level errors (bad signature, missing credentials, etc.) have ok=false
+  // Bridge-level errors (bad signature, missing credentials, method not permitted, etc.) have ok=false.
+  // Exception: "no_phonebook" / "no_records" means the phone book is empty — not an error.
   if (parsed.ok === false) {
-    throw new Error(parsed.message || parsed.error || "Bridge returned an error");
+    const voipmsStatus = parsed.data?.status || "";
+    if (voipmsStatus === "no_phonebook" || voipmsStatus === "no_records" || voipmsStatus === "no_records_found") {
+      return parsed.data;
+    }
+    throw new BridgeError(
+      parsed.message || parsed.error || "Bridge returned an error",
+      { httpStatus: resp.status, method, voipmsStatus: parsed.data?.status, voipmsMessage: parsed.data?.message, params: parsed.params || params }
+    );
   }
 
   // Extract the actual VoIP.ms API response from the data field
@@ -148,11 +226,16 @@ export async function bridgeCall(method: string, params: Record<string, any> = {
 
 // ── Retry with exponential backoff ────────────────────────────────────
 
-function isPermanentError(msg: string): boolean {
-  const m = msg.toLowerCase();
-  return m.includes("invalid api") || m.includes("invalid user") || m.includes("auth")
-    || m.includes("permission") || m.includes("not allowed") || m.includes("invalid parameter")
-    || m.includes("signature") || m.includes("forbidden") || m.includes("unauthorized");
+function isPermanentError(err: any): boolean {
+  if (err instanceof BridgeError) {
+    if ([403, 401, 503].includes(err.httpStatus)) return true;
+    if (err.voipmsStatus === "invalid_phonebook") return true;
+  }
+  const msg = String(err?.message || err).toLowerCase();
+  return msg.includes("invalid api") || msg.includes("invalid user") || msg.includes("auth")
+    || msg.includes("permission") || msg.includes("not allowed") || msg.includes("invalid parameter")
+    || msg.includes("signature") || msg.includes("forbidden") || msg.includes("unauthorized")
+    || msg.includes("not permitted") || msg.includes("credentials") || msg.includes("incomplete");
 }
 
 export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay = 1000): Promise<T> {
@@ -162,8 +245,7 @@ export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDel
       return await fn();
     } catch (e: any) {
       lastError = e;
-      const msg = String(e?.message || e);
-      if (isPermanentError(msg)) throw e;
+      if (isPermanentError(e)) throw e;
       if (attempt < maxRetries) {
         const delay = baseDelay * Math.pow(2, attempt);
         await new Promise((r) => setTimeout(r, delay));
@@ -180,7 +262,7 @@ function isVoipSuccess(data: any): boolean {
 }
 
 function isVoipNoRecords(data: any): boolean {
-  return data && (data.status === "no_records" || data.status === "no_records_found");
+  return data && (data.status === "no_records" || data.status === "no_records_found" || data.status === "no_phonebook");
 }
 
 // ── Bridge methods ────────────────────────────────────────────────────
@@ -190,10 +272,12 @@ export async function bridgeGetIP(): Promise<any> {
   return withRetry(() => bridgeCall("getIP", {}));
 }
 
-// getPhonebook — retrieve all entries (optionally filtered by group).
-// Returns the raw VoIP.ms response.
-export async function getPhonebookRaw(group?: string): Promise<any> {
-  return withRetry(() => bridgeCall("getPhonebook", group ? { phonebook: group } : {}));
+// getPhonebook — retrieve all entries.
+// Must be called with exactly { method: "getPhonebook", params: {} }.
+// Do NOT add phonebook, group, id, code, customer_id, or any other field —
+// VoIP.ms rejects unknown parameters with status "invalid_phonebook".
+export async function getPhonebookRaw(): Promise<any> {
+  return withRetry(() => bridgeCall("getPhonebook", {}));
 }
 
 // getPhonebookGroups — retrieve all phone book groups.
@@ -219,13 +303,52 @@ export function discoverIdField(entries: any[]): string {
 
 // Get phonebook entries as array + the discovered ID field name.
 export async function getPhonebookEntries(group?: string): Promise<{ entries: any[]; idField: string }> {
-  const data = await getPhonebookRaw(group);
+  const data = await getPhonebookRaw();
   if (!isVoipSuccess(data) && !isVoipNoRecords(data)) {
-    throw new Error(data?.message || "Failed to get phonebook entries");
+    throw new BridgeError(
+      data?.message || `VoIP.ms returned status: ${data?.status || "unknown"}`,
+      { httpStatus: 200, method: "getPhonebook", voipmsStatus: data?.status, voipmsMessage: data?.message, params: {} }
+    );
   }
   const entries = data.phonebook || data.entries || data.result || [];
   const arr = Array.isArray(entries) ? entries : [];
   return { entries: arr, idField: discoverIdField(arr) };
+}
+
+// Diagnostic call — returns the full structured bridge response for the admin UI.
+// Does not retry; returns all diagnostic fields: HTTP status, method, VoIP.ms status,
+// safe error message, and sanitized params.
+export async function getPhonebookDiagnostic(): Promise<BridgeDiagnostic> {
+  try {
+    const data = await bridgeCall("getPhonebook", {});
+    const voipmsStatus = data?.status || "";
+    const voipmsMessage = data?.message || "";
+    const isSuccess = isVoipSuccess(data) || isVoipNoRecords(data);
+    return {
+      ok: isSuccess,
+      httpStatus: 200,
+      method: "getPhonebook",
+      voipmsStatus,
+      voipmsMessage,
+      data,
+      params: {},
+      safeError: isSuccess ? "" : classifyBridgeError(200, voipmsStatus, voipmsMessage),
+    };
+  } catch (e: any) {
+    if (e instanceof BridgeError) {
+      return e.toDiagnostic();
+    }
+    return {
+      ok: false,
+      httpStatus: 0,
+      method: "getPhonebook",
+      voipmsStatus: "",
+      voipmsMessage: "",
+      data: null,
+      params: {},
+      safeError: String(e?.message || e),
+    };
+  }
 }
 
 // Find an existing entry by normalized phone number.

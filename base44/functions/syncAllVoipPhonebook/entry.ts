@@ -8,7 +8,7 @@ import {
   updatePhonebookEntry,
   deletePhonebookEntry,
   bridgeGetIP,
-  getPhonebookRaw,
+  getPhonebookDiagnostic,
   testBridgeConnection,
   getPbSettings,
 } from '../../shared/voipPhonebook.ts';
@@ -61,15 +61,10 @@ export default async function(req: Request): Promise<Response> {
       }
     }
 
-    // ── get_phonebook — retrieve raw entries + field names ────────────
+    // ── get_phonebook — full structured diagnostic response ────────────
     if (mode === "get_phonebook") {
-      try {
-        const group = body.group || "";
-        const data = await getPhonebookRaw(group || undefined);
-        return Response.json(data);
-      } catch (e: any) {
-        return Response.json({ status: "error", message: String(e?.message || e) });
-      }
+      const diag = await getPhonebookDiagnostic();
+      return Response.json(diag);
     }
 
     // ── Sync all / dry run ────────────────────────────────────────────
@@ -115,17 +110,33 @@ export default async function(req: Request): Promise<Response> {
       return true;
     });
 
-    // Fetch the full phone book once for comparison (graceful degradation if bridge blocks it)
-    let existingEntries: any[] = [];
-    let idField = "id";
-    let phonebookUnavailable = false;
+    // Fetch the full phone book once for comparison.
+    // Abort immediately if getPhonebook fails — do NOT create entries blindly,
+    // as that risks duplicate VoIP.ms Phone Book entries.
+    let existingEntries: any[];
+    let idField: string;
     try {
       const result = await getPhonebookEntries(groupName);
       existingEntries = result.entries;
       idField = result.idField;
-    } catch (e) {
-      phonebookUnavailable = true;
-      console.warn("getPhonebook failed, proceeding with local records only:", e?.message || e);
+    } catch (e: any) {
+      const safeError = e?.safeError || String(e?.message || e);
+      await updatePbStatus(base44, {
+        voipms_pb_current_sync_status: `Sync aborted: ${safeError}`,
+      });
+      return Response.json({
+        error: safeError,
+        aborted: true,
+        total: deduped.length,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        failed: 0,
+        noop: 0,
+        errors: [safeError],
+        dryRun,
+      }, { status: 500 });
     }
 
     const summary = {
@@ -139,7 +150,6 @@ export default async function(req: Request): Promise<Response> {
       errors: [] as string[],
       idField,
       dryRun,
-      phonebookUnavailable,
     };
 
     const seenEntryIds = new Set<string>();
@@ -266,10 +276,9 @@ export default async function(req: Request): Promise<Response> {
 
     // Update settings with completion status
     const now = new Date().toISOString();
-    const degradedNote = phonebookUnavailable ? " (degraded: phonebook lookup unavailable — created new entries only)" : "";
     const statusMsg = dryRun
-      ? `Dry run: ${summary.created} to create, ${summary.updated} to update, ${summary.deleted} to delete, ${summary.skipped} skipped${degradedNote}`
-      : `Sync complete: ${summary.created} created, ${summary.updated} updated, ${summary.deleted} deleted, ${summary.skipped} skipped, ${summary.failed} failed${degradedNote}`;
+      ? `Dry run: ${summary.created} to create, ${summary.updated} to update, ${summary.deleted} to delete, ${summary.skipped} skipped`
+      : `Sync complete: ${summary.created} created, ${summary.updated} updated, ${summary.deleted} deleted, ${summary.skipped} skipped, ${summary.failed} failed`;
 
     await updatePbStatus(base44, {
       voipms_pb_current_sync_status: statusMsg,

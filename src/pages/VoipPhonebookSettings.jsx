@@ -107,11 +107,12 @@ export default function VoipPhonebookSettings() {
 
   const handleRetrievePhonebook = async () => {
     const data = await invokeBridge("get_phonebook", setPhonebookResult);
-    if (data?.status === "success" || data?.status === "no_records") {
-      const count = Array.isArray(data.phonebook) ? data.phonebook.length : 0;
+    if (data?.ok) {
+      const entries = data.data?.phonebook || data.data?.entries || [];
+      const count = Array.isArray(entries) ? entries.length : 0;
       toast.success(`Retrieved phone book (${count} entries)`);
     } else {
-      toast.error("Retrieve failed: " + (data?.message || "Unknown"));
+      toast.error("Retrieve failed: " + (data?.safeError || "Unknown"));
     }
   };
 
@@ -167,12 +168,6 @@ export default function VoipPhonebookSettings() {
   };
 
   const isBusy = syncSummary?.loading;
-
-  // Get raw field names from phonebook result for diagnostic view
-  const phonebookFields = (() => {
-    if (!phonebookResult?.phonebook || !Array.isArray(phonebookResult.phonebook) || !phonebookResult.phonebook.length) return null;
-    return Object.keys(phonebookResult.phonebook[0]);
-  })();
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -362,34 +357,74 @@ export default function VoipPhonebookSettings() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Terminal className="w-4 h-4" />
-              Phone Book Raw Response
+              Phone Book Bridge Response
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Status</span>
-              <Badge variant={phonebookResult.status === "success" ? "default" : phonebookResult.status === "no_records" ? "secondary" : "destructive"}>
-                {phonebookResult.status || "unknown"}
-              </Badge>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">HTTP Status</span>
+                <code className="bg-muted px-2 py-0.5 rounded text-xs">{phonebookResult.httpStatus ?? "—"}</code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Method</span>
+                <code className="bg-muted px-2 py-0.5 rounded text-xs">{phonebookResult.method || "—"}</code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">VoIP.ms Status</span>
+                <Badge variant={phonebookResult.ok ? "default" : "destructive"}>
+                  {phonebookResult.voipmsStatus || "—"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Result</span>
+                <Badge variant={phonebookResult.ok ? "default" : "destructive"}>
+                  {phonebookResult.ok ? "Success" : "Failed"}
+                </Badge>
+              </div>
             </div>
-            {phonebookResult.message && (
-              <p className="text-xs text-muted-foreground">{phonebookResult.message}</p>
+
+            {phonebookResult.safeError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 text-red-800 text-sm">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p className="text-xs">{phonebookResult.safeError}</p>
+              </div>
             )}
-            {phonebookFields && (
+
+            {phonebookResult.voipmsMessage && (
+              <p className="text-xs text-muted-foreground">{phonebookResult.voipmsMessage}</p>
+            )}
+
+            {phonebookResult.params && Object.keys(phonebookResult.params).length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Entry field names discovered:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {phonebookFields.map((f) => (
+                <p className="text-xs font-medium text-muted-foreground mb-1">Params sent (secrets removed):</p>
+                <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto max-h-32">
+                  {JSON.stringify(phonebookResult.params, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {phonebookResult.data?.phonebook && Array.isArray(phonebookResult.data.phonebook) && phonebookResult.data.phonebook.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  Phone book entries ({phonebookResult.data.phonebook.length}):
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {Object.keys(phonebookResult.data.phonebook[0]).map((f) => (
                     <code key={f} className="bg-muted px-2 py-0.5 rounded text-xs">{f}</code>
                   ))}
                 </div>
+                <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto max-h-48">
+                  {JSON.stringify(phonebookResult.data.phonebook[0], null, 2)}
+                </pre>
               </div>
             )}
-            {phonebookResult.phonebook && Array.isArray(phonebookResult.phonebook) && phonebookResult.phonebook.length > 0 && (
+
+            {phonebookResult.data && !phonebookResult.data?.phonebook && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">First entry (sample):</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Full response:</p>
                 <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto max-h-48">
-                  {JSON.stringify(phonebookResult.phonebook[0], null, 2)}
+                  {JSON.stringify(phonebookResult.data, null, 2)}
                 </pre>
               </div>
             )}
