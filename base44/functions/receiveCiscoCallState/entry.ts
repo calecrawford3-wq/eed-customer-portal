@@ -158,18 +158,52 @@ async function updateLinkedCallLog(base44, rec) {
 export default async function(req: Request): Promise<Response> {
   try {
     // --- Auth: shared secret (BRIDGE_SECRET) ---
+    // Accepts either:
+    //  (a) raw secret in x-webhook-secret header / ?key= / body.secret, OR
+    //  (b) HMAC-SHA256 signature in X-Elite-Signature over `${timestamp}.${rawBody}`
+    //      (this is how the local Cisco bridge signs its requests)
     const expected = Deno.env.get("BRIDGE_SECRET") || "";
     const url = new URL(req.url);
+    const rawBodyText = req.method === "POST" ? await req.text() : "";
+    let body: any = {};
+    if (rawBodyText) {
+      try { body = JSON.parse(rawBodyText); } catch (_) { /* allow empty */ }
+    }
     const provided =
       req.headers.get("x-webhook-secret") ||
       url.searchParams.get("key") ||
       "";
-    let body: any = {};
-    if (req.method === "POST") {
-      try { body = await req.json(); } catch (_) { /* allow empty */ }
-    }
     const bodySecret = body && typeof body === "object" ? String(body.secret || "") : "";
-    if (!expected || (provided !== expected && bodySecret !== expected)) {
+
+    let hmacOk = false;
+    const sig = req.headers.get("x-elite-signature") || "";
+    const ts = req.headers.get("x-elite-timestamp") || "";
+    if (expected && sig && ts) {
+      const tsNum = Number(ts);
+      const ageMs = Math.abs(Date.now() - tsNum);
+      if (Number.isFinite(tsNum) && ageMs < 5 * 60 * 1000) {
+        try {
+          const hmacKey = await crypto.subtle.importKey(
+            "raw",
+            new TextEncoder().encode(expected),
+            { name: "HMAC", hash: "SHA-256" },
+            false,
+            ["sign"]
+          );
+          const sigBuf = await crypto.subtle.sign(
+            "HMAC",
+            hmacKey,
+            new TextEncoder().encode(`${ts}.${rawBodyText}`)
+          );
+          const hex = Array.from(new Uint8Array(sigBuf))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          hmacOk = hex === sig;
+        } catch (_) { hmacOk = false; }
+      }
+    }
+
+    if (!expected || (provided !== expected && bodySecret !== expected && !hmacOk)) {
       return Response.json({ error: "Invalid webhook secret" }, { status: 403 });
     }
 
@@ -178,7 +212,7 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: "Unknown event" }, { status: 400 });
     }
 
-    const phone = String(body.phone || "shop_cisco");
+    const phone = String(body.phone || body.source || "shop_cisco");
     const line = Number(body.line ?? 1);
     const callId = Number(body.callId ?? 0);
     const callState = String(body.callState || "").toLowerCase();
