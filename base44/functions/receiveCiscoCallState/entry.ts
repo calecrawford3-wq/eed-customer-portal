@@ -133,8 +133,14 @@ async function applyResolution(base44, rec, cdr) {
     call_log_id: callLogId,
   });
 
-  // No late push notification — the shop was already alerted at ringing time.
-  // The CDR resolution still updates the IncomingCall record and creates a CallLog silently.
+  // Send a push now that the call is resolved (call is completed by this point).
+  try {
+    await sendPushToAllSubscriptions(base44, {
+      title: `📞 Completed call · ${callerName}`,
+      body: "Remember to log call details.",
+      url: "/Messaging",
+    });
+  } catch (e) { console.warn("push failed:", e?.message || e); }
 }
 
 async function updateLinkedCallLog(base44, rec) {
@@ -226,17 +232,8 @@ export default async function(req: Request): Promise<Response> {
       const rec = await base44.asServiceRole.entities.IncomingCall.create({
         line, cisco_call_id: callId, phone, call_state: "ringing",
         started_at: receivedAt, lookup_status: "pending", lookup_attempts: 0, match_type: "none",
-        push_sent: true,
+        push_sent: false,
       });
-      // Send an immediate push so the shop knows a call is coming in — the CDR
-      // (and thus the caller name) won't be available until the call is answered or ended.
-      try {
-        await sendPushToAllSubscriptions(base44, {
-          title: "📞 Incoming Call",
-          body: "Remember to log call details after the call.",
-          url: "/Messaging",
-        });
-      } catch (e) { console.warn("ringing push failed:", e?.message || e); }
       // CDR likely won't exist yet while ringing, but start retrying — it'll land on Connected/Idle.
       waitUntil(runLookupLoop(base44, rec.id, 8, 2500, false));
       return Response.json({ ok: true, created: true, call_record_id: rec.id });
