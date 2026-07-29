@@ -111,8 +111,8 @@ export async function voipApiCall(method: string, params: Record<string, string>
 // Forward a VoIP.ms API call through the ElitePhoneBridge with HMAC signature.
 // Rejects stale timestamps (>5 min old) — the bridge also validates this.
 async function bridgeRequest(bridgeUrl: string, method: string, params: Record<string, string>): Promise<any> {
-  const secret = Deno.env.get("BRIDGE_SECRET") || "";
-  if (!secret) throw new Error("BRIDGE_SECRET not configured for bridge mode");
+  const secret = Deno.env.get("VOIPMS_BRIDGE_SECRET") || "";
+  if (!secret) throw new Error("VOIPMS_BRIDGE_SECRET not configured for bridge mode");
 
   const body = JSON.stringify({ method, params });
   const ts = Date.now().toString();

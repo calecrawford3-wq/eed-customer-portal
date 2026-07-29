@@ -9,7 +9,7 @@
  *   npm install express crypto
  *
  * Environment variables on the bridge server:
- *   BRIDGE_SECRET — same HMAC key set in Base44 secrets (used to verify requests)
+ *   VOIPMS_BRIDGE_SECRET — same HMAC key set in Base44 secrets (used to verify requests)
  *   VOIP_MS_API_USERNAME — VoIP.ms API username
  *   VOIP_MS_API_PASSWORD — VoIP.ms API password
  *
@@ -45,9 +45,9 @@ function verifySignature(secret, timestamp, body, signature) {
 
 // Main handler — mount this on POST /voipms
 async function voipmsProxyHandler(req, res) {
-  const secret = process.env.BRIDGE_SECRET;
+  const secret = process.env.VOIPMS_BRIDGE_SECRET;
   if (!secret) {
-    return res.status(500).json({ status: 'error', message: 'BRIDGE_SECRET not configured on bridge' });
+    return res.status(500).json({ status: 'error', message: 'VOIPMS_BRIDGE_SECRET not configured on bridge' });
   }
 
   const apiUser = process.env.VOIP_MS_API_USERNAME;
