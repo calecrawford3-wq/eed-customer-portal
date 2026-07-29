@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,9 @@ import {
   XCircle,
   Loader2,
   AlertTriangle,
+  Globe,
+  BookOpen,
+  Terminal,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -39,6 +42,9 @@ export default function VoipPhonebookSettings() {
   const [form, setForm] = useState(defaultPbSettings);
   const [diagnostics, setDiagnostics] = useState(null);
   const [connTest, setConnTest] = useState(null);
+  const [ipResult, setIpResult] = useState(null);
+  const [phonebookResult, setPhonebookResult] = useState(null);
+  const [syncSummary, setSyncSummary] = useState(null);
 
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
@@ -51,69 +57,104 @@ export default function VoipPhonebookSettings() {
     }
   }, [settingsData]);
 
-  const saveMutation = useMutation({
-    mutationFn: async (data) => {
-      const existing = await base44.entities.AppSettings.filter({ key: "global" });
-      if (existing && existing[0]) {
-        return base44.entities.AppSettings.update(existing[0].id, data);
-      }
-      return base44.entities.AppSettings.create({ key: "global", ...data });
-    },
-    onSuccess: () => {
+  const saveSettings = async (data) => {
+    const existing = await base44.entities.AppSettings.filter({ key: "global" });
+    if (existing && existing[0]) {
+      return base44.entities.AppSettings.update(existing[0].id, data);
+    }
+    return base44.entities.AppSettings.create({ key: "global", ...data });
+  };
+
+  const handleSave = async () => {
+    try {
+      await saveSettings({
+        voipms_pb_enabled: form.voipms_pb_enabled,
+        voipms_pb_default_group: form.voipms_pb_default_group,
+        voipms_pb_prefer_business_name: form.voipms_pb_prefer_business_name,
+        voipms_pb_remove_inactive: form.voipms_pb_remove_inactive,
+        voipms_pb_nightly_reconciliation: form.voipms_pb_nightly_reconciliation,
+      });
       toast.success("VoIP.ms Phone Book settings saved");
       qc.invalidateQueries({ queryKey: ["app-settings"] });
-    },
-    onError: (e) => toast.error("Failed to save: " + (e?.message || e)),
-  });
+    } catch (e) {
+      toast.error("Failed to save: " + (e?.message || e));
+    }
+  };
 
-  const testConnectionMutation = useMutation({
-    mutationFn: () =>
-      base44.functions.invoke("syncAllVoipPhonebook", { mode: "test_connection" }),
-    onSuccess: (resp) => {
-      setConnTest(resp.data);
-      if (resp.data?.ok) toast.success("VoIP.ms API connection successful");
-      else toast.error("Connection failed: " + (resp.data?.message || "Unknown"));
-    },
-    onError: (e) => {
-      setConnTest({ ok: false, message: String(e?.message || e) });
-      toast.error("Connection test failed");
-    },
-  });
+  const invokeBridge = async (mode, setState) => {
+    try {
+      setState({ loading: true });
+      const resp = await base44.functions.invoke("syncAllVoipPhonebook", { mode });
+      setState(resp.data);
+      return resp.data;
+    } catch (e) {
+      setState({ ok: false, message: String(e?.message || e) });
+      toast.error("Request failed");
+    }
+  };
 
-  const syncAllMutation = useMutation({
-    mutationFn: () =>
-      base44.functions.invoke("syncAllVoipPhonebook", { mode: "sync_all" }),
-    onSuccess: (resp) => {
+  const handleTestConnection = async () => {
+    const data = await invokeBridge("test_connection", setConnTest);
+    if (data?.ok) toast.success("Bridge connection successful");
+    else toast.error("Connection failed: " + (data?.message || "Unknown"));
+  };
+
+  const handleGetIP = async () => {
+    const data = await invokeBridge("get_ip", setIpResult);
+    if (data?.status === "success") toast.success("getIP success: " + (data.ip || data.result || ""));
+    else toast.error("getIP failed: " + (data?.message || "Unknown"));
+  };
+
+  const handleRetrievePhonebook = async () => {
+    const data = await invokeBridge("get_phonebook", setPhonebookResult);
+    if (data?.status === "success" || data?.status === "no_records") {
+      const count = Array.isArray(data.phonebook) ? data.phonebook.length : 0;
+      toast.success(`Retrieved phone book (${count} entries)`);
+    } else {
+      toast.error("Retrieve failed: " + (data?.message || "Unknown"));
+    }
+  };
+
+  const handleSyncAll = async () => {
+    try {
+      setSyncSummary({ loading: true });
+      const resp = await base44.functions.invoke("syncAllVoipPhonebook", { mode: "sync_all" });
       const s = resp.data;
+      setSyncSummary(s);
       toast.success(
-        `Sync complete: ${s.created} created, ${s.updated} updated, ${s.deleted} deleted, ${s.failed} failed`
+        `Sync: ${s.created} created, ${s.updated} updated, ${s.deleted} deleted, ${s.failed} failed`
       );
       qc.invalidateQueries({ queryKey: ["app-settings"] });
       qc.invalidateQueries({ queryKey: ["voipms-sync-logs"] });
-    },
-    onError: (e) => toast.error("Sync failed: " + (e?.message || e)),
-  });
+    } catch (e) {
+      toast.error("Sync failed: " + (e?.message || e));
+    }
+  };
 
-  const dryRunMutation = useMutation({
-    mutationFn: () =>
-      base44.functions.invoke("syncAllVoipPhonebook", { mode: "dry_run" }),
-    onSuccess: (resp) => {
+  const handleDryRun = async () => {
+    try {
+      setSyncSummary({ loading: true });
+      const resp = await base44.functions.invoke("syncAllVoipPhonebook", { mode: "dry_run" });
       const s = resp.data;
+      setSyncSummary(s);
       toast.success(
-        `Dry run: ${s.created} to create, ${s.updated} to update, ${s.deleted} to delete, ${s.skipped} skipped`
+        `Dry run: ${s.created} to create, ${s.updated} to update, ${s.skipped} skipped`
       );
-    },
-    onError: (e) => toast.error("Dry run failed: " + (e?.message || e)),
-  });
+    } catch (e) {
+      toast.error("Dry run failed: " + (e?.message || e));
+    }
+  };
 
-  const diagnosticsMutation = useMutation({
-    mutationFn: () => base44.functions.invoke("voipPhonebookDiagnostics", {}),
-    onSuccess: (resp) => {
+  const handleDiagnostics = async () => {
+    try {
+      setDiagnostics({ loading: true });
+      const resp = await base44.functions.invoke("voipPhonebookDiagnostics", {});
       setDiagnostics(resp.data);
       toast.success("Diagnostics complete");
-    },
-    onError: (e) => toast.error("Diagnostics failed: " + (e?.message || e)),
-  });
+    } catch (e) {
+      toast.error("Diagnostics failed: " + (e?.message || e));
+    }
+  };
 
   const setField = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
@@ -125,7 +166,13 @@ export default function VoipPhonebookSettings() {
     });
   };
 
-  const isBusy = syncAllMutation.isPending || dryRunMutation.isPending;
+  const isBusy = syncSummary?.loading;
+
+  // Get raw field names from phonebook result for diagnostic view
+  const phonebookFields = (() => {
+    if (!phonebookResult?.phonebook || !Array.isArray(phonebookResult.phonebook) || !phonebookResult.phonebook.length) return null;
+    return Object.keys(phonebookResult.phonebook[0]);
+  })();
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -136,7 +183,7 @@ export default function VoipPhonebookSettings() {
             VoIP.ms Phone Book Integration
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Synchronize customer names and phone numbers to the VoIP.ms Phone Book for caller-ID display on Cisco desk phones.
+            Synchronize customer names and phone numbers to the VoIP.ms Phone Book via the ElitePhoneBridge proxy.
           </p>
         </div>
         <Link to="/VoipPhonebookSyncHistory">
@@ -181,78 +228,47 @@ export default function VoipPhonebookSettings() {
           <CardTitle className="text-base">Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Enabled toggle */}
           <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Integration Enabled</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Master toggle for all VoIP.ms Phone Book synchronization</p>
             </div>
-            <Switch
-              checked={form.voipms_pb_enabled}
-              onCheckedChange={(v) => setField("voipms_pb_enabled", v)}
-            />
+            <Switch checked={form.voipms_pb_enabled} onCheckedChange={(v) => setField("voipms_pb_enabled", v)} />
           </div>
 
-          {/* Default group */}
           <div className="space-y-1.5">
             <Label htmlFor="pb-group">Default Phone Book Group</Label>
-            <Input
-              id="pb-group"
-              value={form.voipms_pb_default_group || ""}
-              onChange={(e) => setField("voipms_pb_default_group", e.target.value)}
-              placeholder="Base44"
-            />
+            <Input id="pb-group" value={form.voipms_pb_default_group || ""} onChange={(e) => setField("voipms_pb_default_group", e.target.value)} placeholder="Base44" />
             <p className="text-xs text-muted-foreground">VoIP.ms Phone Book group name for new entries</p>
           </div>
 
-          {/* Prefer business name */}
           <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Prefer Business Name</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Use company name as caller-ID when available</p>
             </div>
-            <Switch
-              checked={form.voipms_pb_prefer_business_name}
-              onCheckedChange={(v) => setField("voipms_pb_prefer_business_name", v)}
-            />
+            <Switch checked={form.voipms_pb_prefer_business_name} onCheckedChange={(v) => setField("voipms_pb_prefer_business_name", v)} />
           </div>
 
-          {/* Remove inactive */}
           <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Remove Inactive Customers</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Delete Phone Book entries when a customer is marked inactive</p>
             </div>
-            <Switch
-              checked={form.voipms_pb_remove_inactive}
-              onCheckedChange={(v) => setField("voipms_pb_remove_inactive", v)}
-            />
+            <Switch checked={form.voipms_pb_remove_inactive} onCheckedChange={(v) => setField("voipms_pb_remove_inactive", v)} />
           </div>
 
-          {/* Nightly reconciliation */}
           <div className="flex items-center justify-between">
             <div>
               <Label className="font-medium">Nightly Reconciliation</Label>
               <p className="text-xs text-muted-foreground mt-0.5">Compare all customer numbers against the Phone Book each night</p>
             </div>
-            <Switch
-              checked={form.voipms_pb_nightly_reconciliation}
-              onCheckedChange={(v) => setField("voipms_pb_nightly_reconciliation", v)}
-            />
+            <Switch checked={form.voipms_pb_nightly_reconciliation} onCheckedChange={(v) => setField("voipms_pb_nightly_reconciliation", v)} />
           </div>
 
-          <Button
-            onClick={() => saveMutation.mutate({
-              voipms_pb_enabled: form.voipms_pb_enabled,
-              voipms_pb_default_group: form.voipms_pb_default_group,
-              voipms_pb_prefer_business_name: form.voipms_pb_prefer_business_name,
-              voipms_pb_remove_inactive: form.voipms_pb_remove_inactive,
-              voipms_pb_nightly_reconciliation: form.voipms_pb_nightly_reconciliation,
-            })}
-            disabled={saveMutation.isPending}
-          >
+          <Button onClick={handleSave}>
             <Save className="w-4 h-4 mr-1" />
-            {saveMutation.isPending ? "Saving…" : "Save Settings"}
+            Save Settings
           </Button>
         </CardContent>
       </Card>
@@ -264,60 +280,122 @@ export default function VoipPhonebookSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              onClick={() => testConnectionMutation.mutate()}
-              disabled={testConnectionMutation.isPending}
-            >
-              {testConnectionMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <Wifi className="w-4 h-4 mr-1" />
-              )}
-              Test API Connection
+            <Button variant="outline" onClick={handleTestConnection} disabled={connTest?.loading}>
+              {connTest?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wifi className="w-4 h-4 mr-1" />}
+              Test Bridge Connection
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => dryRunMutation.mutate()}
-              disabled={dryRunMutation.isPending}
-            >
-              {dryRunMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <FlaskConical className="w-4 h-4 mr-1" />
-              )}
+            <Button variant="outline" onClick={handleGetIP} disabled={ipResult?.loading}>
+              {ipResult?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Globe className="w-4 h-4 mr-1" />}
+              Test getIP
+            </Button>
+
+            <Button variant="outline" onClick={handleRetrievePhonebook} disabled={phonebookResult?.loading}>
+              {phonebookResult?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <BookOpen className="w-4 h-4 mr-1" />}
+              Retrieve Phone Book
+            </Button>
+
+            <Button variant="outline" onClick={handleDryRun} disabled={isBusy}>
+              {syncSummary?.loading && !form.voipms_pb_enabled ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FlaskConical className="w-4 h-4 mr-1" />}
               Dry Run
             </Button>
 
-            <Button
-              onClick={() => syncAllMutation.mutate()}
-              disabled={syncAllMutation.isPending || !form.voipms_pb_enabled}
-            >
-              {syncAllMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 mr-1" />
-              )}
+            <Button onClick={handleSyncAll} disabled={isBusy || !form.voipms_pb_enabled}>
+              {isBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Play className="w-4 h-4 mr-1" />}
               Sync All Customers
             </Button>
           </div>
 
           {/* Connection test result */}
-          {connTest && (
+          {connTest && !connTest.loading && (
             <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${connTest.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
               {connTest.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
               <div>
-                <p className="font-medium">{connTest.ok ? "Connection Successful" : "Connection Failed"}</p>
+                <p className="font-medium">{connTest.ok ? "Bridge Connection Successful" : "Connection Failed"}</p>
                 <p className="text-xs mt-0.5">{connTest.message}</p>
-                {connTest.bridgeMode && (
-                  <p className="text-xs mt-0.5">Mode: Bridge proxy (ElitePhoneBridge)</p>
-                )}
               </div>
+            </div>
+          )}
+
+          {/* getIP result */}
+          {ipResult && !ipResult.loading && (
+            <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${ipResult.status === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
+              {ipResult.status === "success" ? <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
+              <div>
+                <p className="font-medium">getIP Result</p>
+                <p className="text-xs mt-0.5">
+                  {ipResult.status === "success"
+                    ? `IP: ${ipResult.ip || ipResult.result || "N/A"}`
+                    : ipResult.message || "Failed"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Sync summary */}
+          {syncSummary && !syncSummary.loading && (
+            <div className="p-3 rounded-lg bg-blue-50 text-blue-800 text-sm">
+              <p className="font-medium mb-2">
+                {syncSummary.dryRun ? "Dry Run Summary" : "Sync Summary"}
+                {syncSummary.idField && <span className="text-xs ml-2 text-blue-600">ID field: {syncSummary.idField}</span>}
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                <div><span className="font-medium">{syncSummary.created || 0}</span> Created</div>
+                <div><span className="font-medium">{syncSummary.updated || 0}</span> Updated</div>
+                <div><span className="font-medium">{syncSummary.deleted || 0}</span> Deleted</div>
+                <div><span className="font-medium">{syncSummary.skipped || 0}</span> Skipped</div>
+                <div><span className="font-medium">{syncSummary.failed || 0}</span> Failed</div>
+              </div>
+              {syncSummary.errors?.length > 0 && (
+                <div className="mt-2 text-xs text-red-700">
+                  {syncSummary.errors.slice(0, 5).map((err, i) => <div key={i}>• {err}</div>)}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Phone Book Diagnostic View */}
+      {phonebookResult && !phonebookResult.loading && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Terminal className="w-4 h-4" />
+              Phone Book Raw Response
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant={phonebookResult.status === "success" ? "default" : phonebookResult.status === "no_records" ? "secondary" : "destructive"}>
+                {phonebookResult.status || "unknown"}
+              </Badge>
+            </div>
+            {phonebookResult.message && (
+              <p className="text-xs text-muted-foreground">{phonebookResult.message}</p>
+            )}
+            {phonebookFields && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Entry field names discovered:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {phonebookFields.map((f) => (
+                    <code key={f} className="bg-muted px-2 py-0.5 rounded text-xs">{f}</code>
+                  ))}
+                </div>
+              </div>
+            )}
+            {phonebookResult.phonebook && Array.isArray(phonebookResult.phonebook) && phonebookResult.phonebook.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">First entry (sample):</p>
+                <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto max-h-48">
+                  {JSON.stringify(phonebookResult.phonebook[0], null, 2)}
+                </pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Diagnostics Card */}
       <Card>
@@ -329,22 +407,14 @@ export default function VoipPhonebookSettings() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            VoIP.ms requires the requesting IP address to be whitelisted. Run diagnostics to find the server's outbound IP and test the connection.
+            Verify the ElitePhoneBridge connectivity and VoIP.ms API status.
           </p>
-          <Button
-            variant="outline"
-            onClick={() => diagnosticsMutation.mutate()}
-            disabled={diagnosticsMutation.isPending}
-          >
-            {diagnosticsMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-            ) : (
-              <Wifi className="w-4 h-4 mr-1" />
-            )}
+          <Button variant="outline" onClick={handleDiagnostics} disabled={diagnostics?.loading}>
+            {diagnostics?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wifi className="w-4 h-4 mr-1" />}
             Run Diagnostics
           </Button>
 
-          {diagnostics && (
+          {diagnostics && !diagnostics.loading && (
             <div className="space-y-2 mt-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Outbound IP</span>
@@ -357,13 +427,13 @@ export default function VoipPhonebookSettings() {
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">VoIP.ms API</span>
-                <Badge variant={diagnostics.voipms_connection?.ok ? "default" : "destructive"}>
-                  {diagnostics.voipms_connection?.ok ? "Connected" : "Failed"}
+                <span className="text-muted-foreground">Bridge Connection</span>
+                <Badge variant={diagnostics.bridge_connection?.ok ? "default" : "destructive"}>
+                  {diagnostics.bridge_connection?.ok ? "Connected" : "Failed"}
                 </Badge>
               </div>
-              {diagnostics.voipms_connection && !diagnostics.voipms_connection.ok && (
-                <p className="text-xs text-red-600">{diagnostics.voipms_connection.message}</p>
+              {diagnostics.bridge_connection && !diagnostics.bridge_connection.ok && (
+                <p className="text-xs text-red-600">{diagnostics.bridge_connection.message}</p>
               )}
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 text-amber-800 text-sm">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />

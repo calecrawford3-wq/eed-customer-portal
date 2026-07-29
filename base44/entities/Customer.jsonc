@@ -27,6 +27,13 @@
     "phone": {
       "type": "string"
     },
+    "additional_phones": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra phone numbers for this customer (each synced to the VoIP.ms Phone Book as its own entry)"
+    },
     "address_line1": {
       "type": "string"
     },
@@ -72,7 +79,7 @@
     },
     "voipms_phonebook_id": {
       "type": "string",
-      "description": "VoIP.ms Phone Book entry ID assigned when the customer was synced"
+      "description": "VoIP.ms Phone Book entry ID for the primary phone (backward compat \u2014 VoipmsPhoneEntry entity is the source of truth for all numbers)"
     },
     "voipms_sync_status": {
       "type": "string",
@@ -83,7 +90,7 @@
         "skipped"
       ],
       "default": "pending",
-      "description": "Current VoIP.ms Phone Book sync state for this customer"
+      "description": "Current VoIP.ms Phone Book sync state for the primary phone"
     },
     "voipms_last_synced_at": {
       "type": "string",

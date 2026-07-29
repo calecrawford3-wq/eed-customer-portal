@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { waitUntil } from "base44:runtime";
 import {
   normalizePhone,
   buildDisplayName,
@@ -16,19 +15,18 @@ import {
 // Called by the Customer entity automation on create/update, and by the admin
 // retry button. Also used internally by syncAllVoipPhonebook for bulk syncs.
 //
+// Supports multiple phone numbers per customer (primary phone + additional_phones array).
+// Each unique number gets its own VoipmsPhoneEntry record and VoIP.ms Phone Book entry.
+//
 // Payload:
 //   customer_id: string       — the customer to sync
 //   sync_type: "event"|"manual"|"nightly"|"dry_run"  (default: manual)
-//   previous_phone: string    — old phone when the number changed (for old-entry removal)
 //   actor: string             — admin email or "system"
-//
-// Returns: { action, phonebook_id, error }
 
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Admin-only — prevents non-admins from triggering syncs directly
     let actor = "system";
     try {
       const user = await base44.auth.me();
@@ -36,18 +34,16 @@ export default async function(req: Request): Promise<Response> {
       if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
       actor = user.email || user.full_name || "admin";
     } catch (_) {
-      // Allow service-role calls (from automations) — no user context
+      // Allow service-role calls (from automations)
     }
 
     const body = await req.json().catch(() => ({}));
 
     // ── Handle entity automation payload ────────────────────────────────
-    // Entity automations send: { event: { type, entity_name, entity_id }, data, old_data, changed_fields }
     let customerId = "";
     let syncType = "manual";
-    let previousPhone = "";
     let isDeleteEvent = false;
-    let deletedCustomer = null;
+    let deletedCustomer: any = null;
 
     if (body.event && body.event.entity_id && body.event.entity_name === "Customer") {
       customerId = body.event.entity_id;
@@ -55,25 +51,18 @@ export default async function(req: Request): Promise<Response> {
       const eventType = body.event.type;
 
       if (eventType === "delete") {
-        // Customer was deleted — use old_data to find and remove the phone book entry
         isDeleteEvent = true;
         deletedCustomer = body.old_data || null;
       } else if (eventType === "update" && body.changed_fields) {
-        // Only sync if relevant fields changed
-        const relevant = ["first_name", "last_name", "company_name", "phone", "status"];
-        const hasRelevant = body.changed_fields.some((f) => relevant.includes(f));
+        const relevant = ["first_name", "last_name", "company_name", "phone", "additional_phones", "status"];
+        const hasRelevant = body.changed_fields.some((f: string) => relevant.includes(f));
         if (!hasRelevant) {
           return Response.json({ action: "skipped", reason: "No relevant fields changed" });
         }
-        if (body.old_data && body.old_data.phone) {
-          previousPhone = normalizePhone(body.old_data.phone);
-        }
       }
     } else {
-      // ── Direct call payload ─────────────────────────────────────────────
       customerId = String(body.customer_id || "");
       syncType = String(body.sync_type || "manual");
-      previousPhone = body.previous_phone ? normalizePhone(body.previous_phone) : "";
     }
 
     const dryRun = syncType === "dry_run" || !!body.dry_run;
@@ -87,47 +76,60 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ action: "skipped", reason: "VoIP.ms Phone Book sync is disabled" });
     }
 
-    // Handle customer deletion — remove the phone book entry
+    // ── Handle customer deletion — remove all phone book entries ────────
     if (isDeleteEvent) {
       if (!settings.removeInactive) {
         return Response.json({ action: "skipped", reason: "Remove inactive is disabled" });
       }
-      const oldPbId = deletedCustomer?.voipms_phonebook_id || "";
-      const oldPhone = deletedCustomer?.phone ? normalizePhone(deletedCustomer.phone) : "";
       const oldName = deletedCustomer
         ? [deletedCustomer.first_name, deletedCustomer.last_name].filter(Boolean).join(" ")
         : "";
 
-      if (oldPbId) {
-        try {
-          if (!dryRun) await deletePhonebookEntry(String(oldPbId));
-          await logSync(base44, "deleted", deletedCustomer, oldPhone, "", "", syncType, actor);
-          return Response.json({ action: "deleted", phonebook_id: oldPbId });
-        } catch (e) {
-          const errMsg = String(e?.message || e);
-          await logSync(base44, "failed", deletedCustomer, oldPhone, "", errMsg, syncType, actor);
-          return Response.json({ action: "failed", error: errMsg });
-        }
-      }
-      // No phone book entry to delete — try by number
-      if (oldPhone) {
-        try {
-          const entries = await getPhonebookEntries(settings.defaultGroup);
-          const entry = findEntryByNumber(entries, oldPhone);
-          if (entry && entry.id) {
-            if (!dryRun) await deletePhonebookEntry(String(entry.id));
-            await logSync(base44, "deleted", deletedCustomer, oldPhone, "", "", syncType, actor);
-            return Response.json({ action: "deleted", phonebook_id: entry.id });
+      // Delete all VoipmsPhoneEntry records for this customer
+      const phoneEntries = await base44.asServiceRole.entities.VoipmsPhoneEntry.filter({
+        customer_id: customerId,
+      }).catch(() => []);
+
+      let deletedCount = 0;
+      for (const pe of phoneEntries || []) {
+        const pbId = pe.voipms_phonebook_id;
+        if (pbId) {
+          try {
+            if (!dryRun) {
+              // Fetch phonebook to get idField, then delete
+              const { entries, idField } = await getPhonebookEntries(settings.defaultGroup);
+              await deletePhonebookEntry(pbId, idField);
+            }
+            deletedCount++;
+            await logSync(base44, "deleted", deletedCustomer, pe.normalized_phone, "", "", syncType, actor);
+          } catch (e) {
+            // Entry may already be gone — that's fine
           }
-        } catch (e) {
-          const errMsg = String(e?.message || e);
-          await logSync(base44, "failed", deletedCustomer, oldPhone, "", errMsg, syncType, actor);
-          return Response.json({ action: "failed", error: errMsg });
+        }
+        if (!dryRun) {
+          await base44.asServiceRole.entities.VoipmsPhoneEntry.delete(pe.id).catch(() => {});
         }
       }
-      return Response.json({ action: "skipped", reason: "No phone book entry to delete" });
+
+      // Also try the legacy Customer.voipms_phonebook_id field
+      const legacyId = deletedCustomer?.voipms_phonebook_id || "";
+      if (legacyId && !phoneEntries?.length) {
+        try {
+          if (!dryRun) {
+            const { idField } = await getPhonebookEntries(settings.defaultGroup);
+            await deletePhonebookEntry(legacyId, idField);
+          }
+          deletedCount++;
+          await logSync(base44, "deleted", deletedCustomer, normalizePhone(deletedCustomer?.phone || ""), "", "", syncType, actor);
+        } catch (e) {
+          // Already gone
+        }
+      }
+
+      return Response.json({ action: deletedCount > 0 ? "deleted" : "skipped", count: deletedCount, dryRun });
     }
 
+    // ── Normal sync (create/update) ─────────────────────────────────────
     const customer = await base44.asServiceRole.entities.Customer.get(customerId);
     if (!customer) {
       return Response.json({ error: "Customer not found" }, { status: 404 });
@@ -135,170 +137,214 @@ export default async function(req: Request): Promise<Response> {
 
     const groupName = settings.defaultGroup;
     const normalizedName = buildDisplayName(customer, settings.preferBusinessName);
-    const normalizedPhone = normalizePhone(customer.phone || "");
-
     const isInactive = customer.status === "inactive";
     const shouldRemove = isInactive && settings.removeInactive;
 
-    // If the phone number changed, remove the old entry first
-    let oldEntryRemoved = false;
-    const oldSyncedPhone = customer.voipms_synced_phone ? normalizePhone(customer.voipms_synced_phone) : "";
-    const oldPhoneToCheck = previousPhone || oldSyncedPhone;
-
-    if (oldPhoneToCheck && oldPhoneToCheck !== normalizedPhone) {
-      try {
-        const entries = await getPhonebookEntries(groupName);
-        const oldEntry = findEntryByNumber(entries, oldPhoneToCheck);
-        if (oldEntry && oldEntry.id) {
-          if (!dryRun) {
-            await deletePhonebookEntry(String(oldEntry.id));
-          }
-          oldEntryRemoved = true;
-        }
-      } catch (e) {
-        console.warn("Failed to remove old phone book entry:", e?.message || e);
-      }
+    // Collect all phone numbers for this customer
+    const allPhones: Array<{ phone: string; source: string }> = [];
+    const primary = normalizePhone(customer.phone || "");
+    if (primary) allPhones.push({ phone: primary, source: "primary" });
+    const extras = Array.isArray(customer.additional_phones) ? customer.additional_phones : [];
+    for (const ep of extras) {
+      const np = normalizePhone(ep);
+      if (np) allPhones.push({ phone: np, source: "additional" });
     }
 
-    // Inactive customer with removeInactive → delete the entry
+    // Deduplicate (same customer might have same number in primary + additional)
+    const phoneSet = new Set<string>();
+    const uniquePhones = allPhones.filter((p) => {
+      if (phoneSet.has(p.phone)) return false;
+      phoneSet.add(p.phone);
+      return true;
+    });
+
+    // ── Inactive customer with removeInactive → delete all entries ─────
     if (shouldRemove) {
-      if (customer.voipms_phonebook_id) {
-        if (!dryRun) {
+      const phoneEntries = await base44.asServiceRole.entities.VoipmsPhoneEntry.filter({
+        customer_id: customerId,
+      }).catch(() => []);
+
+      let deletedCount = 0;
+      let idField = "id";
+      try {
+        const result = await getPhonebookEntries(groupName);
+        idField = result.idField;
+      } catch (_) {}
+
+      for (const pe of phoneEntries || []) {
+        if (pe.voipms_phonebook_id) {
           try {
-            await deletePhonebookEntry(String(customer.voipms_phonebook_id));
+            if (!dryRun) await deletePhonebookEntry(pe.voipms_phonebook_id, idField);
+            deletedCount++;
           } catch (e) {
-            const errMsg = String(e?.message || e);
-            await logSync(base44, "failed", customer, normalizedPhone, "", errMsg, syncType, actor);
-            await updateCustomerSyncFields(base44, customer.id, {
-              voipms_sync_status: "error",
-              voipms_sync_error: errMsg,
-            });
-            return Response.json({ action: "failed", error: errMsg });
+            // Entry may be gone
           }
         }
-        await logSync(base44, "deleted", customer, normalizedPhone, "", "", syncType, actor);
-        await updateCustomerSyncFields(base44, customer.id, {
+        if (!dryRun) {
+          await base44.asServiceRole.entities.VoipmsPhoneEntry.delete(pe.id).catch(() => {});
+        }
+      }
+
+      if (!dryRun) {
+        await updateCustomerSyncFields(base44, customerId, {
           voipms_phonebook_id: "",
           voipms_sync_status: "skipped",
           voipms_sync_error: "",
           voipms_synced_name: "",
           voipms_synced_phone: "",
         });
-        return Response.json({ action: "deleted", dryRun });
       }
-      await logSync(base44, "skipped", customer, normalizedPhone, "", "Customer inactive", syncType, actor);
-      return Response.json({ action: "skipped", reason: "Customer inactive" });
+      await logSync(base44, "deleted", customer, "", "", "", syncType, actor);
+      return Response.json({ action: "deleted", count: deletedCount, dryRun });
     }
 
-    // No valid phone → skip
-    if (!normalizedPhone) {
-      await logSync(base44, "skipped", customer, "", "", "No valid phone number", syncType, actor);
-      await updateCustomerSyncFields(base44, customer.id, {
+    // ── No valid phone numbers → skip ──────────────────────────────────
+    if (!uniquePhones.length) {
+      await logSync(base44, "skipped", customer, "", "", "No valid phone numbers", syncType, actor);
+      await updateCustomerSyncFields(base44, customerId, {
         voipms_sync_status: "skipped",
         voipms_sync_error: "",
       });
-      return Response.json({ action: "skipped", reason: "No valid phone number" });
+      return Response.json({ action: "skipped", reason: "No valid phone numbers" });
     }
 
-    // Fetch existing entries and find by number
-    let entries: any[] = [];
+    // Fetch existing phone book entries + ID field
+    let existingEntries: any[] = [];
+    let idField = "id";
     try {
-      entries = await getPhonebookEntries(groupName);
-    } catch (e) {
+      const result = await getPhonebookEntries(groupName);
+      existingEntries = result.entries;
+      idField = result.idField;
+    } catch (e: any) {
       const errMsg = String(e?.message || e);
-      await logSync(base44, "failed", customer, normalizedPhone, "", errMsg, syncType, actor);
-      await updateCustomerSyncFields(base44, customer.id, {
+      await logSync(base44, "failed", customer, "", "", errMsg, syncType, actor);
+      await updateCustomerSyncFields(base44, customerId, {
         voipms_sync_status: "error",
         voipms_sync_error: errMsg,
       });
       return Response.json({ action: "failed", error: errMsg });
     }
 
-    // Also check if the customer's own phonebook_id still exists
-    let existingEntry = null;
-    if (customer.voipms_phonebook_id) {
-      existingEntry = entries.find((e) => String(e.id) === String(customer.voipms_phonebook_id));
-    }
-    if (!existingEntry) {
-      existingEntry = findEntryByNumber(entries, normalizedPhone);
-    }
+    // Get existing VoipmsPhoneEntry records for this customer
+    const existingPhoneEntries = await base44.asServiceRole.entities.VoipmsPhoneEntry.filter({
+      customer_id: customerId,
+    }).catch(() => []);
 
-    // Check for duplicate numbers across customers
-    const dupCustomers = await base44.asServiceRole.entities.Customer.filter({
-      phone: customer.phone,
-      status: "active",
-    });
-    const dupCount = (dupCustomers || []).filter((c) => c.id !== customer.id).length;
-    if (dupCount > 0) {
-      // Flag duplicate for admin review — use a combined label
-      const combinedName = settings.preferBusinessName && customer.company_name
-        ? normalizedName
-        : `${normalizedName} +${dupCount}`;
-      if (existingEntry && existingEntry.id) {
-        const needsUpdate = existingEntry.name !== combinedName || normalizePhone(existingEntry.number) !== normalizedPhone;
-        if (needsUpdate) {
-          if (!dryRun) {
-            await updatePhonebookEntry(String(existingEntry.id), groupName, combinedName, normalizedPhone);
+    const results: any[] = [];
+    const syncedPhoneSet = new Set<string>();
+
+    for (const { phone: normalizedPhone, source } of uniquePhones) {
+      syncedPhoneSet.add(normalizedPhone);
+
+      // Find existing VoIP.ms entry
+      const phoneEntry = (existingPhoneEntries || []).find((pe) => pe.normalized_phone === normalizedPhone);
+      let existingEntry = null;
+      if (phoneEntry?.voipms_phonebook_id) {
+        existingEntry = existingEntries.find((e) => String(e[idField]) === String(phoneEntry.voipms_phonebook_id));
+      }
+      if (!existingEntry) {
+        existingEntry = findEntryByNumber(existingEntries, normalizedPhone);
+      }
+
+      try {
+        if (existingEntry && existingEntry[idField]) {
+          const needsUpdate = existingEntry.name !== normalizedName || normalizePhone(existingEntry.number) !== normalizedPhone;
+          if (needsUpdate) {
+            if (!dryRun) {
+              await updatePhonebookEntry(String(existingEntry[idField]), idField, groupName, normalizedName, normalizedPhone);
+              await upsertPhoneEntry(base44, customerId, normalizedPhone, source, {
+                voipms_phonebook_id: String(existingEntry[idField]),
+                voipms_sync_status: "synced",
+                voipms_sync_error: "",
+                voipms_synced_name: normalizedName,
+                voipms_synced_phone: normalizedPhone,
+              });
+            }
+            results.push({ phone: normalizedPhone, action: "updated" });
+            await logSync(base44, "updated", customer, normalizedPhone, String(existingEntry[idField]), "", syncType, actor);
+          } else {
+            if (!dryRun) {
+              await upsertPhoneEntry(base44, customerId, normalizedPhone, source, {
+                voipms_phonebook_id: String(existingEntry[idField]),
+                voipms_sync_status: "synced",
+                voipms_synced_name: normalizedName,
+                voipms_synced_phone: normalizedPhone,
+              });
+            }
+            results.push({ phone: normalizedPhone, action: "noop" });
           }
-          await logSync(base44, "updated", customer, normalizedPhone, String(existingEntry.id), "Duplicate number — combined label", syncType, actor);
-          await updateCustomerSyncFields(base44, customer.id, {
-            voipms_phonebook_id: String(existingEntry.id),
+        } else {
+          // Create new entry
+          let newId = "";
+          if (!dryRun) {
+            const createResult = await createPhonebookEntry(groupName, normalizedName, normalizedPhone);
+            newId = createResult.id;
+            await upsertPhoneEntry(base44, customerId, normalizedPhone, source, {
+              voipms_phonebook_id: newId,
+              voipms_sync_status: "synced",
+              voipms_sync_error: "",
+              voipms_synced_name: normalizedName,
+              voipms_synced_phone: normalizedPhone,
+            });
+          }
+          results.push({ phone: normalizedPhone, action: "created", id: newId });
+          await logSync(base44, "created", customer, normalizedPhone, newId, "", syncType, actor);
+        }
+
+        // Update Customer fields for the primary phone (backward compat)
+        if (source === "primary" && !dryRun) {
+          const entry = existingEntry && existingEntry[idField]
+            ? existingEntry
+            : results.find((r) => r.phone === normalizedPhone && r.id);
+          const pbId = entry?.[idField] || (results.find((r) => r.phone === normalizedPhone)?.id) || "";
+          await updateCustomerSyncFields(base44, customerId, {
+            voipms_phonebook_id: pbId,
             voipms_sync_status: "synced",
-            voipms_sync_error: `Duplicate number shared with ${dupCount} other customer(s)`,
-            voipms_synced_name: combinedName,
+            voipms_sync_error: "",
+            voipms_synced_name: normalizedName,
             voipms_synced_phone: normalizedPhone,
           });
-          return Response.json({ action: "updated", phonebook_id: existingEntry.id, duplicate: true, dryRun });
         }
-        await logSync(base44, "noop", customer, normalizedPhone, String(existingEntry.id), "Duplicate number — already synced", syncType, actor);
-        return Response.json({ action: "noop", phonebook_id: existingEntry.id, duplicate: true });
-      }
-    }
-
-    // Create or update
-    if (existingEntry && existingEntry.id) {
-      const needsUpdate = existingEntry.name !== normalizedName || normalizePhone(existingEntry.number) !== normalizedPhone;
-      if (needsUpdate) {
+      } catch (e: any) {
+        const errMsg = String(e?.message || e);
+        results.push({ phone: normalizedPhone, action: "failed", error: errMsg });
+        await logSync(base44, "failed", customer, normalizedPhone, "", errMsg, syncType, actor);
         if (!dryRun) {
-          await updatePhonebookEntry(String(existingEntry.id), groupName, normalizedName, normalizedPhone);
+          await upsertPhoneEntry(base44, customerId, normalizedPhone, source, {
+            voipms_sync_status: "error",
+            voipms_sync_error: errMsg,
+          });
         }
-        await logSync(base44, "updated", customer, normalizedPhone, String(existingEntry.id), "", syncType, actor);
-        await updateCustomerSyncFields(base44, customer.id, {
-          voipms_phonebook_id: String(existingEntry.id),
-          voipms_sync_status: "synced",
-          voipms_sync_error: "",
-          voipms_synced_name: normalizedName,
-          voipms_synced_phone: normalizedPhone,
-        });
-        return Response.json({ action: "updated", phonebook_id: existingEntry.id, dryRun });
       }
-      // Already in sync — no-op
-      await logSync(base44, "noop", customer, normalizedPhone, String(existingEntry.id), "Already in sync", syncType, actor);
-      await updateCustomerSyncFields(base44, customer.id, {
-        voipms_phonebook_id: String(existingEntry.id),
-        voipms_sync_status: "synced",
-        voipms_sync_error: "",
-        voipms_synced_name: normalizedName,
-        voipms_synced_phone: normalizedPhone,
-      });
-      return Response.json({ action: "noop", phonebook_id: existingEntry.id });
     }
 
-    // Create new entry
-    let newId = "";
+    // Remove VoipmsPhoneEntry records for numbers no longer on the customer
     if (!dryRun) {
-      const result = await createPhonebookEntry(groupName, normalizedName, normalizedPhone);
-      newId = result.id;
+      for (const pe of existingPhoneEntries || []) {
+        if (!syncedPhoneSet.has(pe.normalized_phone)) {
+          // This number was removed from the customer — delete from VoIP.ms
+          if (pe.voipms_phonebook_id) {
+            try {
+              await deletePhonebookEntry(pe.voipms_phonebook_id, idField);
+              await logSync(base44, "deleted", customer, pe.normalized_phone, pe.voipms_phonebook_id, "Number removed from customer", syncType, actor);
+            } catch (_) {}
+          }
+          await base44.asServiceRole.entities.VoipmsPhoneEntry.delete(pe.id).catch(() => {});
+        }
+      }
     }
-    await logSync(base44, "created", customer, normalizedPhone, newId, "", syncType, actor);
-    await updateCustomerSyncFields(base44, customer.id, {
-      voipms_phonebook_id: newId,
-      voipms_sync_status: "synced",
-      voipms_sync_error: "",
-      voipms_synced_name: normalizedName,
-      voipms_synced_phone: normalizedPhone,
-    });
-    return Response.json({ action: "created", phonebook_id: newId, dryRun });
+
+    const summary = {
+      action: "synced",
+      phones: results,
+      created: results.filter((r) => r.action === "created").length,
+      updated: results.filter((r) => r.action === "updated").length,
+      noop: results.filter((r) => r.action === "noop").length,
+      failed: results.filter((r) => r.action === "failed").length,
+      dryRun,
+    };
+
+    return Response.json(summary);
   } catch (e) {
     console.error("syncVoipPhonebook error:", e?.message || e);
     return Response.json({ error: e?.message || "Internal error" }, { status: 500 });
@@ -307,13 +353,14 @@ export default async function(req: Request): Promise<Response> {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-async function logSync(base44, action, customer, phone, phonebookId, errMsg, syncType, actor) {
+async function logSync(base44: any, action: string, customer: any, phone: string, phonebookId: string, errMsg: string, syncType: string, actor: string) {
   try {
-    const name = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+    const name = customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") : "";
+    const custName = customer?.company_name || name || "";
     await base44.asServiceRole.entities.VoipmsSyncLog.create({
       action,
-      customer_id: customer.id || "",
-      customer_name: customer.company_name || name || "",
+      customer_id: customer?.id || "",
+      customer_name: custName,
       phone_number: phone,
       phonebook_id: phonebookId || "",
       error_message: errMsg || "",
@@ -323,11 +370,34 @@ async function logSync(base44, action, customer, phone, phonebookId, errMsg, syn
   } catch (_) {}
 }
 
-async function updateCustomerSyncFields(base44, customerId, fields) {
+async function updateCustomerSyncFields(base44: any, customerId: string, fields: Record<string, any>) {
   try {
     await base44.asServiceRole.entities.Customer.update(customerId, {
       ...fields,
       voipms_last_synced_at: new Date().toISOString(),
     });
+  } catch (_) {}
+}
+
+async function upsertPhoneEntry(base44: any, customerId: string, normalizedPhone: string, source: string, fields: Record<string, any>) {
+  try {
+    const existing = await base44.asServiceRole.entities.VoipmsPhoneEntry.filter({
+      customer_id: customerId,
+      normalized_phone: normalizedPhone,
+    });
+    if (existing && existing[0]) {
+      await base44.asServiceRole.entities.VoipmsPhoneEntry.update(existing[0].id, {
+        ...fields,
+        voipms_last_synced_at: new Date().toISOString(),
+      });
+    } else {
+      await base44.asServiceRole.entities.VoipmsPhoneEntry.create({
+        customer_id: customerId,
+        normalized_phone: normalizedPhone,
+        source,
+        ...fields,
+        voipms_last_synced_at: new Date().toISOString(),
+      });
+    }
   } catch (_) {}
 }

@@ -1,0 +1,84 @@
+{
+  "name": "VoipmsPhoneEntry",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer"
+    },
+    "normalized_phone": {
+      "type": "string",
+      "description": "10-digit normalized phone number"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "primary",
+        "additional",
+        "contact"
+      ],
+      "default": "primary",
+      "description": "Where this phone number came from: primary = Customer.phone, additional = Customer.additional_phones, contact = CustomerContact.phone"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "Linked CustomerContact when source=contact"
+    },
+    "voipms_phonebook_id": {
+      "type": "string",
+      "description": "VoIP.ms Phone Book entry ID assigned when synced"
+    },
+    "voipms_synced_name": {
+      "type": "string",
+      "description": "Display name that was last written to the VoIP.ms Phone Book"
+    },
+    "voipms_synced_phone": {
+      "type": "string",
+      "description": "Normalized phone number that was last written"
+    },
+    "voipms_sync_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "synced",
+        "error",
+        "skipped"
+      ],
+      "default": "pending"
+    },
+    "voipms_last_synced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "voipms_sync_error": {
+      "type": "string",
+      "description": "Safe error message from the last failed sync"
+    }
+  },
+  "required": [
+    "customer_id",
+    "normalized_phone"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,12 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { testVoipConnection, isBridgeMode } from '../../shared/voipPhonebook.ts';
+import { testBridgeConnection, isBridgeMode, getBridgeUrl } from '../../shared/voipPhonebook.ts';
 
-// Diagnostic function — reports the server's outbound IP address and VoIP.ms
-// API connection status so the admin can whitelist the IP in VoIP.ms.
-//
-// If the outbound IP is not stable (Base44 uses dynamic IPs), the admin should
-// set the VOIPMS_BRIDGE_URL secret to route calls through the ElitePhoneBridge
-// on the shop computer (which has a stable whitelisted IP).
+// Diagnostic function — reports the server's outbound IP address and bridge
+// connection status so the admin can verify the ElitePhoneBridge is working.
 //
 // No payload required. Admin-only.
 
@@ -30,7 +26,6 @@ export default async function(req: Request): Promise<Response> {
       outboundIp = data.ip || "";
       ipSource = "ipify";
     } catch (_) {
-      // Fallback
       try {
         const resp = await fetch("https://httpbin.org/ip");
         const data = await resp.json();
@@ -41,24 +36,21 @@ export default async function(req: Request): Promise<Response> {
       }
     }
 
-    // Test VoIP.ms API connection
-    const connectionTest = await testVoipConnection();
+    // Test bridge connection via getIP
+    const connectionTest = await testBridgeConnection();
 
-    // Check if bridge mode is configured
     const bridgeMode = isBridgeMode();
-    const bridgeUrl = Deno.env.get("VOIPMS_BRIDGE_URL") || "";
+    const bridgeUrl = getBridgeUrl();
 
     return Response.json({
       outbound_ip: outboundIp,
       ip_source: ipSource,
       bridge_mode: bridgeMode,
       bridge_url_configured: !!bridgeUrl,
-      voipms_connection: connectionTest,
+      bridge_connection: connectionTest,
       recommendation: bridgeMode
-        ? "Bridge mode is active — VoIP.ms API calls are proxied through the ElitePhoneBridge. Ensure the shop computer's IP is whitelisted in VoIP.ms."
-        : outboundIp && outboundIp !== "Unable to determine"
-          ? `Add ${outboundIp} to the VoIP.ms API whitelist (Main Menu > API Settings). If this IP changes, enable bridge mode by setting VOIPMS_BRIDGE_URL.`
-          : "Unable to determine outbound IP. Enable bridge mode by setting VOIPMS_BRIDGE_URL to route through the shop computer.",
+        ? "Bridge mode is active — VoIP.ms API calls are proxied through the ElitePhoneBridge. Ensure the bridge's VoIP.ms credentials and IP whitelist are correct."
+        : "VOIPMS_BRIDGE_URL is not set. Configure it to point to the ElitePhoneBridge proxy endpoint.",
     });
   } catch (e) {
     console.error("voipPhonebookDiagnostics error:", e?.message || e);
