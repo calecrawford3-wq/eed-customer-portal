@@ -115,17 +115,17 @@ export default async function(req: Request): Promise<Response> {
       return true;
     });
 
-    // Fetch the full phone book once for comparison
+    // Fetch the full phone book once for comparison (graceful degradation if bridge blocks it)
     let existingEntries: any[] = [];
     let idField = "id";
+    let phonebookUnavailable = false;
     try {
       const result = await getPhonebookEntries(groupName);
       existingEntries = result.entries;
       idField = result.idField;
     } catch (e) {
-      const errMsg = String(e?.message || e);
-      await updatePbStatus(base44, { voipms_pb_current_sync_status: `Sync failed: ${errMsg}` });
-      return Response.json({ error: errMsg }, { status: 500 });
+      phonebookUnavailable = true;
+      console.warn("getPhonebook failed, proceeding with local records only:", e?.message || e);
     }
 
     const summary = {
@@ -139,6 +139,7 @@ export default async function(req: Request): Promise<Response> {
       errors: [] as string[],
       idField,
       dryRun,
+      phonebookUnavailable,
     };
 
     const seenEntryIds = new Set<string>();
@@ -265,9 +266,10 @@ export default async function(req: Request): Promise<Response> {
 
     // Update settings with completion status
     const now = new Date().toISOString();
+    const degradedNote = phonebookUnavailable ? " (degraded: phonebook lookup unavailable — created new entries only)" : "";
     const statusMsg = dryRun
-      ? `Dry run: ${summary.created} to create, ${summary.updated} to update, ${summary.deleted} to delete, ${summary.skipped} skipped`
-      : `Sync complete: ${summary.created} created, ${summary.updated} updated, ${summary.deleted} deleted, ${summary.skipped} skipped, ${summary.failed} failed`;
+      ? `Dry run: ${summary.created} to create, ${summary.updated} to update, ${summary.deleted} to delete, ${summary.skipped} skipped${degradedNote}`
+      : `Sync complete: ${summary.created} created, ${summary.updated} updated, ${summary.deleted} deleted, ${summary.skipped} skipped, ${summary.failed} failed${degradedNote}`;
 
     await updatePbStatus(base44, {
       voipms_pb_current_sync_status: statusMsg,

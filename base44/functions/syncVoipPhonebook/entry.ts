@@ -208,21 +208,17 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ action: "skipped", reason: "No valid phone numbers" });
     }
 
-    // Fetch existing phone book entries + ID field
+    // Fetch existing phone book entries + ID field (graceful degradation if bridge blocks getPhonebook)
     let existingEntries: any[] = [];
     let idField = "id";
+    let phonebookUnavailable = false;
     try {
       const result = await getPhonebookEntries(groupName);
       existingEntries = result.entries;
       idField = result.idField;
     } catch (e: any) {
-      const errMsg = String(e?.message || e);
-      await logSync(base44, "failed", customer, "", "", errMsg, syncType, actor);
-      await updateCustomerSyncFields(base44, customerId, {
-        voipms_sync_status: "error",
-        voipms_sync_error: errMsg,
-      });
-      return Response.json({ action: "failed", error: errMsg });
+      phonebookUnavailable = true;
+      console.warn("getPhonebook failed, proceeding with local records only:", e?.message || e);
     }
 
     // Get existing VoipmsPhoneEntry records for this customer
@@ -244,6 +240,26 @@ export default async function(req: Request): Promise<Response> {
       }
       if (!existingEntry) {
         existingEntry = findEntryByNumber(existingEntries, normalizedPhone);
+      }
+      // Degraded mode: phonebook lookup unavailable, but we have a local ID → try direct update
+      if (!existingEntry && phonebookUnavailable && phoneEntry?.voipms_phonebook_id) {
+        try {
+          if (!dryRun) {
+            await updatePhonebookEntry(phoneEntry.voipms_phonebook_id, idField, groupName, normalizedName, normalizedPhone);
+            await upsertPhoneEntry(base44, customerId, normalizedPhone, source, {
+              voipms_phonebook_id: phoneEntry.voipms_phonebook_id,
+              voipms_sync_status: "synced",
+              voipms_sync_error: "",
+              voipms_synced_name: normalizedName,
+              voipms_synced_phone: normalizedPhone,
+            });
+          }
+          results.push({ phone: normalizedPhone, action: "updated", degraded: true });
+          await logSync(base44, "updated", customer, normalizedPhone, phoneEntry.voipms_phonebook_id, "degraded: local ID", syncType, actor);
+          continue;
+        } catch (_) {
+          // Update failed (entry may be gone) → fall through to create
+        }
       }
 
       try {
