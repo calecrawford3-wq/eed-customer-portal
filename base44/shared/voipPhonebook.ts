@@ -128,7 +128,23 @@ async function bridgeRequest(bridgeUrl: string, method: string, params: Record<s
     body,
   });
 
-  return await resp.json();
+  const contentType = resp.headers.get("content-type") || "";
+  const text = await resp.text().catch(() => "");
+
+  if (!contentType.includes("application/json")) {
+    // Bridge returned HTML (or other non-JSON) — likely a wrong URL or bridge service not running
+    const preview = text.substring(0, 150).replace(/\n/g, " ");
+    throw new Error(
+      `Bridge at ${bridgeUrl} returned non-JSON response (${resp.status} ${resp.statusText}, content-type: ${contentType || "unknown"}). ` +
+      `Ensure the URL points to the bridge API endpoint, not a web page. Preview: ${preview}`
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (e: any) {
+    throw new Error(`Bridge returned invalid JSON: ${String(e?.message || e).substring(0, 200)}`);
+  }
 }
 
 // ── Retry with exponential backoff ────────────────────────────────────
