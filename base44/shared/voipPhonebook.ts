@@ -173,6 +173,9 @@ export async function bridgeCall(method: string, params: Record<string, any> = {
   // Sign: timestamp + "." + requestId + "." + exactJsonBody
   const signature = await signHmac(secret, `${timestamp}.${requestId}.${body}`);
 
+  // Admin-safe diagnostic: log method + sanitized params (no secrets/credentials)
+  console.log(`[Bridge] ${method}`, JSON.stringify(sanitizeParams(params)));
+
   const resp = await fetch(bridgeUrl, {
     method: "POST",
     headers: {
@@ -361,37 +364,39 @@ export function findEntryByNumber(entries: any[], normalizedNumber: string): any
   return null;
 }
 
-// setPhonebook — create or update an entry.
-// When id is provided, updates; when omitted, creates.
-// Returns the raw VoIP.ms response.
+// setPhonebook — create or update a Phone Book entry.
+//
+// CREATE: pass only { name, number }. Do NOT include phonebook, id, group, or any
+// other field — VoIP.ms treats "phonebook" as an existing entry code, not a group name.
+//
+// UPDATE: pass { phonebook: "ENTRY_CODE", name, number } where ENTRY_CODE is the
+// real VoIP.ms entry code returned by getPhonebook.
 export async function setPhonebookEntry(params: {
-  id?: string;
-  group?: string;
+  phonebook?: string;
   name: string;
   number: string;
 }): Promise<any> {
   const p: Record<string, any> = { name: params.name, number: params.number };
-  if (params.group) p.phonebook = params.group;
-  if (params.id) p.id = params.id;
+  if (params.phonebook) p.phonebook = params.phonebook;
   return withRetry(() => bridgeCall("setPhonebook", p));
 }
 
 // Create a phonebook entry. After creating, re-fetches to find the new entry's ID
 // (since setPhonebook may not return the ID directly).
 export async function createPhonebookEntry(group: string, name: string, number: string): Promise<{ id: string; idField: string }> {
-  await setPhonebookEntry({ group, name, number });
+  // CREATE: send only name + number — no phonebook code, no group name, no id
+  await setPhonebookEntry({ name, number });
 
-  // Re-fetch to find the newly created entry by number
+  // Re-fetch to find the newly created entry's code by number
   const { entries, idField } = await getPhonebookEntries(group);
   const match = findEntryByNumber(entries, normalizePhone(number));
   return { id: match ? String(match[idField] || "") : "", idField };
 }
 
 // Update a phonebook entry by ID.
-export async function updatePhonebookEntry(id: string, idField: string, group: string, name: string, number: string): Promise<void> {
-  const params: Record<string, any> = { name, number, [idField]: id };
-  if (group) params.phonebook = group;
-  const data = await setPhonebookEntry(params);
+export async function updatePhonebookEntry(entryCode: string, _idField: string, _group: string, name: string, number: string): Promise<void> {
+  // UPDATE: use the stored VoIP.ms entry code as the "phonebook" parameter
+  const data = await setPhonebookEntry({ phonebook: entryCode, name, number });
   if (!isVoipSuccess(data)) {
     throw new Error(data?.message || "Failed to update phonebook entry");
   }
