@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
 import { parseVoipCdrDateMs } from '../../shared/voipMs.ts';
 
@@ -28,6 +29,21 @@ function dispositionToStatus(disp) {
   return "connected";
 }
 
+function formatPhoneDisplay(p) {
+  if (!p) return "";
+  let d = p.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return p;
+}
+
+function fmtDuration(s) {
+  if (!s) return "0:00";
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -49,7 +65,7 @@ Deno.serve(async (req) => {
     const existing = await base44.asServiceRole.entities.CallLog.list("-created_date", 200);
     const seenIds = new Set((existing || []).map((l) => l.voip_call_id).filter(Boolean));
 
-    let allInbound = [];
+    let allRecords = [];
     for (let page = 1; page <= 3; page++) {
       const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&method=getCDR&date_from=${dateFrom}&date_to=${dateTo}&timezone=0&answered=1&noanswer=1&busy=1&failed=1&page=${page}`;
       const resp = await fetch(url);
@@ -59,18 +75,26 @@ Deno.serve(async (req) => {
         break;
       }
       const cdr = Array.isArray(data.cdr) ? data.cdr : [];
-      // destination_type "IN:USA" = inbound; "OUT:..." = outbound (skip to avoid double-logging click2call)
-      const inbound = cdr.filter((c) => String(c.destination_type || "").toUpperCase().startsWith("IN"));
-      allInbound = allInbound.concat(inbound);
+      allRecords = allRecords.concat(cdr);
       if (cdr.length < 50) break; // last page
     }
 
     let created = 0;
-    for (const c of allInbound) {
+    let outboundNotified = 0;
+    for (const c of allRecords) {
       const callId = c.uniqueid || "";
       if (callId && seenIds.has(callId)) continue;
-      const phone = normalizePhone(extractDigits(c.callerid || ""));
+
+      const destType = String(c.destination_type || "").toUpperCase();
+      const isInbound = destType.startsWith("IN");
+      const isOutbound = destType.startsWith("OUT");
+      if (!isInbound && !isOutbound) continue;
+
+      // Inbound: callerid = caller. Outbound: callerid = our caller ID, destination = number we called.
+      const rawPhone = isInbound ? (c.callerid || "") : (c.destination || c.callerid || "");
+      const phone = normalizePhone(extractDigits(rawPhone));
       if (!phone) continue;
+
       let resolved = { customer_id: "", customer_name: "", contact_name: "", relationship: "" };
       try { resolved = await resolveCaller(base44, phone); } catch (e) { console.warn("resolveCaller failed:", e?.message || e); }
       const contactName = resolved.contact_name || "";
@@ -87,7 +111,7 @@ Deno.serve(async (req) => {
           customer_name: resolved.customer_name || "",
           contact_name: contactName || "",
           phone_number: phone,
-          direction: "inbound",
+          direction: isOutbound ? "outbound" : "inbound",
           call_status: dispositionToStatus(c.disposition),
           outcome: c.disposition || "",
           notes: "",
@@ -100,12 +124,26 @@ Deno.serve(async (req) => {
         });
         if (callId) seenIds.add(callId);
         created++;
+
+        // Outbound calls have no real-time webhook — notify here.
+        // Inbound calls are notified by receiveCiscoCallState, so skip to avoid duplicates.
+        if (isOutbound) {
+          const statusLabel = (rec.call_status || "outbound").replace(/_/g, " ");
+          const dispPhone = formatPhoneDisplay(phone);
+          const who = contactName ? (contactName + (rec.customer_name ? ` (${rec.customer_name})` : "")) : (rec.customer_name || "");
+          const pushTitle = who ? `Called ${who}` : `Called ${dispPhone}`;
+          const pushBody = `${dispPhone} · ${statusLabel}${duration > 0 ? ` · ${fmtDuration(duration)}` : ""}`;
+          try {
+            await sendPushToAllSubscriptions(base44, { title: pushTitle, body: pushBody, url: `/Messaging?callId=${rec.id}` });
+            outboundNotified++;
+          } catch (pe) { console.warn("push failed:", pe?.message || pe); }
+        }
       } catch (e) {
         console.warn("CallLog create failed for callid " + callId + ":", e?.message || e);
       }
     }
 
-    return Response.json({ success: true, scanned: allInbound.length, created, from: dateFrom, to: dateTo });
+    return Response.json({ success: true, scanned: allRecords.length, created, outboundNotified, from: dateFrom, to: dateTo });
   } catch (error) {
     console.error("fetchVoipCdr error:", error?.message || error);
     return Response.json({ error: error?.message || "Internal error" }, { status: 500 });
