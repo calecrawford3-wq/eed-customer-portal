@@ -293,7 +293,7 @@ export async function getPhonebookGroupsRaw(): Promise<any> {
 export function discoverIdField(entries: any[]): string {
   if (!entries || !entries.length) return "id";
   const first = entries[0];
-  const candidates = ["id", "member_id", "entry_id", "phonebook_id", "record_id"];
+  const candidates = ["id", "member_id", "entry_id", "phonebook_id", "record_id", "phonebook"];
   for (const c of candidates) {
     if (first[c] !== undefined && first[c] !== null && first[c] !== "") return c;
   }
@@ -313,7 +313,7 @@ export async function getPhonebookEntries(group?: string): Promise<{ entries: an
       { httpStatus: 200, method: "getPhonebook", voipmsStatus: data?.status, voipmsMessage: data?.message, params: {} }
     );
   }
-  const entries = data.phonebook || data.entries || data.result || [];
+  const entries = data.phonebooks || data.phonebook || data.entries || data.result || [];
   const arr = Array.isArray(entries) ? entries : [];
   return { entries: arr, idField: discoverIdField(arr) };
 }

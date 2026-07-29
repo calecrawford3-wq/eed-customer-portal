@@ -4,7 +4,7 @@ import {
   buildDisplayName,
   getPhonebookEntries,
   findEntryByNumber,
-  createPhonebookEntry,
+  setPhonebookEntry,
   updatePhonebookEntry,
   deletePhonebookEntry,
   bridgeGetIP,
@@ -154,6 +154,11 @@ export default async function(req: Request): Promise<Response> {
 
     const seenEntryIds = new Set<string>();
 
+    // Track newly created entries for batch ID discovery after the loop.
+    // Avoids re-fetching the entire phone book after each create (which doubles
+    // bridge calls and causes the sync to time out before finishing all customers).
+    const pendingIdDiscovery: Array<{ customerId: string; normalizedPhone: string; source: string; normalizedName: string }> = [];
+
     for (const { customer, phone: normalizedPhone, source } of deduped) {
       try {
         const normalizedName = buildDisplayName(customer, settings.preferBusinessName);
@@ -234,15 +239,25 @@ export default async function(req: Request): Promise<Response> {
                 voipms_synced_name: normalizedName,
                 voipms_synced_phone: normalizedPhone,
               });
+              if (source === "primary") {
+                await base44.asServiceRole.entities.Customer.update(customer.id, {
+                  voipms_phonebook_id: String(existingEntry[idField]),
+                  voipms_sync_status: "synced",
+                  voipms_synced_name: normalizedName,
+                  voipms_synced_phone: normalizedPhone,
+                  voipms_last_synced_at: new Date().toISOString(),
+                }).catch(() => {});
+              }
             }
           }
         } else {
-          // Create new entry
+          // Create new entry — call setPhonebook directly (1 bridge call, no per-entry re-fetch).
+          // Entry ID is discovered in a single batch getPhonebook pass after the loop.
           if (!dryRun) {
             try {
-              const result = await createPhonebookEntry(groupName, normalizedName, normalizedPhone);
+              await setPhonebookEntry({ name: normalizedName, number: normalizedPhone });
               await upsertVoipmsPhoneEntry(base44, customer.id, normalizedPhone, source, {
-                voipms_phonebook_id: result.id,
+                voipms_phonebook_id: "",
                 voipms_sync_status: "synced",
                 voipms_sync_error: "",
                 voipms_synced_name: normalizedName,
@@ -250,7 +265,6 @@ export default async function(req: Request): Promise<Response> {
               });
               if (source === "primary") {
                 await base44.asServiceRole.entities.Customer.update(customer.id, {
-                  voipms_phonebook_id: result.id,
                   voipms_sync_status: "synced",
                   voipms_sync_error: "",
                   voipms_synced_name: normalizedName,
@@ -258,6 +272,7 @@ export default async function(req: Request): Promise<Response> {
                   voipms_last_synced_at: new Date().toISOString(),
                 }).catch(() => {});
               }
+              pendingIdDiscovery.push({ customerId: customer.id, normalizedPhone, source, normalizedName });
             } catch (e) {
               summary.failed++;
               summary.errors.push(`${customer.first_name} ${customer.last_name}: ${e?.message || e}`);
@@ -267,10 +282,37 @@ export default async function(req: Request): Promise<Response> {
           summary.created++;
         }
 
-        if (!dryRun) await sleep(200);
+        if (!dryRun) await sleep(100);
       } catch (e) {
         summary.failed++;
         summary.errors.push(`${customer.first_name} ${customer.last_name}: ${e?.message || e}`);
+      }
+    }
+
+    // Batch ID discovery: fetch phone book once and match all newly created entries.
+    // This replaces the per-create re-fetch that caused sync timeouts before the
+    // last customers could be reached.
+    if (!dryRun && pendingIdDiscovery.length > 0) {
+      try {
+        const { entries: finalEntries, idField: finalIdField } = await getPhonebookEntries(groupName);
+        for (const { customerId, normalizedPhone, source } of pendingIdDiscovery) {
+          const match = findEntryByNumber(finalEntries, normalizedPhone);
+          if (match && match[finalIdField]) {
+            const entryId = String(match[finalIdField]);
+            await upsertVoipmsPhoneEntry(base44, customerId, normalizedPhone, source, {
+              voipms_phonebook_id: entryId,
+            });
+            if (source === "primary") {
+              await base44.asServiceRole.entities.Customer.update(customerId, {
+                voipms_phonebook_id: entryId,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch (e: any) {
+        // Entries were created in VoIP.ms but IDs not captured — they'll be
+        // resolved in the next nightly reconciliation.
+        console.log("[Sync] Batch ID discovery failed:", e?.message || e);
       }
     }
 
