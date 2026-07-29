@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
 import { parseVoipCdrDateMs } from '../../shared/voipMs.ts';
 
@@ -27,21 +26,6 @@ function dispositionToStatus(disp) {
   if (d === "failed") return "failed";
   if (d === "missed") return "missed";
   return "connected";
-}
-
-function formatPhoneDisplay(p) {
-  if (!p) return "";
-  let d = p.replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
-  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-  return p;
-}
-
-function fmtDuration(s) {
-  if (!s) return "0:00";
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
 Deno.serve(async (req) => {
@@ -89,7 +73,6 @@ Deno.serve(async (req) => {
       if (!phone) continue;
       let resolved = { customer_id: "", customer_name: "", contact_name: "", relationship: "" };
       try { resolved = await resolveCaller(base44, phone); } catch (e) { console.warn("resolveCaller failed:", e?.message || e); }
-      const matched = resolved.customer_id ? { id: resolved.customer_id } : null;
       const contactName = resolved.contact_name || "";
       const duration = Number(c.seconds) || 0;
       // VoIP.ms CDR dates arrive in Europe/London time; parseVoipCdrDateMs converts to true UTC.
@@ -117,16 +100,6 @@ Deno.serve(async (req) => {
         });
         if (callId) seenIds.add(callId);
         created++;
-
-        // Notify staff (push) + desk phone (Cisco caller-id screen) for new inbound calls
-        const statusLabel = (rec.call_status || "incoming").replace(/_/g, " ");
-        const dispPhone = formatPhoneDisplay(phone);
-        const who = contactName ? (contactName + (rec.customer_name ? ` (${rec.customer_name})` : "")) : (rec.customer_name || "");
-        const pushTitle = (contactName || rec.customer_name) ? `Call from ${who}` : `Call from ${dispPhone}`;
-        const pushBody = `${dispPhone} · ${statusLabel}${duration > 0 ? ` · ${fmtDuration(duration)}` : ""}${matched ? "" : " · unknown caller"}`;
-        try {
-          await sendPushToAllSubscriptions(base44, { title: pushTitle, body: pushBody, url: `/Messaging?callId=${rec.id}` });
-        } catch (pe) { console.warn("push failed:", pe?.message || pe); }
       } catch (e) {
         console.warn("CallLog create failed for callid " + callId + ":", e?.message || e);
       }
