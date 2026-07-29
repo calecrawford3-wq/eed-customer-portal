@@ -68,7 +68,7 @@ export default function CallsView() {
   const { data: calls = [], isLoading } = useQuery({
     queryKey: ["call-logs"],
     queryFn: () => base44.entities.CallLog.list("-created_date", 300),
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   });
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
