@@ -65,6 +65,19 @@ Deno.serve(async (req) => {
     const existing = await base44.asServiceRole.entities.CallLog.list("-created_date", 200);
     const seenIds = new Set((existing || []).map((l) => l.voip_call_id).filter(Boolean));
 
+    // Build a time-window map of manually-logged outbound calls (no voip_call_id)
+    // so the CDR poll doesn't duplicate calls already saved via click-to-call.
+    const manualOutboundByPhone = new Map();
+    for (const l of (existing || [])) {
+      if (l.direction === "outbound" && !l.voip_call_id && l.phone_number && l.started_at) {
+        const p = normalizePhone(l.phone_number);
+        const ms = new Date(l.started_at).getTime();
+        if (!p || !ms) continue;
+        if (!manualOutboundByPhone.has(p)) manualOutboundByPhone.set(p, []);
+        manualOutboundByPhone.get(p).push(ms);
+      }
+    }
+
     let allRecords = [];
     for (let page = 1; page <= 3; page++) {
       const url = `https://voip.ms/api/v1/rest.php?api_username=${encodeURIComponent(apiUser)}&api_password=${encodeURIComponent(apiPass)}&method=getCDR&date_from=${dateFrom}&date_to=${dateTo}&timezone=0&answered=1&noanswer=1&busy=1&failed=1&page=${page}`;
@@ -102,6 +115,19 @@ Deno.serve(async (req) => {
       // VoIP.ms CDR dates arrive in Europe/London time; parseVoipCdrDateMs converts to true UTC.
       const startedMs = c.date ? parseVoipCdrDateMs(c.date) : 0;
       const startedAt = startedMs ? new Date(startedMs).toISOString() : new Date().toISOString();
+
+      // Outbound only: if a manual log (click-to-call) already covers this call
+      // within a 5-minute window, skip it to avoid duplicates.
+      if (isOutbound) {
+        const manualTimes = manualOutboundByPhone.get(phone);
+        if (manualTimes && manualTimes.length) {
+          const cdrMs = startedMs || new Date(startedAt).getTime();
+          if (manualTimes.some((t) => Math.abs(t - cdrMs) < 5 * 60 * 1000)) {
+            if (callId) seenIds.add(callId);
+            continue;
+          }
+        }
+      }
       const endedAt = duration > 0
         ? new Date(new Date(startedAt).getTime() + duration * 1000).toISOString()
         : startedAt;
