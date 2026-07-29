@@ -67,6 +67,64 @@ export default async function(req: Request): Promise<Response> {
       return Response.json(diag);
     }
 
+    // ── deduplicate — find & remove entries with the same phone number ─
+    // Keeps the entry whose ID is linked to a VoipmsPhoneEntry record; deletes the rest.
+    if (mode === "deduplicate") {
+      const { entries, idField } = await getPhonebookEntries();
+
+      // Group entries by normalized phone number
+      const byNumber: Record<string, any[]> = {};
+      for (const e of entries) {
+        const num = normalizePhone(e.number || e.phone || "");
+        if (!num) continue;
+        (byNumber[num] ||= []).push(e);
+      }
+
+      // Collect all VoipmsPhoneEntry IDs to know which entry IDs are "linked"
+      const linkedEntries = await base44.asServiceRole.entities.VoipmsPhoneEntry.filter({});
+      const linkedIds = new Set((linkedEntries || []).map((pe: any) => String(pe.voipms_phonebook_id || "")).filter(Boolean));
+
+      const duplicates: { number: string; entries: any[]; keep: string; delete: string[] }[] = [];
+      let deletedCount = 0;
+      const errors: string[] = [];
+
+      for (const [num, group] of Object.entries(byNumber)) {
+        if (group.length < 2) continue;
+
+        // Prefer to keep an entry that's linked to a VoipmsPhoneEntry
+        let keepEntry = group.find((e) => linkedIds.has(String(e[idField] || "")));
+        if (!keepEntry) keepEntry = group[0]; // fallback: keep the first
+
+        const keepId = String(keepEntry[idField] || "");
+        const deleteIds = group.filter((e) => String(e[idField] || "") !== keepId).map((e) => String(e[idField] || ""));
+
+        duplicates.push({
+          number: num,
+          entries: group.map((e) => ({ id: String(e[idField] || ""), name: e.name, number: e.number })),
+          keep: keepId,
+          delete: deleteIds,
+        });
+
+        // Delete the duplicates
+        for (const did of deleteIds) {
+          try {
+            await deletePhonebookEntry(did, idField);
+            deletedCount++;
+          } catch (e: any) {
+            errors.push(`Failed to delete entry ${did}: ${String(e?.message || e)}`);
+          }
+        }
+      }
+
+      return Response.json({
+        totalEntries: entries.length,
+        duplicateGroups: duplicates.length,
+        deleted: deletedCount,
+        errors,
+        duplicates: body.preview ? duplicates : undefined,
+      });
+    }
+
     // ── Sync all / dry run ────────────────────────────────────────────
     const settings = await getPbSettings(base44);
     if (!settings.enabled && mode !== "dry_run") {
