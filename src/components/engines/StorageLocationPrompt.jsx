@@ -19,12 +19,16 @@ export default function StorageLocationPrompt({
   onConfirm,
 }) {
   const [location, setLocation] = useState("");
+  const [labelStartPos, setLabelStartPos] = useState(1);
+  const [labelNote, setLabelNote] = useState("");
   const [printed, setPrinted] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
     if (open) {
       setLocation(engineInfo?.storageLocation || "");
+      setLabelStartPos(1);
+      setLabelNote("");
       setPrinted(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -40,6 +44,8 @@ export default function StorageLocationPrompt({
       storageLocation: location,
       statusLabel: statusLabel,
       barcodeValue: engineInfo.serial,
+      notes: labelNote.trim() || undefined,
+      startPos: labelStartPos,
     });
     setPrinted(true);
   };
@@ -108,7 +114,28 @@ export default function StorageLocationPrompt({
             ))}
           </div>
 
-          <div className="border-t pt-3">
+          <div className="border-t pt-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs whitespace-nowrap text-slate-400">Start Slot</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  className="w-16 h-8 text-center text-xs"
+                  value={labelStartPos}
+                  onChange={e => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                />
+              </div>
+              <div className="flex-1">
+                <Input
+                  placeholder="Label-specific note (optional)..."
+                  value={labelNote}
+                  onChange={e => setLabelNote(e.target.value)}
+                  className="text-xs h-8"
+                />
+              </div>
+            </div>
             <Button
               variant="outline"
               className="w-full"
