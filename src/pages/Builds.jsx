@@ -139,6 +139,18 @@ export default function Builds() {
   });
 
   const [labelStartPos, setLabelStartPos] = useState(1);
+  const [editingNotesId, setEditingNotesId] = useState(null);
+  const [notesDraft, setNotesDraft] = useState("");
+
+  const updateEngineNotes = async (engineId, notes) => {
+    try {
+      await base44.entities.CustomerEngine.update(engineId, { notes });
+      queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+      toast.success("Notes updated");
+    } catch (e) {
+      toast.error("Failed to update notes: " + (e.message || e));
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.EngineBuild.create(data),
@@ -620,6 +632,58 @@ export default function Builds() {
                               {engine.check_in_status === "estimate_pending" ? "Estimate Pending" : "Checked In"}
                             </Badge>
                           </div>
+
+                          {/* Notes */}
+                          {editingNotesId === engine.id ? (
+                            <div className="mt-3 space-y-2">
+                              <Textarea
+                                value={notesDraft}
+                                onChange={e => setNotesDraft(e.target.value)}
+                                placeholder="Check-in notes..."
+                                className="text-xs min-h-[60px]"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  className="text-xs bg-[#e20404] hover:bg-[#c00303] text-white"
+                                  onClick={() => {
+                                    updateEngineNotes(engine.id, notesDraft);
+                                    setEditingNotesId(null);
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs"
+                                  onClick={() => setEditingNotesId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              className="mt-3 cursor-pointer group"
+                              onClick={() => {
+                                setNotesDraft(engine.notes || "");
+                                setEditingNotesId(engine.id);
+                              }}
+                            >
+                              {engine.notes ? (
+                                <p className="text-xs text-slate-600 bg-slate-50 rounded-lg p-2 group-hover:bg-slate-100 transition-colors">
+                                  {engine.notes}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-slate-400 italic group-hover:text-slate-500 transition-colors">
+                                  + Add check-in notes
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           <div className="mt-3 flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-1.5 mr-auto">
                               <Label className="text-xs whitespace-nowrap text-slate-400">Slot</Label>
