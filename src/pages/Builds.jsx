@@ -701,12 +701,11 @@ export default function Builds() {
                               size="sm"
                               className="text-xs"
                               onClick={() => {
-                                const platform = platforms.find(p => p.id === engine.platform_id);
                                 printEngineLabel({
                                   engineSerialNumber: engine.engine_serial_number,
                                   eedId: engine.eed_id,
                                   customerName,
-                                  platformName: platform ? getPlatformLabel(platform) : "",
+                                  platformName: getPlatformLabel(engine.platform_id),
                                   storageLocation: engine.storage_location,
                                   statusLabel: engine.check_in_status === "estimate_pending" ? "ESTIMATE PENDING" : "CHECKED IN",
                                   barcodeValue: engine.engine_serial_number,
