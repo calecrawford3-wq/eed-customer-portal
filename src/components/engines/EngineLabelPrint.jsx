@@ -12,7 +12,7 @@ const STATUS_COLORS = {
   "PICKED UP": "#6b7280",
 };
 
-export function printEngineLabel({ engineSerialNumber, eedId, customerName, platformName, storageLocation, statusLabel, barcodeValue, startPos = 1 }) {
+export function printEngineLabel({ engineSerialNumber, eedId, customerName, platformName, storageLocation, statusLabel, barcodeValue, notes, startPos = 1 }) {
   const barcode = generateBarcodeSVG(barcodeValue || engineSerialNumber, { width: 1.6, height: 40, fontSize: 12 });
   const statusBg = STATUS_COLORS[statusLabel] || "#475569";
 
@@ -36,6 +36,7 @@ export function printEngineLabel({ engineSerialNumber, eedId, customerName, plat
         </div>
         ${customerName ? `<div class="customer">${esc(customerName)}</div>` : ""}
         ${platformName ? `<div class="platform">${esc(platformName)}</div>` : ""}
+        ${notes ? `<div class="notes">${esc(notes)}</div>` : ""}
         <div class="barcode">${barcode || ""}</div>
         <div class="footer">
           <span class="loc">📍 <span class="loc-value">${esc(storageLocation || "—")}</span></span>
@@ -82,6 +83,7 @@ export function printEngineLabel({ engineSerialNumber, eedId, customerName, plat
   .status-badge { font-size: 8px; font-weight: 700; color: white; padding: 2px 6px; border-radius: 3px; background: ${statusBg}; white-space: nowrap; flex-shrink: 0; }
   .customer { font-size: 10px; color: #333; font-weight: 600; }
   .platform { font-size: 8.5px; color: #555; }
+  .notes { font-size: 8px; color: #6b7280; font-style: italic; line-height: 1.2; margin-top: 1px; max-height: 24px; overflow: hidden; }
   .barcode { text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; padding: 2px 0; }
   .barcode svg { max-width: 100%; height: auto; }
   .footer { display: flex; justify-content: space-between; align-items: center; font-size: 9px; }

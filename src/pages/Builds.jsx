@@ -710,6 +710,7 @@ export default function Builds() {
                                   storageLocation: engine.storage_location,
                                   statusLabel: engine.check_in_status === "estimate_pending" ? "ESTIMATE PENDING" : "CHECKED IN",
                                   barcodeValue: engine.engine_serial_number,
+                                  notes: engine.notes,
                                   startPos: labelStartPos,
                                 });
                               }}
