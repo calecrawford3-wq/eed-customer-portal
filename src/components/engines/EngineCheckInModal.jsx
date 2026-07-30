@@ -36,6 +36,7 @@ export default function EngineCheckInModal({ open, onClose }) {
   const [checkedInEngine, setCheckedInEngine] = useState(null);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [selectedExistingEngineId, setSelectedExistingEngineId] = useState("__new__");
+  const [labelStartPos, setLabelStartPos] = useState(1);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
@@ -105,6 +106,7 @@ export default function EngineCheckInModal({ open, onClose }) {
         storageLocation: created.storage_location,
         statusLabel: "CHECKED IN",
         barcodeValue: created.engine_serial_number,
+        startPos: labelStartPos,
       });
     },
     onError: (err) => toast.error(err.message),
@@ -121,6 +123,7 @@ export default function EngineCheckInModal({ open, onClose }) {
       });
       setCheckedInEngine(null);
       setSelectedExistingEngineId("__new__");
+      setLabelStartPos(1);
     }
   }, [open]);
 
@@ -222,6 +225,12 @@ export default function EngineCheckInModal({ open, onClose }) {
               <p className="text-sm text-slate-500 text-center">
                 A check-in label has been sent to the printer. Stick it on the engine or storage container.
               </p>
+              <div className="flex items-center justify-center gap-2">
+                <Printer className="w-4 h-4 text-slate-400" />
+                <Label className="text-xs whitespace-nowrap">Label start slot</Label>
+                <Input type="number" min="1" max="10" className="w-16 h-8" value={labelStartPos} onChange={(e) => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} />
+                <span className="text-xs text-slate-400">/ 10</span>
+              </div>
               <div className="flex flex-col gap-2">
                 <Button className="w-full bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleStartEstimate}>
                   <ClipboardList className="w-4 h-4 mr-2" /> Start Estimate
@@ -237,6 +246,7 @@ export default function EngineCheckInModal({ open, onClose }) {
                     storageLocation: checkedInEngine.storage_location,
                     statusLabel: "CHECKED IN",
                     barcodeValue: checkedInEngine.engine_serial_number,
+                    startPos: labelStartPos,
                   });
                 }}>
                   <Printer className="w-4 h-4 mr-2" /> Reprint Label
@@ -380,6 +390,12 @@ export default function EngineCheckInModal({ open, onClose }) {
                   </span>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4 text-slate-400" />
+                <Label className="text-xs whitespace-nowrap">Label start slot</Label>
+                <Input type="number" min="1" max="10" className="w-16 h-8" value={labelStartPos} onChange={(e) => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} />
+                <span className="text-xs text-slate-400">/ 10</span>
+              </div>
               <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
                 <p className="font-semibold mb-1">What happens on check-in:</p>
                 <ul className="list-disc list-inside space-y-0.5">
