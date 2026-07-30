@@ -18,7 +18,10 @@ import {
   Clock,
   ArrowRight,
   Receipt,
-  PackageCheck
+  PackageCheck,
+  Printer,
+  Cpu,
+  Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +53,7 @@ import { Textarea } from "@/components/ui/textarea";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import EngineSelector from "@/components/EngineSelector";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
+import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
 import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
 
@@ -128,6 +132,13 @@ export default function Builds() {
     queryKey: ["specSheets"],
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
+
+  const { data: checkedInEngines = [] } = useQuery({
+    queryKey: ["checked-in-engines"],
+    queryFn: () => base44.entities.CustomerEngine.list("-created_date", 200),
+  });
+
+  const [labelStartPos, setLabelStartPos] = useState(1);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.EngineBuild.create(data),
@@ -568,6 +579,94 @@ export default function Builds() {
         </div>
       ) : (
         <div className="space-y-8">
+          {/* Checked-In Engines (not yet in build queue) */}
+          {(() => {
+            const preBuild = checkedInEngines.filter(e =>
+              ["checked_in", "estimate_pending"].includes(e.check_in_status)
+            );
+            const filteredPreBuild = preBuild.filter(e => {
+              const matchesSearch =
+                e.engine_serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                e.eed_id?.toLowerCase().includes(searchTerm.toLowerCase());
+              return matchesSearch;
+            });
+            if (filteredPreBuild.length === 0) return null;
+            return (
+              <div>
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-blue-600" />
+                  Checked-In Engines ({filteredPreBuild.length})
+                </h2>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredPreBuild.map(engine => {
+                    const customer = customers.find(c => c.id === engine.customer_id);
+                    const customerName = customer ? `${customer.first_name} ${customer.last_name}` : engine.customer_name || "—";
+                    return (
+                      <Card key={engine.id} className="border-0 shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-bold">{engine.engine_serial_number}</h3>
+                                {engine.eed_id && <span className="font-mono text-xs text-[#e20404] font-semibold">{engine.eed_id}</span>}
+                              </div>
+                              <p className="text-sm text-slate-500">{getPlatformLabel(engine.platform_id)}</p>
+                              <p className="text-sm text-slate-600 mt-1">{customerName}</p>
+                              {engine.storage_location && (
+                                <p className="text-xs text-slate-400 mt-1">📍 {engine.storage_location}</p>
+                              )}
+                            </div>
+                            <Badge className="bg-blue-100 text-blue-700 border-0">
+                              {engine.check_in_status === "estimate_pending" ? "Estimate Pending" : "Checked In"}
+                            </Badge>
+                          </div>
+                          <div className="mt-3 flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 mr-auto">
+                              <Label className="text-xs whitespace-nowrap text-slate-400">Slot</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                className="w-14 h-8 text-center text-xs"
+                                value={labelStartPos}
+                                onChange={e => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                const platform = platforms.find(p => p.id === engine.platform_id);
+                                printEngineLabel({
+                                  engineSerialNumber: engine.engine_serial_number,
+                                  eedId: engine.eed_id,
+                                  customerName,
+                                  platformName: platform ? getPlatformLabel(platform) : "",
+                                  storageLocation: engine.storage_location,
+                                  statusLabel: engine.check_in_status === "estimate_pending" ? "ESTIMATE PENDING" : "CHECKED IN",
+                                  barcodeValue: engine.engine_serial_number,
+                                  startPos: labelStartPos,
+                                });
+                              }}
+                            >
+                              <Printer className="w-3.5 h-3.5 mr-1" /> Reprint
+                            </Button>
+                            <Link to={createPageUrl(`CustomerDetail?id=${engine.customer_id}`)}>
+                              <Button variant="ghost" size="sm" className="text-xs">
+                                <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                              </Button>
+                            </Link>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Active Queue */}
           {queuedBuilds.length > 0 && (
             <div>
