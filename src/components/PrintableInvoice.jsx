@@ -20,10 +20,20 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
 
   return (
     <div className="invoice-page" style={{ fontFamily: "Arial, sans-serif", color: "#333" }}>
-      {/* Header — fixed */}
+      {/* Running header — repeats on every printed page via fixed positioning */}
+      <div className="inv-running-header">
+        <div className="inv-rh-left">
+          <img src={LOGO_URL} alt={settings?.company_name} className="inv-rh-logo" />
+          <span className="inv-rh-company">{settings?.company_name || "Elite Engine Development"}</span>
+        </div>
+        <div className="inv-rh-right">
+          <span className="inv-rh-invoice">Invoice #{invoice.invoice_number}</span>
+        </div>
+      </div>
+
+      {/* Full header — only on first page (in flow) */}
       <div className="inv-header">
         <div>
-          <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "48px", marginBottom: "6px" }} />
           <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>INVOICE</h1>
           <p style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>{settings?.company_name}</p>
         </div>
@@ -165,6 +175,12 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
         <p>Thank you for your business!</p>
         <p>{settings?.company_name} | {settings?.company_website}</p>
         <p style={{ marginTop: "2px" }}>Terms &amp; Conditions: <a href="https://www.eliteenginedevelopment.com/legal" style={{ color: "#999" }}>https://www.eliteenginedevelopment.com/legal</a></p>
+      </div>
+
+      {/* Running footer — repeats on every printed page */}
+      <div className="inv-running-footer">
+        <span>{settings?.company_name || "Elite Engine Development"} — Invoice #{invoice.invoice_number}</span>
+        <span>Page <span className="inv-pg-num"></span> of <span className="inv-pg-count"></span></span>
       </div>
     </div>
   );
