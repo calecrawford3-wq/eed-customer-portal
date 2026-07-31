@@ -36,7 +36,7 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
           {customerEngine.engine_serial_number && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
           {platform && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Platform</span><br /><strong>{platform.manufacturer} {platform.name}{platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}</strong></div>}
           {customerEngine.current_stage && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Stage</span><br /><strong>{STAGE_LABELS[customerEngine.current_stage] || customerEngine.current_stage}</strong></div>}
-          {specSheet && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Spec</span><br /><strong>v{specSheet.version ?? "—"}</strong></div>}
+          {specSheet && <div><span style={{ color: "#666", textTransform: "uppercase", fontSize: "11px" }}>Version</span><br /><strong>v{specSheet.version ?? "—"}</strong></div>}
         </div>
       )}
 
