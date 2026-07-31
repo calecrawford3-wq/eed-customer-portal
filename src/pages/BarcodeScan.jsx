@@ -31,10 +31,12 @@ export default function BarcodeScan() {
         base44.entities.EngineCore.filter({ core_number: clean }),
       ]);
       const found = [];
-      if (parts.length > 0) found.push({ type: "part", item: parts[0] });
-      if (cores.length > 0) found.push({ type: "core", item: cores[0] });
+      parts.forEach((p) => found.push({ type: "part", item: p }));
+      cores.forEach((c) => found.push({ type: "core", item: c }));
       if (found.length === 0) {
         toast.error(`No item found for "${clean}"`);
+      } else if (found.length > 1) {
+        toast.info(`Found ${found.length} items for "${clean}"`);
       } else {
         setResults(found);
         const q = {};
