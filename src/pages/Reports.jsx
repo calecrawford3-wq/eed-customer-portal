@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer, Package } from "lucide-react";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -34,6 +34,8 @@ export default function Reports() {
   const { data: estimates = [] } = useQuery({ queryKey: ["estimates"], queryFn: () => base44.entities.Estimate.list("-created_date", 500) });
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: () => base44.entities.Customer.list("-created_date", 200) });
   const { data: builds = [] } = useQuery({ queryKey: ["builds"], queryFn: () => base44.entities.EngineBuild.list("-created_date", 200) });
+  const { data: parts = [] } = useQuery({ queryKey: ["parts-report"], queryFn: () => base44.entities.Part.list("-created_date", 1000) });
+  const { data: cores = [] } = useQuery({ queryKey: ["cores-report"], queryFn: () => base44.entities.EngineCore.list("-created_date", 500) });
 
   const yearInvoices = invoices.filter(i => (i.issue_date || "").startsWith(year));
   const yearExpenses = expenses.filter(e => (e.date || "").startsWith(year));
@@ -121,6 +123,52 @@ export default function Reports() {
     ];
   }, [invoices]);
 
+  // --- Inventory ---
+  const activeParts = parts.filter(p => p.status !== "discontinued");
+  const totalPartsOnHand = activeParts.reduce((s, p) => s + (p.quantity_on_hand || 0), 0);
+  const totalPartsCostValue = activeParts.reduce((s, p) => s + ((p.quantity_on_hand || 0) * (p.unit_cost || 0)), 0);
+  const totalPartsSellValue = activeParts.reduce((s, p) => s + ((p.quantity_on_hand || 0) * (p.sell_price || 0)), 0);
+  const lowStockParts = activeParts.filter(p => (p.quantity_on_hand || 0) <= (p.reorder_point || 0) && (p.reorder_point || 0) > 0);
+
+  const partsByCategory = useMemo(() => {
+    const map = {};
+    activeParts.forEach(p => {
+      const cat = p.category || "other";
+      if (!map[cat]) map[cat] = { count: 0, qty: 0, costValue: 0, sellValue: 0 };
+      map[cat].count += 1;
+      map[cat].qty += (p.quantity_on_hand || 0);
+      map[cat].costValue += (p.quantity_on_hand || 0) * (p.unit_cost || 0);
+      map[cat].sellValue += (p.quantity_on_hand || 0) * (p.sell_price || 0);
+    });
+    return Object.entries(map).map(([cat, data]) => ({
+      category: cat.replace(/_/g, " "),
+      ...data
+    })).sort((a, b) => b.costValue - a.costValue);
+  }, [parts]);
+
+  const activeCores = cores.filter(c => c.status !== "inactive");
+  const totalCoresOnHand = activeCores.reduce((s, c) => s + (c.quantity_on_hand || 0), 0);
+  const totalCoresCostValue = activeCores.reduce((s, c) => s + ((c.quantity_on_hand || 0) * (c.unit_cost || 0)), 0);
+  const totalCoresSellValue = activeCores.reduce((s, c) => s + ((c.quantity_on_hand || 0) * (c.sell_price || 0)), 0);
+
+  const coresByCategory = useMemo(() => {
+    const map = {};
+    activeCores.forEach(c => {
+      const cat = c.category || "other";
+      if (!map[cat]) map[cat] = { count: 0, qty: 0, costValue: 0, sellValue: 0 };
+      map[cat].count += 1;
+      map[cat].qty += (c.quantity_on_hand || 0);
+      map[cat].costValue += (c.quantity_on_hand || 0) * (c.unit_cost || 0);
+      map[cat].sellValue += (c.quantity_on_hand || 0) * (c.sell_price || 0);
+    });
+    return Object.entries(map).map(([cat, data]) => ({
+      category: cat.replace(/_/g, " "),
+      ...data
+    })).sort((a, b) => b.costValue - a.costValue);
+  }, [cores]);
+
+  const inventoryChart = [...partsByCategory.map(d => ({ name: d.category + " (P)", value: d.costValue })), ...coresByCategory.map(d => ({ name: d.category + " (C)", value: d.costValue }))].filter(d => d.value > 0);
+
   // --- Builds Metrics ---
   const completedBuilds = builds.filter(b => ["complete","shipped"].includes(b.status));
   const buildsThisYear = completedBuilds.filter(b => (b.completion_date || "").startsWith(year));
@@ -152,6 +200,7 @@ export default function Reports() {
           <TabsTrigger value="salestax">Sales Tax</TabsTrigger>
           <TabsTrigger value="expenses">Expense Breakdown</TabsTrigger>
           <TabsTrigger value="ar">A/R Aging</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="metrics">Business Metrics</TabsTrigger>
         </TabsList>
 
@@ -396,6 +445,203 @@ export default function Reports() {
                   })}
                 </tbody>
               </table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Inventory Tab */}
+        <TabsContent value="inventory">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-slate-400" /><p className="text-xs text-slate-500">Parts On Hand</p></div>
+                <p className="text-2xl font-bold text-slate-900">{totalPartsOnHand.toLocaleString()}</p>
+                <p className="text-xs text-slate-400 mt-1">{activeParts.length} active SKUs</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Parts Cost Value</p>
+                <p className="text-2xl font-bold text-slate-700">${totalPartsCostValue.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">Sell: ${totalPartsSellValue.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-slate-400" /><p className="text-xs text-slate-500">Cores On Hand</p></div>
+                <p className="text-2xl font-bold text-slate-900">{totalCoresOnHand.toLocaleString()}</p>
+                <p className="text-xs text-slate-400 mt-1">{activeCores.length} active cores</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Cores Cost Value</p>
+                <p className="text-2xl font-bold text-slate-700">${totalCoresCostValue.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">Sell: ${totalCoresSellValue.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card className="border-0 shadow-sm bg-slate-50">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Total Inventory Value (Cost)</p>
+                <p className="text-2xl font-bold text-slate-900">${(totalPartsCostValue + totalCoresCostValue).toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-slate-50">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Total Inventory Value (Sell)</p>
+                <p className="text-2xl font-bold text-slate-900">${(totalPartsSellValue + totalCoresSellValue).toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-slate-50">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Potential Margin</p>
+                <p className="text-2xl font-bold text-emerald-600">${((totalPartsSellValue + totalCoresSellValue) - (totalPartsCostValue + totalCoresCostValue)).toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-slate-50">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Low Stock Alerts</p>
+                <p className="text-2xl font-bold text-amber-600">{lowStockParts.length}</p>
+                <p className="text-xs text-slate-400 mt-1">At/below reorder point</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Inventory Value by Category</CardTitle></CardHeader>
+              <CardContent>
+                {inventoryChart.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-8">No inventory data</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={inventoryChart} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v.toLocaleString()}`} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                      <Tooltip formatter={v => `$${Number(v).toFixed(2)}`} />
+                      <Bar dataKey="value" name="Cost Value" fill="#3b82f6" radius={[0,4,4,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Low Stock Parts</CardTitle></CardHeader>
+              <CardContent>
+                {lowStockParts.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-8">No low-stock parts</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-slate-200">
+                      <tr>
+                        <th className="text-left py-2 font-medium text-slate-600">Part</th>
+                        <th className="text-right py-2 font-medium text-slate-600">On Hand</th>
+                        <th className="text-right py-2 font-medium text-slate-600">Reorder Pt</th>
+                        <th className="text-right py-2 font-medium text-slate-600">Unit Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lowStockParts.slice(0, 15).map(p => (
+                        <tr key={p.id} className="border-b border-slate-100">
+                          <td className="py-2"><span className="font-medium">{p.name}</span><span className="text-slate-400 text-xs ml-2">{p.part_number}</span></td>
+                          <td className="py-2 text-right text-amber-600 font-medium">{p.quantity_on_hand || 0}</td>
+                          <td className="py-2 text-right text-slate-500">{p.reorder_point || 0}</td>
+                          <td className="py-2 text-right text-slate-600">${(p.unit_cost || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-0 shadow-sm mb-6">
+            <CardHeader className="pb-3"><CardTitle className="text-base">Parts by Category</CardTitle></CardHeader>
+            <CardContent>
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200">
+                  <tr>
+                    <th className="text-left py-2 font-medium text-slate-600">Category</th>
+                    <th className="text-right py-2 font-medium text-slate-600">SKUs</th>
+                    <th className="text-right py-2 font-medium text-slate-600">Qty On Hand</th>
+                    <th className="text-right py-2 font-medium text-slate-600">Cost Value</th>
+                    <th className="text-right py-2 font-medium text-slate-600">Sell Value</th>
+                    <th className="text-right py-2 font-medium text-slate-600">Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partsByCategory.map((row, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2 capitalize">{row.category}</td>
+                      <td className="py-2 text-right">{row.count}</td>
+                      <td className="py-2 text-right">{row.qty}</td>
+                      <td className="py-2 text-right font-medium">${row.costValue.toFixed(2)}</td>
+                      <td className="py-2 text-right font-medium">${row.sellValue.toFixed(2)}</td>
+                      <td className="py-2 text-right text-emerald-600">${(row.sellValue - row.costValue).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t border-slate-200 bg-slate-50">
+                  <tr>
+                    <td className="py-2 font-bold">Total Parts</td>
+                    <td className="py-2 text-right font-bold">{partsByCategory.reduce((s, r) => s + r.count, 0)}</td>
+                    <td className="py-2 text-right font-bold">{totalPartsOnHand}</td>
+                    <td className="py-2 text-right font-bold">${totalPartsCostValue.toFixed(2)}</td>
+                    <td className="py-2 text-right font-bold">${totalPartsSellValue.toFixed(2)}</td>
+                    <td className="py-2 text-right font-bold text-emerald-600">${(totalPartsSellValue - totalPartsCostValue).toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3"><CardTitle className="text-base">Engine Cores by Category</CardTitle></CardHeader>
+            <CardContent>
+              {coresByCategory.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-8">No active cores</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="border-b border-slate-200">
+                    <tr>
+                      <th className="text-left py-2 font-medium text-slate-600">Category</th>
+                      <th className="text-right py-2 font-medium text-slate-600">Cores</th>
+                      <th className="text-right py-2 font-medium text-slate-600">Qty On Hand</th>
+                      <th className="text-right py-2 font-medium text-slate-600">Cost Value</th>
+                      <th className="text-right py-2 font-medium text-slate-600">Sell Value</th>
+                      <th className="text-right py-2 font-medium text-slate-600">Margin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coresByCategory.map((row, i) => (
+                      <tr key={i} className="border-b border-slate-100">
+                        <td className="py-2 capitalize">{row.category}</td>
+                        <td className="py-2 text-right">{row.count}</td>
+                        <td className="py-2 text-right">{row.qty}</td>
+                        <td className="py-2 text-right font-medium">${row.costValue.toFixed(2)}</td>
+                        <td className="py-2 text-right font-medium">${row.sellValue.toFixed(2)}</td>
+                        <td className="py-2 text-right text-emerald-600">${(row.sellValue - row.costValue).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t border-slate-200 bg-slate-50">
+                    <tr>
+                      <td className="py-2 font-bold">Total Cores</td>
+                      <td className="py-2 text-right font-bold">{coresByCategory.reduce((s, r) => s + r.count, 0)}</td>
+                      <td className="py-2 text-right font-bold">{totalCoresOnHand}</td>
+                      <td className="py-2 text-right font-bold">${totalCoresCostValue.toFixed(2)}</td>
+                      <td className="py-2 text-right font-bold">${totalCoresSellValue.toFixed(2)}</td>
+                      <td className="py-2 text-right font-bold text-emerald-600">${(totalCoresSellValue - totalCoresCostValue).toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
