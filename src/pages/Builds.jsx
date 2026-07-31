@@ -56,6 +56,7 @@ import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
 import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
+import ReprintLabelModal from "@/components/engines/ReprintLabelModal";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -92,6 +93,7 @@ export default function Builds() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [storagePrompt, setStoragePrompt] = useState(null);
   const [pickupScan, setPickupScan] = useState(null);
+  const [reprintBuild, setReprintBuild] = useState(null);
   const [newBuild, setNewBuild] = useState({
     engine_serial_number: "",
     eed_id: "",
@@ -904,19 +906,7 @@ export default function Builds() {
                               variant="outline"
                               size="sm"
                               className="text-xs"
-                              onClick={() => {
-                                printEngineLabel({
-                                  engineSerialNumber: build.engine_serial_number,
-                                  eedId: build.eed_id,
-                                  customerName: getCustomerName(build),
-                                  platformName: getPlatformLabel(build.platform_id),
-                                  storageLocation: build.storage_location,
-                                  statusLabel: build.picked_up ? "PICKED UP" : "COMPLETED",
-                                  barcodeValue: build.engine_serial_number,
-                                  notes: build.assembly_notes,
-                                  startPos: labelStartPos,
-                                });
-                              }}
+                              onClick={() => setReprintBuild(build)}
                             >
                               <Printer className="w-3.5 h-3.5 mr-1" /> Reprint
                             </Button>
@@ -995,6 +985,16 @@ export default function Builds() {
           title="Confirm Engine Pickup"
           description="Scan the barcode on the completed engine label to confirm the customer is picking up the correct engine."
           onVerified={() => handlePickupVerified()}
+        />
+      )}
+
+      {/* Reprint Label Modal */}
+      {reprintBuild && (
+        <ReprintLabelModal
+          open={!!reprintBuild}
+          onClose={() => setReprintBuild(null)}
+          engineInfo={getEngineInfo(reprintBuild)}
+          statusLabel={reprintBuild.picked_up ? "PICKED UP" : "COMPLETED"}
         />
       )}
 
