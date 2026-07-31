@@ -84,6 +84,48 @@
         "inactive"
       ],
       "default": "active"
+    },
+    "list_online": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this core is flagged for listing on the Wix online store (used parts section). Toggling on pushes the listing to Wix; toggling off removes it."
+    },
+    "online_title": {
+      "type": "string",
+      "description": "Title used for the online listing (defaults to core name if blank)"
+    },
+    "online_description": {
+      "type": "string",
+      "description": "Description shown on the online listing (defaults to core description if blank)"
+    },
+    "online_price": {
+      "type": "number",
+      "description": "Listing price for the online store (defaults to sell_price if blank)"
+    },
+    "wix_product_id": {
+      "type": "string",
+      "description": "Wix Stores product ID assigned when the core was pushed to the online catalog"
+    },
+    "wix_listing_status": {
+      "type": "string",
+      "enum": [
+        "not_listed",
+        "pending",
+        "listed",
+        "error",
+        "removed"
+      ],
+      "default": "not_listed",
+      "description": "Current state of the Wix online listing"
+    },
+    "wix_listed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the core was last successfully pushed to Wix Stores"
+    },
+    "wix_sync_error": {
+      "type": "string",
+      "description": "Safe error message from the last failed Wix sync attempt"
     }
   },
   "required": [
