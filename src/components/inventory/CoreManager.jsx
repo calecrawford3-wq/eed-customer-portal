@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag, Images } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag, Images, Globe, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
@@ -22,7 +23,9 @@ const emptyCore = {
   core_number: "", name: "", description: "", category: "block",
   platform_ids: [], condition: "rebuildable",
   quantity_on_hand: 0, unit_cost: 0, sell_price: 0, core_credit: 0,
-  location: "", photos: [], notes: "", status: "active"
+  location: "", photos: [], notes: "", status: "active",
+  list_online: false, online_title: "", online_description: "", online_price: null,
+  wix_listing_status: "not_listed"
 };
 
 const CONDITION_STYLES = {
@@ -72,11 +75,32 @@ export default function CoreManager() {
     mutationFn: (data) => editing
       ? base44.entities.EngineCore.update(editing.id, data)
       : base44.entities.EngineCore.create(data),
-    onSuccess: () => {
+    onSuccess: (savedCore) => {
       qc.invalidateQueries({ queryKey: ["engineCores"] });
       setDialogOpen(false);
       toast.success(editing ? "Core updated" : "Core created");
+      // Sync to Wix if online listing is toggled on, or was previously listed (to update/delist)
+      const coreId = savedCore?.id || editing?.id;
+      if (coreId && (form.list_online || editing?.wix_product_id)) {
+        wixSyncMutation.mutate(coreId);
+      }
     },
+  });
+
+  const wixSyncMutation = useMutation({
+    mutationFn: (coreId) => base44.functions.invoke("syncCoreToWix", { core_id: coreId }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["engineCores"] });
+      const data = res?.data || res;
+      if (["created", "updated", "recreated"].includes(data?.action)) {
+        toast.success(`Listed on Wix — ${data.action}`);
+      } else if (data?.action === "removed") {
+        toast.success("Removed from Wix");
+      } else if (data?.action === "failed") {
+        toast.error(`Wix sync failed: ${data.error || "unknown error"}`);
+      }
+    },
+    onError: (err) => toast.error(`Wix sync failed: ${err?.message || "error"}`),
   });
 
   const deleteMutation = useMutation({
@@ -169,9 +193,24 @@ export default function CoreManager() {
                   <td className="px-4 py-3 text-right text-slate-600">{Number(c.sell_price || 0).toFixed(2) === "0.00" ? "—" : `$${Number(c.sell_price).toFixed(2)}`}</td>
                   <td className="px-4 py-3 text-right text-emerald-600 font-medium">{Number(c.core_credit || 0).toFixed(2) === "0.00" ? "—" : `$${Number(c.core_credit).toFixed(2)}`}</td>
                   <td className="px-4 py-3 text-center">
-                    <Badge className={c.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
-                      {c.status}
-                    </Badge>
+                    <div className="flex flex-col items-center gap-1">
+                      <Badge className={c.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
+                        {c.status}
+                      </Badge>
+                      {c.wix_listing_status === "listed" && (
+                        <Badge className="bg-blue-100 text-blue-700 border-0 text-xs flex items-center gap-1">
+                          <Globe className="w-3 h-3" /> Wix
+                        </Badge>
+                      )}
+                      {c.wix_listing_status === "pending" && (
+                        <Badge className="bg-amber-100 text-amber-700 border-0 text-xs flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Syncing
+                        </Badge>
+                      )}
+                      {c.wix_listing_status === "error" && (
+                        <Badge className="bg-red-100 text-red-700 border-0 text-xs">Wix Error</Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
@@ -278,11 +317,54 @@ export default function CoreManager() {
               <Label>Damage / Condition Photos</Label>
               <CorePhotoManager photos={form.photos} onChange={(photos) => setForm({ ...form, photos })} />
             </div>
+
+            {/* Online Listing (Wix Store) */}
+            <div className="col-span-2 mt-2 border-t border-slate-200 pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-slate-500" />
+                  <Label className="text-sm font-semibold cursor-pointer">List Online (Wix Store)</Label>
+                </div>
+                <Switch
+                  checked={!!form.list_online}
+                  onCheckedChange={(checked) => setForm({ ...form, list_online: checked })}
+                />
+              </div>
+              {form.list_online && (
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Online Title</Label>
+                    <Input value={form.online_title || ""} onChange={e => setForm({...form, online_title: e.target.value})} placeholder={form.name || "Listing title"} />
+                  </div>
+                  <div>
+                    <Label>Online Price ($)</Label>
+                    <Input type="number" step="0.01" value={form.online_price ?? ""} onChange={e => setForm({...form, online_price: e.target.value ? Number(e.target.value) : null})} placeholder={form.sell_price ? String(form.sell_price) : "Listing price"} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Online Description</Label>
+                    <Textarea value={form.online_description || ""} onChange={e => setForm({...form, online_description: e.target.value})} rows={2} placeholder={form.description || "Listing description"} />
+                  </div>
+                  {editing?.wix_listing_status && editing.wix_listing_status !== "not_listed" && (
+                    <div className="col-span-2 flex items-center gap-2 text-xs">
+                      <Badge className={
+                        editing.wix_listing_status === "listed" ? "bg-emerald-100 text-emerald-700 border-0" :
+                        editing.wix_listing_status === "pending" ? "bg-amber-100 text-amber-700 border-0" :
+                        editing.wix_listing_status === "error" ? "bg-red-100 text-red-700 border-0" :
+                        "bg-slate-100 text-slate-500 border-0"
+                      }>
+                        Wix: {editing.wix_listing_status}
+                      </Badge>
+                      {editing.wix_sync_error && <span className="text-red-500 text-xs">{editing.wix_sync_error}</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || !form.core_number || !form.name}>
-              {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Core"}
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || wixSyncMutation.isPending || !form.core_number || !form.name}>
+              {saveMutation.isPending ? "Saving..." : wixSyncMutation.isPending ? "Syncing to Wix..." : editing ? "Save Changes" : "Create Core"}
             </Button>
           </DialogFooter>
         </DialogContent>
