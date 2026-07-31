@@ -55,6 +55,10 @@ export default function StorageLocationPrompt({
       toast.error("Please enter a storage location");
       return;
     }
+    // Auto-print the label if the user hasn't already printed it manually
+    if (!printed && engineInfo?.serial) {
+      handlePrint();
+    }
     onConfirm?.(location.trim());
     onClose?.();
   };

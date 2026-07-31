@@ -903,6 +903,26 @@ export default function Builds() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                printEngineLabel({
+                                  engineSerialNumber: build.engine_serial_number,
+                                  eedId: build.eed_id,
+                                  customerName: getCustomerName(build),
+                                  platformName: getPlatformLabel(build.platform_id),
+                                  storageLocation: build.storage_location,
+                                  statusLabel: build.picked_up ? "PICKED UP" : "COMPLETED",
+                                  barcodeValue: build.engine_serial_number,
+                                  notes: build.assembly_notes,
+                                  startPos: labelStartPos,
+                                });
+                              }}
+                            >
+                              <Printer className="w-3.5 h-3.5 mr-1" /> Reprint
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="text-xs border-emerald-400 text-emerald-700 hover:bg-emerald-50"
                               onClick={() => handleConvertToInvoice(build)}
                             >
