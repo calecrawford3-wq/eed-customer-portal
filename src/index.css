@@ -110,4 +110,74 @@
     margin: 0;
     size: auto;
   }
+
+  /* === Single-page invoice layout === */
+  .invoice-page {
+    width: 8.5in;
+    min-height: 11in;
+    padding: 0.5in 0.6in;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .inv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 3px solid #e20404;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .inv-engine-bar {
+    background: #f8f8f8;
+    padding: 8px 14px;
+    border-radius: 5px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 12px;
+    border-left: 3px solid #e20404;
+  }
+  .inv-engine-bar .lbl {
+    color: #666;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  .inv-billto {
+    margin-bottom: 12px;
+  }
+  .inv-items {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .inv-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    margin-top: 12px;
+  }
+  .inv-notes {
+    flex: 1;
+    background: #fafafa;
+    padding: 8px 10px;
+    border-radius: 4px;
+  }
+  .inv-totals {
+    flex: 0 0 240px;
+    background: #f8f8f8;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .inv-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    font-size: 10px;
+    color: #999;
+  }
 }
