@@ -13,8 +13,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 //   list_online = true  + has wix_product_id → UPDATE product on Wix
 //   list_online = false + has wix_product_id → DELETE product from Wix
 //   list_online = false + no wix_product_id  → noop
+//
+// Uses Wix Stores Catalog V1 API (this site is on V1, not V3).
 
-const WIX_API = "https://www.wixapis.com/stores/v3/products";
+const WIX_API = "https://www.wixapis.com/stores/v1/products";
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -117,37 +119,27 @@ export default async function(req: Request): Promise<Response> {
     });
 
     try {
+      // V1 product payload (simple — no variants needed for a single-SKU core)
+      const productData: any = {
+        name: title,
+        productType: "physical",
+        description: description || undefined,
+        sku: sku || undefined,
+        visible: true,
+        priceData: {
+          price: Number(Number(price).toFixed(2)),
+        },
+      };
+
       if (!wixProductId) {
         // ── CREATE new product ──────────────────────────────────────────
-        const createPayload = {
-          product: {
-            name: title,
-            productType: "PHYSICAL",
-            description: description || undefined,
-            visible: true,
-            variantsInfo: {
-              variants: [
-                {
-                  sku: sku || undefined,
-                  price: {
-                    actualPrice: {
-                      amount: String(Number(price).toFixed(2)),
-                    },
-                  },
-                  physicalProperties: {},
-                },
-              ],
-            },
-          },
-        };
-
         const createRes = await fetch(WIX_API, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(createPayload),
+          body: JSON.stringify({ product: productData }),
         });
 
         if (!createRes.ok) {
@@ -175,112 +167,45 @@ export default async function(req: Request): Promise<Response> {
           price: Number(price).toFixed(2),
         });
       } else {
-        // ── UPDATE existing product ─────────────────────────────────────
-        // First query the product to get its current revision
-        const queryRes = await fetch(`${WIX_API}/query`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: {
-              filter: { id: { $eq: wixProductId } },
-            },
-          }),
-        });
-
-        if (!queryRes.ok) {
-          const errText = await queryRes.text();
-          throw new Error(`Wix query failed (${queryRes.status}): ${errText}`);
-        }
-
-        const queryData = await queryRes.json();
-        const existingProduct = queryData?.products?.[0];
-        if (!existingProduct) {
-          // Product was deleted on Wix side — recreate
-          await updateCoreSyncFields(base44, coreId, { wix_product_id: "" });
-          // Re-invoke create by clearing the ID path
-          const createPayload = {
-            product: {
-              name: title,
-              productType: "PHYSICAL",
-              description: description || undefined,
-              visible: true,
-              variantsInfo: {
-                variants: [
-                  {
-                    sku: sku || undefined,
-                    price: {
-                      actualPrice: { amount: String(Number(price).toFixed(2)) },
-                    },
-                    physicalProperties: {},
-                  },
-                ],
-              },
-            },
-          };
-          const createRes = await fetch(WIX_API, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(createPayload),
-          });
-          if (!createRes.ok) {
-            const errText = await createRes.text();
-            throw new Error(`Wix recreate failed (${createRes.status}): ${errText}`);
-          }
-          const createData = await createRes.json();
-          const newProductId = createData?.product?.id;
-          await updateCoreSyncFields(base44, coreId, {
-            wix_product_id: newProductId,
-            wix_listing_status: "listed",
-            wix_listed_at: new Date().toISOString(),
-            wix_sync_error: "",
-          });
-          return Response.json({ action: "recreated", wix_product_id: newProductId, title });
-        }
-
-        const revision = String(existingProduct.revision);
-        const existingVariant = existingProduct?.variantsInfo?.variants?.[0];
-        const variantId = existingVariant?.id;
-
-        const updatePayload: any = {
-          product: {
-            id: wixProductId,
-            revision,
-            name: title,
-            description: description || undefined,
-          },
-        };
-
-        // Include variant updates if we have the variant ID
-        if (variantId) {
-          updatePayload.product.variantsInfo = {
-            variants: [
-              {
-                id: variantId,
-                sku: sku || undefined,
-                price: {
-                  actualPrice: { amount: String(Number(price).toFixed(2)) },
-                },
-              },
-            ],
-          };
-        }
-
+        // ── UPDATE existing product (V1 PATCH — no revision needed) ─────
         const updateRes = await fetch(`${WIX_API}/${wixProductId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(updatePayload),
+          body: JSON.stringify({ product: productData }),
         });
 
         if (!updateRes.ok) {
+          // If 404, the product was deleted on Wix side — recreate
+          if (updateRes.status === 404) {
+            await updateCoreSyncFields(base44, coreId, { wix_product_id: "" });
+            const createRes = await fetch(WIX_API, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ product: productData }),
+            });
+            if (!createRes.ok) {
+              const errText = await createRes.text();
+              throw new Error(`Wix recreate failed (${createRes.status}): ${errText}`);
+            }
+            const createData = await createRes.json();
+            const newProductId = createData?.product?.id;
+            if (!newProductId) throw new Error("Wix did not return a product ID on recreate");
+
+            await updateCoreSyncFields(base44, coreId, {
+              wix_product_id: newProductId,
+              wix_listing_status: "listed",
+              wix_listed_at: new Date().toISOString(),
+              wix_sync_error: "",
+            });
+            return Response.json({ action: "recreated", wix_product_id: newProductId, title });
+          }
+
           const errText = await updateRes.text();
           throw new Error(`Wix update failed (${updateRes.status}): ${errText}`);
         }
