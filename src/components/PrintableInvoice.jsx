@@ -106,8 +106,8 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
         <div className="inv-bottom">
           {invoice.notes ? (
             <div className="inv-notes">
-              <h3 style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "4px" }}>Notes</h3>
-              <p style={{ fontSize: "10px", lineHeight: "1.4", whiteSpace: "pre-wrap", margin: 0 }}>{invoice.notes}</p>
+              <h3 style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "3px" }}>Notes</h3>
+              <p style={{ fontSize: "9px", lineHeight: "1.35", whiteSpace: "pre-wrap", margin: 0, wordBreak: "break-word" }}>{invoice.notes}</p>
             </div>
           ) : <div />}
 
