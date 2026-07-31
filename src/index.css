@@ -111,65 +111,48 @@
     size: auto;
   }
 
-  /* === Multi-page invoice layout === */
+  /* === Invoice print layout === */
   .invoice-page {
     width: 8.5in;
-    padding: 0;
+    padding: 0.5in 0.6in;
     box-sizing: border-box;
   }
 
-  /* Fixed header — repeats on every printed page with full header content */
-  .inv-fixed-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    padding: 0.2in 0.6in 0.08in;
-    background: white;
-    border-bottom: 2px solid #e20404;
-    z-index: 10;
-  }
-  .inv-fixed-header .inv-header {
+  .inv-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
+    border-bottom: 3px solid #e20404;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    page-break-after: avoid;
   }
-  .inv-fixed-header .inv-header img {
-    height: 38px;
-  }
-  .inv-fixed-header .inv-engine-bar {
+  .inv-engine-bar {
     background: #f8f8f8;
-    padding: 4px 10px;
-    border-radius: 4px;
-    margin-bottom: 4px;
+    padding: 8px 14px;
+    border-radius: 5px;
+    margin-bottom: 12px;
     display: flex;
     flex-wrap: wrap;
-    gap: 18px;
-    font-size: 10px;
+    gap: 24px;
+    font-size: 12px;
     border-left: 3px solid #e20404;
+    page-break-inside: avoid;
   }
-  .inv-fixed-header .inv-engine-bar .lbl {
+  .inv-engine-bar .lbl {
     color: #666;
     text-transform: uppercase;
-    font-size: 8px;
+    font-size: 10px;
   }
-  .inv-fixed-header .inv-billto {
-    margin-bottom: 0;
-    padding-bottom: 2px;
+  .inv-billto {
+    margin-bottom: 12px;
+    page-break-inside: avoid;
   }
-
-  /* Content area — padded to clear the fixed header on every page */
-  .inv-content {
-    padding: 1.7in 0.6in 0.4in;
-  }
-
-  /* Line items table — flows across pages with repeating column headers */
   .inv-items-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 10px;
+    font-size: 11px;
+    page-break-inside: auto;
   }
   .inv-items-table thead {
     display: table-header-group;
@@ -177,18 +160,18 @@
   .inv-items-table thead th {
     background: #f8f8f8;
     text-align: left;
-    padding: 3px 6px;
+    padding: 4px 6px;
     border-bottom: 2px solid #e20404;
     font-weight: 600;
     color: #555;
-    font-size: 9px;
+    font-size: 10px;
     text-transform: uppercase;
   }
   .inv-items-table tbody tr {
     page-break-inside: avoid;
   }
   .inv-items-table tbody td {
-    padding: 2px 6px;
+    padding: 3px 6px;
     border-bottom: 1px solid #eee;
   }
   .inv-items-table .inv-section-row td {
@@ -206,8 +189,6 @@
   .inv-col-total { width: 70px; text-align: right; }
   .inv-center { text-align: center; }
   .inv-right { text-align: right; }
-
-  /* Bottom section: notes + financial summary */
   .inv-bottom {
     display: flex;
     justify-content: space-between;
@@ -219,27 +200,23 @@
   .inv-notes {
     flex: 1;
     background: #fafafa;
-    padding: 6px 10px;
+    padding: 8px 10px;
     border-radius: 4px;
-    overflow: visible;
-  }
-  .inv-notes p {
-    word-break: break-word;
   }
   .inv-totals {
     flex: 0 0 240px;
     background: #f8f8f8;
-    padding: 8px 12px;
+    padding: 12px 14px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .inv-total-due {
     border-top: 2px solid #e20404;
-    padding-top: 4px;
-    margin-top: 3px;
+    padding-top: 6px;
+    margin-top: 4px;
     display: flex;
     justify-content: space-between;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
   }
   .inv-balance {
@@ -249,39 +226,13 @@
     border-top: 1px solid #ddd;
     padding-top: 4px;
   }
-
-  /* Footer — after content */
   .inv-footer {
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
     border-top: 1px solid #ddd;
     text-align: center;
-    font-size: 9px;
+    font-size: 10px;
     color: #999;
     page-break-inside: avoid;
-  }
-
-  /* Fixed footer — page numbers repeat on every printed page */
-  .inv-fixed-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.06in 0.6in;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid #e0e0e0;
-    font-size: 9px;
-    color: #aaa;
-    background: white;
-  }
-
-  /* Page number counters (populated by the browser during print) */
-  .inv-pg-num::before {
-    content: counter(page);
-  }
-  .inv-pg-count::before {
-    content: counter(pages);
   }
   }

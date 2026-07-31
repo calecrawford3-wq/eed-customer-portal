@@ -12,7 +12,6 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
   const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";
   const dueDate = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "N/A";
 
-  const companyAddress = [settings?.company_address, settings?.company_city ? `${settings.company_city}, ${settings.company_state} ${settings.company_zip}` : null, settings?.company_phone, settings?.company_email].filter(Boolean).join(" | ");
   const customerAddress = [customer.address_line1, customer.address_line2, customer.city ? `${customer.city}, ${customer.state} ${customer.zip}` : null, customer.country ? getCountryName(customer.country) : null, customer.phone, customer.email].filter(Boolean).join(" | ");
 
   const hasLabor = (invoice.labor_items || []).length > 0;
@@ -20,157 +19,148 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
 
   return (
     <div className="invoice-page" style={{ fontFamily: "Arial, sans-serif", color: "#333" }}>
-      {/* Fixed header — repeats on every printed page (logo, invoice#, dates, engine details, bill-to) */}
-      <div className="inv-fixed-header">
-        <div className="inv-header">
-          <div>
-            <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "48px", marginBottom: "6px" }} />
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>INVOICE</h1>
-            <p style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>{settings?.company_name}</p>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <p style={{ fontSize: "16px", fontWeight: "bold", color: "#e20404", marginBottom: "2px" }}>#{invoice.invoice_number}</p>
-            <p style={{ fontSize: "12px", color: "#666" }}>Date: {invoiceDate}</p>
-            <p style={{ fontSize: "12px", color: "#666" }}>Due: {dueDate}</p>
-          </div>
+      {/* Header */}
+      <div className="inv-header">
+        <div>
+          <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "50px", marginBottom: "6px" }} />
+          <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>INVOICE</h1>
         </div>
-
-        {customerEngine && (
-          <div className="inv-engine-bar">
-            {customerEngine.eed_id && <div><span className="lbl">EED ID</span><br /><strong style={{ fontFamily: "monospace", color: "#e20404" }}>{customerEngine.eed_id}</strong></div>}
-            {customerEngine.engine_serial_number && <div><span className="lbl">Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
-            {platform && <div><span className="lbl">Platform</span><br /><strong>{platform.manufacturer} {platform.name}{platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}</strong></div>}
-            {customerEngine.current_stage && <div><span className="lbl">Stage</span><br /><strong>{STAGE_LABELS[customerEngine.current_stage] || customerEngine.current_stage}</strong></div>}
-            {specSheet && <div><span className="lbl">Version</span><br /><strong>v{specSheet.version ?? "—"}</strong></div>}
-          </div>
-        )}
-
-        <div className="inv-billto">
-          <h2 style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "4px" }}>Bill To</h2>
-          <p style={{ fontSize: "13px", fontWeight: "600", marginBottom: "2px" }}>{customer.first_name} {customer.last_name}</p>
-          {customer.company_name && <p style={{ fontSize: "12px", color: "#666", marginBottom: "2px" }}>{customer.company_name}</p>}
-          <p style={{ fontSize: "11px", color: "#666" }}>{customerAddress}</p>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontSize: "18px", fontWeight: "bold", color: "#e20404", marginBottom: "2px" }}>#{invoice.invoice_number}</p>
+          <p style={{ fontSize: "12px", color: "#666" }}>Date: {invoiceDate}</p>
+          <p style={{ fontSize: "12px", color: "#666" }}>Due: {dueDate}</p>
         </div>
       </div>
 
-      {/* Content area — flows across pages, padded to clear the fixed header */}
-      <div className="inv-content">
-        <table className="inv-items-table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th className="inv-col-qty">Qty</th>
-              <th className="inv-col-price">Unit Price</th>
-              <th className="inv-col-total">Total</th>
+      {/* Engine Details */}
+      {customerEngine && (
+        <div className="inv-engine-bar">
+          {customerEngine.eed_id && <div><span className="lbl">EED ID</span><br /><strong style={{ fontFamily: "monospace", color: "#e20404" }}>{customerEngine.eed_id}</strong></div>}
+          {customerEngine.engine_serial_number && <div><span className="lbl">Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
+          {platform && <div><span className="lbl">Platform</span><br /><strong>{platform.manufacturer} {platform.name}{platform.year_range_start ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})` : ""}</strong></div>}
+          {customerEngine.current_stage && <div><span className="lbl">Stage</span><br /><strong>{STAGE_LABELS[customerEngine.current_stage] || customerEngine.current_stage}</strong></div>}
+          {specSheet && <div><span className="lbl">Version</span><br /><strong>v{specSheet.version ?? "—"}</strong></div>}
+        </div>
+      )}
+
+      {/* Bill To */}
+      <div className="inv-billto">
+        <h2 style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "4px" }}>Bill To</h2>
+        <p style={{ fontSize: "13px", fontWeight: "600", marginBottom: "2px" }}>{customer.first_name} {customer.last_name}</p>
+        {customer.company_name && <p style={{ fontSize: "12px", color: "#666", marginBottom: "2px" }}>{customer.company_name}</p>}
+        <p style={{ fontSize: "11px", color: "#666" }}>{customerAddress}</p>
+      </div>
+
+      {/* Line Items Table */}
+      <table className="inv-items-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th className="inv-col-qty">Qty</th>
+            <th className="inv-col-price">Unit Price</th>
+            <th className="inv-col-total">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(invoice.line_items || []).map((item, idx) => (
+            <tr key={`part-${idx}`}>
+              <td>{item.item_name}</td>
+              <td className="inv-center">{item.quantity}</td>
+              <td className="inv-right">${Number(item.unit_price).toFixed(2)}</td>
+              <td className="inv-right">${Number(item.total).toFixed(2)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {(invoice.line_items || []).map((item, idx) => (
-              <tr key={`part-${idx}`}>
-                <td>{item.item_name}</td>
-                <td className="inv-center">{item.quantity}</td>
-                <td className="inv-right">${Number(item.unit_price).toFixed(2)}</td>
-                <td className="inv-right">${Number(item.total).toFixed(2)}</td>
-              </tr>
-            ))}
-            {hasLabor && (
-              <tr className="inv-section-row">
-                <td colSpan={4}>Labor</td>
-              </tr>
-            )}
-            {(invoice.labor_items || []).map((item, idx) => (
-              <tr key={`labor-${idx}`}>
-                <td>{item.name} {item.description && `— ${item.description}`}</td>
-                <td className="inv-center">1</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-              </tr>
-            ))}
-            {hasMachining && (
-              <tr className="inv-section-row">
-                <td colSpan={4}>Machining</td>
-              </tr>
-            )}
-            {(invoice.machining_items || []).map((item, idx) => (
-              <tr key={`machining-${idx}`}>
-                <td>{item.name} {item.description && `— ${item.description}`}</td>
-                <td className="inv-center">1</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          ))}
+          {hasLabor && (
+            <tr className="inv-section-row">
+              <td colSpan={4}>Labor</td>
+            </tr>
+          )}
+          {(invoice.labor_items || []).map((item, idx) => (
+            <tr key={`labor-${idx}`}>
+              <td>{item.name} {item.description && `— ${item.description}`}</td>
+              <td className="inv-center">1</td>
+              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+            </tr>
+          ))}
+          {hasMachining && (
+            <tr className="inv-section-row">
+              <td colSpan={4}>Machining</td>
+            </tr>
+          )}
+          {(invoice.machining_items || []).map((item, idx) => (
+            <tr key={`machining-${idx}`}>
+              <td>{item.name} {item.description && `— ${item.description}`}</td>
+              <td className="inv-center">1</td>
+              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-        {/* Bottom: Notes (left) + Financial summary (right) */}
-        <div className="inv-bottom">
-          {invoice.notes ? (
-            <div className="inv-notes">
-              <h3 style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "3px" }}>Notes</h3>
-              <p style={{ fontSize: "9px", lineHeight: "1.35", whiteSpace: "pre-wrap", margin: 0, wordBreak: "break-word" }}>{invoice.notes}</p>
-            </div>
-          ) : <div />}
-
-          <div className="inv-totals">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>Subtotal:</span>
-              <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
-            </div>
-            {Number(invoice.tax_amount) > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                <span>Tax ({invoice.tax_rate}%):</span>
-                <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            {Number(invoice.discount_amount) > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#22c55e" }}>
-                <span>Discount:</span>
-                <span>-${Number(invoice.discount_amount).toFixed(2)}</span>
-              </div>
-            )}
-            {Number(invoice.shipping_cost) > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                <span>Shipping:</span>
-                <span>${Number(invoice.shipping_cost || 0).toFixed(2)}</span>
-              </div>
-            )}
-            <div className="inv-total-due">
-              <span>TOTAL DUE:</span>
-              <span>${Number(invoice.total || 0).toFixed(2)}</span>
-            </div>
-            {Number(invoice.applied_credits) > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", color: "#7c3aed", fontWeight: "600" }}>
-                <span>Account Credit Applied:</span>
-                <span>-${Number(invoice.applied_credits).toFixed(2)}</span>
-              </div>
-            )}
-            {Number(invoice.amount_paid) > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", color: "#3c763d" }}>
-                <span>Paid:</span>
-                <span>-${Number(invoice.amount_paid).toFixed(2)}</span>
-              </div>
-            )}
-            {Number(invoice.balance_due) > 0 && (
-              <div className="inv-balance">
-                <span style={{ fontWeight: "bold" }}>BALANCE:</span>
-                <span style={{ fontWeight: "bold" }}>${Number(invoice.balance_due).toFixed(2)}</span>
-              </div>
-            )}
+      {/* Bottom: Notes (left) + Financial summary (right) */}
+      <div className="inv-bottom">
+        {invoice.notes ? (
+          <div className="inv-notes">
+            <h3 style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "4px" }}>Notes</h3>
+            <p style={{ fontSize: "10px", lineHeight: "1.4", whiteSpace: "pre-wrap", margin: 0 }}>{invoice.notes}</p>
           </div>
-        </div>
+        ) : <div />}
 
-        {/* Footer */}
-        <div className="inv-footer">
-          <p>Thank you for your business!</p>
-          <p>{settings?.company_name} | {settings?.company_website}</p>
-          <p style={{ marginTop: "2px" }}>Terms &amp; Conditions: <a href="https://www.eliteenginedevelopment.com/legal" style={{ color: "#999" }}>https://www.eliteenginedevelopment.com/legal</a></p>
+        <div className="inv-totals">
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+            <span>Subtotal:</span>
+            <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
+          </div>
+          {Number(invoice.tax_amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>Tax ({invoice.tax_rate}%):</span>
+              <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(invoice.discount_amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#22c55e" }}>
+              <span>Discount:</span>
+              <span>-${Number(invoice.discount_amount).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(invoice.shipping_cost) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>Shipping:</span>
+              <span>${Number(invoice.shipping_cost || 0).toFixed(2)}</span>
+            </div>
+          )}
+          <div className="inv-total-due">
+            <span>TOTAL DUE:</span>
+            <span>${Number(invoice.total || 0).toFixed(2)}</span>
+          </div>
+          {Number(invoice.applied_credits) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", color: "#7c3aed", fontWeight: "600" }}>
+              <span>Account Credit Applied:</span>
+              <span>-${Number(invoice.applied_credits).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(invoice.amount_paid) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", color: "#3c763d" }}>
+              <span>Paid:</span>
+              <span>-${Number(invoice.amount_paid).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(invoice.balance_due) > 0 && (
+            <div className="inv-balance">
+              <span style={{ fontWeight: "bold" }}>BALANCE:</span>
+              <span style={{ fontWeight: "bold" }}>${Number(invoice.balance_due).toFixed(2)}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Fixed footer — page numbers on every page */}
-      <div className="inv-fixed-footer">
-        <span>{settings?.company_name || "Elite Engine Development"} — Invoice #{invoice.invoice_number}</span>
-        <span>Page <span className="inv-pg-num"></span> of <span className="inv-pg-count"></span></span>
+      {/* Footer */}
+      <div className="inv-footer">
+        <p>Thank you for your business!</p>
+        <p>{settings?.company_name} | {settings?.company_website}</p>
+        <p style={{ marginTop: "2px" }}>Terms &amp; Conditions: <a href="https://www.eliteenginedevelopment.com/legal" style={{ color: "#999" }}>https://www.eliteenginedevelopment.com/legal</a></p>
       </div>
     </div>
   );
