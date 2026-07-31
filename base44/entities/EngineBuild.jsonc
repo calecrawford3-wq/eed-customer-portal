@@ -247,6 +247,19 @@
         },
         "piston_pop_up_4": {
           "type": "string"
+        },
+        "measured_compression_1": {
+          "type": "string",
+          "description": "Measured compression (psi) per cylinder"
+        },
+        "measured_compression_2": {
+          "type": "string"
+        },
+        "measured_compression_3": {
+          "type": "string"
+        },
+        "measured_compression_4": {
+          "type": "string"
         }
       }
     },

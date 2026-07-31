@@ -1007,6 +1007,28 @@ export default function BuildDetail() {
               </CardContent>
             </Card>
 
+            {/* Measured Compression */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Measured Compression (Internal Only)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-3">
+                  {[1, 2, 3, 4].map((num) => (
+                    <div key={`comp-${num}`}>
+                      <Label className="text-xs">Cyl {num}</Label>
+                      <Input
+                        value={getInternalValue(`measured_compression_${num}`)}
+                        onChange={(e) => handleInternalChange(`measured_compression_${num}`, e.target.value)}
+                        placeholder="psi"
+                        className="text-center"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Rod Bearing Clearance */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
