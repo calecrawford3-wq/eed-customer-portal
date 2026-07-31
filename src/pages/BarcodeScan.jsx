@@ -35,8 +35,6 @@ export default function BarcodeScan() {
       cores.forEach((c) => found.push({ type: "core", item: c }));
       if (found.length === 0) {
         toast.error(`No item found for "${clean}"`);
-      } else if (found.length > 1) {
-        toast.info(`Found ${found.length} items for "${clean}"`);
       } else {
         setResults(found);
         const q = {};
@@ -44,6 +42,9 @@ export default function BarcodeScan() {
           q[`${r.type}:${r.item.id}`] = String(r.item.quantity_on_hand ?? 0);
         });
         setQtyInputs(q);
+        if (found.length > 1) {
+          toast.info(`Found ${found.length} items for "${clean}"`);
+        }
       }
     } catch (e) {
       toast.error("Lookup failed: " + (e.message || e));
