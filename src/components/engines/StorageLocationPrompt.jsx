@@ -127,13 +127,15 @@ export default function StorageLocationPrompt({
                   onChange={e => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
                 />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 space-y-0.5">
                 <Input
-                  placeholder="Label-specific note (optional)..."
+                  placeholder="Label note (e.g., Run-in oil, 20hr refresh)..."
                   value={labelNote}
-                  onChange={e => setLabelNote(e.target.value)}
+                  onChange={e => setLabelNote(e.target.value.slice(0, 120))}
+                  maxLength={120}
                   className="text-xs h-8"
                 />
+                <p className="text-[10px] text-slate-400 text-right">{labelNote.length}/120</p>
               </div>
             </div>
             <Button
