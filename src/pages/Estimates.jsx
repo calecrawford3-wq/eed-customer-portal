@@ -11,7 +11,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { generateSequentialNumber } from "@/lib/generateDocNumber";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -60,7 +59,7 @@ export default function Estimates() {
 
   const convertToInvoice = useMutation({
     mutationFn: async (estimate) => {
-      const invoiceNumber = await generateSequentialNumber("INV", "Invoice", "invoice_number");
+      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
       const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNumber,
         estimate_id: estimate.id,

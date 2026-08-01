@@ -29,7 +29,6 @@ import EmailsSection from "@/components/emails/EmailsSection";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
 import LoadingState from "@/components/LoadingState";
-import { generateSequentialNumber } from "@/lib/generateDocNumber";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -85,14 +84,6 @@ export default function InvoiceDetail() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [multiPartPickerOpen, setMultiPartPickerOpen] = useState(false);
   const [printPartsListMode, setPrintPartsListMode] = useState(false);
-
-  useEffect(() => {
-    if (isNew) {
-      generateSequentialNumber("INV", "Invoice", "invoice_number").then(num => {
-        setForm(f => f.invoice_number === num ? f : { ...f, invoice_number: num });
-      });
-    }
-  }, [isNew]);
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];

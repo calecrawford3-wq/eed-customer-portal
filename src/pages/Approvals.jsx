@@ -102,7 +102,7 @@ export default function Approvals() {
                 return (
                   <div key={e.id} className="py-3 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-900 truncate">#{e.estimate_number} · {custName(e.customer_id)}</div>
+                      <div className="text-sm font-medium text-slate-900"><span className="font-mono text-[#e20404]">#{e.estimate_number}</span> <span className="text-slate-400">·</span> <span className="text-slate-700">{custName(e.customer_id)}</span></div>
                       <div className="text-xs text-slate-500 flex flex-wrap gap-3 mt-0.5">
                         {e.issue_date && <span>Sent {new Date(e.issue_date).toLocaleDateString()}</span>}
                         {e.view_count > 0 ? (
