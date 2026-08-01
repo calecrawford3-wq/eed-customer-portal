@@ -9,6 +9,7 @@ import {
   FileText,
   History,
   ChevronRight,
+  ChevronDown,
   Copy,
   GitCompare,
   MoreVertical,
@@ -69,6 +70,7 @@ export default function SpecSheets() {
     spec_type: "stock",
     custom_name: ""
   });
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   const queryClient = useQueryClient();
 
@@ -265,10 +267,21 @@ export default function SpecSheets() {
               : "";
             return (
               <div key={pid}>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  {platform?.name || "Unknown Platform"}{yearStr}
-                  <span className="text-slate-300 font-normal ml-2">({specs.length})</span>
-                </h2>
+                <button
+                  onClick={() => setCollapsedGroups(prev => ({ ...prev, [pid]: !prev[pid] }))}
+                  className="flex items-center gap-2 w-full text-left mb-3 group"
+                >
+                  {collapsedGroups[pid] ? (
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  )}
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 group-hover:text-slate-600">
+                    {platform?.name || "Unknown Platform"}{yearStr}
+                    <span className="text-slate-300 font-normal ml-2">({specs.length})</span>
+                  </h2>
+                </button>
+                {!collapsedGroups[pid] && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {specs.map((spec) => {
                     const typeConfig = getSpecTypeConfig(spec.spec_type);
@@ -340,6 +353,7 @@ export default function SpecSheets() {
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
