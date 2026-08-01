@@ -374,84 +374,86 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Link
               to={createPageUrl("Platforms")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-blue-100 p-3 rounded-lg">
+              <div className="bg-blue-100 p-2.5 rounded-lg">
                 <Layers className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">Add Engine Platform</p>
-                <p className="text-sm text-slate-500">Create a new platform configuration</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">Add Platform</p>
+                <p className="text-xs text-slate-500 truncate">New platform config</p>
               </div>
             </Link>
             
             <Link
               to={createPageUrl("SpecSheets")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-emerald-100 p-3 rounded-lg">
+              <div className="bg-emerald-100 p-2.5 rounded-lg">
                 <FileText className="w-5 h-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">Create Spec Sheet</p>
-                <p className="text-sm text-slate-500">Define specifications for a platform</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">Spec Sheet</p>
+                <p className="text-xs text-slate-500 truncate">Define specifications</p>
               </div>
             </Link>
             
             <Link
               to={createPageUrl("Builds")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-[#e20404]/10 p-3 rounded-lg">
+              <div className="bg-[#e20404]/10 p-2.5 rounded-lg">
                 <Wrench className="w-5 h-5 text-[#e20404]" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">Start New Build</p>
-                <p className="text-sm text-slate-500">Begin a new engine build project</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">New Build</p>
+                <p className="text-xs text-slate-500 truncate">Start engine build</p>
               </div>
             </Link>
             
             <Link
               to={createPageUrl("Documents")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-purple-100 p-3 rounded-lg">
+              <div className="bg-purple-100 p-2.5 rounded-lg">
                 <FolderOpen className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">Upload Document</p>
-                <p className="text-sm text-slate-500">Add manuals, diagrams, or charts</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">Upload Doc</p>
+                <p className="text-xs text-slate-500 truncate">Manuals & diagrams</p>
               </div>
             </Link>
 
             <Link
               to={createPageUrl("Estimates")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-amber-100 p-3 rounded-lg">
+              <div className="bg-amber-100 p-2.5 rounded-lg">
                 <ClipboardList className="w-5 h-5 text-amber-600" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">New Estimate</p>
-                <p className="text-sm text-slate-500">Create and send an estimate to a customer</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">New Estimate</p>
+                <p className="text-xs text-slate-500 truncate">Send to customer</p>
               </div>
             </Link>
 
             <Link
               to={createPageUrl("Inventory")}
-              className="flex items-center gap-3 p-3 md:gap-4 md:p-4 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-[#e20404]/30 hover:bg-[#e20404]/5 transition-all"
             >
-              <div className="bg-slate-100 p-3 rounded-lg">
+              <div className="bg-slate-100 p-2.5 rounded-lg">
                 <Package className="w-5 h-5 text-slate-600" />
               </div>
-              <div>
-                <p className="font-medium text-slate-900">Manage Inventory</p>
-                <p className="text-sm text-slate-500">Track parts and stock levels</p>
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 text-sm">Inventory</p>
+                <p className="text-xs text-slate-500 truncate">Track stock levels</p>
               </div>
             </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -9,6 +9,7 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Monitor,
   Users,
   Receipt,
@@ -48,6 +49,9 @@ import usePushNotifications from "@/hooks/usePushNotifications";
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [rdOpen, setRdOpen] = useState(
+    ["Simulator","DynoImport","DynoComparison","SimilarBuilds","PredictionRules","ControlledChanges","ModelAccuracy","DevelopmentData"].includes(currentPageName)
+  );
 
   // Register push notification service worker globally on all admin pages
   usePushNotifications();
@@ -64,47 +68,82 @@ export default function Layout({ children, currentPageName }) {
   });
   const unreadNotifications = notifications.filter(n => !n.is_read).length;
 
-  const navigation = [
-    { name: "Dashboard", page: "Dashboard", icon: Gauge },
-    { name: "Customers", page: "Customers", icon: Users },
-    { name: "Estimates", page: "Estimates", icon: ClipboardList },
-    { name: "Invoices", page: "Invoices", icon: Receipt },
-    { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
-    { type: "divider" },
-    { name: "Engine Builds", page: "Builds", icon: Wrench },
-    { name: "Platforms", page: "Platforms", icon: Layers },
-    { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-    { name: "Documents", page: "Documents", icon: FolderOpen },
-    { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
-    { type: "divider" },
-    { name: "Inventory", page: "Inventory", icon: Package },
-    { name: "Barcode Scan", page: "BarcodeScan", icon: ScanLine },
-    { name: "Suppliers", page: "Suppliers", icon: Truck },
-    { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
-    { type: "divider" },
-    { name: "Payments", page: "Payments", icon: DollarSign },
-    { name: "Expenses", page: "Expenses", icon: TrendingDown },
-    { name: "Reports", page: "Reports", icon: BarChart2 },
-    { type: "divider" },
-    { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
-    { name: "Calendar", page: "Calendar", icon: Calendar },
-    { name: "Messages", page: "Messaging", icon: MessageSquare },
-    { name: "Emails", page: "Emails", icon: Mail },
-    { name: "VoIP Phonebook", page: "VoipPhonebookSettings", icon: PhoneCall },
-    { type: "divider" },
-    { name: "Engine Simulator", page: "Simulator", icon: FlaskConical },
-    { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },
-    { name: "Dyno Comparison", page: "DynoComparison", icon: BarChart2 },
-    { name: "Similar Builds", page: "SimilarBuilds", icon: Search },
-    { name: "Prediction Rules", page: "PredictionRules", icon: Sliders },
-    { name: "Controlled Changes", page: "ControlledChanges", icon: GitCompare },
-    { name: "Model Accuracy", page: "ModelAccuracy", icon: Target },
-    { name: "Dev Data Library", page: "DevelopmentData", icon: Database },
-    { type: "divider" },
-    { name: "Credits", page: "Credits", icon: Award },
-    { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
-    { name: "Notifications", page: "Notifications", icon: Bell, badge: true },
-    { name: "Settings", page: "Settings", icon: Settings2 },
+  const navGroups = [
+    {
+      label: "Overview",
+      items: [
+        { name: "Dashboard", page: "Dashboard", icon: Gauge },
+      ],
+    },
+    {
+      label: "Sales & Billing",
+      items: [
+        { name: "Customers", page: "Customers", icon: Users },
+        { name: "Estimates", page: "Estimates", icon: ClipboardList },
+        { name: "Invoices", page: "Invoices", icon: Receipt },
+        { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
+        { name: "Payments", page: "Payments", icon: DollarSign },
+        { name: "Credits", page: "Credits", icon: Award },
+      ],
+    },
+    {
+      label: "Engine Shop",
+      items: [
+        { name: "Builds", page: "Builds", icon: Wrench },
+        { name: "Platforms", page: "Platforms", icon: Layers },
+        { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
+        { name: "Documents", page: "Documents", icon: FolderOpen },
+        { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
+      ],
+    },
+    {
+      label: "Inventory & Procurement",
+      items: [
+        { name: "Inventory", page: "Inventory", icon: Package },
+        { name: "Barcode Scan", page: "BarcodeScan", icon: ScanLine },
+        { name: "Suppliers", page: "Suppliers", icon: Truck },
+        { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
+      ],
+    },
+    {
+      label: "Finance",
+      items: [
+        { name: "Expenses", page: "Expenses", icon: TrendingDown },
+        { name: "Reports", page: "Reports", icon: BarChart2 },
+      ],
+    },
+    {
+      label: "Communications",
+      items: [
+        { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
+        { name: "Calendar", page: "Calendar", icon: Calendar },
+        { name: "Messages", page: "Messaging", icon: MessageSquare },
+        { name: "Emails", page: "Emails", icon: Mail },
+        { name: "VoIP Phonebook", page: "VoipPhonebookSettings", icon: PhoneCall },
+      ],
+    },
+    {
+      label: "R&D — Engine Development",
+      collapsible: true,
+      items: [
+        { name: "Simulator", page: "Simulator", icon: FlaskConical },
+        { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },
+        { name: "Dyno Comparison", page: "DynoComparison", icon: BarChart2 },
+        { name: "Similar Builds", page: "SimilarBuilds", icon: Search },
+        { name: "Prediction Rules", page: "PredictionRules", icon: Sliders },
+        { name: "Controlled Changes", page: "ControlledChanges", icon: GitCompare },
+        { name: "Model Accuracy", page: "ModelAccuracy", icon: Target },
+        { name: "Dev Data Library", page: "DevelopmentData", icon: Database },
+      ],
+    },
+    {
+      label: "Admin",
+      items: [
+        { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
+        { name: "Notifications", page: "Notifications", icon: Bell, badge: true },
+        { name: "Settings", page: "Settings", icon: Settings2 },
+      ],
+    },
   ];
 
   return (
@@ -137,47 +176,107 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navigation.map((item, idx) => {
-            if (item.type === "divider") {
-              return !collapsed ? <div key={idx} className="border-t border-slate-700 my-2 mx-1" /> : <div key={idx} className="border-t border-slate-700 my-2" />;
-            }
-            const isActive = currentPageName === item.page;
+        <nav className="flex-1 py-3 px-3 overflow-y-auto">
+          {navGroups.map((group, gIdx) => {
+            const groupHasActive = group.items.some(i => i.page === currentPageName);
+            const showHeader = !collapsed;
             return (
-              <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  isActive
-                    ? "bg-[#e20404] text-white font-medium"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+              <div key={gIdx} className="mb-1">
+                {showHeader && (
+                  <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    {group.label}
+                  </p>
                 )}
-              >
-                <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
-                {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                  <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    {pendingRefreshCount}
-                  </span>
+                {group.collapsible && !collapsed ? (
+                  <>
+                    <button
+                      onClick={() => setRdOpen(!rdOpen)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-colors",
+                        groupHasActive ? "text-white" : "text-slate-500 hover:text-slate-300"
+                      )}
+                    >
+                      <span className="flex-1 text-left">{group.label}</span>
+                      <ChevronDown className={cn("w-4 h-4 transition-transform", rdOpen && "rotate-180")} />
+                    </button>
+                    {rdOpen && (
+                      <div className="space-y-0.5 mt-0.5">
+                        {group.items.map((item) => {
+                          const isActive = currentPageName === item.page;
+                          return (
+                            <Link
+                              key={item.page}
+                              to={createPageUrl(item.page)}
+                              onClick={() => setMobileOpen(false)}
+                              className={cn(
+                                "relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                                isActive
+                                  ? "bg-[#e20404] text-white font-medium"
+                                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                              )}
+                            >
+                              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                              <span className="text-sm flex-1">{item.name}</span>
+                              {item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
+                                <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                  {pendingRefreshCount}
+                                </span>
+                              )}
+                              {item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                                <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                  {unreadNotifications}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = currentPageName === item.page;
+                      return (
+                        <Link
+                          key={item.page}
+                          to={createPageUrl(item.page)}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                            isActive
+                              ? "bg-[#e20404] text-white font-medium"
+                              : "text-slate-400 hover:text-white hover:bg-slate-800"
+                          )}
+                        >
+                          <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
+                          {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
+                          {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
+                            <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                              {pendingRefreshCount}
+                            </span>
+                          )}
+                          {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                            <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                              {unreadNotifications}
+                            </span>
+                          )}
+                          {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
+                            <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                              {pendingRefreshCount}
+                            </span>
+                          )}
+                          {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                            <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                              {unreadNotifications}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-                {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                  <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    {unreadNotifications}
-                  </span>
-                )}
-                {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {pendingRefreshCount}
-                  </span>
-                )}
-                {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                  <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </Link>
+              </div>
             );
           })}
         </nav>
