@@ -460,7 +460,7 @@ export default function Builds() {
             <PackageCheck className="w-6 h-6 text-amber-500" />
             <div>
               <p className="text-xs text-slate-500">Waiting on Parts</p>
-              <p className="font-bold text-lg">{builds.filter(b => b.work_tag === "waiting_on_parts").length}</p>
+              <p className="font-bold text-lg">{builds.filter(b => b.work_tag === "waiting_on_parts" && ["queued", "in_progress", "assembly", "testing"].includes(b.status)).length}</p>
             </div>
           </CardContent>
         </Card>
