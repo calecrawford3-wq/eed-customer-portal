@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, DollarSign, CreditCard, Banknote, Edit, ExternalLink, CheckCircle, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const METHOD_CONFIG = {
   cash: { label: "Cash", color: "bg-emerald-100 text-emerald-700" },
@@ -29,17 +30,20 @@ export default function Payments() {
   const [editTarget, setEditTarget] = useState(null); // { type: 'invoice'|'estimate', record, paymentIdx }
   const [editForm, setEditForm] = useState({});
   const [expandedPayment, setExpandedPayment] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false });
   const qc = useQueryClient();
 
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date", 500),
   });
 
-  const { data: estimates = [] } = useQuery({
+  const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
     queryKey: ["estimates"],
     queryFn: () => base44.entities.Estimate.list("-created_date", 500),
   });
+
+  const isLoading = invoicesLoading || estimatesLoading;
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
@@ -176,12 +180,14 @@ export default function Payments() {
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList>
           <TabsTrigger value="all">All ({allPayments.length})</TabsTrigger>
-          <TabsTrigger value="invoice">Invoices</TabsTrigger>
-          <TabsTrigger value="estimate">Estimates</TabsTrigger>
+          <TabsTrigger value="invoice">Invoices ({allPayments.filter(p => p._type === "invoice").length})</TabsTrigger>
+          <TabsTrigger value="estimate">Estimates ({allPayments.filter(p => p._type === "estimate").length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p>No payments found</p>
@@ -224,7 +230,7 @@ export default function Payments() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
-                          <span>{p._ref}</span>
+                          <span className="font-mono text-[#e20404]">{p._ref}</span>
                           <Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
                             <ExternalLink className="w-3 h-3 text-slate-400 hover:text-[#e20404]" />
                           </Link>
@@ -235,13 +241,18 @@ export default function Payments() {
                           {p._type}
                         </Badge>
                       </td>
+                      <td className="py-3 px-4">
+                        <Badge className={`border-0 text-xs ${METHOD_CONFIG[p.method]?.color || "bg-slate-100 text-slate-600"}`}>
+                          {METHOD_CONFIG[p.method]?.label || p.method}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-4 text-right font-bold text-emerald-700">${Number(p.amount || 0).toFixed(2)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
                             <Edit className="w-3.5 h-3.5" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => handleDeletePayment(p)}>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Payment", message: "Delete this payment? The invoice/estimate balance will be recalculated.", confirmLabel: "Delete", onConfirm: () => handleDeletePayment(p) })}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -335,6 +346,15 @@ export default function Payments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }
