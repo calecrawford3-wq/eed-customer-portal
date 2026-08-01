@@ -15,8 +15,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
   ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu, Send,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, DollarSign, Award, CalendarClock
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import ActivityTimeline from "@/components/customer/ActivityTimeline";
 import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
 import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
@@ -52,19 +55,40 @@ export default function CustomerDetail() {
   });
   const customer = customerArr[0];
 
-  const { data: builds = [] } = useQuery({
+  const { data: customerBuilds = [] } = useQuery({
+    queryKey: ["customer-builds", id],
+    queryFn: () => base44.entities.EngineBuild.filter({ customer_id: id }, "-created_date", 200),
+    enabled: !!id,
+  });
+
+  const { data: allBuilds = [] } = useQuery({
     queryKey: ["builds"],
     queryFn: () => base44.entities.EngineBuild.list("-created_date", 200),
+    enabled: assignBuildOpen,
   });
 
-  const { data: estimates = [] } = useQuery({
-    queryKey: ["estimates"],
-    queryFn: () => base44.entities.Estimate.list("-created_date", 200),
+  const { data: customerEstimates = [] } = useQuery({
+    queryKey: ["customer-estimates", id],
+    queryFn: () => base44.entities.Estimate.filter({ customer_id: id }, "-created_date", 200),
+    enabled: !!id,
   });
 
-  const { data: invoices = [] } = useQuery({
-    queryKey: ["invoices"],
-    queryFn: () => base44.entities.Invoice.list("-created_date", 200),
+  const { data: customerInvoices = [] } = useQuery({
+    queryKey: ["customer-invoices", id],
+    queryFn: () => base44.entities.Invoice.filter({ customer_id: id }, "-created_date", 200),
+    enabled: !!id,
+  });
+
+  const { data: credits = [] } = useQuery({
+    queryKey: ["customer-credits-summary", id],
+    queryFn: () => base44.entities.AccountCredit.filter({ customer_id: id }, "-created_date", 500),
+    enabled: !!id,
+  });
+
+  const { data: successTasks = [] } = useQuery({
+    queryKey: ["customer-success-tasks", id],
+    queryFn: () => base44.entities.CustomerSuccessTask.filter({ customer_id: id, status: "pending" }, "-due_date", 50),
+    enabled: !!id,
   });
 
   const { data: platforms = [] } = useQuery({
@@ -93,6 +117,7 @@ export default function CustomerDetail() {
     mutationFn: ({ buildId, data }) => base44.entities.EngineBuild.update(buildId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["builds"] });
+      qc.invalidateQueries({ queryKey: ["customer-builds", id] });
       setAssignBuildOpen(false);
       toast.success("Build assigned to customer");
     },
@@ -119,16 +144,17 @@ export default function CustomerDetail() {
     }
   };
 
-  const customerBuilds = builds.filter(b => b.customer_id === id);
-  const customerEstimates = estimates.filter(e => e.customer_id === id);
-  const customerInvoices = invoices.filter(i => i.customer_id === id);
-  const unassignedBuilds = builds.filter(b => !b.customer_id || b.customer_id === "");
+  const unassignedBuilds = allBuilds.filter(b => !b.customer_id || b.customer_id === "");
 
   const getPlatformName = (pid) => platforms.find(p => p.id === pid)?.name || "Unknown";
 
   const totalInvoiced = customerInvoices.reduce((s, i) => s + (i.total || 0), 0);
   const totalPaid = customerInvoices.reduce((s, i) => s + (i.amount_paid || 0), 0);
   const totalBalance = customerInvoices.reduce((s, i) => s + (i.balance_due || 0), 0);
+  const creditBalance = credits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0) - credits.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0);
+  const nextFollowUp = successTasks
+    .filter(t => t.status === "pending")
+    .sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0))[0];
 
   if (!customer) return (
     <div className="p-8 flex items-center justify-center">
@@ -139,23 +165,41 @@ export default function CustomerDetail() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6 flex-wrap">
         <Link to="/Customers"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
-        <div className="flex-1">
+        <div className="w-11 h-11 rounded-full bg-[#e20404] text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
+          {(customer.first_name?.[0] || "?")}{(customer.last_name?.[0] || "")}
+        </div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">{customer.first_name} {customer.last_name}</h1>
           {customer.company_name && <p className="text-slate-500">{customer.company_name}</p>}
         </div>
         <Badge className={customer.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
           {customer.status}
         </Badge>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white">
+              <Plus className="w-4 h-4 mr-1" /> Create <ChevronDown className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link to={`/EstimateDetail?new=1&customer_id=${id}`}>New Estimate</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/InvoiceDetail?new=1&customer_id=${id}`}>New Invoice</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="outline" size="sm" onClick={() => window.open('/CustomerPortal', '_blank')}>
-          <Monitor className="w-4 h-4 mr-1" /> View Portal
+          <Monitor className="w-4 h-4 mr-1" /> Portal
         </Button>
         <Button variant="outline" size="sm" onClick={handleSendPortalInvite} disabled={sendingInvite}>
-          <Send className="w-4 h-4 mr-1" /> {sendingInvite ? "Sending..." : "Send Invite"}
+          <Send className="w-4 h-4 mr-1" /> {sendingInvite ? "Sending..." : "Invite"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => { setTempPassword(customer.portal_temp_password || ""); setPasswordOpen(true); }}>
-          <KeyRound className="w-4 h-4 mr-1" /> Portal Password
+          <KeyRound className="w-4 h-4 mr-1" /> Password
         </Button>
         <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...customer }); setEditOpen(true); }}>
           <Edit className="w-4 h-4 mr-1" /> Edit
@@ -163,17 +207,17 @@ export default function CustomerDetail() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs text-slate-500">Total Invoiced</p>
-            <p className="text-xl font-bold text-slate-900">${totalInvoiced.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+            <p className="text-xs text-slate-500">Lifetime Value</p>
+            <p className="text-xl font-bold text-emerald-600">${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs text-slate-500">Total Paid</p>
-            <p className="text-xl font-bold text-emerald-600">${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+            <p className="text-xs text-slate-500">Total Invoiced</p>
+            <p className="text-xl font-bold text-slate-900">${totalInvoiced.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
@@ -184,11 +228,36 @@ export default function CustomerDetail() {
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
+            <p className="text-xs text-slate-500">Credit Balance</p>
+            <p className={`text-xl font-bold ${creditBalance > 0 ? "text-violet-600" : "text-slate-400"}`}>${creditBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
             <p className="text-xs text-slate-500">Engine Builds</p>
             <p className="text-xl font-bold text-slate-900">{customerBuilds.length}</p>
           </CardContent>
         </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs text-slate-500">Customer Since</p>
+            <p className="text-lg font-bold text-slate-900">{customer.created_date ? new Date(customer.created_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {nextFollowUp && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+          <CalendarClock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-900">Follow-up due: {nextFollowUp.title}</p>
+            <p className="text-xs text-amber-700">{nextFollowUp.due_date ? new Date(nextFollowUp.due_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "No date set"} {nextFollowUp.call_time ? `at ${nextFollowUp.call_time}` : ""}</p>
+          </div>
+          <Link to={`/CustomerSuccess?customer_id=${id}`}>
+            <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">Open</Button>
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: contact info + additional contacts */}
@@ -205,7 +274,7 @@ export default function CustomerDetail() {
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="w-4 h-4 text-slate-400" />
                 <span>{customer.phone}</span>
-                <CallButton customer={customer} builds={builds} iconOnly />
+                <CallButton customer={customer} builds={customerBuilds} iconOnly />
               </div>
             )}
             {customer.address_line1 && (
@@ -233,8 +302,9 @@ export default function CustomerDetail() {
 
         {/* Tabs for related records */}
         <div className="lg:col-span-2">
-          <Tabs defaultValue="engines">
+          <Tabs defaultValue="activity">
             <TabsList className="mb-4">
+              <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="engines">Engines</TabsTrigger>
               <TabsTrigger value="builds">Builds ({customerBuilds.length})</TabsTrigger>
               <TabsTrigger value="estimates">Estimates ({customerEstimates.length})</TabsTrigger>
@@ -243,6 +313,10 @@ export default function CustomerDetail() {
               <TabsTrigger value="comms">Calls ({commCount})</TabsTrigger>
               <TabsTrigger value="emails">Emails</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="activity">
+              <ActivityTimeline builds={customerBuilds} estimates={customerEstimates} invoices={customerInvoices} callLogs={callLogs} />
+            </TabsContent>
 
             <TabsContent value="engines">
               <CustomerEnginesTab customerId={id} customer={customer} platforms={platforms} />
@@ -420,6 +494,18 @@ export default function CustomerDetail() {
               <div><Label>ZIP</Label><Input value={editForm.zip || ""} onChange={e => setEditForm({ ...editForm, zip: e.target.value })} /></div>
             </div>
             <div className="col-span-2"><Label>Country</Label><CountrySelect value={editForm.country || ""} onChange={v => setEditForm({ ...editForm, country: v })} /></div>
+            <div className="col-span-2 flex items-center gap-3 pt-2 border-t border-slate-100">
+              <Switch checked={!!editForm.tax_exempt} onCheckedChange={v => setEditForm({ ...editForm, tax_exempt: v })} />
+              <div>
+                <Label className="cursor-pointer">Tax Exempt</Label>
+                <p className="text-xs text-slate-400">No sales tax on this customer's estimates/invoices</p>
+              </div>
+            </div>
+            <div className="col-span-2">
+              <Label>Parts Markup Override (%)</Label>
+              <Input type="number" value={editForm.parts_markup_override ?? ""} onChange={e => setEditForm({ ...editForm, parts_markup_override: e.target.value === "" ? null : Number(e.target.value) })} placeholder="Leave blank for default" min="0" step="0.1" />
+              <p className="text-xs text-slate-400 mt-1">Override each part's markup for this customer (e.g. 10 = 10% on cost)</p>
+            </div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} /></div>
           </div>
           <DialogFooter>

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload, MessageSquare } from "lucide-react";
+import { Plus, Search, User, Mail, Phone, Building2, Trash2, Edit, Users, Eye, Upload, MessageSquare, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useRef } from "react";
@@ -32,11 +32,18 @@ export default function Customers() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyCustomer);
   const [importOpen, setImportOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortKey, setSortKey] = useState("recent");
   const qc = useQueryClient();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["all-invoices-stats"],
+    queryFn: () => base44.entities.Invoice.list("-created_date", 500),
   });
 
   const saveMutation = useMutation({
@@ -79,9 +86,32 @@ export default function Customers() {
 
 
 
-  const filtered = customers.filter(c =>
+  const customerBalances = {};
+  const customerInvoiced = {};
+  invoices.forEach(inv => {
+    const cid = inv.customer_id;
+    if (!cid) return;
+    customerBalances[cid] = (customerBalances[cid] || 0) + (inv.balance_due || 0);
+    customerInvoiced[cid] = (customerInvoiced[cid] || 0) + (inv.total || 0);
+  });
+
+  const activeCount = customers.filter(c => c.status === "active").length;
+  const inactiveCount = customers.filter(c => c.status !== "active").length;
+  const totalOutstanding = Object.values(customerBalances).reduce((s, v) => s + Math.max(0, v), 0);
+  const totalLifetime = Object.values(customerInvoiced).reduce((s, v) => s + v, 0);
+
+  let filtered = customers.filter(c =>
     `${c.first_name} ${c.last_name} ${c.company_name} ${c.email}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (statusFilter === "active") filtered = filtered.filter(c => c.status === "active");
+  else if (statusFilter === "inactive") filtered = filtered.filter(c => c.status !== "active");
+  else if (statusFilter === "tax_exempt") filtered = filtered.filter(c => c.tax_exempt);
+  else if (statusFilter === "has_balance") filtered = filtered.filter(c => (customerBalances[c.id] || 0) > 0);
+
+  if (sortKey === "name") filtered.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`));
+  else if (sortKey === "balance_desc") filtered.sort((a, b) => (customerBalances[b.id] || 0) - (customerBalances[a.id] || 0));
+  else if (sortKey === "oldest") filtered.sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
 
   return (
     <div className="p-4 md:p-8">
@@ -100,9 +130,51 @@ export default function Customers() {
         </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input className="pl-10" placeholder="Search by name, company, or email..." value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Card className="border-0 shadow-sm"><CardContent className="p-4">
+          <p className="text-xs text-slate-500">Active Customers</p>
+          <p className="text-2xl font-bold text-emerald-600">{activeCount}</p>
+        </CardContent></Card>
+        <Card className="border-0 shadow-sm"><CardContent className="p-4">
+          <p className="text-xs text-slate-500">Inactive</p>
+          <p className="text-2xl font-bold text-slate-400">{inactiveCount}</p>
+        </CardContent></Card>
+        <Card className="border-0 shadow-sm"><CardContent className="p-4">
+          <p className="text-xs text-slate-500">Outstanding Balances</p>
+          <p className="text-2xl font-bold text-[#e20404]">${totalOutstanding.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+        </CardContent></Card>
+        <Card className="border-0 shadow-sm"><CardContent className="p-4">
+          <p className="text-xs text-slate-500">Total Lifetime Revenue</p>
+          <p className="text-2xl font-bold text-slate-900">${totalLifetime.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+        </CardContent></Card>
+      </div>
+
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input className="pl-10" placeholder="Search by name, company, or email..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Filter" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Customers</SelectItem>
+            <SelectItem value="active">Active Only</SelectItem>
+            <SelectItem value="inactive">Inactive Only</SelectItem>
+            <SelectItem value="tax_exempt">Tax Exempt</SelectItem>
+            <SelectItem value="has_balance">Has Balance Due</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortKey} onValueChange={setSortKey}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="name">Name (A-Z)</SelectItem>
+            <SelectItem value="balance_desc">Highest Balance</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -136,6 +208,8 @@ export default function Customers() {
                 {c.email && <div className="flex items-center gap-2 text-sm text-slate-600 mb-1"><Mail className="w-3.5 h-3.5" />{c.email}</div>}
                 {c.phone && <div className="flex items-center gap-2 text-sm text-slate-600 mb-1"><Phone className="w-3.5 h-3.5" />{c.phone}</div>}
                 {c.city && <div className="flex items-center gap-2 text-sm text-slate-600"><Building2 className="w-3.5 h-3.5" />{c.city}, {c.state}</div>}
+                {c.created_date && <div className="flex items-center gap-2 text-sm text-slate-400"><Calendar className="w-3.5 h-3.5" />Since {new Date(c.created_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</div>}
+                {(customerBalances[c.id] || 0) > 0 && <Badge className="bg-red-100 text-red-700 border-0 text-[10px] mt-1">Owes ${(customerBalances[c.id] || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</Badge>}
                 {(c.tax_exempt || (c.parts_markup_override !== null && c.parts_markup_override !== undefined)) && (
                   <div className="flex gap-1.5 flex-wrap mt-2">
                     {c.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">Tax Exempt</Badge>}
