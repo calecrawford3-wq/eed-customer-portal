@@ -12,8 +12,7 @@ import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
 import EmailAttachments from "@/components/emails/EmailAttachments";
-import ZohoMailConnect from "@/components/emails/ZohoMailConnect";
-import EmailSendLogModal from "@/components/emails/EmailSendLogModal";
+
 import EmailNotifySettingsModal from "@/components/emails/EmailNotifySettingsModal";
 import EmailTemplatesModal from "@/components/emails/EmailTemplatesModal";
 import EmailDraftsModal from "@/components/emails/EmailDraftsModal";
@@ -23,7 +22,7 @@ import CreateTaskFromEmailModal from "@/components/emails/CreateTaskFromEmailMod
 import ScheduleCallFromEmailModal from "@/components/emails/ScheduleCallFromEmailModal";
 import SavedViewsBar from "@/components/emails/SavedViewsBar";
 import { toast } from "sonner";
-import ConfirmDialog from "@/components/ConfirmDialog";
+
 
 function fmtDate(iso) {
   if (!iso) return "";
@@ -49,7 +48,6 @@ const CATEGORY_ORDER = ["priority", "customer", "supplier", "billing", "promotio
 
 export default function Emails() {
   const qc = useQueryClient();
-  const [confirmState, setConfirmState] = useState({ open: false });
   const [search, setSearch] = useState("");
   const [dirFilter, setDirFilter] = useState("all");
   const [mailboxFilter, setMailboxFilter] = useState("all");
@@ -61,8 +59,6 @@ export default function Emails() {
   const [composeMode, setComposeMode] = useState("compose");
   const [composeSource, setComposeSource] = useState(null);
   const [linkTarget, setLinkTarget] = useState(null);
-  const [connectOpen, setConnectOpen] = useState(false);
-  const [sendLogOpen, setSendLogOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [draftsOpen, setDraftsOpen] = useState(false);
@@ -321,8 +317,7 @@ export default function Emails() {
       if (d?.skipped) { toast.info(d.note || "Sync already running"); return; }
       const scopeErr = (d?.errors || []).find((x) => /INVALID_OAUTHSCOPE|not connected|ZohoMail/i.test(String(x)));
       if (scopeErr) {
-        toast.error("Zoho Mail isn't connected for reading — click \"Connect Zoho Mail\".");
-        setConnectOpen(true);
+        toast.error("Zoho Mail isn't connected — go to Settings → Email to connect.");
       } else if (d?.error) {
         toast.error("Sync error: " + d.error);
       } else {
@@ -335,8 +330,7 @@ export default function Emails() {
     onError: (e) => {
       const msg = e?.response?.data?.error || e?.message || "error";
       if (/INVALID_OAUTHSCOPE|not connected|ZohoMail/i.test(msg)) {
-        toast.error("Zoho Mail isn't connected for reading — click \"Connect Zoho Mail\".");
-        setConnectOpen(true);
+        toast.error("Zoho Mail isn't connected — go to Settings → Email to connect.");
       } else {
         toast.error("Sync failed: " + msg);
       }
@@ -487,18 +481,9 @@ export default function Emails() {
           <p className="text-sm text-slate-500">Zoho Mail — threaded inbox with AI sorting & document linking</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setConnectOpen(true)} className="text-xs">
-            <Mail className="w-4 h-4 mr-1" /> Connect Zoho Mail
-          </Button>
           <Button variant="outline" onClick={() => syncMut.mutate()} disabled={syncMut.isPending}>
             <RefreshCw className={`w-4 h-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync now"}
-          </Button>
-          <Button variant="outline" onClick={() => setConfirmState({ open: true, title: "Full Resync", message: "Run a FULL resync? This re-fetches every message and ignores sync checkpoints. Use only to repair missing history.", confirmLabel: "Run Full Resync", onConfirm: () => syncMut.mutate({ fullResync: true }) })} disabled={syncMut.isPending} title="Re-fetch all history, ignoring incremental checkpoints" className="text-xs">
-            <RefreshCw className="w-4 h-4 mr-1" /> Full resync
-          </Button>
-          <Button variant="outline" onClick={() => setSendLogOpen(true)} className="text-xs">
-            <Send className="w-4 h-4 mr-1" /> Send log
           </Button>
           <Button variant="outline" onClick={() => setNotifyOpen(true)} className="text-xs" title="Notification quiet hours and resync alerts">
             <Bell className="w-4 h-4 mr-1" /> Notify
@@ -814,8 +799,6 @@ export default function Emails() {
 
       <EmailComposer open={composeOpen} onClose={() => { setComposeOpen(false); setComposeDraft(null); }} mode={composeMode} sourceMessage={composeSource} draft={composeDraft} />
       <EmailLinkPanel open={!!linkTarget} onClose={() => { setLinkTarget(null); qc.invalidateQueries({ queryKey: ["emails"] }); }} email={linkTarget} />
-      <ZohoMailConnect open={connectOpen} onClose={() => setConnectOpen(false)} />
-      <EmailSendLogModal open={sendLogOpen} onClose={() => setSendLogOpen(false)} />
       <EmailNotifySettingsModal open={notifyOpen} onClose={() => setNotifyOpen(false)} />
       <EmailTemplatesModal open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
       <EmailDraftsModal open={draftsOpen} onClose={() => setDraftsOpen(false)} onResume={(d) => openCompose(d.reply_mode || "compose", null, d)} />
@@ -836,14 +819,6 @@ export default function Emails() {
         users={users}
       />
 
-      <ConfirmDialog
-        open={confirmState.open}
-        onClose={() => setConfirmState({})}
-        onConfirm={confirmState.onConfirm}
-        title={confirmState.title}
-        message={confirmState.message}
-        confirmLabel={confirmState.confirmLabel}
-      />
     </div>
   );
 }

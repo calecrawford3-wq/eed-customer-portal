@@ -11,6 +11,7 @@ import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send, Phone } f
 import { toast } from "sonner";
 import FromAddressesEditor from "@/components/settings/FromAddressesEditor";
 import VoipPhonebookPanel from "@/components/settings/VoipPhonebookPanel";
+import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
 
 const defaultSettings = {
   key: "global",
@@ -245,6 +246,8 @@ export default function Settings() {
                 <FromAddressesEditor value={form.custom_from_emails || []} onChange={(arr) => set("custom_from_emails", arr)} />
               </CardContent>
             </Card>
+
+            <EmailAdminPanel />
 
             {/* PO SMTP */}
             <Card className="border-0 shadow-sm">
