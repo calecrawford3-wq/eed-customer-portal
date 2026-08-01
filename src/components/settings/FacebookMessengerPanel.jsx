@@ -4,11 +4,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Facebook, RefreshCw, CheckCircle2, ExternalLink } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Facebook, RefreshCw, CheckCircle2, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function FacebookMessengerPanel() {
   const qc = useQueryClient();
+  const [showReauthDialog, setShowReauthDialog] = useState(false);
 
   const { data: settings = [] } = useQuery({
     queryKey: ["app-settings"],
@@ -104,6 +112,10 @@ export default function FacebookMessengerPanel() {
             <RefreshCw className={`w-4 h-4 mr-2 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync Messages Now"}
           </Button>
+          <Button variant="outline" onClick={() => setShowReauthDialog(true)}>
+            <Link2 className="w-4 h-4 mr-2" />
+            Re-authorize / Switch Account
+          </Button>
           {settingsRec?.facebook_last_sync && (
             <span className="text-xs text-slate-400">
               Last synced: {new Date(settingsRec.facebook_last_sync).toLocaleString()}
@@ -121,6 +133,39 @@ export default function FacebookMessengerPanel() {
           </ul>
         </div>
       </CardContent>
+
+      <Dialog open={showReauthDialog} onOpenChange={setShowReauthDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-5 h-5" /> Re-authorize Facebook
+            </DialogTitle>
+            <DialogDescription>
+              Facebook shared connectors can only be re-authorized from the Base44 dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>To connect a different Facebook account (one that manages the Elite Engine Development Page):</p>
+            <ol className="space-y-2 list-decimal list-inside text-slate-700">
+              <li>Open your <strong>Base44 Dashboard</strong></li>
+              <li>Go to <strong>Integrations</strong> → <strong>My integrations</strong></li>
+              <li>Find <strong>Facebook Pages</strong> and click the <strong>More actions</strong> icon (⋯)</li>
+              <li>Click <strong>Reconnect</strong></li>
+              <li>Log in with the Facebook account that manages your Elite Engine Development Page</li>
+            </ol>
+            <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border border-slate-100">
+              After reconnecting, come back here and click <strong>Sync Messages Now</strong> — your Elite Engine
+              Development Page will appear in the Page selector above.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowReauthDialog(false)}>Close</Button>
+            <Button onClick={() => window.open("https://app.base44.com", "_blank")}>
+              Open Base44 Dashboard
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
