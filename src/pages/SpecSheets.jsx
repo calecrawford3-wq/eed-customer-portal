@@ -35,13 +35,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import SpecSheetFormDialog from "@/components/specsheets/SpecSheetFormDialog";
 
 const SPEC_TYPES = [
   { value: "stock", label: "Stock", color: "bg-slate-100 text-slate-700" },
@@ -225,14 +221,31 @@ export default function SpecSheets() {
             ))}
           </SelectContent>
         </Select>
-        <Button
-          variant={showVersions ? "default" : "outline"}
-          onClick={() => setShowVersions(!showVersions)}
-          className="gap-2"
-        >
-          <History className="w-4 h-4" />
-          {showVersions ? "Hide" : "Show"} History
-        </Button>
+        <div className="flex items-center gap-2">
+          <Switch checked={showVersions} onCheckedChange={setShowVersions} id="history-toggle" />
+          <Label htmlFor="history-toggle" className="text-sm text-slate-600 cursor-pointer flex items-center gap-1">
+            <History className="w-3.5 h-3.5" />
+            History
+          </Label>
+        </div>
+        {filteredSpecs.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const allPids = Object.keys(
+                filteredSpecs.reduce((acc, s) => { acc[s.platform_id] = true; return acc; }, {})
+              );
+              const allCollapsed = allPids.every(pid => collapsedGroups[pid]);
+              const newState = {};
+              allPids.forEach(pid => { newState[pid] = !allCollapsed; });
+              setCollapsedGroups(newState);
+            }}
+            className="gap-1.5"
+          >
+            {Object.values(collapsedGroups).some(v => v) ? "Expand All" : "Collapse All"}
+          </Button>
+        )}
       </div>
 
       {/* Specs grouped by Platform */}
@@ -361,147 +374,30 @@ export default function SpecSheets() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Spec Sheet</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Engine Platform *</Label>
-              <Select
-                value={newSpecData.platform_id}
-                onValueChange={(value) => setNewSpecData({ ...newSpecData, platform_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select platform..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {platforms.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} {p.year_range_start && `(${p.year_range_start}-${p.year_range_end || "?"})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {newSpecData.platform_id && getSelectedPlatformYearRange(newSpecData.platform_id) && (
-                <p className="text-xs text-slate-500">Year Range: {getSelectedPlatformYearRange(newSpecData.platform_id)}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Specification Type *</Label>
-              <Select
-                value={newSpecData.spec_type}
-                onValueChange={(value) => setNewSpecData({ ...newSpecData, spec_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SPEC_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {(newSpecData.spec_type === "contract" || newSpecData.spec_type === "custom") && (
-              <div className="space-y-2">
-                <Label>Custom Name</Label>
-                <Input
-                  value={newSpecData.custom_name}
-                  onChange={(e) => setNewSpecData({ ...newSpecData, custom_name: e.target.value })}
-                  placeholder="e.g., Team XYZ Build Spec"
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateSpec}
-                className="bg-[#e20404] hover:bg-[#c00303] text-white"
-                disabled={!newSpecData.platform_id || createMutation.isPending}
-              >
-                Create Spec Sheet
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SpecSheetFormDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        mode="create"
+        platforms={platforms}
+        specTypes={SPEC_TYPES}
+        data={newSpecData}
+        setData={setNewSpecData}
+        onConfirm={handleCreateSpec}
+        isPending={createMutation.isPending}
+      />
 
       {/* Duplicate Dialog */}
-      <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Duplicate Spec Sheet</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Engine Platform *</Label>
-              <Select
-                value={duplicateData.platform_id}
-                onValueChange={(value) => setDuplicateData({ ...duplicateData, platform_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select platform..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {platforms.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} {p.year_range_start && `(${p.year_range_start}-${p.year_range_end || "?"})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Specification Type *</Label>
-              <Select
-                value={duplicateData.spec_type}
-                onValueChange={(value) => setDuplicateData({ ...duplicateData, spec_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SPEC_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {(duplicateData.spec_type === "contract" || duplicateData.spec_type === "custom") && (
-              <div className="space-y-2">
-                <Label>Custom Name</Label>
-                <Input
-                  value={duplicateData.custom_name}
-                  onChange={(e) => setDuplicateData({ ...duplicateData, custom_name: e.target.value })}
-                  placeholder="e.g., Team XYZ Build Spec"
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setIsDuplicateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDuplicateSpec}
-                className="bg-[#e20404] hover:bg-[#c00303] text-white"
-                disabled={!duplicateData.platform_id || createMutation.isPending}
-              >
-                Duplicate Spec Sheet
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SpecSheetFormDialog
+        open={isDuplicateDialogOpen}
+        onOpenChange={setIsDuplicateDialogOpen}
+        mode="duplicate"
+        platforms={platforms}
+        specTypes={SPEC_TYPES}
+        data={duplicateData}
+        setData={setDuplicateData}
+        onConfirm={handleDuplicateSpec}
+        isPending={createMutation.isPending}
+      />
     </div>
   );
 }
