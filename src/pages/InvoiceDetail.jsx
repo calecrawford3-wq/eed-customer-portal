@@ -27,10 +27,13 @@ import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
 import HistoryModal from "@/components/HistoryModal";
 import EmailsSection from "@/components/emails/EmailsSection";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
+import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
+import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
 const emptyMachining = { name: "", description: "", price: 0 };
+const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -80,6 +83,7 @@ export default function InvoiceDetail() {
   const [legalDocOpen, setLegalDocOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [multiPartPickerOpen, setMultiPartPickerOpen] = useState(false);
+  const [printPartsListMode, setPrintPartsListMode] = useState(false);
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -160,7 +164,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  const { data: invoice } = useQuery({
+  const { data: invoice, isLoading: invoiceLoading } = useQuery({
     queryKey: ["invoice", id],
     queryFn: () => base44.entities.Invoice.filter({ id }),
     enabled: !!id,
@@ -613,13 +617,9 @@ export default function InvoiceDetail() {
         publicAccessToken: accessToken,
       });
       if (syncRes?.data?.error) {
-        console.error("[sendInvoice] Snapshot sync failed:", syncRes.data);
         toast.error(`Snapshot sync failed: ${syncRes.data.error} - Continuing with email anyway...`);
-      } else {
-        console.log("[sendInvoice] Snapshot sync successful");
       }
     } catch (syncError) {
-      console.error("[sendInvoice] Snapshot sync error:", syncError);
       toast.error(`Snapshot sync error: ${syncError.message} - Continuing with email anyway...`);
     }
 
@@ -732,8 +732,6 @@ export default function InvoiceDetail() {
     }
   };
 
-  const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
-
   const customer = customers.find(c => c.id === form.customer_id);
   const selectedEngine = customerEngines.find(e => e.id === form.customer_engine_id);
   const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
@@ -759,6 +757,22 @@ export default function InvoiceDetail() {
     }
     return null;
   })();
+
+  if (id && invoiceLoading) {
+    return <LoadingState />;
+  }
+
+  if (printPartsListMode) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-4 print:hidden">
+          <button onClick={() => setPrintPartsListMode(false)} className="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">← Back to Edit</button>
+          <button onClick={() => { document.title = `Parts List ${form.invoice_number}`; window.print(); }} className="px-4 py-2 bg-[#e20404] text-white rounded hover:bg-[#c00303] font-semibold">🖨 Print Parts List</button>
+        </div>
+        <PrintableBuildPartsList form={form} customer={customer} customerEngine={selectedEngine} platform={selectedEnginePlatform} specSheet={selectedSpecSheet} />
+      </div>
+    );
+  }
 
   if (printMode) {
     return (
@@ -842,6 +856,7 @@ export default function InvoiceDetail() {
           <ArrowLeft className="w-4 h-4 mr-1" /> {converting ? "Converting..." : "To Estimate"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}><Printer className="w-4 h-4 mr-1" /> View</Button>
+        <Button variant="outline" size="sm" onClick={() => setPrintPartsListMode(true)} title="Print engine build parts list (no prices)"><Package className="w-4 h-4 mr-1" /> Parts List</Button>
         <Button variant="outline" size="sm" onClick={sendInvoice} disabled={sending || !form.customer_id}>
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Send"}
         </Button>
