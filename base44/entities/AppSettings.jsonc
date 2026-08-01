@@ -151,27 +151,107 @@
     "notif_estimate_accepted": {
       "type": "boolean",
       "default": true,
-      "description": "When false, suppresses notifications for accepted estimates"
+      "description": "When false, suppresses in-app notifications for accepted estimates"
     },
     "notif_payment_received": {
       "type": "boolean",
       "default": true,
-      "description": "When false, suppresses notifications for received payments"
+      "description": "When false, suppresses in-app notifications for received payments"
     },
     "notif_po_accepted": {
       "type": "boolean",
       "default": true,
-      "description": "When false, suppresses notifications for acknowledged purchase orders"
+      "description": "When false, suppresses in-app notifications for acknowledged purchase orders"
     },
     "notif_po_ready": {
       "type": "boolean",
       "default": true,
-      "description": "When false, suppresses notifications for ready purchase orders"
+      "description": "When false, suppresses in-app notifications for ready purchase orders"
     },
     "notif_refresh_request": {
       "type": "boolean",
       "default": true,
-      "description": "When false, suppresses notifications for engine refresh requests"
+      "description": "When false, suppresses in-app notifications for engine refresh requests"
+    },
+    "notif_build_status_change": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses in-app notifications for build status changes (complete/shipped)"
+    },
+    "notif_low_stock": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses in-app notifications for low-stock part alerts"
+    },
+    "notif_email_action_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses in-app notifications for emails marked as action required"
+    },
+    "notif_invoice_overdue": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses in-app notifications for overdue invoices"
+    },
+    "notif_engine_pickup_ready": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses in-app notifications for engine pickup confirmations"
+    },
+    "notif_push_estimate_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "When false, suppresses push notifications for accepted estimates (in-app bell still fires if in-app toggle is on)"
+    },
+    "notif_push_payment_received": {
+      "type": "boolean",
+      "default": false,
+      "description": "When false, suppresses push notifications for received payments"
+    },
+    "notif_push_po_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "When false, suppresses push notifications for acknowledged purchase orders"
+    },
+    "notif_push_po_ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "When false, suppresses push notifications for ready purchase orders"
+    },
+    "notif_push_refresh_request": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for engine refresh requests"
+    },
+    "notif_push_build_status_change": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for build status changes"
+    },
+    "notif_push_low_stock": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for low-stock alerts"
+    },
+    "notif_push_email_action_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for action-required emails"
+    },
+    "notif_push_invoice_overdue": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for overdue invoices"
+    },
+    "notif_push_engine_pickup_ready": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses push notifications for engine pickup confirmations"
+    },
+    "notif_sound_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, a short chime plays when a new notification arrives in real time while the app is open"
     },
     "voipms_pb_enabled": {
       "type": "boolean",

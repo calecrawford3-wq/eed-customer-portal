@@ -18,6 +18,11 @@
         "po_accepted",
         "po_ready",
         "refresh_request",
+        "build_status_change",
+        "low_stock",
+        "email_action_required",
+        "invoice_overdue",
+        "engine_pickup_ready",
         "other"
       ],
       "default": "other",

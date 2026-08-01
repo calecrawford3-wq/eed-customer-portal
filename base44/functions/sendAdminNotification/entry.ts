@@ -30,19 +30,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: "title and message are required" }, { status: 400 });
     }
 
-    // Check notification preference toggles — skip silently if disabled
     const notifType = type || "other";
-    const settingKey = `notif_${notifType}`;
-    if (settingKey !== "notif_other") {
-      try {
-        const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
-        const globalSettings = settings?.[0];
-        if (globalSettings && settingKey in globalSettings && globalSettings[settingKey] === false) {
-          return Response.json({ success: true, skipped: "notification type disabled" });
-        }
-      } catch (e) {
-        console.error("[sendAdminNotification] Failed to check notification settings:", e.message);
-      }
+
+    // Fetch global settings once — used for both in-app and push toggle checks
+    let globalSettings = null;
+    try {
+      const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
+      globalSettings = settings?.[0] || null;
+    } catch (e) {
+      console.error("[sendAdminNotification] Failed to fetch settings:", e.message);
+    }
+
+    // Check in-app notification preference — skip entirely if disabled
+    const inAppKey = `notif_${notifType}`;
+    if (inAppKey !== "notif_other" && globalSettings && inAppKey in globalSettings && globalSettings[inAppKey] === false) {
+      return Response.json({ success: true, skipped: "notification type disabled" });
     }
 
     // 1. Persist a Notification record (service role — works from any caller)
@@ -79,15 +81,19 @@ Deno.serve(async (req) => {
       console.error("[sendAdminNotification] Failed to send email:", e.message);
     }
 
-    // 3. Send push notification to all subscribed devices
-    try {
-      await sendPushToAllSubscriptions(base44, {
-        title,
-        body: message,
-        url: link_url || "/Dashboard",
-      });
-    } catch (e) {
-      console.error("[sendAdminNotification] Push failed:", e.message);
+    // 3. Send push notification — check push-specific toggle
+    const pushKey = `notif_push_${notifType}`;
+    const pushEnabled = !globalSettings || !(pushKey in globalSettings) || globalSettings[pushKey] !== false;
+    if (pushEnabled) {
+      try {
+        await sendPushToAllSubscriptions(base44, {
+          title,
+          body: message,
+          url: link_url || "/Dashboard",
+        });
+      } catch (e) {
+        console.error("[sendAdminNotification] Push failed:", e.message);
+      }
     }
 
     return Response.json({ success: true });

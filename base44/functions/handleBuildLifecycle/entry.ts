@@ -30,8 +30,41 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, action: "deleted", build_id: buildId, tasks_deleted: tasksDeleted, events_deleted: eventsDeleted });
     }
 
-    // UPDATE — if the customer changed, reassign remaining (pending) follow-ups to the new customer
+    // UPDATE — handle status changes, pickup, and customer reassignment
     if (event.type === "update") {
+      // Notify on build status change to complete/shipped
+      const oldStatus = oldData && oldData.status;
+      const newStatus = data && data.status;
+      if (oldStatus !== newStatus && (newStatus === "complete" || newStatus === "shipped")) {
+        try {
+          await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+            title: `Build ${newStatus === "complete" ? "Complete" : "Shipped"}`,
+            message: `Engine ${data?.engine_serial_number || data?.eed_id || buildId} has been marked as ${newStatus}.`,
+            type: "build_status_change",
+            link_url: `/BuildDetail?id=${buildId}`,
+          });
+        } catch (e) {
+          console.warn("[handleBuildLifecycle] status notification failed:", e.message);
+        }
+      }
+
+      // Notify on engine pickup confirmed
+      const oldPickedUp = oldData && oldData.picked_up;
+      const newPickedUp = data && data.picked_up;
+      if (!oldPickedUp && newPickedUp) {
+        try {
+          await base44.asServiceRole.functions.invoke("sendAdminNotification", {
+            title: "Engine Picked Up",
+            message: `Engine ${data?.engine_serial_number || data?.eed_id || buildId} has been picked up by the customer.`,
+            type: "engine_pickup_ready",
+            link_url: `/BuildDetail?id=${buildId}`,
+          });
+        } catch (e) {
+          console.warn("[handleBuildLifecycle] pickup notification failed:", e.message);
+        }
+      }
+
+      // If the customer changed, reassign remaining (pending) follow-ups to the new customer
       const oldCustomer = oldData && oldData.customer_id;
       const newCustomer = data && data.customer_id;
       if (oldCustomer && newCustomer && oldCustomer !== newCustomer) {
@@ -67,7 +100,7 @@ Deno.serve(async (req) => {
 
         return Response.json({ success: true, action: "transferred", build_id: buildId, from: oldCustomer, to: newCustomer });
       }
-      return Response.json({ skipped: true, reason: "customer unchanged" });
+      return Response.json({ success: true, action: "processed", build_id: buildId });
     }
 
     return Response.json({ skipped: true, reason: "unhandled event type" });
