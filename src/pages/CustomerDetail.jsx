@@ -148,6 +148,24 @@ export default function CustomerDetail() {
 
   const getPlatformName = (pid) => platforms.find(p => p.id === pid)?.name || "Unknown";
 
+  const BUILD_STATUS_STYLES = {
+    queued: "bg-slate-100 text-slate-600",
+    in_progress: "bg-blue-100 text-blue-700",
+    assembly: "bg-blue-100 text-blue-700",
+    testing: "bg-amber-100 text-amber-700",
+    complete: "bg-emerald-100 text-emerald-700",
+    shipped: "bg-violet-100 text-violet-700",
+  };
+
+  const ESTIMATE_STATUS_STYLES = {
+    draft: "bg-slate-100 text-slate-600",
+    sent: "bg-blue-100 text-blue-700",
+    approved: "bg-emerald-100 text-emerald-700",
+    accepted: "bg-emerald-100 text-emerald-700",
+    rejected: "bg-red-100 text-red-700",
+    expired: "bg-slate-100 text-slate-500",
+  };
+
   const totalInvoiced = customerInvoices.reduce((s, i) => s + (i.total || 0), 0);
   const totalPaid = customerInvoices.reduce((s, i) => s + (i.amount_paid || 0), 0);
   const totalBalance = customerInvoices.reduce((s, i) => s + (i.balance_due || 0), 0);
@@ -273,7 +291,7 @@ export default function CustomerDetail() {
             {customer.phone && (
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="w-4 h-4 text-slate-400" />
-                <span>{customer.phone}</span>
+                <span>{formatPhone(customer.phone)}</span>
                 <CallButton customer={customer} builds={customerBuilds} iconOnly />
               </div>
             )}
@@ -303,7 +321,7 @@ export default function CustomerDetail() {
         {/* Tabs for related records */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="activity">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 overflow-x-auto overflow-y-hidden flex w-max min-w-full">
               <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="engines">Engines</TabsTrigger>
               <TabsTrigger value="builds">Builds ({customerBuilds.length})</TabsTrigger>
@@ -347,7 +365,7 @@ export default function CustomerDetail() {
                               <p className="text-xs text-slate-500">{getPlatformName(b.platform_id)}{b.build_number ? ` · ${b.build_number}` : ""}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className="text-xs bg-slate-100 text-slate-700 border-0">{b.status}</Badge>
+                              <Badge className={`text-xs border-0 ${BUILD_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-700"}`}>{b.status}</Badge>
                               <Button size="sm" variant="ghost" className="h-7 px-2" title="Dyno sheets" onClick={() => setDynoBuildId(open ? null : b.id)}>
                                 {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                 <span className="ml-1 text-xs">Dyno</span>
@@ -394,7 +412,7 @@ export default function CustomerDetail() {
                           <p className="text-xs text-slate-500">{e.issue_date} · ${Number(e.total || 0).toFixed(2)}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className="text-xs bg-slate-100 text-slate-700 border-0 capitalize">{e.status}</Badge>
+                          <Badge className={`text-xs border-0 capitalize ${ESTIMATE_STATUS_STYLES[e.status] || "bg-slate-100 text-slate-700"}`}>{e.status}</Badge>
                           <Link to={`/EstimateDetail?id=${e.id}`}>
                             <Button size="sm" variant="ghost" className="h-7 px-2"><ExternalLink className="w-3.5 h-3.5" /></Button>
                           </Link>
@@ -424,7 +442,7 @@ export default function CustomerDetail() {
                       <CardContent className="p-3 flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-sm">{inv.invoice_number}</p>
-                          <p className="text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</p>
+                          <p className="text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}{inv.balance_due > 0 && <span className="text-red-500 font-medium"> · Owes ${Number(inv.balance_due).toFixed(2)}</span>}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={`text-xs border-0 capitalize ${inv.status === "paid" ? "bg-emerald-100 text-emerald-700" : inv.status === "partial" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>{inv.status}</Badge>
