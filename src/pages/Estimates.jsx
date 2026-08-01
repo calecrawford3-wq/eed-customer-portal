@@ -200,8 +200,12 @@ export default function Estimates() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium">No estimates found</p>
-          <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create First Estimate</Button></Link>
+          <p className="text-lg font-medium">{estimates.length === 0 ? "No estimates yet" : "No estimates match your filters"}</p>
+          {estimates.length === 0 ? (
+            <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create First Estimate</Button></Link>
+          ) : (
+            <Button variant="outline" className="mt-4" onClick={() => { setSearch(""); setFilterStatus("all"); }}>Clear Filters</Button>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
