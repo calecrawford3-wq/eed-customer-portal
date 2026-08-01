@@ -14,6 +14,35 @@ export async function listFacebookPages(accessToken) {
   return data.data || [];
 }
 
+export async function debugFacebookAccess(accessToken) {
+  // Returns raw API responses for troubleshooting page access issues
+  const results = {};
+
+  // 1. Who am I?
+  const meResp = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/me?fields=id,name,email`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  results.me = await meResp.json();
+
+  // 2. Standard /me/accounts
+  const accountsResp = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/me/accounts?fields=id,name,access_token,category,perms&limit=100`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  results.accounts = await accountsResp.json();
+
+  // 3. Businesses (for New Pages Experience in Business Portfolios)
+  const bizResp = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/me/businesses?fields=id,name&limit=100`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  results.businesses = await bizResp.json();
+
+  // 4. Token permissions/scopes
+  const debugResp = await fetch(`https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${accessToken}`);
+  results.debug_token = await debugResp.json();
+
+  return results;
+}
+
 export async function getPageInfo(base44, pageId) {
   const userToken = await getUserAccessToken(base44);
   const pages = await listFacebookPages(userToken);

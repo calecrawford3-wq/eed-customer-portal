@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { getUserAccessToken, listFacebookPages, getPageInfo } from '../../shared/facebookPages.ts';
+import { getUserAccessToken, listFacebookPages, getPageInfo, debugFacebookAccess } from '../../shared/facebookPages.ts';
 
 const GRAPH_API_VERSION = "v25.0";
 
@@ -17,7 +17,11 @@ export default async function(req) {
     const pages = await listFacebookPages(userToken);
 
     if (list_pages_only) {
-      return Response.json({ pages: pages.map((p) => ({ id: p.id, name: p.name })) });
+      const debug = body.debug ? await debugFacebookAccess(userToken) : undefined;
+      return Response.json({
+        pages: pages.map((p) => ({ id: p.id, name: p.name })),
+        ...(debug ? { _debug: debug } : {})
+      });
     }
 
     const pageInfo = await getPageInfo(base44, page_id);
