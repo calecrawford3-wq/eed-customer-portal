@@ -9,7 +9,6 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Users,
   Receipt,
   ClipboardList,
@@ -32,12 +31,6 @@ import {
   X,
   ClipboardCheck,
   FlaskConical,
-  FileBarChart,
-  Database,
-  Target,
-  Search,
-  Sliders,
-  GitCompare
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -48,9 +41,6 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [rdOpen, setRdOpen] = useState(
-    ["Simulator","DynoImport","DynoComparison","SimilarBuilds","PredictionRules","ControlledChanges","ModelAccuracy","DevelopmentData"].includes(currentPageName)
-  );
 
   // Register push notification service worker globally on all admin pages
   usePushNotifications();
@@ -120,17 +110,9 @@ export default function Layout({ children, currentPageName }) {
       ],
     },
     {
-      label: "R&D — Engine Development",
-      collapsible: true,
+      label: "R&D",
       items: [
-        { name: "Simulator", page: "Simulator", icon: FlaskConical },
-        { name: "Dyno Import", page: "DynoImport", icon: FileBarChart },
-        { name: "Dyno Comparison", page: "DynoComparison", icon: BarChart2 },
-        { name: "Similar Builds", page: "SimilarBuilds", icon: Search },
-        { name: "Prediction Rules", page: "PredictionRules", icon: Sliders },
-        { name: "Controlled Changes", page: "ControlledChanges", icon: GitCompare },
-        { name: "Model Accuracy", page: "ModelAccuracy", icon: Target },
-        { name: "Dev Data Library", page: "DevelopmentData", icon: Database },
+        { name: "R&D Engine Developer", page: "RnDEngineDeveloper", icon: FlaskConical },
       ],
     },
     {
@@ -175,7 +157,6 @@ export default function Layout({ children, currentPageName }) {
         {/* Navigation */}
         <nav className="flex-1 py-3 px-3 overflow-y-auto">
           {navGroups.map((group, gIdx) => {
-            const groupHasActive = group.items.some(i => i.page === currentPageName);
             const showHeader = !collapsed;
             return (
               <div key={gIdx} className="mb-1">
@@ -184,95 +165,47 @@ export default function Layout({ children, currentPageName }) {
                     {group.label}
                   </p>
                 )}
-                {group.collapsible && !collapsed ? (
-                  <>
-                    <button
-                      onClick={() => setRdOpen(!rdOpen)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-colors",
-                        groupHasActive ? "text-white" : "text-slate-500 hover:text-slate-300"
-                      )}
-                    >
-                      <span className="flex-1 text-left">{group.label}</span>
-                      <ChevronDown className={cn("w-4 h-4 transition-transform", rdOpen && "rotate-180")} />
-                    </button>
-                    {rdOpen && (
-                      <div className="space-y-0.5 mt-0.5">
-                        {group.items.map((item) => {
-                          const isActive = currentPageName === item.page;
-                          return (
-                            <Link
-                              key={item.page}
-                              to={createPageUrl(item.page)}
-                              onClick={() => setMobileOpen(false)}
-                              className={cn(
-                                "relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
-                                isActive
-                                  ? "bg-[#e20404] text-white font-medium"
-                                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-                              )}
-                            >
-                              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                              <span className="text-sm flex-1">{item.name}</span>
-                              {item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                                <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                                  {pendingRefreshCount}
-                                </span>
-                              )}
-                              {item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                                <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                                  {unreadNotifications}
-                                </span>
-                              )}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const isActive = currentPageName === item.page;
-                      return (
-                        <Link
-                          key={item.page}
-                          to={createPageUrl(item.page)}
-                          onClick={() => setMobileOpen(false)}
-                          className={cn(
-                            "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                            isActive
-                              ? "bg-[#e20404] text-white font-medium"
-                              : "text-slate-400 hover:text-white hover:bg-slate-800"
-                          )}
-                        >
-                          <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                          {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
-                          {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                            <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                              {pendingRefreshCount}
-                            </span>
-                          )}
-                          {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                            <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                              {unreadNotifications}
-                            </span>
-                          )}
-                          {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                            <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                              {pendingRefreshCount}
-                            </span>
-                          )}
-                          {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                            <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                              {unreadNotifications}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const isActive = currentPageName === item.page;
+                    return (
+                      <Link
+                        key={item.page}
+                        to={createPageUrl(item.page)}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                          isActive
+                            ? "bg-[#e20404] text-white font-medium"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        )}
+                      >
+                        <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
+                        {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
+                        {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
+                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            {pendingRefreshCount}
+                          </span>
+                        )}
+                        {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            {unreadNotifications}
+                          </span>
+                        )}
+                        {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
+                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                            {pendingRefreshCount}
+                          </span>
+                        )}
+                        {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
+                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                            {unreadNotifications}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
