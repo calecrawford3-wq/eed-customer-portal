@@ -7,6 +7,9 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import ActionItemsRow from "@/components/dashboard/ActionItemsRow";
 import RecentBuilds from "@/components/dashboard/RecentBuilds";
 import QuickActions from "@/components/dashboard/QuickActions";
+import BuildPipeline from "@/components/dashboard/BuildPipeline";
+import ActivityFeed from "@/components/dashboard/ActivityFeed";
+import RevenueInsights from "@/components/dashboard/RevenueInsights";
 
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -143,11 +146,26 @@ export default function Dashboard() {
         expensePending={expenseMutation.isPending}
       />
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <RecentBuilds builds={builds} platforms={platforms} isLoading={loadingBuilds} />
-        <QuickActions />
+      {/* Insights Row: Revenue + Build Pipeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6">
+        <RevenueInsights invoices={invoices} customers={customers} isLoading={loadingBuilds} />
+        <BuildPipeline builds={builds} isLoading={loadingBuilds} />
       </div>
+
+      {/* Recent Activity Feed + Recent Builds */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6">
+        <ActivityFeed
+          builds={builds}
+          invoices={invoices}
+          purchaseOrders={purchaseOrders}
+          customers={customers}
+          isLoading={loadingBuilds}
+        />
+        <RecentBuilds builds={builds} platforms={platforms} isLoading={loadingBuilds} />
+      </div>
+
+      {/* Quick Actions */}
+      <QuickActions />
     </div>
   );
 }
