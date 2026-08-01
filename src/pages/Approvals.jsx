@@ -57,6 +57,31 @@ export default function Approvals() {
         <p className="text-slate-500 mt-1">Estimates awaiting customer approval and builds ready for pickup.</p>
       </div>
 
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-900">{estimates.length}</p>
+              <p className="text-xs text-slate-500">Awaiting Approval</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+              <PackageCheck className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-900">{pendingBuilds.length}</p>
+              <p className="text-xs text-slate-500">Ready for Pickup</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4 text-amber-600" />Estimates awaiting approval ({estimates.length})</CardTitle>
@@ -83,10 +108,20 @@ export default function Approvals() {
                         {e.view_count > 0 ? (
                           <span>Viewed {e.view_count}×{e.last_viewed_at ? ` · ${new Date(e.last_viewed_at).toLocaleDateString()}` : ""}</span>
                         ) : (
-                          <span className="text-slate-400">Not viewed</span>
+                          <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">Not viewed</Badge>
                         )}
                         {e.total != null && <span>Total ${Number(e.total).toLocaleString()}</span>}
                         {e.deposit_required && <span>Deposit {e.deposit_paid ? "paid" : "pending"}</span>}
+                        {e.issue_date && (() => {
+                          const days = Math.floor((Date.now() - new Date(e.issue_date).getTime()) / 86400000);
+                          const stale = days >= 14;
+                          const warning = days >= 7;
+                          return (
+                            <span className={stale ? "text-red-600 font-medium" : warning ? "text-amber-600 font-medium" : ""}>
+                              {days === 0 ? "Sent today" : `${days} day${days === 1 ? "" : "s"} waiting`}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                     <Badge className={`text-[10px] border ${meta.cls}`}>{meta.label}</Badge>
