@@ -787,7 +787,7 @@ export default function InvoiceDetail() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <LaborMachiningPickerModal
         open={laborPickerOpen}
         onClose={() => setLaborPickerOpen(false)}
@@ -940,7 +940,7 @@ export default function InvoiceDetail() {
         context={{ type: "invoice", id, number: form.invoice_number, estimateId: form.estimate_id, buildId: form.build_id }}
       />
 
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Invoice Details</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -1269,7 +1269,7 @@ export default function InvoiceDetail() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div><Label>Notes for Customer</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} /></div>
         <div><Label>Payment Notes</Label><Textarea value={form.payment_notes} onChange={e => setForm({...form, payment_notes: e.target.value})} rows={4} /></div>
       </div>
