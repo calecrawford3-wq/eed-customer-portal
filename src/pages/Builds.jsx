@@ -731,7 +731,7 @@ export default function Builds() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   className="text-red-600"
-                                  onClick={() => deleteMutation.mutate(build.id)}
+                                  onClick={() => setConfirmState({ open: true, title: "Delete Build", message: `Delete build for ${build.engine_serial_number}? This cannot be undone.`, confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(build.id) })}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
