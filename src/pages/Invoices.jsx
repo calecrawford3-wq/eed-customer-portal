@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import LegacyInvoiceImportModal from "@/components/invoices/LegacyInvoiceImportModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -26,6 +27,7 @@ export default function Invoices() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [legacyImportOpen, setLegacyImportOpen] = useState(false);
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
@@ -183,7 +185,7 @@ export default function Invoices() {
                             Mark Paid
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this invoice?")) deleteMutation.mutate(inv.id); }}>
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Invoice", message: "Delete this invoice? This cannot be undone.", confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(inv.id) })}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -195,6 +197,15 @@ export default function Invoices() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }

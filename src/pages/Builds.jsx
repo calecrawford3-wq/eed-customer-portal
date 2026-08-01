@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   Plus,
   Search,
@@ -87,6 +88,7 @@ const SPEC_TYPES = [
 
 export default function Builds() {
   const navigate = useNavigate();
+  const [confirmState, setConfirmState] = useState({ open: false });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -938,11 +940,7 @@ export default function Builds() {
                               variant="ghost"
                               size="sm"
                               className="text-red-500 hover:text-red-700"
-                              onClick={() => {
-                                if (window.confirm(`Delete build for ${build.engine_serial_number}? This cannot be undone.`)) {
-                                  deleteMutation.mutate(build.id);
-                                }
-                              }}
+                              onClick={() => setConfirmState({ open: true, title: "Delete Build", message: `Delete build for ${build.engine_serial_number}? This cannot be undone.`, confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(build.id) })}
                               title="Delete build"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1010,6 +1008,15 @@ export default function Builds() {
           onConfirm={handleStorageConfirm}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }

@@ -36,6 +36,7 @@ import ContractEngineModal from "@/components/legal/ContractEngineModal";
 import { AlertTriangle as AlertTriangleIcon, ShieldAlert, FileText } from "lucide-react";
 import HistoryModal from "@/components/HistoryModal";
 import EmailsSection from "@/components/emails/EmailsSection";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -57,6 +58,7 @@ export default function EstimateDetail() {
   const prefillBuildId = params.get("build_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
 
   const [form, setForm] = useState({
     estimate_number: `EST-${Date.now().toString().slice(-6)}`,
@@ -1157,6 +1159,37 @@ export default function EstimateDetail() {
     return null;
   })();
 
+  const voidContractEngine = async () => {
+    if (!id) return;
+    const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "contract_engine" });
+    for (const d of (docs || [])) {
+      if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
+    }
+    await base44.entities.Estimate.update(id, { contains_contract_engine: false });
+    setForm(f => ({ ...f, contains_contract_engine: false }));
+    qc.invalidateQueries({ queryKey: ["estimate", id] });
+    toast.success("Contract Engine agreement voided");
+  };
+
+  const voidIllegalParts = async () => {
+    if (!id) return;
+    try {
+      const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "illegal_parts" });
+      for (const d of (docs || [])) {
+        if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
+      }
+      await base44.entities.Estimate.update(id, { contains_illegal_parts: false });
+      setForm(f => ({ ...f, contains_illegal_parts: false }));
+      if (form.public_access_token) {
+        await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken: form.public_access_token });
+      }
+      qc.invalidateQueries({ queryKey: ["estimate", id] });
+      toast.success("Illegal Parts agreement deleted");
+    } catch (e) {
+      toast.error("Failed to delete: " + e.message);
+    }
+  };
+
   if (printMode) {
     return (
       <div className="p-4">
@@ -1482,18 +1515,7 @@ export default function EstimateDetail() {
                     <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 text-xs h-7" onClick={() => setContractEngineViewOpen(true)} disabled={!id}>
                       View
                     </Button>
-                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={async () => {
-                      if (!id) return;
-                      if (!confirm("Void the Contract Engine agreement?")) return;
-                      const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "contract_engine" });
-                      for (const d of (docs || [])) {
-                        if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
-                      }
-                      await base44.entities.Estimate.update(id, { contains_contract_engine: false });
-                      setForm(f => ({ ...f, contains_contract_engine: false }));
-                      qc.invalidateQueries({ queryKey: ["estimate", id] });
-                      toast.success("Contract Engine agreement voided");
-                    }} disabled={!id}>
+                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={() => setConfirmState({ open: true, title: "Void Contract Engine", message: "Void the Contract Engine agreement?", confirmLabel: "Void", onConfirm: voidContractEngine })} disabled={!id}>
                       Void
                     </Button>
                   </div>
@@ -1535,25 +1557,7 @@ export default function EstimateDetail() {
                     <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setIllegalPartsViewOpen(true)} disabled={!id}>
                       View
                     </Button>
-                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={async () => {
-                      if (!id) return;
-                      if (!confirm("Delete the Illegal Parts acknowledgment? This will void the signed document and remove the flag from this estimate.")) return;
-                      try {
-                        const docs = await base44.entities.LegalDocument.filter({ estimate_id: id, document_type: "illegal_parts" });
-                        for (const d of (docs || [])) {
-                          if (d.status !== "void") await base44.entities.LegalDocument.update(d.id, { status: "void" });
-                        }
-                        await base44.entities.Estimate.update(id, { contains_illegal_parts: false });
-                        setForm(f => ({ ...f, contains_illegal_parts: false }));
-                        if (form.public_access_token) {
-                          await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken: form.public_access_token });
-                        }
-                        qc.invalidateQueries({ queryKey: ["estimate", id] });
-                        toast.success("Illegal Parts agreement deleted");
-                      } catch (e) {
-                        toast.error("Failed to delete: " + e.message);
-                      }
-                    }} disabled={!id}>
+                    <Button size="sm" variant="outline" className="border-red-300 text-red-600 text-xs h-7" onClick={() => setConfirmState({ open: true, title: "Delete Illegal Parts Acknowledgment", message: "Delete the Illegal Parts acknowledgment? This will void the signed document and remove the flag from this estimate.", confirmLabel: "Delete", onConfirm: voidIllegalParts })} disabled={!id}>
                       Delete
                     </Button>
                   </div>
@@ -1953,6 +1957,15 @@ export default function EstimateDetail() {
           <EmailsSection linkType="estimate" linkId={id} docNumber={form.estimate_number} title="Emails linked to this estimate" />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }

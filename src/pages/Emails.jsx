@@ -23,6 +23,7 @@ import CreateTaskFromEmailModal from "@/components/emails/CreateTaskFromEmailMod
 import ScheduleCallFromEmailModal from "@/components/emails/ScheduleCallFromEmailModal";
 import SavedViewsBar from "@/components/emails/SavedViewsBar";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 function fmtDate(iso) {
   if (!iso) return "";
@@ -48,6 +49,7 @@ const CATEGORY_ORDER = ["priority", "customer", "supplier", "billing", "promotio
 
 export default function Emails() {
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
   const [search, setSearch] = useState("");
   const [dirFilter, setDirFilter] = useState("all");
   const [mailboxFilter, setMailboxFilter] = useState("all");
@@ -492,7 +494,7 @@ export default function Emails() {
             <RefreshCw className={`w-4 h-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync now"}
           </Button>
-          <Button variant="outline" onClick={() => { if (confirm("Run a FULL resync? This re-fetches every message and ignores sync checkpoints. Use only to repair missing history.")) syncMut.mutate({ fullResync: true }); }} disabled={syncMut.isPending} title="Re-fetch all history, ignoring incremental checkpoints" className="text-xs">
+          <Button variant="outline" onClick={() => setConfirmState({ open: true, title: "Full Resync", message: "Run a FULL resync? This re-fetches every message and ignores sync checkpoints. Use only to repair missing history.", confirmLabel: "Run Full Resync", onConfirm: () => syncMut.mutate({ fullResync: true }) })} disabled={syncMut.isPending} title="Re-fetch all history, ignoring incremental checkpoints" className="text-xs">
             <RefreshCw className="w-4 h-4 mr-1" /> Full resync
           </Button>
           <Button variant="outline" onClick={() => setSendLogOpen(true)} className="text-xs">
@@ -822,6 +824,15 @@ export default function Emails() {
         thread={selectedThread}
         threadRecord={selectedThread ? threadMetaMap.get(selectedThread.key) : null}
         users={users}
+      />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
       />
     </div>
   );

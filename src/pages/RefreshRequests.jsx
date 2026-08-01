@@ -12,6 +12,7 @@ import { RefreshCw, Link as LinkIcon, ClipboardList, Trash2, ExternalLink } from
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -22,6 +23,7 @@ const STATUS_STYLES = {
 
 export default function RefreshRequests() {
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
@@ -155,7 +157,7 @@ export default function RefreshRequests() {
                           </Button>
                         </Link>
                         <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600"
-                          onClick={() => { if (confirm("Remove this request?")) deleteMutation.mutate(req.id); }}>
+                          onClick={() => setConfirmState({ open: true, title: "Remove Request", message: "Remove this request? This cannot be undone.", confirmLabel: "Remove", onConfirm: () => deleteMutation.mutate(req.id) })}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -226,6 +228,15 @@ export default function RefreshRequests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }

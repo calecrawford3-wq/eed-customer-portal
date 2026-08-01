@@ -9,6 +9,7 @@ import { Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -23,6 +24,7 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["purchaseOrders"],
@@ -118,7 +120,7 @@ export default function PurchaseOrders() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
                         <Link to={`/PurchaseOrderDetail?id=${o.id}`}><Button size="sm" variant="outline">View</Button></Link>
-                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this PO?")) deleteMutation.mutate(o.id); }}>
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete PO", message: "Delete this purchase order? This cannot be undone.", confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(o.id) })}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -130,6 +132,15 @@ export default function PurchaseOrders() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }

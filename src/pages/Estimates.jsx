@@ -10,6 +10,7 @@ import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2 } fro
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -31,6 +32,7 @@ export default function Estimates() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const qc = useQueryClient();
+  const [confirmState, setConfirmState] = useState({ open: false });
 
   const { data: estimates = [], isLoading } = useQuery({
     queryKey: ["estimates"],
@@ -228,7 +230,7 @@ export default function Estimates() {
                             → Invoice
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => { if (confirm("Delete this estimate?")) deleteMutation.mutate(e.id); }}>
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Estimate", message: "Delete this estimate? This cannot be undone.", confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(e.id) })}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -240,6 +242,15 @@ export default function Estimates() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState({})}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+      />
     </div>
   );
 }
