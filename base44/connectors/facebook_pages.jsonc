@@ -3,6 +3,7 @@
   "scopes": [
     "pages_show_list",
     "pages_read_engagement",
-    "pages_messaging"
+    "pages_messaging",
+    "business_management"
   ]
 }
