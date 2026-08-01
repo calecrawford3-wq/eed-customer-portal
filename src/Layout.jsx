@@ -36,6 +36,8 @@ import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import NotificationBell from "@/components/NotificationBell";
+import GlobalSearch from "@/components/GlobalSearch";
+import { Search } from "lucide-react";
 
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
@@ -122,6 +124,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
+      <GlobalSearch />
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
@@ -240,6 +243,14 @@ export default function Layout({ children, currentPageName }) {
           ) : (
             <div />
           )}
+          <button
+            onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden lg:inline">Search</span>
+            <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
+          </button>
           <NotificationBell />
         </div>
         {children}

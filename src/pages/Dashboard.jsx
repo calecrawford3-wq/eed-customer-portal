@@ -11,6 +11,7 @@ import BuildPipeline from "@/components/dashboard/BuildPipeline";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import RevenueInsights from "@/components/dashboard/RevenueInsights";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
+import PageHeader from "@/components/PageHeader";
 
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -119,11 +120,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Engine specification vault overview</p>
-        </div>
+      <PageHeader title="Dashboard" subtitle="Engine specification vault overview">
         <a
           href={createPageUrl("ShopDisplay")}
           target="_blank"
@@ -133,7 +130,7 @@ export default function Dashboard() {
           <Monitor className="w-4 h-4" />
           Shop Display
         </a>
-      </div>
+      </PageHeader>
 
       {/* Quick Actions */}
       <QuickActions onCheckIn={() => setCheckInOpen(true)} />
