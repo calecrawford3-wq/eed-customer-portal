@@ -58,6 +58,7 @@ import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
 import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
 import ReprintLabelModal from "@/components/engines/ReprintLabelModal";
+import NewBuildDialog from "@/components/builds/NewBuildDialog";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -96,19 +97,6 @@ export default function Builds() {
   const [storagePrompt, setStoragePrompt] = useState(null);
   const [pickupScan, setPickupScan] = useState(null);
   const [reprintBuild, setReprintBuild] = useState(null);
-  const [newBuild, setNewBuild] = useState({
-    engine_serial_number: "",
-    eed_id: "",
-    customer_engine_id: "",
-    build_number: "",
-    platform_id: "",
-    spec_sheet_id: "",
-    customer_id: "",
-    customer_name: "",
-    application: "Microsprint",
-    max_rpm: "",
-    assembly_notes: ""
-  });
 
   const queryClient = useQueryClient();
 
@@ -166,19 +154,6 @@ export default function Builds() {
           .catch(e => console.warn("Failed to update engine check-in status:", e));
       }
       setShowCreateDialog(false);
-      setNewBuild({
-        engine_serial_number: "",
-        eed_id: "",
-        customer_engine_id: "",
-        build_number: "",
-        platform_id: "",
-        spec_sheet_id: "",
-        customer_id: "",
-        customer_name: "",
-        application: "Microsprint",
-        max_rpm: "",
-        assembly_notes: ""
-      });
     },
   });
 
@@ -192,19 +167,14 @@ export default function Builds() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["builds"] }),
   });
 
-  const handleCreate = () => {
+  const handleCreate = (formData) => {
     const queuedBuilds = builds.filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status));
     const maxPosition = queuedBuilds.length > 0 ? Math.max(...queuedBuilds.map(b => b.queue_position || 0)) : 0;
-    
-    const selectedSpec = specSheets.find(s => s.id === newBuild.spec_sheet_id);
     createMutation.mutate({
-      ...newBuild,
-      eed_id: newBuild.eed_id || undefined,
+      ...formData,
       queue_position: maxPosition + 1,
       status: "queued",
       work_tag: "none",
-      spec_sheet_version: selectedSpec?.version,
-      max_rpm: newBuild.max_rpm ? parseInt(newBuild.max_rpm) : undefined
     });
   };
 
@@ -410,8 +380,6 @@ export default function Builds() {
     .filter(b => ["complete", "shipped"].includes(b.status))
     .sort((a, b) => new Date(b.completion_date || 0) - new Date(a.completion_date || 0));
 
-  const availableSpecs = specSheets.filter(s => s.platform_id === newBuild.platform_id && s.status === "active");
-
   return (
     <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
@@ -423,140 +391,10 @@ export default function Builds() {
           <Button variant="outline" onClick={() => setShowCheckInModal(true)}>
             <PackageCheck className="w-4 h-4 mr-2" /> Check In Engine
           </Button>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                New Build
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create New Engine Build</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div>
-                <Label>Engine Serial Number *</Label>
-                <Input
-                  value={newBuild.engine_serial_number}
-                  onChange={(e) => setNewBuild({ ...newBuild, engine_serial_number: e.target.value })}
-                  placeholder="e.g., T708-123456"
-                />
-              </div>
-              <div>
-                <Label>Customer</Label>
-                <CustomerSearchSelect
-                  customers={customers}
-                  value={newBuild.customer_id}
-                  onValueChange={(v) => {
-                    const c = customers.find(c => c.id === v);
-                    setNewBuild({ ...newBuild, customer_id: v, customer_name: c ? `${c.first_name} ${c.last_name}` : "", customer_engine_id: "", eed_id: "", engine_serial_number: "" });
-                  }}
-                />
-              </div>
-              {newBuild.customer_id && (
-                <EngineSelector
-                  customerId={newBuild.customer_id}
-                  value={newBuild.customer_engine_id || ""}
-                  onChange={(engineId, engine) => {
-                    const updates = { customer_engine_id: engineId };
-                    if (engine) {
-                      if (engine.eed_id) updates.eed_id = engine.eed_id;
-                      if (engine.engine_serial_number) updates.engine_serial_number = engine.engine_serial_number;
-                      if (engine.platform_id) updates.platform_id = engine.platform_id;
-                    }
-                    setNewBuild(prev => ({ ...prev, ...updates }));
-                  }}
-                  platforms={platforms}
-                />
-              )}
-              <div>
-                <Label>EED ID</Label>
-                <Input
-                  value={newBuild.eed_id || ""}
-                  onChange={(e) => setNewBuild({ ...newBuild, eed_id: e.target.value })}
-                  placeholder="e.g. EED1040"
-                  className="font-mono"
-                />
-              </div>
-              <div>
-                <Label>Engine Platform *</Label>
-                <Select
-                  value={newBuild.platform_id}
-                  onValueChange={(value) => setNewBuild({ ...newBuild, platform_id: value, spec_sheet_id: "" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select platform" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {platforms.map((platform) => {
-                      const years = platform.year_range_start
-                        ? ` (${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"})`
-                        : "";
-                      return (
-                        <SelectItem key={platform.id} value={platform.id}>
-                          {platform.manufacturer} {platform.name}{years}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              {newBuild.platform_id && (
-                <div>
-                  <Label>Spec Sheet</Label>
-                  <Select
-                    value={newBuild.spec_sheet_id}
-                    onValueChange={(value) => setNewBuild({ ...newBuild, spec_sheet_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select spec sheet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSpecs.map((spec) => (
-                        <SelectItem key={spec.id} value={spec.id}>
-                          {spec.custom_name || SPEC_TYPES.find(t => t.value === spec.spec_type)?.label} v{spec.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div>
-                <Label>Max RPM</Label>
-                <Input
-                  type="number"
-                  value={newBuild.max_rpm}
-                  onChange={(e) => setNewBuild({ ...newBuild, max_rpm: e.target.value })}
-                  placeholder="e.g., 15500"
-                />
-              </div>
-              <div>
-                <Label>Application</Label>
-                <Input
-                  value={newBuild.application}
-                  onChange={(e) => setNewBuild({ ...newBuild, application: e.target.value })}
-                  placeholder="e.g., Microsprint"
-                />
-              </div>
-              <div>
-                <Label>Notes</Label>
-                <Textarea
-                  value={newBuild.assembly_notes}
-                  onChange={(e) => setNewBuild({ ...newBuild, assembly_notes: e.target.value })}
-                  placeholder="Build notes..."
-                />
-              </div>
-              <Button
-                onClick={handleCreate}
-                disabled={!newBuild.engine_serial_number || !newBuild.platform_id}
-                className="w-full bg-[#e20404] hover:bg-[#c00303]"
-              >
-                Add to Queue
-              </Button>
-            </div>
-          </DialogContent>
-          </Dialog>
+          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Build
+          </Button>
         </div>
       </div>
 
@@ -585,6 +423,46 @@ export default function Builds() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Clock className="w-6 h-6 text-slate-500" />
+            <div>
+              <p className="text-xs text-slate-500">In Queue</p>
+              <p className="font-bold text-lg">{builds.filter(b => b.status === "queued").length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Wrench className="w-6 h-6 text-blue-500" />
+            <div>
+              <p className="text-xs text-slate-500">In Progress</p>
+              <p className="font-bold text-lg">{builds.filter(b => ["in_progress", "assembly", "testing"].includes(b.status)).length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-emerald-500" />
+            <div>
+              <p className="text-xs text-slate-500">Completed</p>
+              <p className="font-bold text-lg">{builds.filter(b => ["complete", "shipped"].includes(b.status)).length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3">
+            <PackageCheck className="w-6 h-6 text-amber-500" />
+            <div>
+              <p className="text-xs text-slate-500">Waiting on Parts</p>
+              <p className="font-bold text-lg">{builds.filter(b => b.work_tag === "waiting_on_parts").length}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {isLoading ? (
@@ -1008,6 +886,16 @@ export default function Builds() {
           onConfirm={handleStorageConfirm}
         />
       )}
+
+      <NewBuildDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        customers={customers}
+        platforms={platforms}
+        specSheets={specSheets}
+        onCreate={handleCreate}
+        isCreating={createMutation.isPending}
+      />
 
       <ConfirmDialog
         open={confirmState.open}
