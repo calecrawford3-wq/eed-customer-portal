@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Send, ArrowLeft, Phone, User, Search, RefreshCw, PenSquare } from "lucide-react";
+import { MessageSquare, Send, ArrowLeft, Phone, User, Search, RefreshCw, PenSquare, Facebook } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -162,15 +162,35 @@ export default function Messaging() {
     },
   });
 
+  const sendFacebookMutation = useMutation({
+    mutationFn: (vars) => base44.functions.invoke("sendFacebookMessage", vars),
+    onSuccess: () => {
+      setDraft("");
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+    },
+    onError: (e) => {
+      console.error("Facebook send failed", e);
+    },
+  });
+
+  const isFacebookConv = selectedConversation?.messages.some((m) => m.channel === "facebook");
+
   const handleSend = () => {
     if (!draft.trim() || !selectedPhone) return;
     const conv = selectedConversation;
-    sendMutation.mutate({
-      to: selectedPhone,
-      message: draft.trim(),
-      customer_id: conv?.messages[0]?.customer_id || null,
-      customer_name: conv?.messages[0]?.customer_name || null,
-    });
+    if (isFacebookConv) {
+      sendFacebookMutation.mutate({
+        recipient_psid: selectedPhone,
+        message: draft.trim(),
+      });
+    } else {
+      sendMutation.mutate({
+        to: selectedPhone,
+        message: draft.trim(),
+        customer_id: conv?.messages[0]?.customer_id || null,
+        customer_name: conv?.messages[0]?.customer_name || null,
+      });
+    }
   };
 
   const composeMutation = useMutation({
@@ -320,9 +340,10 @@ export default function Messaging() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-sm text-slate-900 truncate">
-                            {contact ? `${contact}${name ? ` · ${name}` : ""}` : (name || formatPhoneDisplay(conv.phone))}
-                          </span>
+                                    <span className="font-medium text-sm text-slate-900 truncate flex items-center gap-1">
+                                      {conv.messages.some((m) => m.channel === "facebook") && <Facebook className="w-3 h-3 text-[#1877F2] flex-shrink-0" />}
+                                      {contact ? `${contact}${name ? ` · ${name}` : ""}` : (name || formatPhoneDisplay(conv.phone))}
+                                    </span>
                           <span className="text-xs text-slate-400 flex-shrink-0">
                             {formatTime(conv.lastAt)}
                           </span>
@@ -371,10 +392,11 @@ export default function Messaging() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-900 truncate">
+                <div className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
+                  {isFacebookConv && <Facebook className="w-3.5 h-3.5 text-[#1877F2] flex-shrink-0" />}
                   {(() => { const ct = selectedConversation.messages.find(m => m.contact_name)?.contact_name; const cn = selectedConversation.messages[0]?.customer_name; return ct ? `${ct}${cn ? ` · ${cn}` : ""}` : (cn || formatPhoneDisplay(selectedPhone)); })()}
                 </div>
-                <div className="text-xs text-slate-400">{formatPhoneDisplay(selectedPhone)}</div>
+                <div className="text-xs text-slate-400">{isFacebookConv ? "Facebook Messenger" : formatPhoneDisplay(selectedPhone)}</div>
               </div>
               {selectedConversation.messages[0]?.customer_id && (
                 <Button
@@ -430,7 +452,7 @@ export default function Messaging() {
                   });
                 })()
               )}
-              {sendMutation.isPending && (
+              {(sendMutation.isPending || sendFacebookMutation.isPending) && (
                 <div className="flex justify-end">
                   <div className="bg-slate-200 text-slate-500 rounded-2xl rounded-br-sm px-4 py-2 text-sm italic">
                     Sending...
@@ -446,21 +468,23 @@ export default function Messaging() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
-                maxLength={160}
+                maxLength={isFacebookConv ? undefined : 160}
                 className="flex-1"
               />
               <Button
                 onClick={handleSend}
-                disabled={!draft.trim() || sendMutation.isPending}
+                disabled={!draft.trim() || sendMutation.isPending || sendFacebookMutation.isPending}
                 className="bg-[#e20404] hover:bg-red-700"
                 size="icon"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <div className="text-xs text-slate-400 px-4 pb-1 text-right">
-              {draft.length}/160
-            </div>
+            {!isFacebookConv && (
+              <div className="text-xs text-slate-400 px-4 pb-1 text-right">
+                {draft.length}/160
+              </div>
+            )}
           </div>
         ) : (
           <div className="hidden sm:flex flex-1 items-center justify-center bg-slate-50">

@@ -16,7 +16,7 @@
     },
     "phone_number": {
       "type": "string",
-      "description": "The other party's phone number (normalized: digits only, 11-char for US/CA)"
+      "description": "The other party's phone number (SMS) or Facebook sender PSID (Facebook)"
     },
     "direction": {
       "type": "string",
@@ -28,11 +28,11 @@
     },
     "from_number": {
       "type": "string",
-      "description": "Sender phone number"
+      "description": "Sender phone number or PSID"
     },
     "to_number": {
       "type": "string",
-      "description": "Recipient phone number"
+      "description": "Recipient phone number or PSID"
     },
     "body": {
       "type": "string",
@@ -40,7 +40,7 @@
     },
     "message_id": {
       "type": "string",
-      "description": "VoIP.ms SMS ID (for incoming messages)"
+      "description": "VoIP.ms SMS ID or Facebook message ID (for dedup)"
     },
     "status": {
       "type": "string",
@@ -57,6 +57,15 @@
       "type": "boolean",
       "default": false,
       "description": "Whether the shop has read/viewed this message"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "sms",
+        "facebook"
+      ],
+      "default": "sms",
+      "description": "Message channel: sms = VoIP.ms SMS, facebook = Facebook Messenger"
     },
     "sent_at": {
       "type": "string",
