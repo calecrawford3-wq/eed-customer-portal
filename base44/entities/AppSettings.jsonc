@@ -304,6 +304,15 @@
       "type": "string",
       "format": "date-time",
       "description": "When Facebook Messenger messages were last synced"
+    },
+    "facebook_page_access_token": {
+      "type": "string",
+      "description": "Cached long-lived Facebook Page access token (obtained via token exchange). Used by scheduled syncs that have no user context."
+    },
+    "facebook_page_token_cached_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the cached Facebook Page access token was last refreshed"
     }
   },
   "required": [

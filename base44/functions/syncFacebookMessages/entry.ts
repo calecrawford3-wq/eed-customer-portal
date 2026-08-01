@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { getUserAccessToken, listFacebookPages, getPageInfo, debugFacebookAccess } from '../../shared/facebookPages.ts';
+import {
+  getPageInfo,
+  getAppUserAccessToken,
+  listFacebookPages,
+  getCachedPageToken,
+  debugFacebookAccess,
+} from '../../shared/facebookPages.ts';
 
 const GRAPH_API_VERSION = "v25.0";
 
@@ -13,17 +19,28 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const { page_id, list_pages_only } = body;
 
-    const userToken = await getUserAccessToken(base44);
-    const pages = await listFacebookPages(userToken);
-
     if (list_pages_only) {
-      const debug = body.debug ? await debugFacebookAccess(userToken) : undefined;
-      return Response.json({
-        pages: pages.map((p) => ({ id: p.id, name: p.name })),
-        ...(debug ? { _debug: debug } : {})
-      });
+      // Try app-user connection to list available Pages (for the page selector)
+      try {
+        const userToken = await getAppUserAccessToken(base44);
+        const pages = await listFacebookPages(userToken);
+        const debug = body.debug ? await debugFacebookAccess(userToken) : undefined;
+        return Response.json({
+          pages: pages.map((p) => ({ id: p.id, name: p.name })),
+          connected: true,
+          ...(debug ? { _debug: debug } : {}),
+        });
+      } catch {
+        // No app-user connection — return cached page info if available
+        const cached = await getCachedPageToken(base44);
+        return Response.json({
+          pages: cached ? [{ id: cached.pageId, name: cached.pageName }] : [],
+          connected: false,
+        });
+      }
     }
 
+    // Full sync — getPageInfo tries cached token first, then app-user exchange
     const pageInfo = await getPageInfo(base44, page_id);
     const pageToken = pageInfo.pageAccessToken;
 
@@ -84,7 +101,7 @@ export default async function(req) {
           is_read: direction === "outbound" ? true : false,
           channel: "facebook",
           sent_at: m.created_time,
-          customer_name: direction === "inbound" ? senderName : null
+          customer_name: direction === "inbound" ? senderName : null,
         });
         newMessageCount++;
       }
@@ -95,15 +112,14 @@ export default async function(req) {
       await base44.asServiceRole.entities.AppSettings.update(settingsRec.id, {
         facebook_last_sync: new Date().toISOString(),
         facebook_page_id: pageInfo.pageId,
-        facebook_page_name: pageInfo.pageName
+        facebook_page_name: pageInfo.pageName,
       });
     }
 
     return Response.json({
-      pages: pages.map((p) => ({ id: p.id, name: p.name })),
       selectedPage: { id: pageInfo.pageId, name: pageInfo.pageName },
       newMessages: newMessageCount,
-      conversationsSkipped: skippedByCheckpoint
+      conversationsSkipped: skippedByCheckpoint,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
