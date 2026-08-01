@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
@@ -10,9 +10,11 @@ import QuickActions from "@/components/dashboard/QuickActions";
 import BuildPipeline from "@/components/dashboard/BuildPipeline";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import RevenueInsights from "@/components/dashboard/RevenueInsights";
+import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 
 export default function Dashboard() {
   const qc = useQueryClient();
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   const { data: platforms = [], isLoading: loadingPlatforms } = useQuery({
     queryKey: ["platforms"],
@@ -134,7 +136,9 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <QuickActions />
+      <QuickActions onCheckIn={() => setCheckInOpen(true)} />
+
+      <EngineCheckInModal open={checkInOpen} onClose={() => setCheckInOpen(false)} />
 
       {/* Stats Grid */}
       <DashboardStats stats={stats} isLoading={isLoading} />
