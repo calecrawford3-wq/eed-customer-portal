@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ActivityTimeline from "@/components/customer/ActivityTimeline";
 import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
-import CustomerPortalModal from "@/components/CustomerPortalModal";
 import { formatPhone } from "@/lib/formatPhone";
 import CustomerEnginesTab from "@/components/customer/CustomerEnginesTab";
 import CustomerCreditsTab from "@/components/customer/CustomerCreditsTab";
@@ -42,7 +41,6 @@ export default function CustomerDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [assignBuildOpen, setAssignBuildOpen] = useState(false);
-  const [portalOpen, setPortalOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
@@ -471,15 +469,6 @@ export default function CustomerDetail() {
                 </Tabs>
                 </div>
       </div>
-
-      <CustomerPortalModal
-        open={portalOpen}
-        onClose={() => setPortalOpen(false)}
-        customer={customer}
-        estimates={customerEstimates}
-        invoices={customerInvoices}
-        builds={customerBuilds}
-      />
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
