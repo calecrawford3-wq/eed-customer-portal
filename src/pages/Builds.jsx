@@ -97,6 +97,7 @@ export default function Builds() {
   const [storagePrompt, setStoragePrompt] = useState(null);
   const [pickupScan, setPickupScan] = useState(null);
   const [reprintBuild, setReprintBuild] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -750,10 +751,20 @@ export default function Builds() {
           {/* Completed Builds */}
           {completedBuilds.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                Completed ({completedBuilds.length})
-              </h2>
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full flex items-center justify-between mb-4 group"
+              >
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  Completed ({completedBuilds.length})
+                </h2>
+                <div className="flex items-center gap-2 text-sm text-slate-500 group-hover:text-slate-700">
+                  {showCompleted ? "Hide" : "Show"}
+                  <ChevronDown className={`w-5 h-5 transition-transform ${showCompleted ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+              {showCompleted && (
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {completedBuilds.map((build) => {
                   const statusInfo = STATUS_OPTIONS.find(s => s.value === build.status);
@@ -830,6 +841,7 @@ export default function Builds() {
                   );
                 })}
               </div>
+              )}
             </div>
           )}
 
