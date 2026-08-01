@@ -118,14 +118,6 @@ export default function SpecSheets() {
     return matchesSearch && matchesPlatform && matchesType && matchesVersion;
   });
 
-  const groupedSpecs = filteredSpecs.reduce((acc, spec) => {
-    const key = `${spec.platform_id}-${spec.spec_type}-${spec.custom_name || ""}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(spec);
-    return acc;
-  }, {});
 
   const getPlatformLabel = (p) => {
     if (!p) return "Unknown";
@@ -241,11 +233,11 @@ export default function SpecSheets() {
         </Button>
       </div>
 
-      {/* Specs Grid */}
+      {/* Specs grouped by Platform */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-xl" />
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
         </div>
       ) : filteredSpecs.length === 0 ? (
@@ -259,101 +251,96 @@ export default function SpecSheets() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSpecs.map((spec) => {
-            const typeConfig = getSpecTypeConfig(spec.spec_type);
+        <div className="space-y-8">
+          {Object.entries(
+            filteredSpecs.reduce((acc, spec) => {
+              const key = spec.platform_id;
+              (acc[key] = acc[key] || []).push(spec);
+              return acc;
+            }, {})
+          ).map(([pid, specs]) => {
+            const platform = platforms.find(p => p.id === pid);
+            const yearStr = platform && (platform.year_range_start || platform.year_range_end)
+              ? ` (${platform.year_range_start || "?"}–${platform.year_range_end || "present"})`
+              : "";
             return (
-              <Card key={spec.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-slate-900">
-                          {getPlatformName(spec.platform_id)}
-                        </h3>
-                        {spec.is_current && (
-                          <CheckCircle className="w-4 h-4 text-emerald-500" />
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-500">
-                        {spec.custom_name || typeConfig.label}
-                        {!spec.is_current && ` (v${spec.version})`}
-                      </p>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl(`SpecView?id=${spec.id}`)}>
-                            <FileText className="w-4 h-4 mr-2" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl(`SpecEditor?id=${spec.id}`)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl(`SpecCompare?base=${spec.id}`)}>
-                            <GitCompare className="w-4 h-4 mr-2" />
-                            Compare
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenDuplicate(spec)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => deleteMutation.mutate(spec.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge className={typeConfig.color}>
-                      {typeConfig.label}
-                    </Badge>
-                    <Badge variant="outline">v{spec.version}</Badge>
-                    <Badge
-                      variant="outline"
-                      className={
-                        spec.status === "active"
-                          ? "border-emerald-200 text-emerald-700"
-                          : spec.status === "draft"
-                          ? "border-[#e20404]/20 text-[#e20404]"
-                          : "border-slate-200 text-slate-500"
-                      }
-                    >
-                      {spec.status}
-                    </Badge>
-                  </div>
-
-                  {spec.notes && (
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">{spec.notes}</p>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to={createPageUrl(`SpecView?id=${spec.id}`)}
-                      className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
-                    >
-                      View Specifications
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={pid}>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  {platform?.name || "Unknown Platform"}{yearStr}
+                  <span className="text-slate-300 font-normal ml-2">({specs.length})</span>
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {specs.map((spec) => {
+                    const typeConfig = getSpecTypeConfig(spec.spec_type);
+                    const statusColor = spec.status === "active"
+                      ? "bg-emerald-500"
+                      : spec.status === "draft"
+                      ? "bg-[#e20404]"
+                      : "bg-slate-300";
+                    return (
+                      <Card key={spec.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor}`} />
+                                <Badge className={`text-xs ${typeConfig.color}`}>
+                                  {typeConfig.label}
+                                </Badge>
+                                <span className="text-xs text-slate-400">v{spec.version}</span>
+                              </div>
+                              <p className="text-sm font-medium text-slate-700 mt-2 truncate">
+                                {spec.custom_name || typeConfig.label}
+                              </p>
+                              {spec.notes && (
+                                <p className="text-xs text-slate-400 line-clamp-1 mt-1">{spec.notes}</p>
+                              )}
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link to={createPageUrl(`SpecView?id=${spec.id}`)}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    View
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to={createPageUrl(`SpecEditor?id=${spec.id}`)}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to={createPageUrl(`SpecCompare?base=${spec.id}`)}>
+                                    <GitCompare className="w-4 h-4 mr-2" />
+                                    Compare
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOpenDuplicate(spec)}>
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => deleteMutation.mutate(spec.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
