@@ -22,7 +22,6 @@ import {
   BarChart2,
   RefreshCw,
   Award,
-  Bell,
   LifeBuoy,
   Calendar,
   MessageSquare,
@@ -36,6 +35,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
 import usePushNotifications from "@/hooks/usePushNotifications";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
@@ -51,11 +51,7 @@ export default function Layout({ children, currentPageName }) {
   });
   const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
 
-  const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => base44.entities.Notification.list("-created_date", 50),
-  });
-  const unreadNotifications = notifications.filter(n => !n.is_read).length;
+
 
   const navGroups = [
     {
@@ -119,7 +115,6 @@ export default function Layout({ children, currentPageName }) {
       label: "Admin",
       items: [
         { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
-        { name: "Notifications", page: "Notifications", icon: Bell, badge: true },
         { name: "Settings", page: "Settings", icon: Settings2 },
       ],
     },
@@ -187,19 +182,9 @@ export default function Layout({ children, currentPageName }) {
                             {pendingRefreshCount}
                           </span>
                         )}
-                        {!collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                            {unreadNotifications}
-                          </span>
-                        )}
                         {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
                           <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                             {pendingRefreshCount}
-                          </span>
-                        )}
-                        {collapsed && item.badge && item.page === "Notifications" && unreadNotifications > 0 && (
-                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                            {unreadNotifications}
                           </span>
                         )}
                       </Link>
@@ -240,10 +225,11 @@ export default function Layout({ children, currentPageName }) {
             alt="Elite Engine Development" 
             className="h-7 object-contain"
           />
-          <div className="w-6" />
+          <NotificationBell />
         </div>
-        {currentPageName !== "Dashboard" && (
-          <div className="sticky top-14 md:top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 py-2">
+        {/* Desktop sticky bar — always visible with bell; Back button shown on non-Dashboard pages */}
+        <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between">
+          {currentPageName !== "Dashboard" ? (
             <button
               onClick={() => navigate(-1)}
               className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"
@@ -251,8 +237,11 @@ export default function Layout({ children, currentPageName }) {
               <ChevronLeft className="w-4 h-4" />
               Back
             </button>
-          </div>
-        )}
+          ) : (
+            <div />
+          )}
+          <NotificationBell />
+        </div>
         {children}
       </main>
     </div>

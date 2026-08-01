@@ -148,6 +148,31 @@
       "type": "string",
       "description": "Admin password to bypass barcode verification for engine build edits and pickup. If empty, any non-empty input bypasses."
     },
+    "notif_estimate_accepted": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses notifications for accepted estimates"
+    },
+    "notif_payment_received": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses notifications for received payments"
+    },
+    "notif_po_accepted": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses notifications for acknowledged purchase orders"
+    },
+    "notif_po_ready": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses notifications for ready purchase orders"
+    },
+    "notif_refresh_request": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, suppresses notifications for engine refresh requests"
+    },
     "voipms_pb_enabled": {
       "type": "boolean",
       "default": false,

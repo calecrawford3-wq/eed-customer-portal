@@ -30,6 +30,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: "title and message are required" }, { status: 400 });
     }
 
+    // Check notification preference toggles — skip silently if disabled
+    const notifType = type || "other";
+    const settingKey = `notif_${notifType}`;
+    if (settingKey !== "notif_other") {
+      try {
+        const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
+        const globalSettings = settings?.[0];
+        if (globalSettings && settingKey in globalSettings && globalSettings[settingKey] === false) {
+          return Response.json({ success: true, skipped: "notification type disabled" });
+        }
+      } catch (e) {
+        console.error("[sendAdminNotification] Failed to check notification settings:", e.message);
+      }
+    }
+
     // 1. Persist a Notification record (service role — works from any caller)
     try {
       await base44.asServiceRole.entities.Notification.create({

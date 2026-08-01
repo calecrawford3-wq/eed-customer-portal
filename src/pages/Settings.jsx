@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send, Phone } from "lucide-react";
+import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send, Phone, Bell } from "lucide-react";
 import { toast } from "sonner";
 import FromAddressesEditor from "@/components/settings/FromAddressesEditor";
 import VoipPhonebookPanel from "@/components/settings/VoipPhonebookPanel";
 import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
+import NotificationSettingsPanel from "@/components/settings/NotificationSettingsPanel";
 
 const defaultSettings = {
   key: "global",
@@ -125,6 +126,7 @@ export default function Settings() {
           <TabsTrigger value="email"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
           <TabsTrigger value="templates"><FileText className="w-4 h-4 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="telephony"><Phone className="w-4 h-4 mr-1" /> Telephony</TabsTrigger>
+          <TabsTrigger value="notifications"><Bell className="w-4 h-4 mr-1" /> Notifications</TabsTrigger>
         </TabsList>
 
         {/* Company Info */}
@@ -326,6 +328,11 @@ export default function Settings() {
         {/* Telephony / VoIP */}
         <TabsContent value="telephony">
           <VoipPhonebookPanel />
+        </TabsContent>
+
+        {/* Notification Preferences */}
+        <TabsContent value="notifications">
+          <NotificationSettingsPanel form={form} set={set} />
         </TabsContent>
       </Tabs>
     </div>
