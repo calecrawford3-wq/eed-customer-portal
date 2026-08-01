@@ -41,6 +41,7 @@ import EstimateTotals from "@/components/estimates/EstimateTotals";
 import EstimateDepositSection from "@/components/estimates/EstimateDepositSection";
 import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
+import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
@@ -110,6 +111,7 @@ export default function EstimateDetail() {
   const [contractEngineOpen, setContractEngineOpen] = useState(false);
   const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [multiPartPickerOpen, setMultiPartPickerOpen] = useState(false);
 
   const { data: estimate, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate", id],
@@ -416,6 +418,23 @@ export default function EstimateDetail() {
   };
 
   const addLine = () => setForm(f => ({ ...f, line_items: [...f.line_items, { ...emptyPart }] }));
+
+  const addMultipleParts = (partsToAdd) => {
+    const override = customer?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
+    const newLines = partsToAdd.map(part => {
+      const price = useOverride ? (Number(part.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(part.sell_price) || 0);
+      return {
+        part_id: part.id, part_number: part.part_number, item_name: part.name,
+        quantity: 1, unit_cost: part.unit_cost || 0, shipping_cost: Number(part.shipping_cost) || 0,
+        unit_price: price, total: price,
+      };
+    });
+    const allLines = [...form.line_items, ...newLines];
+    const totals = recalc(allLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
+    setForm({ ...form, line_items: allLines, ...totals });
+    toast.success(`Added ${partsToAdd.length} part${partsToAdd.length === 1 ? "" : "s"}`);
+  };
 
   const handleCoreCredit = (coreDetails) => {
     const credit = Number(coreDetails.core_credit) || 0;
@@ -1247,6 +1266,12 @@ export default function EstimateDetail() {
         onNewCore={() => { setEditingCore(null); setCoreCreateOpen(true); }}
         onEditCore={(c) => { setEditingCore(c); setCoreCreateOpen(true); }}
       />
+      <MultiPartPickerModal
+        open={multiPartPickerOpen}
+        onClose={() => setMultiPartPickerOpen(false)}
+        parts={parts}
+        onAddSelected={addMultipleParts}
+      />
       <CoreCreditModal
         open={coreCreditOpen}
         onClose={() => setCoreCreditOpen(false)}
@@ -1557,7 +1582,7 @@ export default function EstimateDetail() {
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
             <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }} className="border-purple-300 text-purple-700 hover:bg-purple-50"><Recycle className="w-4 h-4 mr-1" /> Add Core</Button>
-            <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+            <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setMultiPartPickerOpen(true)}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -1615,6 +1640,9 @@ export default function EstimateDetail() {
               </tbody>
             </table>
           </div>
+          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#e20404] mt-2" onClick={addLine}>
+            <Plus className="w-4 h-4 mr-1" /> Add Manual Part
+          </Button>
         </CardContent>
       </Card>
 
