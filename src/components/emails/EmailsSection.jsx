@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Send, Link2, Search, Paperclip, CornerUpLeft, RefreshCw } from "lucide-react";
+import { Mail, Send, Link2, Search, Paperclip, CornerUpLeft, RefreshCw, ChevronLeft } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -119,8 +119,8 @@ export default function EmailsSection({ customerId, supplierId, linkType, linkId
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 min-w-0">
-            {/* List */}
-            <div className="md:col-span-5 border rounded-md max-h-[420px] overflow-y-auto min-w-0">
+            {/* List — hidden on mobile when an email is open */}
+            <div className={`${selected ? "hidden md:block" : "block"} md:col-span-5 border rounded-md max-h-[420px] overflow-y-auto min-w-0`}>
               {filtered.map((e) => (
                 <button
                   key={e.id}
@@ -149,14 +149,20 @@ export default function EmailsSection({ customerId, supplierId, linkType, linkId
               ))}
             </div>
 
-            {/* Thread */}
-            <div className="md:col-span-7 border rounded-md max-h-[420px] overflow-y-auto min-w-0">
+            {/* Thread — full-screen on mobile when an email is selected */}
+            <div className={`${selected ? "block" : "hidden md:block"} md:col-span-7 border rounded-md max-h-[420px] overflow-y-auto min-w-0`}>
               {!selected ? (
                 <div className="p-8 text-center text-slate-400 text-sm">Select an email to read its thread.</div>
               ) : (
                 <div className="p-3 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-2 border-b pb-2">
                     <div className="min-w-0">
+                      <button
+                        onClick={() => setSelectedId(null)}
+                        className="md:hidden inline-flex items-center gap-1 text-sm font-medium text-[#e20404] mb-2"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Back to list
+                      </button>
                       <h3 className="font-semibold text-slate-900 truncate text-sm">{selected.subject || "(no subject)"}</h3>
                       <p className="text-xs text-slate-500">{thread.length} message{thread.length !== 1 ? "s" : ""} in thread</p>
                     </div>

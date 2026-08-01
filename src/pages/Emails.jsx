@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell, FileText, Edit3, ListTodo } from "lucide-react";
+import { Mail, RefreshCw, Send, Link2, Search, Paperclip, CornerUpLeft, MessagesSquare, Sparkles, MailOpen, CheckCheck, ReplyAll, Forward, Bell, FileText, Edit3, ListTodo, ChevronLeft } from "lucide-react";
 import EmailComposer from "@/components/emails/EmailComposer";
 import EmailLinkPanel from "@/components/emails/EmailLinkPanel";
 import SafeEmailBody from "@/components/emails/SafeEmailBody";
@@ -574,8 +574,8 @@ export default function Emails() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-w-0">
-        {/* Thread list */}
-        <div className="lg:col-span-5 xl:col-span-4 min-w-0">
+        {/* Thread list — hidden on mobile when a thread is open */}
+        <div className={`${selectedThread ? "hidden lg:block" : "block"} lg:col-span-5 xl:col-span-4 min-w-0`}>
           {/* Selection toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -694,14 +694,20 @@ export default function Emails() {
           ) : null}
         </div>
 
-        {/* Thread / detail */}
-        <div className="lg:col-span-7 xl:col-span-8 border rounded-lg bg-white max-h-[70vh] overflow-y-auto min-w-0">
+        {/* Thread / detail — full-screen on mobile when a thread is selected */}
+        <div className={`${selectedThread ? "block" : "hidden lg:block"} lg:col-span-7 xl:col-span-8 border rounded-lg bg-white max-h-[70vh] overflow-y-auto min-w-0`}>
           {!selectedThread ? (
             <div className="p-12 text-center text-slate-400 text-sm">Select a thread to read its messages.</div>
           ) : (
             <div className="p-4 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-2 border-b pb-3">
                 <div className="min-w-0">
+                  <button
+                    onClick={() => setSelectedKey(null)}
+                    className="lg:hidden inline-flex items-center gap-1 text-sm font-medium text-[#e20404] mb-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Back to list
+                  </button>
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold text-slate-900 truncate">{selectedThread.subject}</h2>
                     <Select value={selectedThread.category} onValueChange={recategorize}>
