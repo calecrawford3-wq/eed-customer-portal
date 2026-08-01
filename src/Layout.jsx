@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Monitor,
   Users,
   Receipt,
   ClipboardList,
@@ -38,8 +37,7 @@ import {
   Target,
   Search,
   Sliders,
-  GitCompare,
-  PhoneCall
+  GitCompare
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -83,7 +81,6 @@ export default function Layout({ children, currentPageName }) {
         { name: "Invoices", page: "Invoices", icon: Receipt },
         { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
         { name: "Payments", page: "Payments", icon: DollarSign },
-        { name: "Credits", page: "Credits", icon: Award },
       ],
     },
     {
@@ -93,7 +90,6 @@ export default function Layout({ children, currentPageName }) {
         { name: "Platforms", page: "Platforms", icon: Layers },
         { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
         { name: "Documents", page: "Documents", icon: FolderOpen },
-        { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
       ],
     },
     {
@@ -109,6 +105,7 @@ export default function Layout({ children, currentPageName }) {
       label: "Finance",
       items: [
         { name: "Expenses", page: "Expenses", icon: TrendingDown },
+        { name: "Credits", page: "Credits", icon: Award },
         { name: "Reports", page: "Reports", icon: BarChart2 },
       ],
     },
@@ -119,7 +116,6 @@ export default function Layout({ children, currentPageName }) {
         { name: "Calendar", page: "Calendar", icon: Calendar },
         { name: "Messages", page: "Messaging", icon: MessageSquare },
         { name: "Emails", page: "Emails", icon: Mail },
-        { name: "VoIP Phonebook", page: "VoipPhonebookSettings", icon: PhoneCall },
       ],
     },
     {

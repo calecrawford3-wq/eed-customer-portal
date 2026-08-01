@@ -18,7 +18,8 @@ import {
   RefreshCw,
   ShoppingCart,
   PackageCheck,
-  TrendingDown
+  TrendingDown,
+  Monitor
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -153,9 +154,20 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Engine specification vault overview</p>
+      <div className="mb-8 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Engine specification vault overview</p>
+        </div>
+        <a
+          href={createPageUrl("ShopDisplay")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <Monitor className="w-4 h-4" />
+          Shop Display
+        </a>
       </div>
 
       {/* Stats Grid */}
