@@ -98,6 +98,10 @@ export default function Estimates() {
   });
 
   const totalValue = filtered.reduce((sum, e) => sum + (e.total || 0), 0);
+  const pendingEstimates = estimates.filter(e => e.status === "sent");
+  const pendingValue = pendingEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
+  const approvedEstimates = estimates.filter(e => e.status === "approved");
+  const approvedValue = approvedEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
 
   return (
     <div className="p-4 md:p-8">
@@ -111,6 +115,37 @@ export default function Estimates() {
             <Plus className="w-4 h-4 mr-2" /> New Estimate
           </Button>
         </Link>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-blue-100 p-3 rounded-lg"><Send className="w-5 h-5 text-blue-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Pending (Sent)</p>
+              <p className="text-xl font-bold text-slate-900">{pendingEstimates.length} · ${pendingValue.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-emerald-100 p-3 rounded-lg"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Approved</p>
+              <p className="text-xl font-bold text-slate-900">{approvedEstimates.length} · ${approvedValue.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-slate-100 p-3 rounded-lg"><FileText className="w-5 h-5 text-slate-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Total Value</p>
+              <p className="text-xl font-bold text-slate-900">${totalValue.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6">

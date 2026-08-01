@@ -475,7 +475,7 @@ export default function Emails() {
   const allFilteredSelected = filteredThreads.length > 0 && filteredThreads.every((t) => selectedSet.has(t.key));
 
   return (
-    <div className="p-4 md:p-6 min-w-0">
+    <div className="p-4 md:p-8 min-w-0">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>

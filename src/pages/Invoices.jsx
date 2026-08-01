@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Receipt, DollarSign, Clock, CheckCircle, AlertTriangle, Trash2, Upload } from "lucide-react";
+import { Plus, Search, Receipt, Clock, CheckCircle, AlertTriangle, Trash2, Upload } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -88,27 +89,33 @@ export default function Invoices() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-          <div className="bg-amber-100 p-3 rounded-lg"><Clock className="w-5 h-5 text-amber-600" /></div>
-          <div>
-            <p className="text-sm text-slate-500">Outstanding</p>
-            <p className="text-xl font-bold text-slate-900">${totalOutstanding.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-          <div className="bg-emerald-100 p-3 rounded-lg"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
-          <div>
-            <p className="text-sm text-slate-500">Total Collected</p>
-            <p className="text-xl font-bold text-slate-900">${totalPaid.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-          <div className="bg-red-100 p-3 rounded-lg"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
-          <div>
-            <p className="text-sm text-slate-500">Overdue</p>
-            <p className="text-xl font-bold text-slate-900">{invoices.filter(i => i.status === "overdue").length} invoices</p>
-          </div>
-        </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-amber-100 p-3 rounded-lg"><Clock className="w-5 h-5 text-amber-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Outstanding</p>
+              <p className="text-xl font-bold text-slate-900">${totalOutstanding.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-emerald-100 p-3 rounded-lg"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Total Collected</p>
+              <p className="text-xl font-bold text-slate-900">${totalPaid.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-red-100 p-3 rounded-lg"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Overdue</p>
+              <p className="text-xl font-bold text-slate-900">{invoices.filter(i => i.status === "overdue").length} invoices</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6">

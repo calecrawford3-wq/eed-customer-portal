@@ -51,9 +51,11 @@ export default function Approvals() {
   const pendingBuilds = builds.filter((b) => !b.picked_up);
 
   return (
-    <div className="p-4 md:p-6 min-w-0">
-      <h1 className="text-2xl font-bold text-slate-900 mb-1">Approvals</h1>
-      <p className="text-sm text-slate-500 mb-4">Estimates awaiting customer approval and builds ready for pickup.</p>
+    <div className="p-4 md:p-8 min-w-0">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Approvals</h1>
+        <p className="text-slate-500 mt-1">Estimates awaiting customer approval and builds ready for pickup.</p>
+      </div>
 
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-2">
