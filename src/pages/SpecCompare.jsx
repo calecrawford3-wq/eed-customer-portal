@@ -299,7 +299,7 @@ export default function SpecCompare() {
                 <CardHeader className="bg-slate-50 py-3">
                   <CardTitle className="text-base">{section.label}</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-slate-50/50">

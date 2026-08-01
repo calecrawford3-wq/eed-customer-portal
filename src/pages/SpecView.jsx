@@ -242,7 +242,7 @@ export default function SpecView() {
               <CardHeader className="py-3 bg-slate-50">
                 <CardTitle className="text-base">{section.label}</CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <tbody>
                     {section.fields.map(field => {

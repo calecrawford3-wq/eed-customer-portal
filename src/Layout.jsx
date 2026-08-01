@@ -310,7 +310,7 @@ export default function Layout({ children, currentPageName }) {
           <div className="w-6" />
         </div>
         {currentPageName !== "Dashboard" && (
-          <div className="px-4 md:px-8 pt-3 md:pt-4">
+          <div className="sticky top-14 md:top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 py-2">
             <button
               onClick={() => navigate(-1)}
               className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"

@@ -179,7 +179,7 @@ export default function Credits() {
           <p className="text-sm mt-1">Click "Add Credit" to issue performance, referral, or manual credits.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>

@@ -624,7 +624,17 @@ export default function Emails() {
           {searching && <div className="text-xs text-slate-400 mb-1">Searching across all mail…</div>}
           <div className="border rounded-lg bg-white max-h-[62vh] overflow-y-auto min-w-0">
             {isLoading ? (
-              <div className="p-8 text-center text-slate-400 text-sm">Loading emails…</div>
+              <div className="p-4 space-y-3">
+                {Array.from({length: 5}).map((_,i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-200 rounded animate-pulse w-1/3"></div>
+                      <div className="h-3 bg-slate-200 rounded animate-pulse w-2/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredThreads.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-sm">
                 {allEmails.length === 0 ? "No emails yet. Click Sync now to pull from Zoho Mail." : "No threads match your filters."}

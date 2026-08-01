@@ -37,6 +37,10 @@ import { AlertTriangle as AlertTriangleIcon, ShieldAlert, FileText } from "lucid
 import HistoryModal from "@/components/HistoryModal";
 import EmailsSection from "@/components/emails/EmailsSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import EstimateTotals from "@/components/estimates/EstimateTotals";
+import EstimateDepositSection from "@/components/estimates/EstimateDepositSection";
+import EstimateHeader from "@/components/estimates/EstimateHeader";
+import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -1339,76 +1343,21 @@ export default function EstimateDetail() {
         context={{ type: "estimate", id, number: form.estimate_number, buildId: form.build_id }}
       />
 
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <Link to="/Estimates"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-slate-900">{form.estimate_number}</h1>
-        </div>
-        <Badge className={`${STATUS_BADGE[form.status] || "bg-slate-100 text-slate-600"} border-0 capitalize`}>{form.status}</Badge>
-
-        {form.deposit_required && !depositMet && (
-          <Badge className="bg-amber-100 text-amber-700 border-0 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Deposit Pending
-          </Badge>
-        )}
-
-        <Button variant="outline" size="sm" onClick={() => setPoModalOpen(true)} disabled={!id}>
-          <Package className="w-4 h-4 mr-1" /> Generate POs
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}>
-          <Printer className="w-4 h-4 mr-1" /> View
-        </Button>
-        <Button variant="outline" size="sm" onClick={sendEstimate} disabled={sending || !form.customer_id}>
-          <Send className="w-4 h-4 mr-1" /> {sending ? "Sending..." : "Send"}
-        </Button>
-        <Button variant="outline" size="sm" onClick={sendEstimateByText} disabled={sending || !form.customer_id} title="Send estimate link via text message">
-          <MessageSquare className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Text"}
-        </Button>
-        {id && form.status !== "approved" && form.status !== "declined" && (
-          <Button
-            variant="outline" size="sm"
-            className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"
-            onClick={handleApprove}
-            disabled={form.deposit_required && !depositMet}
-            title={form.deposit_required && !depositMet ? "Deposit must be received first" : ""}
-          >
-            <CheckCircle className="w-4 h-4 mr-1" /> Approve
-          </Button>
-        )}
-        {form.status === "approved" && !form.build_id && (
-          <Button
-            variant="outline" size="sm"
-            className="border-purple-400 text-purple-700 hover:bg-purple-50"
-            onClick={handleConvertToBuild}
-            disabled={convertingToBuild}
-          >
-            <WrenchIcon className="w-4 h-4 mr-1" /> {convertingToBuild ? "Creating..." : "Convert to Build"}
-          </Button>
-        )}
-        {form.build_id && (
-          <Link to={`/BuildDetail?id=${form.build_id}`}>
-            <Button variant="outline" size="sm" className="border-purple-400 text-purple-700 hover:bg-purple-50">
-              <WrenchIcon className="w-4 h-4 mr-1" /> View Build
-            </Button>
-          </Link>
-        )}
-        {form.invoice_id && (
-          <Link to={`/InvoiceDetail?id=${form.invoice_id}`}>
-            <Button variant="outline" size="sm" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50">
-              <Receipt className="w-4 h-4 mr-1" /> View Invoice
-            </Button>
-          </Link>
-        )}
-        {id && (
-          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-            <History className="w-4 h-4 mr-1" /> History
-          </Button>
-        )}
-        <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" size="sm" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save"}
-        </Button>
-      </div>
+      <EstimateHeader
+        form={form}
+        id={id}
+        depositMet={depositMet}
+        sending={sending}
+        convertingToBuild={convertingToBuild}
+        saveMutation={saveMutation}
+        sendEstimate={sendEstimate}
+        sendEstimateByText={sendEstimateByText}
+        handleApprove={handleApprove}
+        handleConvertToBuild={handleConvertToBuild}
+        setPoModalOpen={setPoModalOpen}
+        setPrintMode={setPrintMode}
+        setHistoryOpen={setHistoryOpen}
+      />
 
       {/* Details + Bill To */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -1593,132 +1542,14 @@ export default function EstimateDetail() {
 
 
 
-      {/* Deposit Section */}
-      <Card className="border-0 shadow-sm mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> Deposit
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Require deposit</span>
-              <Switch
-                checked={form.deposit_required}
-                onCheckedChange={v => setForm({...form, deposit_required: v})}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        {form.deposit_required && (
-          <CardContent>
-            <div className="flex items-end gap-4 flex-wrap">
-              <div className="w-40">
-                <Label>Deposit Type</Label>
-                <Select
-                  value={form.deposit_type || "amount"}
-                  onValueChange={v => setForm({...form, deposit_type: v})}
-                >
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="amount">Fixed Amount</SelectItem>
-                    <SelectItem value="percent">Percentage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-48">
-                {form.deposit_type === "percent" ? (
-                  <>
-                    <Label>Deposit %</Label>
-                    <div className="relative mt-1">
-                      <Input
-                        type="number"
-                        value={form.deposit_percent || 0}
-                        onChange={e => setForm({...form, deposit_percent: Number(e.target.value)})}
-                        min="0"
-                        max="100"
-                        step="1"
-                        placeholder="0"
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">%</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Label>Deposit Amount</Label>
-                    <div className="relative mt-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                      <Input
-                        type="number"
-                        value={form.deposit_amount}
-                        onChange={e => setForm({...form, deposit_amount: Number(e.target.value)})}
-                        className="pl-7"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="text-sm text-slate-500 mb-1">Payments Received</div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-lg font-bold ${depositMet ? "text-emerald-600" : "text-amber-600"}`}>
-                    ${totalDeposit.toFixed(2)} / ${Number(form.deposit_amount || 0).toFixed(2)}
-                  </span>
-                  {depositMet
-                    ? <Badge className="bg-emerald-100 text-emerald-700 border-0">Deposit Received</Badge>
-                    : <Badge className="bg-amber-100 text-amber-700 border-0">Awaiting Deposit</Badge>
-                  }
-                </div>
-              </div>
-              {id && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"
-                  onClick={() => setPaymentModalOpen(true)}
-                >
-                  <DollarSign className="w-4 h-4 mr-1" /> Record Payment
-                </Button>
-              )}
-            </div>
-
-            {/* Payment Log */}
-            {(form.payments || []).length > 0 && (
-              <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Payment History</p>
-                {(form.payments || []).map((p, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-slate-100 text-slate-600 border-0 capitalize text-xs">{p.method}</Badge>
-                      {p.note && <span className="text-slate-500">{p.note}</span>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-400 text-xs">{p.date}</span>
-                      <span className="font-semibold text-emerald-700">${Number(p.amount).toFixed(2)}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-400 hover:text-red-600 px-2"
-                        onClick={() => {
-                          const updatedPayments = form.payments.filter((_, idx) => idx !== i);
-                          const newTotal = updatedPayments.reduce((s, pay) => s + (pay.amount || 0), 0);
-                          const newDepositPaid = newTotal >= Number(form.deposit_amount || 0);
-                          setForm({ ...form, payments: updatedPayments, deposit_paid: newDepositPaid, amount_paid: newTotal });
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
+      <EstimateDepositSection
+        form={form}
+        setForm={setForm}
+        id={id}
+        totalDeposit={totalDeposit}
+        depositMet={depositMet}
+        setPaymentModalOpen={setPaymentModalOpen}
+      />
 
       {/* Parts */}
       <Card className="border-0 shadow-sm mb-6">
@@ -1788,164 +1619,32 @@ export default function EstimateDetail() {
         </CardContent>
       </Card>
 
-      {/* Labor */}
-      <Card className="border-0 shadow-sm mb-6">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2"><Wrench className="w-4 h-4" /> Labor</CardTitle>
-          <Button size="sm" variant="outline" onClick={addLabor}><Plus className="w-4 h-4 mr-1" /> Add Labor</Button>
-        </CardHeader>
-        <CardContent>
-          {(form.labor_items || []).length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">No labor items added.</p>
-          ) : (
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(form.labor_items || []).map((item, idx) => (
-                  <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2">
-                      <div className="flex gap-1">
-                        <Input value={item.name} onChange={e => updateLabor(idx, "name", e.target.value)} placeholder="Labor name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateLabor(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
-                    <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateLabor(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
-                    <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <SimpleItemsTable
+        type="labor"
+        items={form.labor_items}
+        onUpdate={updateLabor}
+        onRemove={removeLabor}
+        onAdd={addLabor}
+        onPick={(idx) => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}
+      />
+      <SimpleItemsTable
+        type="machining"
+        items={form.machining_items}
+        onUpdate={updateMachining}
+        onRemove={removeMachining}
+        onAdd={addMachining}
+        onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
+      />
 
-      {/* Machining */}
-      <Card className="border-0 shadow-sm mb-6">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2"><Cog className="w-4 h-4" /> Machining</CardTitle>
-          <Button size="sm" variant="outline" onClick={addMachining}><Plus className="w-4 h-4 mr-1" /> Add Machining</Button>
-        </CardHeader>
-        <CardContent>
-          {(form.machining_items || []).length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">No machining items added.</p>
-          ) : (
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(form.machining_items || []).map((item, idx) => (
-                  <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2">
-                      <div className="flex gap-1">
-                        <Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
-                    <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
-                    <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Totals */}
-      <div className="flex justify-end mb-6">
-        <div className="w-full sm:w-72 space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
-          <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
-          <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
-          <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
-          {(() => {
-            const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0);
-            const cost = (form.line_items || []).reduce((s, l) => s + (l.is_core_credit ? 0 : ((Number(l.unit_cost) || 0) + (Number(l.shipping_cost) || 0)) * (Number(l.quantity) || 0)), 0);
-            const profit = revenue - cost;
-            const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-            return (
-              <div className="flex justify-between text-xs bg-slate-50 rounded px-2 py-1">
-                <span className="text-slate-500">Est. Profit (Margin)</span>
-                <span className={profit >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>${profit.toFixed(2)} ({margin.toFixed(1)}%)</span>
-              </div>
-            );
-          })()}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-slate-600 flex items-center gap-1">Tax Rate (%) {customer?.tax_exempt && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">Exempt</Badge>}</span>
-            <Input type="number" value={form.tax_rate} onChange={e => updateTaxRate(Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.1" />
-          </div>
-          {Number(form.tax_rate) > 0 && <div className="flex justify-between text-slate-500"><span>Tax ({form.tax_rate}% on parts)</span><span>${Number(form.tax_amount || 0).toFixed(2)}</span></div>}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-slate-600">Discount</span>
-            <div className="flex items-center gap-2">
-              <Select value={form.discount_type || "none"} onValueChange={v => updateDiscount("type", v)}>
-                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="amount">$ Amount</SelectItem>
-                  <SelectItem value="percentage">% Percent</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.discount_type && form.discount_type !== "none" && (
-                <Input type="number" value={form.discount_value || 0} onChange={e => updateDiscount("value", Number(e.target.value))} className="w-20 text-right h-7" min="0" step="0.01" />
-              )}
-            </div>
-          </div>
-          {Number(form.discount_amount) > 0 && (
-            <div className="flex justify-between text-emerald-600"><span>Discount Applied</span><span>-${Number(form.discount_amount || 0).toFixed(2)}</span></div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-slate-600">Shipping</span>
-            <div className="relative w-20">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
-              <Input type="number" value={Number(form.shipping_cost) || 0} onChange={e => updateShipping(Number(e.target.value))} className="text-right h-7 pl-5" min="0" step="0.01" />
-            </div>
-          </div>
-          <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
-          {availableCreditBalance > 0 && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-600">Account Credit</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-400">(Avail: ${availableCreditBalance.toFixed(2)})</span>
-                <Input type="number" value={Number(form.applied_credits) || 0} onChange={e => setForm({ ...form, applied_credits: Math.min(Math.max(0, Number(e.target.value) || 0), availableCreditBalance) })} className="w-20 text-right h-7" min="0" step="0.01" />
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between text-emerald-600 font-medium"><span>Amount Paid</span><span>${Number(form.amount_paid || 0).toFixed(2)}</span></div>
-          <div className="flex justify-between text-red-600 font-medium border-t border-slate-100 pt-2"><span>Amount Due</span><span>${Math.max(0, Number(form.total || 0) - Number(form.applied_credits || 0) - Number(form.amount_paid || 0)).toFixed(2)}</span></div>
-          {form.deposit_required && (
-            <div className="flex justify-between text-slate-600 text-sm border-t border-slate-100 pt-2">
-              <span>Deposit Required</span>
-              <span>${Number(form.deposit_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {form.deposit_required && (
-            <div className={`flex justify-between text-sm ${form.deposit_paid ? "text-emerald-600" : "text-amber-600"}`}>
-              <span>Deposit Status</span>
-              <span>{form.deposit_paid ? "✓ Received" : "Awaiting"}</span>
-            </div>
-          )}
-        </div>
-      </div>
+      <EstimateTotals
+        form={form}
+        customer={customer}
+        setForm={setForm}
+        updateTaxRate={updateTaxRate}
+        updateDiscount={updateDiscount}
+        updateShipping={updateShipping}
+        availableCreditBalance={availableCreditBalance}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div><Label>Customer Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Notes visible to customer..." /></div>

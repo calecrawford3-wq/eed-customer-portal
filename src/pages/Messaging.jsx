@@ -278,7 +278,17 @@ export default function Messaging() {
           </div>
           <ScrollArea className="flex-1">
             {isLoading ? (
-              <div className="p-4 text-center text-slate-400 text-sm">Loading conversations...</div>
+              <div className="p-4 space-y-3">
+                {Array.from({length: 5}).map((_,i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-200 rounded animate-pulse w-1/3"></div>
+                      <div className="h-3 bg-slate-200 rounded animate-pulse w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-4 text-center text-slate-400 text-sm">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />

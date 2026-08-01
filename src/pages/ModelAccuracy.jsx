@@ -80,7 +80,7 @@ export default function ModelAccuracy() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="w-4 h-4 text-slate-500" /> Accuracy by engine family</CardTitle></CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs text-slate-500">
                   <tr><th className="text-left pb-2">Engine (EED)</th><th className="text-left pb-2">Validated</th><th className="text-left pb-2">Avg HP error</th><th className="text-left pb-2">Avg torque error</th></tr>

@@ -483,7 +483,7 @@ export default function PurchaseOrderDetail() {
             <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Blank Item</Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
@@ -552,7 +552,7 @@ export default function PurchaseOrderDetail() {
             </CardTitle>
             <Button variant="ghost" size="sm" className="text-slate-400" onClick={() => setReceiveMode(false)}>Cancel</Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <p className="text-sm text-slate-500 mb-4">Enter the quantity received for each item. Inventory will be updated automatically for linked parts.</p>
             <table className="w-full text-sm mb-4">
               <thead>

@@ -63,7 +63,11 @@ export default function Approvals() {
         </CardHeader>
         <CardContent>
           {estLoading ? (
-            <p className="text-slate-400 text-sm">Loading…</p>
+            <div className="space-y-2 py-2">
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4"></div>
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-1/2"></div>
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-2/3"></div>
+            </div>
           ) : estimates.length === 0 ? (
             <p className="text-slate-400 text-sm py-4">No estimates currently awaiting approval.</p>
           ) : (
@@ -103,7 +107,11 @@ export default function Approvals() {
         </CardHeader>
         <CardContent>
           {buildLoading ? (
-            <p className="text-slate-400 text-sm">Loading…</p>
+            <div className="space-y-2 py-2">
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4"></div>
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-1/2"></div>
+              <div className="h-4 bg-slate-200 rounded animate-pulse w-2/3"></div>
+            </div>
           ) : pendingBuilds.length === 0 ? (
             <p className="text-slate-400 text-sm py-4">No builds awaiting pickup.</p>
           ) : (
