@@ -31,6 +31,7 @@ const STATUS_ICONS = {
 export default function Estimates() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [sortKey, setSortKey] = useState("recent");
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState({ open: false });
 
@@ -92,11 +93,20 @@ export default function Estimates() {
 
   const getCustomer = (id) => customers.find(c => c.id === id);
 
-  const filtered = estimates.filter(e => {
+  let filtered = estimates.filter(e => {
     const customer = getCustomer(e.customer_id);
     const matchSearch = `${e.estimate_number} ${customer?.first_name} ${customer?.last_name} ${customer?.company_name}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || e.status === filterStatus;
     return matchSearch && matchStatus;
+  });
+
+  if (sortKey === "total_desc") filtered.sort((a, b) => (b.total || 0) - (a.total || 0));
+  else if (sortKey === "total_asc") filtered.sort((a, b) => (a.total || 0) - (b.total || 0));
+  else if (sortKey === "date_asc") filtered.sort((a, b) => new Date(a.issue_date || 0) - new Date(b.issue_date || 0));
+  else if (sortKey === "customer") filtered.sort((a, b) => {
+    const an = getCustomer(a.customer_id)?.last_name || "";
+    const bn = getCustomer(b.customer_id)?.last_name || "";
+    return an.localeCompare(bn);
   });
 
   const totalValue = filtered.reduce((sum, e) => sum + (e.total || 0), 0);
@@ -104,6 +114,8 @@ export default function Estimates() {
   const pendingValue = pendingEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
   const approvedEstimates = estimates.filter(e => e.status === "approved");
   const approvedValue = approvedEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
+  const draftEstimates = estimates.filter(e => e.status === "draft");
+  const draftValue = draftEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
 
   return (
     <div className="p-4 md:p-8">
@@ -120,7 +132,16 @@ export default function Estimates() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="bg-slate-100 p-3 rounded-lg"><Clock className="w-5 h-5 text-slate-600" /></div>
+            <div>
+              <p className="text-sm text-slate-500">Draft</p>
+              <p className="text-xl font-bold text-slate-900">{draftEstimates.length} · ${draftValue.toLocaleString("en-US", {minimumFractionDigits: 2})}</p>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="bg-blue-100 p-3 rounded-lg"><Send className="w-5 h-5 text-blue-600" /></div>
@@ -160,6 +181,16 @@ export default function Estimates() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             {["draft","sent","approved","declined","expired"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={sortKey} onValueChange={setSortKey}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Sort" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Newest First</SelectItem>
+            <SelectItem value="date_asc">Oldest First</SelectItem>
+            <SelectItem value="total_desc">Highest Total</SelectItem>
+            <SelectItem value="total_asc">Lowest Total</SelectItem>
+            <SelectItem value="customer">Customer Name</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -202,7 +233,21 @@ export default function Estimates() {
                       {customer?.company_name && <span className="text-slate-400 text-xs ml-1">({customer.company_name})</span>}
                     </td>
                     <td className="px-4 py-3 text-slate-500">{e.issue_date ? format(new Date(e.issue_date), "MMM d, yyyy") : "—"}</td>
-                    <td className="px-4 py-3 text-slate-500">{e.expiry_date ? format(new Date(e.expiry_date), "MMM d, yyyy") : "—"}</td>
+                    <td className="px-4 py-3">
+                      {e.expiry_date ? (() => {
+                        const exp = new Date(e.expiry_date);
+                        const daysLeft = Math.ceil((exp - Date.now()) / 86400000);
+                        const isExpired = daysLeft < 0 && e.status === "sent";
+                        const isSoon = daysLeft >= 0 && daysLeft <= 7 && e.status === "sent";
+                        return (
+                          <span className={isExpired ? "text-red-600 font-medium" : isSoon ? "text-amber-600 font-medium" : "text-slate-500"}>
+                            {format(exp, "MMM d, yyyy")}
+                            {isExpired && " · Expired"}
+                            {isSoon && " · Soon"}
+                          </span>
+                        );
+                      })() : "—"}
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">${(e.total || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}</td>
                     <td className="px-4 py-3 text-right">
                       <span className="text-emerald-700 font-semibold">${(e.amount_paid || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}</span>
@@ -225,7 +270,9 @@ export default function Estimates() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
                         <Link to={`/EstimateDetail?id=${e.id}`}><Button size="sm" variant="outline">View</Button></Link>
-                        {e.status === "approved" && (
+                        {e.invoice_id ? (
+                          <Link to={`/InvoiceDetail?id=${e.invoice_id}`}><Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">View Invoice</Button></Link>
+                        ) : e.status === "approved" && (
                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => convertToInvoice.mutate(e)}>
                             → Invoice
                           </Button>
