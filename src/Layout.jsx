@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import {
   Gauge,
@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
 export default function Layout({ children, currentPageName }) {
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [rdOpen, setRdOpen] = useState(
@@ -308,6 +309,17 @@ export default function Layout({ children, currentPageName }) {
           />
           <div className="w-6" />
         </div>
+        {currentPageName !== "Dashboard" && (
+          <div className="px-4 md:px-8 pt-3 md:pt-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </button>
+          </div>
+        )}
         {children}
       </main>
     </div>
