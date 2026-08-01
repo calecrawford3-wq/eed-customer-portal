@@ -41,10 +41,12 @@ import EstimateTotals from "@/components/estimates/EstimateTotals";
 import EstimateDepositSection from "@/components/estimates/EstimateDepositSection";
 import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
+import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
 const emptyMachining = { name: "", description: "", price: 0 };
+const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const STATUS_BADGE = {
   draft: "bg-slate-100 text-slate-600",
@@ -109,7 +111,7 @@ export default function EstimateDetail() {
   const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const { data: estimate } = useQuery({
+  const { data: estimate, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate", id],
     queryFn: () => base44.entities.Estimate.filter({ id }),
     enabled: !!id,
@@ -175,11 +177,6 @@ export default function EstimateDetail() {
   const { data: allSpecSheets = [] } = useQuery({
     queryKey: ["allSpecSheets"],
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 200),
-  });
-
-  const { data: specSheets = [] } = useQuery({
-    queryKey: ["specSheets"],
-    queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
   });
 
   // Fetch builds for the selected engine to find the most recent spec sheet used
@@ -1135,8 +1132,6 @@ export default function EstimateDetail() {
     }
   };
 
-  const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
-
   const customer = customers.find(c => c.id === form.customer_id);
   const selectedEngine = customerEngines.find(e => e.id === form.customer_engine_id);
   const selectedEnginePlatform = platforms.find(p => p.id === selectedEngine?.platform_id);
@@ -1194,6 +1189,10 @@ export default function EstimateDetail() {
     }
   };
 
+  if (id && estimateLoading) {
+    return <LoadingState />;
+  }
+
   if (printMode) {
     return (
       <div className="p-4">
@@ -1225,7 +1224,7 @@ export default function EstimateDetail() {
       <CannedJobPicker
         open={cannedJobOpen}
         onClose={() => setCannedJobOpen(false)}
-        specSheets={specSheets}
+        specSheets={allSpecSheets}
         platforms={platforms}
         parts={parts}
         onSelect={handleCannedJobSelect}
