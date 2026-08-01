@@ -43,6 +43,7 @@ import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import LoadingState from "@/components/LoadingState";
+import { generateSequentialNumber } from "@/lib/generateDocNumber";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -112,6 +113,14 @@ export default function EstimateDetail() {
   const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [multiPartPickerOpen, setMultiPartPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (isNew) {
+      generateSequentialNumber("EST", "Estimate", "estimate_number").then(num => {
+        setForm(f => f.estimate_number === num ? f : { ...f, estimate_number: num });
+      });
+    }
+  }, [isNew]);
 
   const { data: estimate, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate", id],
