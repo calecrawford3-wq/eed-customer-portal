@@ -197,11 +197,11 @@ export default function Platforms() {
         />
       </div>
 
-      {/* Grid */}
+      {/* Grouped by Manufacturer */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-xl" />
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
         </div>
       ) : filteredPlatforms.length === 0 ? (
@@ -213,71 +213,87 @@ export default function Platforms() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPlatforms.map((platform) => (
-            <Card key={platform.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">{platform.name}</h3>
-                    <p className="text-sm text-slate-500">{platform.manufacturer}</p>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openDialog(platform)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => deleteMutation.mutate(platform.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+        <div className="space-y-8">
+          {Object.entries(
+            filteredPlatforms.reduce((acc, p) => {
+              const mfr = p.manufacturer || "Other";
+              (acc[mfr] = acc[mfr] || []).push(p);
+              return acc;
+            }, {})
+          ).map(([mfr, platforms]) => (
+            <div key={mfr}>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                {mfr} <span className="text-slate-300 font-normal">({platforms.length})</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {platforms.map((platform) => {
+                  const configLabel = CONFIGURATIONS.find(c => c.value === platform.configuration)?.label;
+                  const yearStr = platform.year_range_start
+                    ? `${platform.year_range_start}${platform.year_range_end ? `–${platform.year_range_end}` : "+"}`
+                    : "";
+                  const specCount = getSpecCount(platform.id);
 
-                <div className="space-y-2 mb-4">
-                  {platform.displacement_cc && (
-                    <p className="text-sm text-slate-600">
-                      {platform.displacement_cc}cc • {CONFIGURATIONS.find(c => c.value === platform.configuration)?.label || platform.configuration}
-                    </p>
-                  )}
-                  {(platform.year_range_start || platform.year_range_end) && (
-                    <p className="text-sm text-slate-500">
-                      {platform.year_range_start || "?"} - {platform.year_range_end || "Present"}
-                    </p>
-                  )}
-                </div>
+                  return (
+                    <Card key={platform.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-900 truncate">{platform.name}</h3>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 flex-wrap">
+                              {platform.displacement_cc && <span>{platform.displacement_cc}cc</span>}
+                              {platform.displacement_cc && configLabel && <span>•</span>}
+                              {configLabel && <span>{configLabel}</span>}
+                              {configLabel && yearStr && <span>•</span>}
+                              {yearStr && <span>{yearStr}</span>}
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openDialog(platform)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => deleteMutation.mutate(platform.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
-                <div className="flex items-center gap-2 mb-4">
-                  {platform.cylinder_count && (
-                    <Badge variant="outline" className="text-xs">
-                      {platform.cylinder_count} cyl / {platform.valve_count || "?"} valves
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-xs">
-                    <FileText className="w-3 h-3 mr-1" />
-                    {getSpecCount(platform.id)} specs
-                  </Badge>
-                </div>
-
-                <Link
-                  to={createPageUrl(`SpecSheets?platform=${platform.id}`)}
-                  className="flex items-center text-sm text-[#e20404] hover:text-[#c00303] font-medium"
-                >
-                  View Specifications
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
-              </CardContent>
-            </Card>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-2">
+                            {platform.cylinder_count && (
+                              <Badge variant="outline" className="text-xs">
+                                {platform.cylinder_count}cyl {platform.valve_count ? `/ ${platform.valve_count}v` : ""}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              <FileText className="w-3 h-3 mr-1" />
+                              {specCount}
+                            </Badge>
+                          </div>
+                          <Link
+                            to={createPageUrl(`SpecSheets?platform=${platform.id}`)}
+                            className="flex items-center text-xs text-[#e20404] hover:text-[#c00303] font-medium"
+                          >
+                            Specs <ChevronRight className="w-3 h-3 ml-0.5" />
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
       )}
