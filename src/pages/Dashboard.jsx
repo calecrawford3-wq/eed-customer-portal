@@ -133,6 +133,9 @@ export default function Dashboard() {
         </a>
       </div>
 
+      {/* Quick Actions */}
+      <QuickActions />
+
       {/* Stats Grid */}
       <DashboardStats stats={stats} isLoading={isLoading} />
 
@@ -164,8 +167,6 @@ export default function Dashboard() {
         <RecentBuilds builds={builds} platforms={platforms} isLoading={loadingBuilds} />
       </div>
 
-      {/* Quick Actions */}
-      <QuickActions />
     </div>
   );
 }
