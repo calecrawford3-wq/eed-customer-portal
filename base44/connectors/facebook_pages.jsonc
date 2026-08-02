@@ -2,8 +2,8 @@
   "type": "facebook_pages",
   "scopes": [
     "pages_show_list",
-    "pages_read_engagement",
+    "pages_manage_metadata",
     "pages_messaging",
-    "business_management"
+    "pages_read_engagement"
   ]
 }
