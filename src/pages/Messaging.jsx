@@ -95,7 +95,15 @@ export default function Messaging() {
   const conversations = useMemo(() => {
     const map = {};
     messages.forEach((m) => {
-      const key = m.phone_number || normalizePhone(m.from_number);
+      const rawConversationNumber =
+  m.phone_number ||
+  (m.direction === "inbound" ? m.from_number : m.to_number) ||
+  m.from_number ||
+  m.to_number;
+
+const key = normalizePhone(rawConversationNumber);
+
+if (!key) return;
       if (!map[key]) {
         map[key] = { phone: key, messages: [], lastAt: m.sent_at, unread: 0 };
       }
