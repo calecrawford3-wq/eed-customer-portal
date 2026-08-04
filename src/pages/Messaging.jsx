@@ -539,7 +539,7 @@ export default function Messaging() {
                 placeholder="Type your message..."
                 value={composeMessage}
                 onChange={(e) => setComposeMessage(e.target.value)}
-                maxLength={160}
+                maxLength={undefined}
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 rows={3}
               />
