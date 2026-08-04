@@ -536,14 +536,13 @@ export default function Messaging() {
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">Message</label>
               <textarea
-                placeholder="Type your message..."
-                value={composeMessage}
-                onChange={(e) => setComposeMessage(e.target.value)}
-                maxLength={undefined}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                rows={3}
+              placeholder="Type your message..."
+              value={composeMessage}
+              onChange={(e) => setComposeMessage(e.target.value)}
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              rows={5}
               />
-              <div className="text-xs text-slate-400 text-right mt-1">{composeMessage.length}/160</div>
+              <div className="text-xs text-slate-400 text-right mt-1">{composeMessage.length} charcters </div>
             </div>
             {composeMutation.isError && (
               <p className="text-sm text-red-600">Failed to send. Please try again.</p>
