@@ -25,6 +25,8 @@ import {
   Bell,
   BellOff,
   Image as ImageIcon,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -36,12 +38,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 import { cn } from "@/lib/utils";
 import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
+/**
+ * Normalize U.S. and Canadian phone numbers to:
+ * 1 + 10-digit number
+ */
 function normalizePhone(value) {
   if (!value) return "";
 
@@ -54,12 +62,18 @@ function normalizePhone(value) {
   return digits;
 }
 
+/**
+ * Format a phone number for display.
+ */
 function formatPhoneDisplay(value) {
   if (!value) return "";
 
   let digits = String(value).replace(/\D/g, "");
 
-  if (digits.length === 11 && digits.startsWith("1")) {
+  if (
+    digits.length === 11 &&
+    digits.startsWith("1")
+  ) {
     digits = digits.slice(1);
   }
 
@@ -73,6 +87,9 @@ function formatPhoneDisplay(value) {
   return String(value);
 }
 
+/**
+ * Format the message time.
+ */
 function formatTime(iso) {
   if (!iso) return "";
 
@@ -84,7 +101,10 @@ function formatTime(iso) {
 
   const now = new Date();
 
-  if (date.toDateString() === now.toDateString()) {
+  if (
+    date.toDateString() ===
+    now.toDateString()
+  ) {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -97,6 +117,9 @@ function formatTime(iso) {
   });
 }
 
+/**
+ * Format the day divider in the thread.
+ */
 function formatDayLabel(iso) {
   if (!iso) return "";
 
@@ -108,14 +131,23 @@ function formatDayLabel(iso) {
 
   const now = new Date();
 
-  if (date.toDateString() === now.toDateString()) {
+  if (
+    date.toDateString() ===
+    now.toDateString()
+  ) {
     return "Today";
   }
 
   const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
 
-  if (date.toDateString() === yesterday.toDateString()) {
+  yesterday.setDate(
+    yesterday.getDate() - 1
+  );
+
+  if (
+    date.toDateString() ===
+    yesterday.toDateString()
+  ) {
     return "Yesterday";
   }
 
@@ -125,6 +157,9 @@ function formatDayLabel(iso) {
   });
 }
 
+/**
+ * Build a primary customer name.
+ */
 function getCustomerFullName(customer) {
   if (!customer) return "";
 
@@ -133,6 +168,9 @@ function getCustomerFullName(customer) {
   }`.trim();
 }
 
+/**
+ * Build an additional-contact name.
+ */
 function getContactFullName(contact) {
   if (!contact) return "";
 
@@ -141,70 +179,108 @@ function getContactFullName(contact) {
   }`.trim();
 }
 
-function findCustomerByPhone(customers, phoneNumber) {
-  const target = normalizePhone(phoneNumber);
+/**
+ * Find a primary customer by phone.
+ */
+function findCustomerByPhone(
+  customers,
+  phoneNumber
+) {
+  const target =
+    normalizePhone(phoneNumber);
 
   if (!target) return null;
 
   return (
     customers.find(
       (customer) =>
-        normalizePhone(customer.phone) === target
+        normalizePhone(customer.phone) ===
+        target
     ) || null
   );
 }
 
-function findContactByPhone(customerContacts, phoneNumber) {
-  const target = normalizePhone(phoneNumber);
+/**
+ * Find an additional customer contact by phone.
+ */
+function findContactByPhone(
+  customerContacts,
+  phoneNumber
+) {
+  const target =
+    normalizePhone(phoneNumber);
 
   if (!target) return null;
 
   return (
     customerContacts.find(
       (contact) =>
-        normalizePhone(contact.phone) === target
+        normalizePhone(contact.phone) ===
+        target
     ) || null
   );
 }
 
+/**
+ * Resolve a conversation to either:
+ * - Primary customer
+ * - Additional contact and parent customer
+ * - Stored message information
+ */
 function resolveConversationParty(
   customers,
   customerContacts,
   phoneNumber,
   messages = []
 ) {
-  const primaryCustomer = findCustomerByPhone(
-    customers,
-    phoneNumber
-  );
+  const primaryCustomer =
+    findCustomerByPhone(
+      customers,
+      phoneNumber
+    );
 
   if (primaryCustomer) {
     return {
       customer: primaryCustomer,
       contact: null,
-      customerName: getCustomerFullName(primaryCustomer),
+      customerName:
+        getCustomerFullName(
+          primaryCustomer
+        ),
       contactName: "",
-      customerId: primaryCustomer.id,
+      customerId:
+        primaryCustomer.id,
     };
   }
 
-  const additionalContact = findContactByPhone(
-    customerContacts,
-    phoneNumber
-  );
+  const additionalContact =
+    findContactByPhone(
+      customerContacts,
+      phoneNumber
+    );
 
   if (additionalContact) {
     const parentCustomer =
       customers.find(
         (customer) =>
-          customer.id === additionalContact.customer_id
+          customer.id ===
+          additionalContact.customer_id
       ) || null;
 
     return {
       customer: parentCustomer,
       contact: additionalContact,
-      customerName: getCustomerFullName(parentCustomer),
-      contactName: getContactFullName(additionalContact),
+
+      customerName:
+        getCustomerFullName(
+          parentCustomer
+        ),
+
+      contactName:
+        getContactFullName(
+          additionalContact
+        ),
+
       customerId:
         parentCustomer?.id ||
         additionalContact.customer_id ||
@@ -215,30 +291,49 @@ function resolveConversationParty(
   return {
     customer: null,
     contact: null,
+
     customerName:
-      messages.find((message) => message.customer_name)
-        ?.customer_name || "",
+      messages.find(
+        (message) =>
+          message.customer_name
+      )?.customer_name || "",
+
     contactName:
-      messages.find((message) => message.contact_name)
-        ?.contact_name || "",
+      messages.find(
+        (message) =>
+          message.contact_name
+      )?.contact_name || "",
+
     customerId:
-      messages.find((message) => message.customer_id)
-        ?.customer_id || null,
+      messages.find(
+        (message) =>
+          message.customer_id
+      )?.customer_id || null,
   };
 }
 
+/**
+ * Prevent duplicate display names such as:
+ * Josh Keeler · Josh Keeler
+ */
 function getDisplayName(
   contactName,
   customerName,
   fallback
 ) {
-  const contact = String(contactName || "").trim();
-  const customer = String(customerName || "").trim();
+  const contact = String(
+    contactName || ""
+  ).trim();
+
+  const customer = String(
+    customerName || ""
+  ).trim();
 
   if (
     contact &&
     customer &&
-    contact.toLowerCase() === customer.toLowerCase()
+    contact.toLowerCase() ===
+      customer.toLowerCase()
   ) {
     return customer;
   }
@@ -247,47 +342,80 @@ function getDisplayName(
     return `${contact} · ${customer}`;
   }
 
-  return contact || customer || fallback;
+  return (
+    contact ||
+    customer ||
+    fallback
+  );
 }
 
+/**
+ * Read media_urls whether Base44 returns:
+ * - an array
+ * - a JSON string
+ * - a comma-separated string
+ */
 function getMediaUrls(message) {
-  const value = message?.media_urls;
+  const value =
+    message?.media_urls;
 
   if (Array.isArray(value)) {
     return value
-      .map((item) => String(item || "").trim())
+      .map((item) =>
+        String(item || "").trim()
+      )
       .filter(Boolean);
   }
 
-  if (typeof value !== "string" || !value.trim()) {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
     return [];
   }
 
   try {
-    const parsed = JSON.parse(value);
+    const parsed =
+      JSON.parse(value);
 
     if (Array.isArray(parsed)) {
       return parsed
-        .map((item) => String(item || "").trim())
+        .map((item) =>
+          String(item || "").trim()
+        )
         .filter(Boolean);
     }
   } catch {
-    // Continue with comma or newline parsing.
+    // Continue with delimited parsing.
   }
 
   return value
     .split(/[\n,]+/)
-    .map((item) => item.trim())
+    .map((item) =>
+      item.trim()
+    )
     .filter(Boolean);
 }
 
-function getConversationPreview(message) {
+/**
+ * Create the preview shown in the conversation list.
+ */
+function getConversationPreview(
+  message
+) {
   if (!message) return "";
 
-  const body = String(message.body || "").trim();
-  const mediaUrls = getMediaUrls(message);
+  const body = String(
+    message.body || ""
+  ).trim();
 
-  if (body && mediaUrls.length > 0) {
+  const mediaUrls =
+    getMediaUrls(message);
+
+  if (
+    body &&
+    mediaUrls.length > 0
+  ) {
     return `📷 ${body}`;
   }
 
@@ -303,61 +431,140 @@ function getConversationPreview(message) {
     return `📷 ${mediaUrls.length} photos`;
   }
 
-  if (message.channel === "mms") {
+  if (
+    message.channel === "mms"
+  ) {
     return "📎 MMS attachment";
   }
 
   return "";
 }
 
+/**
+ * Read useful errors from Base44 or regular JavaScript errors.
+ */
+function getErrorMessage(
+  error,
+  fallback
+) {
+  return (
+    error?.response?.data?.error ||
+    error?.data?.error ||
+    error?.message ||
+    fallback
+  );
+}
+
 export default function Messaging() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
 
-  const [selectedPhone, setSelectedPhone] = useState(null);
-  const [draft, setDraft] = useState("");
-  const [search, setSearch] = useState("");
+  const [
+    selectedPhone,
+    setSelectedPhone,
+  ] = useState(null);
 
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composePhone, setComposePhone] = useState("");
-  const [composeMessage, setComposeMessage] = useState("");
-  const [composeSearch, setComposeSearch] = useState("");
+  const [
+    draft,
+    setDraft,
+  ] = useState("");
 
-  const [tab, setTab] = useState("messages");
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
-  const scrollRef = useRef(null);
+  const [
+    composeOpen,
+    setComposeOpen,
+  ] = useState(false);
+
+  const [
+    composePhone,
+    setComposePhone,
+  ] = useState("");
+
+  const [
+    composeMessage,
+    setComposeMessage,
+  ] = useState("");
+
+  const [
+    composeSearch,
+    setComposeSearch,
+  ] = useState("");
+
+  const [
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+  ] = useState(false);
+
+  const [
+    deleteConfirmation,
+    setDeleteConfirmation,
+  ] = useState("");
+
+  const [
+    tab,
+    setTab,
+  ] = useState("messages");
+
+  const scrollRef =
+    useRef(null);
 
   const {
     permission,
     requestPermission,
   } = usePushNotifications();
 
+  /**
+   * Handle URL deep links.
+   */
   useEffect(() => {
-    const params = new URLSearchParams(
-      window.location.search
-    );
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
-    const callId = params.get("callId");
+    const callId =
+      params.get("callId");
 
     if (callId) {
       setTab("calls");
       return;
     }
 
-    const phoneParam = params.get("phone");
+    const phoneParam =
+      params.get("phone");
 
     if (phoneParam) {
-      const normalized = normalizePhone(phoneParam);
+      const normalized =
+        normalizePhone(
+          phoneParam
+        );
 
-      setSelectedPhone(normalized);
+      setSelectedPhone(
+        normalized
+      );
+
       setTab("messages");
 
-      if (params.get("compose")) {
-        setComposePhone(normalized);
+      if (
+        params.get("compose")
+      ) {
+        setComposePhone(
+          normalized
+        );
+
         setComposeOpen(true);
       }
     }
   }, []);
 
+  /**
+   * Always load customers so conversations update when customer
+   * information changes.
+   */
   const {
     data: customers = [],
   } = useQuery({
@@ -372,10 +579,15 @@ export default function Messaging() {
     refetchInterval: 30000,
   });
 
+  /**
+   * Load all additional contacts.
+   */
   const {
     data: customerContacts = [],
   } = useQuery({
-    queryKey: ["customer-contacts-all"],
+    queryKey: [
+      "customer-contacts-all",
+    ],
 
     queryFn: () =>
       base44.entities.CustomerContact.list(
@@ -386,6 +598,9 @@ export default function Messaging() {
     refetchInterval: 30000,
   });
 
+  /**
+   * Load stored messages.
+   */
   const {
     data: messages = [],
     isLoading,
@@ -401,127 +616,183 @@ export default function Messaging() {
     refetchInterval: 15000,
   });
 
-  const conversations = useMemo(() => {
-    const map = {};
+  /**
+   * Group SMS and MMS records by normalized phone number.
+   */
+  const conversations =
+    useMemo(() => {
+      const map = {};
 
-    messages.forEach((message) => {
-      const rawConversationNumber =
-        message.phone_number ||
-        (message.direction === "inbound"
-          ? message.from_number
-          : message.to_number) ||
-        message.from_number ||
-        message.to_number;
+      messages.forEach(
+        (message) => {
+          const rawConversationNumber =
+            message.phone_number ||
+            (message.direction ===
+            "inbound"
+              ? message.from_number
+              : message.to_number) ||
+            message.from_number ||
+            message.to_number;
 
-      const key = normalizePhone(rawConversationNumber);
+          const key =
+            normalizePhone(
+              rawConversationNumber
+            );
 
-      if (!key) return;
+          if (!key) return;
 
-      if (!map[key]) {
-        map[key] = {
-          phone: key,
-          messages: [],
-          lastAt: message.sent_at,
-          unread: 0,
-        };
-      }
+          if (!map[key]) {
+            map[key] = {
+              phone: key,
+              messages: [],
+              lastAt:
+                message.sent_at,
+              unread: 0,
+            };
+          }
 
-      map[key].messages.push(message);
+          map[key].messages.push(
+            message
+          );
 
-      if (
-        !message.is_read &&
-        message.direction === "inbound"
-      ) {
-        map[key].unread += 1;
-      }
+          if (
+            !message.is_read &&
+            message.direction ===
+              "inbound"
+          ) {
+            map[key].unread += 1;
+          }
 
-      if (
-        message.sent_at &&
-        (!map[key].lastAt ||
-          new Date(message.sent_at) >
-            new Date(map[key].lastAt))
-      ) {
-        map[key].lastAt = message.sent_at;
-      }
-    });
+          if (
+            message.sent_at &&
+            (!map[key].lastAt ||
+              new Date(
+                message.sent_at
+              ) >
+                new Date(
+                  map[key].lastAt
+                ))
+          ) {
+            map[key].lastAt =
+              message.sent_at;
+          }
+        }
+      );
 
-    const list = Object.values(map);
+      const list =
+        Object.values(map);
 
-    list.sort(
-      (a, b) =>
-        new Date(b.lastAt || 0) -
-        new Date(a.lastAt || 0)
-    );
-
-    list.forEach((conversation) => {
-      conversation.messages.sort(
+      list.sort(
         (a, b) =>
-          new Date(a.sent_at || 0) -
-          new Date(b.sent_at || 0)
-      );
-    });
-
-    return list;
-  }, [messages]);
-
-  const filteredConversations = useMemo(() => {
-    if (!search) {
-      return conversations;
-    }
-
-    const query = search.toLowerCase();
-
-    return conversations.filter((conversation) => {
-      const party = resolveConversationParty(
-        customers,
-        customerContacts,
-        conversation.phone,
-        conversation.messages
+          new Date(
+            b.lastAt || 0
+          ) -
+          new Date(
+            a.lastAt || 0
+          )
       );
 
-      const displayName = getDisplayName(
-        party.contactName,
-        party.customerName,
-        ""
-      ).toLowerCase();
-
-      const relationship = String(
-        party.contact?.relationship || ""
-      ).toLowerCase();
-
-      const phone = formatPhoneDisplay(
-        conversation.phone
-      ).toLowerCase();
-
-      return (
-        displayName.includes(query) ||
-        relationship.includes(query) ||
-        phone.includes(query)
+      list.forEach(
+        (conversation) => {
+          conversation.messages.sort(
+            (a, b) =>
+              new Date(
+                a.sent_at || 0
+              ) -
+              new Date(
+                b.sent_at || 0
+              )
+          );
+        }
       );
-    });
-  }, [
-    conversations,
-    customers,
-    customerContacts,
-    search,
-  ]);
+
+      return list;
+    }, [messages]);
+
+  /**
+   * Filter conversation list.
+   */
+  const filteredConversations =
+    useMemo(() => {
+      if (!search) {
+        return conversations;
+      }
+
+      const query =
+        search.toLowerCase();
+
+      return conversations.filter(
+        (conversation) => {
+          const party =
+            resolveConversationParty(
+              customers,
+              customerContacts,
+              conversation.phone,
+              conversation.messages
+            );
+
+          const displayName =
+            getDisplayName(
+              party.contactName,
+              party.customerName,
+              ""
+            ).toLowerCase();
+
+          const relationship =
+            String(
+              party.contact
+                ?.relationship || ""
+            ).toLowerCase();
+
+          const phone =
+            formatPhoneDisplay(
+              conversation.phone
+            ).toLowerCase();
+
+          return (
+            displayName.includes(
+              query
+            ) ||
+            relationship.includes(
+              query
+            ) ||
+            phone.includes(query)
+          );
+        }
+      );
+    }, [
+      conversations,
+      customers,
+      customerContacts,
+      search,
+    ]);
 
   const selectedConversation =
     conversations.find(
       (conversation) =>
-        conversation.phone === selectedPhone
+        conversation.phone ===
+        selectedPhone
     ) || null;
 
-  const totalUnread = useMemo(
-    () =>
-      conversations.reduce(
-        (total, conversation) =>
-          total + (conversation.unread || 0),
-        0
-      ),
-    [conversations]
-  );
+  const totalUnread =
+    useMemo(
+      () =>
+        conversations.reduce(
+          (
+            total,
+            conversation
+          ) =>
+            total +
+            (conversation.unread ||
+              0),
+          0
+        ),
+      [conversations]
+    );
 
+  /**
+   * Update document title.
+   */
   useEffect(() => {
     document.title =
       totalUnread > 0
@@ -529,256 +800,526 @@ export default function Messaging() {
         : "Communications — EED";
   }, [totalUnread]);
 
+  /**
+   * Mark inbound messages as read.
+   */
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (
+      !selectedConversation
+    ) {
+      return;
+    }
 
     const unread =
       selectedConversation.messages.filter(
         (message) =>
           !message.is_read &&
-          message.direction === "inbound"
+          message.direction ===
+            "inbound"
       );
 
-    if (unread.length === 0) return;
-
-    Promise.all(
-      unread.map((message) =>
-        base44.entities.Message.update(message.id, {
-          is_read: true,
-        })
-      )
-    )
-      .then(() =>
-        queryClient.invalidateQueries({
-          queryKey: ["messages"],
-        })
-      )
-      .catch(() => {});
-  }, [
-    selectedPhone,
-    selectedConversation?.messages.length,
-    queryClient,
-  ]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop =
-        scrollRef.current.scrollHeight;
-    }
-  }, [
-    selectedConversation?.messages.length,
-    selectedPhone,
-  ]);
-
-  const sendMutation = useMutation({
-    mutationFn: (variables) =>
-      base44.functions.invoke(
-        "sendVoipSms",
-        variables
-      ),
-
-    onSuccess: () => {
-      setDraft("");
-
-      queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-    },
-
-    onError: (error) => {
-      console.error("Send failed", error);
-    },
-  });
-
-  const sendFacebookMutation = useMutation({
-    mutationFn: (variables) =>
-      base44.functions.invoke(
-        "sendFacebookMessage",
-        variables
-      ),
-
-    onSuccess: () => {
-      setDraft("");
-
-      queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-    },
-
-    onError: (error) => {
-      console.error(
-        "Facebook send failed",
-        error
-      );
-    },
-  });
-
-  const isFacebookConv = Boolean(
-    selectedConversation?.messages.some(
-      (message) =>
-        message.channel === "facebook"
-    )
-  );
-
-  const handleSend = () => {
-    if (!draft.trim() || !selectedPhone) {
-      return;
-    }
-
-    if (isFacebookConv) {
-      sendFacebookMutation.mutate({
-        recipient_psid: selectedPhone,
-        message: draft.trim(),
-      });
-
-      return;
-    }
-
-    const party = resolveConversationParty(
-      customers,
-      customerContacts,
-      selectedPhone,
-      selectedConversation?.messages || []
-    );
-
-    sendMutation.mutate({
-      to: selectedPhone,
-      message: draft.trim(),
-      customer_id: party.customerId || null,
-      customer_name: party.customerName || null,
-      contact_name: party.contactName || null,
-    });
-  };
-
-  const composeMutation = useMutation({
-    mutationFn: (variables) =>
-      base44.functions.invoke(
-        "sendVoipSms",
-        variables
-      ),
-
-    onSuccess: (_data, variables) => {
-      setComposeOpen(false);
-      setComposePhone("");
-      setComposeMessage("");
-      setComposeSearch("");
-
-      queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-
-      const phone = normalizePhone(variables.to);
-
-      setTimeout(() => {
-        setSelectedPhone(phone);
-      }, 300);
-    },
-
-    onError: (error) => {
-      console.error(
-        "Compose send failed",
-        error
-      );
-    },
-  });
-
-  const handleComposeSend = () => {
     if (
-      !composePhone.trim() ||
-      !composeMessage.trim()
+      unread.length === 0
     ) {
       return;
     }
 
-    const party = resolveConversationParty(
-      customers,
-      customerContacts,
-      composePhone,
-      []
+    Promise.all(
+      unread.map((message) =>
+        base44.entities.Message.update(
+          message.id,
+          {
+            is_read: true,
+          }
+        )
+      )
+    )
+      .then(() =>
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "messages",
+            ],
+          }
+        )
+      )
+      .catch(() => {});
+  }, [
+    selectedPhone,
+    selectedConversation
+      ?.messages.length,
+    queryClient,
+  ]);
+
+  /**
+   * Scroll to newest message.
+   */
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop =
+        scrollRef.current
+          .scrollHeight;
+    }
+  }, [
+    selectedConversation
+      ?.messages.length,
+    selectedPhone,
+  ]);
+
+  /**
+   * Send SMS or MMS.
+   */
+  const sendMutation =
+    useMutation({
+      mutationFn: (variables) =>
+        base44.functions.invoke(
+          "sendVoipSms",
+          variables
+        ),
+
+      onSuccess: () => {
+        setDraft("");
+
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "messages",
+            ],
+          }
+        );
+      },
+
+      onError: (error) => {
+        console.error(
+          "Send failed",
+          error
+        );
+      },
+    });
+
+  /**
+   * Send Facebook message.
+   */
+  const sendFacebookMutation =
+    useMutation({
+      mutationFn: (variables) =>
+        base44.functions.invoke(
+          "sendFacebookMessage",
+          variables
+        ),
+
+      onSuccess: () => {
+        setDraft("");
+
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "messages",
+            ],
+          }
+        );
+      },
+
+      onError: (error) => {
+        console.error(
+          "Facebook send failed",
+          error
+        );
+      },
+    });
+
+  /**
+   * Delete every Message record in the selected conversation.
+   *
+   * No backend function is needed.
+   */
+  const deleteConversationMutation =
+    useMutation({
+      mutationFn: async ({
+        messagesToDelete,
+      }) => {
+        if (
+          !Array.isArray(
+            messagesToDelete
+          ) ||
+          messagesToDelete.length ===
+            0
+        ) {
+          throw new Error(
+            "No messages were found in this conversation."
+          );
+        }
+
+        const results =
+          await Promise.allSettled(
+            messagesToDelete.map(
+              (message) =>
+                base44.entities.Message.delete(
+                  message.id
+                )
+            )
+          );
+
+        const failures =
+          results.filter(
+            (result) =>
+              result.status ===
+              "rejected"
+          );
+
+        if (
+          failures.length > 0
+        ) {
+          console.error(
+            "Some messages failed to delete:",
+            failures
+          );
+
+          throw new Error(
+            `${failures.length} message${
+              failures.length === 1
+                ? ""
+                : "s"
+            } could not be deleted.`
+          );
+        }
+
+        return {
+          success: true,
+          deleted_count:
+            results.length,
+        };
+      },
+
+      onSuccess: () => {
+        setDeleteDialogOpen(
+          false
+        );
+
+        setDeleteConfirmation(
+          ""
+        );
+
+        setSelectedPhone(null);
+
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "messages",
+            ],
+          }
+        );
+      },
+
+      onError: (error) => {
+        console.error(
+          "Delete conversation failed:",
+          error
+        );
+      },
+    });
+
+  const isFacebookConv =
+    Boolean(
+      selectedConversation
+        ?.messages.some(
+          (message) =>
+            message.channel ===
+            "facebook"
+        )
     );
 
-    composeMutation.mutate({
-      to: composePhone.trim(),
-      message: composeMessage.trim(),
-      customer_id: party.customerId || null,
-      customer_name: party.customerName || null,
-      contact_name: party.contactName || null,
+  /**
+   * Send message from an open conversation.
+   */
+  const handleSend = () => {
+    if (
+      !draft.trim() ||
+      !selectedPhone
+    ) {
+      return;
+    }
+
+    if (isFacebookConv) {
+      sendFacebookMutation.mutate(
+        {
+          recipient_psid:
+            selectedPhone,
+
+          message:
+            draft.trim(),
+        }
+      );
+
+      return;
+    }
+
+    const party =
+      resolveConversationParty(
+        customers,
+        customerContacts,
+        selectedPhone,
+        selectedConversation
+          ?.messages || []
+      );
+
+    sendMutation.mutate({
+      to: selectedPhone,
+
+      message:
+        draft.trim(),
+
+      customer_id:
+        party.customerId || null,
+
+      customer_name:
+        party.customerName ||
+        null,
+
+      contact_name:
+        party.contactName ||
+        null,
     });
   };
 
-  const composeRecipients = useMemo(() => {
-    const customerRows = customers.map((customer) => ({
-      type: "customer",
-      id: `customer-${customer.id}`,
-      phone: customer.phone || "",
-      displayName: getCustomerFullName(customer),
-      customerId: customer.id,
-      customerName: getCustomerFullName(customer),
-      contactName: "",
-      relationship: "",
-    }));
+  /**
+   * Delete the selected conversation.
+   */
+  const handleDeleteConversation =
+    () => {
+      if (
+        !selectedConversation
+      ) {
+        return;
+      }
 
-    const contactRows = customerContacts.map((contact) => {
-      const parentCustomer =
-        customers.find(
-          (customer) =>
-            customer.id === contact.customer_id
-        ) || null;
+      if (
+        deleteConfirmation !==
+        "DELETE"
+      ) {
+        return;
+      }
 
-      const contactName = getContactFullName(contact);
-      const customerName =
-        getCustomerFullName(parentCustomer);
+      deleteConversationMutation.mutate(
+        {
+          messagesToDelete:
+            selectedConversation.messages,
+        }
+      );
+    };
 
-      return {
-        type: "contact",
-        id: `contact-${contact.id}`,
-        phone: contact.phone || "",
-        displayName: getDisplayName(
-          contactName,
-          customerName,
-          contactName
+  /**
+   * Compose a new SMS or MMS.
+   */
+  const composeMutation =
+    useMutation({
+      mutationFn: (variables) =>
+        base44.functions.invoke(
+          "sendVoipSms",
+          variables
         ),
-        customerId:
-          parentCustomer?.id ||
-          contact.customer_id ||
-          null,
-        customerName,
-        contactName,
-        relationship: contact.relationship || "",
-      };
+
+      onSuccess: (
+        _data,
+        variables
+      ) => {
+        setComposeOpen(false);
+        setComposePhone("");
+        setComposeMessage("");
+        setComposeSearch("");
+
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "messages",
+            ],
+          }
+        );
+
+        const phone =
+          normalizePhone(
+            variables.to
+          );
+
+        setTimeout(() => {
+          setSelectedPhone(
+            phone
+          );
+        }, 300);
+      },
+
+      onError: (error) => {
+        console.error(
+          "Compose send failed",
+          error
+        );
+      },
     });
 
-    return [...customerRows, ...contactRows];
-  }, [customers, customerContacts]);
+  const handleComposeSend =
+    () => {
+      if (
+        !composePhone.trim() ||
+        !composeMessage.trim()
+      ) {
+        return;
+      }
 
-  const filteredRecipients = useMemo(() => {
-    if (!composeSearch) {
-      return composeRecipients.slice(0, 20);
-    }
-
-    const query = composeSearch.toLowerCase();
-
-    return composeRecipients
-      .filter((recipient) => {
-        return (
-          recipient.displayName
-            .toLowerCase()
-            .includes(query) ||
-          recipient.relationship
-            .toLowerCase()
-            .includes(query) ||
-          String(recipient.phone)
-            .toLowerCase()
-            .includes(query)
+      const party =
+        resolveConversationParty(
+          customers,
+          customerContacts,
+          composePhone,
+          []
         );
-      })
-      .slice(0, 20);
-  }, [
-    composeRecipients,
-    composeSearch,
-  ]);
 
-  const handleKeyDown = (event) => {
+      composeMutation.mutate({
+        to: composePhone.trim(),
+
+        message:
+          composeMessage.trim(),
+
+        customer_id:
+          party.customerId ||
+          null,
+
+        customer_name:
+          party.customerName ||
+          null,
+
+        contact_name:
+          party.contactName ||
+          null,
+      });
+    };
+
+  /**
+   * Build searchable compose recipients from customers and contacts.
+   */
+  const composeRecipients =
+    useMemo(() => {
+      const customerRows =
+        customers.map(
+          (customer) => ({
+            type: "customer",
+
+            id: `customer-${customer.id}`,
+
+            phone:
+              customer.phone || "",
+
+            displayName:
+              getCustomerFullName(
+                customer
+              ),
+
+            customerId:
+              customer.id,
+
+            customerName:
+              getCustomerFullName(
+                customer
+              ),
+
+            contactName: "",
+            relationship: "",
+          })
+        );
+
+      const contactRows =
+        customerContacts.map(
+          (contact) => {
+            const parentCustomer =
+              customers.find(
+                (customer) =>
+                  customer.id ===
+                  contact.customer_id
+              ) || null;
+
+            const contactName =
+              getContactFullName(
+                contact
+              );
+
+            const customerName =
+              getCustomerFullName(
+                parentCustomer
+              );
+
+            return {
+              type: "contact",
+
+              id: `contact-${contact.id}`,
+
+              phone:
+                contact.phone || "",
+
+              displayName:
+                getDisplayName(
+                  contactName,
+                  customerName,
+                  contactName
+                ),
+
+              customerId:
+                parentCustomer?.id ||
+                contact.customer_id ||
+                null,
+
+              customerName,
+              contactName,
+
+              relationship:
+                contact.relationship ||
+                "",
+            };
+          }
+        );
+
+      return [
+        ...customerRows,
+        ...contactRows,
+      ];
+    }, [
+      customers,
+      customerContacts,
+    ]);
+
+  const filteredRecipients =
+    useMemo(() => {
+      if (!composeSearch) {
+        return composeRecipients.slice(
+          0,
+          20
+        );
+      }
+
+      const query =
+        composeSearch.toLowerCase();
+
+      return composeRecipients
+        .filter((recipient) => {
+          return (
+            recipient.displayName
+              .toLowerCase()
+              .includes(query) ||
+            recipient.relationship
+              .toLowerCase()
+              .includes(query) ||
+            String(recipient.phone)
+              .toLowerCase()
+              .includes(query)
+          );
+        })
+        .slice(0, 20);
+    }, [
+      composeRecipients,
+      composeSearch,
+    ]);
+
+  const handleKeyDown = (
+    event
+  ) => {
     if (
       event.key === "Enter" &&
       !event.shiftKey
@@ -790,6 +1331,7 @@ export default function Messaging() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen bg-slate-50">
+      {/* Main header */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -802,7 +1344,9 @@ export default function Messaging() {
 
           <div className="flex bg-slate-100 rounded-lg p-0.5">
             <button
-              onClick={() => setTab("messages")}
+              onClick={() =>
+                setTab("messages")
+              }
               className={cn(
                 "px-3 py-1 text-sm rounded-md font-medium transition-colors",
                 tab === "messages"
@@ -814,7 +1358,9 @@ export default function Messaging() {
             </button>
 
             <button
-              onClick={() => setTab("calls")}
+              onClick={() =>
+                setTab("calls")
+              }
               className={cn(
                 "px-3 py-1 text-sm rounded-md font-medium transition-colors",
                 tab === "calls"
@@ -830,11 +1376,14 @@ export default function Messaging() {
         <div className="flex items-center gap-2">
           {tab === "messages" && (
             <>
-              {permission !== "granted" && (
+              {permission !==
+                "granted" && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={requestPermission}
+                  onClick={
+                    requestPermission
+                  }
                   title="Enable push notifications"
                 >
                   <BellOff className="w-4 h-4" />
@@ -845,14 +1394,19 @@ export default function Messaging() {
                 </Button>
               )}
 
-              {permission === "granted" && (
+              {permission ===
+                "granted" && (
                 <Bell className="w-4 h-4 text-[#e20404]" />
               )}
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setComposeOpen(true)}
+                onClick={() =>
+                  setComposeOpen(
+                    true
+                  )
+                }
               >
                 <PenSquare className="w-4 h-4 mr-1" />
 
@@ -865,17 +1419,29 @@ export default function Messaging() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["messages"],
-                  });
+                  queryClient.invalidateQueries(
+                    {
+                      queryKey: [
+                        "messages",
+                      ],
+                    }
+                  );
 
-                  queryClient.invalidateQueries({
-                    queryKey: ["customers"],
-                  });
+                  queryClient.invalidateQueries(
+                    {
+                      queryKey: [
+                        "customers",
+                      ],
+                    }
+                  );
 
-                  queryClient.invalidateQueries({
-                    queryKey: ["customer-contacts-all"],
-                  });
+                  queryClient.invalidateQueries(
+                    {
+                      queryKey: [
+                        "customer-contacts-all",
+                      ],
+                    }
+                  );
                 }}
               >
                 <RefreshCw className="w-4 h-4" />
@@ -887,6 +1453,7 @@ export default function Messaging() {
 
       {tab === "messages" && (
         <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Conversation list */}
           <div
             className={cn(
               "w-full sm:w-80 border-r border-slate-200 bg-white flex flex-col",
@@ -902,8 +1469,13 @@ export default function Messaging() {
                 <Input
                   placeholder="Search name or number..."
                   value={search}
-                  onChange={(event) =>
-                    setSearch(event.target.value)
+                  onChange={(
+                    event
+                  ) =>
+                    setSearch(
+                      event.target
+                        .value
+                    )
                   }
                   className="pl-8"
                 />
@@ -915,7 +1487,8 @@ export default function Messaging() {
                 <div className="p-4 text-sm text-slate-400">
                   Loading messages...
                 </div>
-              ) : filteredConversations.length === 0 ? (
+              ) : filteredConversations.length ===
+                0 ? (
                 <div className="p-4 text-center text-slate-400 text-sm">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   No messages yet
@@ -923,33 +1496,45 @@ export default function Messaging() {
               ) : (
                 <div className="divide-y divide-slate-100">
                   {filteredConversations.map(
-                    (conversation) => {
+                    (
+                      conversation
+                    ) => {
                       const lastMessage =
-                        conversation.messages[
-                          conversation.messages.length - 1
+                        conversation
+                          .messages[
+                          conversation
+                            .messages
+                            .length -
+                            1
                         ];
 
-                      const party = resolveConversationParty(
-                        customers,
-                        customerContacts,
-                        conversation.phone,
-                        conversation.messages
-                      );
+                      const party =
+                        resolveConversationParty(
+                          customers,
+                          customerContacts,
+                          conversation.phone,
+                          conversation.messages
+                        );
 
-                      const displayName = getDisplayName(
-                        party.contactName,
-                        party.customerName,
-                        formatPhoneDisplay(
-                          conversation.phone
-                        )
-                      );
+                      const displayName =
+                        getDisplayName(
+                          party.contactName,
+                          party.customerName,
+                          formatPhoneDisplay(
+                            conversation.phone
+                          )
+                        );
 
                       const preview =
-                        getConversationPreview(lastMessage);
+                        getConversationPreview(
+                          lastMessage
+                        );
 
                       return (
                         <button
-                          key={conversation.phone}
+                          key={
+                            conversation.phone
+                          }
                           onClick={() =>
                             setSelectedPhone(
                               conversation.phone
@@ -967,7 +1552,9 @@ export default function Messaging() {
                             party.customerName ? (
                               <span className="text-sm font-semibold text-slate-600">
                                 {displayName
-                                  .charAt(0)
+                                  .charAt(
+                                    0
+                                  )
                                   .toUpperCase()}
                               </span>
                             ) : (
@@ -979,14 +1566,18 @@ export default function Messaging() {
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium text-sm text-slate-900 truncate flex items-center gap-1">
                                 {conversation.messages.some(
-                                  (message) =>
+                                  (
+                                    message
+                                  ) =>
                                     message.channel ===
                                     "facebook"
                                 ) && (
                                   <Facebook className="w-3 h-3 text-[#1877F2] flex-shrink-0" />
                                 )}
 
-                                {displayName}
+                                {
+                                  displayName
+                                }
                               </span>
 
                               <span className="text-xs text-slate-400 flex-shrink-0">
@@ -999,21 +1590,29 @@ export default function Messaging() {
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs text-slate-500 truncate">
                                 {lastMessage?.direction ===
-                                  "outbound" && "You: "}
+                                  "outbound" &&
+                                  "You: "}
 
                                 {preview}
                               </span>
 
-                              {conversation.unread > 0 && (
+                              {conversation.unread >
+                                0 && (
                                 <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold flex-shrink-0">
-                                  {conversation.unread}
+                                  {
+                                    conversation.unread
+                                  }
                                 </span>
                               )}
                             </div>
 
-                            {party.contact?.relationship && (
+                            {party.contact
+                              ?.relationship && (
                               <span className="text-[11px] text-slate-400 truncate block">
-                                {party.contact.relationship}
+                                {
+                                  party.contact
+                                    .relationship
+                                }
                               </span>
                             )}
 
@@ -1035,27 +1634,35 @@ export default function Messaging() {
             </ScrollArea>
           </div>
 
-          {selectedPhone && selectedConversation ? (
+          {/* Open chat */}
+          {selectedPhone &&
+          selectedConversation ? (
             <div className="flex-1 flex flex-col min-w-0 bg-slate-50">
               {(() => {
-                const party = resolveConversationParty(
-                  customers,
-                  customerContacts,
-                  selectedPhone,
-                  selectedConversation.messages
-                );
+                const party =
+                  resolveConversationParty(
+                    customers,
+                    customerContacts,
+                    selectedPhone,
+                    selectedConversation.messages
+                  );
 
-                const displayName = getDisplayName(
-                  party.contactName,
-                  party.customerName,
-                  formatPhoneDisplay(selectedPhone)
-                );
+                const displayName =
+                  getDisplayName(
+                    party.contactName,
+                    party.customerName,
+                    formatPhoneDisplay(
+                      selectedPhone
+                    )
+                  );
 
                 return (
                   <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
                     <button
                       onClick={() =>
-                        setSelectedPhone(null)
+                        setSelectedPhone(
+                          null
+                        )
                       }
                       className="sm:hidden text-slate-500 hover:text-slate-900"
                     >
@@ -1067,7 +1674,9 @@ export default function Messaging() {
                       party.customerName ? (
                         <span className="text-sm font-semibold text-slate-600">
                           {displayName
-                            .charAt(0)
+                            .charAt(
+                              0
+                            )
                             .toUpperCase()}
                         </span>
                       ) : (
@@ -1091,7 +1700,8 @@ export default function Messaging() {
                               selectedPhone
                             )}
 
-                        {party.contact?.relationship
+                        {party.contact
+                          ?.relationship
                           ? ` · ${party.contact.relationship}`
                           : ""}
                       </div>
@@ -1107,14 +1717,34 @@ export default function Messaging() {
                             "_blank"
                           )
                         }
+                        title="Open customer"
                       >
                         <User className="w-4 h-4" />
                       </Button>
                     )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => {
+                        setDeleteConfirmation(
+                          ""
+                        );
+
+                        setDeleteDialogOpen(
+                          true
+                        );
+                      }}
+                      title="Delete entire conversation"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 );
               })()}
 
+              {/* Message thread */}
               <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
@@ -1124,30 +1754,43 @@ export default function Messaging() {
 
                   return selectedConversation.messages.map(
                     (message) => {
-                      const dayLabel = formatDayLabel(
-                        message.sent_at
-                      );
+                      const dayLabel =
+                        formatDayLabel(
+                          message.sent_at
+                        );
 
                       const showDay =
-                        dayLabel !== lastDay;
+                        dayLabel !==
+                        lastDay;
 
-                      lastDay = dayLabel;
+                      lastDay =
+                        dayLabel;
 
                       const mediaUrls =
-                        getMediaUrls(message);
+                        getMediaUrls(
+                          message
+                        );
 
-                      const hasBody = Boolean(
-                        String(
-                          message.body || ""
-                        ).trim()
-                      );
+                      const hasBody =
+                        Boolean(
+                          String(
+                            message.body ||
+                              ""
+                          ).trim()
+                        );
 
                       return (
-                        <div key={message.id}>
+                        <div
+                          key={
+                            message.id
+                          }
+                        >
                           {showDay && (
                             <div className="text-center my-3">
                               <span className="text-xs text-slate-400 bg-slate-50 px-2">
-                                {dayLabel}
+                                {
+                                  dayLabel
+                                }
                               </span>
                             </div>
                           )}
@@ -1172,34 +1815,48 @@ export default function Messaging() {
                             >
                               {hasBody && (
                                 <p className="whitespace-pre-wrap break-words">
-                                  {message.body}
+                                  {
+                                    message.body
+                                  }
                                 </p>
                               )}
 
-                              {mediaUrls.length > 0 && (
+                              {mediaUrls.length >
+                                0 && (
                                 <div
                                   className={cn(
                                     "space-y-2",
-                                    hasBody && "mt-2"
+                                    hasBody &&
+                                      "mt-2"
                                   )}
                                 >
                                   {mediaUrls.map(
-                                    (mediaUrl, index) => (
+                                    (
+                                      mediaUrl,
+                                      index
+                                    ) => (
                                       <a
                                         key={`${message.id}-media-${index}`}
-                                        href={mediaUrl}
+                                        href={
+                                          mediaUrl
+                                        }
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="block"
                                       >
                                         <img
-                                          src={mediaUrl}
+                                          src={
+                                            mediaUrl
+                                          }
                                           alt={`MMS attachment ${
-                                            index + 1
+                                            index +
+                                            1
                                           }`}
                                           className="block max-w-full max-h-96 rounded-lg object-contain bg-slate-100"
                                           loading="lazy"
-                                          onError={(event) => {
+                                          onError={(
+                                            event
+                                          ) => {
                                             console.error(
                                               "MMS image failed to load:",
                                               mediaUrl
@@ -1213,7 +1870,9 @@ export default function Messaging() {
                                                 .currentTarget
                                                 .nextElementSibling;
 
-                                            if (fallback) {
+                                            if (
+                                              fallback
+                                            ) {
                                               fallback.style.display =
                                                 "flex";
                                             }
@@ -1222,8 +1881,10 @@ export default function Messaging() {
 
                                         <div className="hidden min-h-24 items-center justify-center gap-2 rounded-lg bg-slate-100 text-slate-500 px-4 py-3">
                                           <ImageIcon className="w-5 h-5" />
+
                                           <span>
-                                            Open attachment
+                                            Open
+                                            attachment
                                           </span>
                                         </div>
                                       </a>
@@ -1233,11 +1894,13 @@ export default function Messaging() {
                               )}
 
                               {!hasBody &&
-                                mediaUrls.length === 0 &&
+                                mediaUrls.length ===
+                                  0 &&
                                 message.channel ===
                                   "mms" && (
                                   <p className="italic opacity-70">
-                                    Attachment unavailable
+                                    Attachment
+                                    unavailable
                                   </p>
                                 )}
 
@@ -1278,19 +1941,29 @@ export default function Messaging() {
                 )}
               </div>
 
+              {/* Reply input */}
               <div className="bg-white border-t border-slate-200 p-3 flex items-center gap-2 flex-shrink-0">
                 <Input
                   placeholder="Type a message..."
                   value={draft}
-                  onChange={(event) =>
-                    setDraft(event.target.value)
+                  onChange={(
+                    event
+                  ) =>
+                    setDraft(
+                      event.target
+                        .value
+                    )
                   }
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={
+                    handleKeyDown
+                  }
                   className="flex-1"
                 />
 
                 <Button
-                  onClick={handleSend}
+                  onClick={
+                    handleSend
+                  }
                   disabled={
                     !draft.trim() ||
                     sendMutation.isPending ||
@@ -1304,9 +1977,11 @@ export default function Messaging() {
               </div>
 
               <div className="text-xs text-slate-400 px-4 pb-1 text-right">
-                {draft.length} characters
+                {draft.length}{" "}
+                characters
                 {!isFacebookConv &&
-                  draft.length > 160 &&
+                  draft.length >
+                    160 &&
                   " · Sends as MMS"}
               </div>
             </div>
@@ -1324,15 +1999,22 @@ export default function Messaging() {
         </div>
       )}
 
-      {tab === "calls" && <CallsView />}
+      {tab === "calls" && (
+        <CallsView />
+      )}
 
+      {/* New-message dialog */}
       <Dialog
         open={composeOpen}
-        onOpenChange={setComposeOpen}
+        onOpenChange={
+          setComposeOpen
+        }
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>New Message</DialogTitle>
+            <DialogTitle>
+              New Message
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -1348,27 +2030,37 @@ export default function Messaging() {
                     ? composeSearch
                     : composePhone
                 }
-                onChange={(event) => {
+                onChange={(
+                  event
+                ) => {
                   setComposeSearch(
-                    event.target.value
+                    event.target
+                      .value
                   );
 
                   setComposePhone(
-                    event.target.value
+                    event.target
+                      .value
                   );
                 }}
               />
 
               {composeSearch &&
-                filteredRecipients.length > 0 && (
+                filteredRecipients.length >
+                  0 && (
                   <div className="mt-1 border border-slate-200 rounded-md max-h-52 overflow-y-auto divide-y divide-slate-100">
                     {filteredRecipients.map(
-                      (recipient) => (
+                      (
+                        recipient
+                      ) => (
                         <button
-                          key={recipient.id}
+                          key={
+                            recipient.id
+                          }
                           onClick={() => {
                             setComposePhone(
-                              recipient.phone || ""
+                              recipient.phone ||
+                                ""
                             );
 
                             setComposeSearch(
@@ -1378,7 +2070,9 @@ export default function Messaging() {
                           className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm"
                         >
                           <div className="font-medium">
-                            {recipient.displayName}
+                            {
+                              recipient.displayName
+                            }
                           </div>
 
                           <div className="text-xs text-slate-400">
@@ -1404,10 +2098,15 @@ export default function Messaging() {
 
               <textarea
                 placeholder="Type your message..."
-                value={composeMessage}
-                onChange={(event) =>
+                value={
+                  composeMessage
+                }
+                onChange={(
+                  event
+                ) =>
                   setComposeMessage(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
@@ -1415,20 +2114,29 @@ export default function Messaging() {
               />
 
               <div className="text-xs text-slate-400 text-right mt-1">
-                {composeMessage.length} characters
-                {composeMessage.length > 160 &&
+                {
+                  composeMessage.length
+                }{" "}
+                characters
+                {composeMessage.length >
+                  160 &&
                   " · Sends as MMS"}
               </div>
             </div>
 
             {composeMutation.isError && (
               <p className="text-sm text-red-600">
-                Failed to send. Please try again.
+                {getErrorMessage(
+                  composeMutation.error,
+                  "Failed to send. Please try again."
+                )}
               </p>
             )}
 
             <Button
-              onClick={handleComposeSend}
+              onClick={
+                handleComposeSend
+              }
               disabled={
                 !composePhone.trim() ||
                 !composeMessage.trim() ||
@@ -1437,9 +2145,160 @@ export default function Messaging() {
               className="w-full bg-[#e20404] hover:bg-red-700"
             >
               <Send className="w-4 h-4 mr-2" />
+
               Send Message
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete-conversation dialog */}
+      <Dialog
+        open={
+          deleteDialogOpen
+        }
+        onOpenChange={(open) => {
+          if (
+            deleteConversationMutation.isPending
+          ) {
+            return;
+          }
+
+          setDeleteDialogOpen(
+            open
+          );
+
+          if (!open) {
+            setDeleteConfirmation(
+              ""
+            );
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              Delete Entire Conversation
+            </DialogTitle>
+
+            <DialogDescription>
+              This permanently deletes every stored message in this
+              conversation from the app. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
+              <p className="text-sm font-medium text-red-800">
+                Conversation
+              </p>
+
+              <p className="text-sm text-red-700 mt-1">
+                {selectedPhone
+                  ? formatPhoneDisplay(
+                      selectedPhone
+                    )
+                  : ""}
+              </p>
+
+              <p className="text-xs text-red-600 mt-1">
+                {selectedConversation
+                  ?.messages.length ||
+                  0}{" "}
+                stored message
+                {(selectedConversation
+                  ?.messages.length ||
+                  0) === 1
+                  ? ""
+                  : "s"}{" "}
+                will be deleted.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1 block">
+                Type DELETE to confirm
+              </label>
+
+              <Input
+                value={
+                  deleteConfirmation
+                }
+                onChange={(
+                  event
+                ) =>
+                  setDeleteConfirmation(
+                    event.target
+                      .value
+                  )
+                }
+                placeholder="DELETE"
+                autoComplete="off"
+                onKeyDown={(
+                  event
+                ) => {
+                  if (
+                    event.key ===
+                      "Enter" &&
+                    deleteConfirmation ===
+                      "DELETE" &&
+                    !deleteConversationMutation.isPending
+                  ) {
+                    handleDeleteConversation();
+                  }
+                }}
+              />
+            </div>
+
+            {deleteConversationMutation.isError && (
+              <p className="text-sm text-red-600">
+                {getErrorMessage(
+                  deleteConversationMutation.error,
+                  "Unable to delete conversation."
+                )}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setDeleteDialogOpen(
+                  false
+                )
+              }
+              disabled={
+                deleteConversationMutation.isPending
+              }
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={
+                handleDeleteConversation
+              }
+              disabled={
+                deleteConfirmation !==
+                  "DELETE" ||
+                deleteConversationMutation.isPending
+              }
+            >
+              {deleteConversationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Permanently Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
