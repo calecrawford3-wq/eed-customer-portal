@@ -43,11 +43,8 @@ import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
 /**
- * Convert U.S./Canadian phone numbers to one canonical format:
- * 1 + 10-digit number.
- *
- * This keeps SMS and MMS records grouped together even when one record
- * stores 9185551212 and another stores 19185551212.
+ * Convert U.S./Canadian numbers to one internal format:
+ * 1 + ten-digit phone number.
  */
 function normalizePhone(value) {
   if (!value) return "";
@@ -62,7 +59,7 @@ function normalizePhone(value) {
 }
 
 /**
- * Format a normalized phone number for display.
+ * Format a U.S./Canadian number for display.
  */
 function formatPhoneDisplay(value) {
   if (!value) return "";
@@ -86,9 +83,6 @@ function formatPhoneDisplay(value) {
   return String(value);
 }
 
-/**
- * Format a message timestamp.
- */
 function formatTime(iso) {
   if (!iso) return "";
 
@@ -99,10 +93,11 @@ function formatTime(iso) {
   }
 
   const now = new Date();
-  const isToday =
-    date.toDateString() === now.toDateString();
 
-  if (isToday) {
+  if (
+    date.toDateString() ===
+    now.toDateString()
+  ) {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -115,9 +110,6 @@ function formatTime(iso) {
   });
 }
 
-/**
- * Format the day divider shown in the chat thread.
- */
 function formatDayLabel(iso) {
   if (!iso) return "";
 
@@ -130,7 +122,8 @@ function formatDayLabel(iso) {
   const now = new Date();
 
   if (
-    date.toDateString() === now.toDateString()
+    date.toDateString() ===
+    now.toDateString()
   ) {
     return "Today";
   }
@@ -155,10 +148,35 @@ function formatDayLabel(iso) {
 }
 
 /**
- * Prevent duplicate labels such as:
+ * Build a customer display name.
+ */
+function getCustomerFullName(customer) {
+  if (!customer) return "";
+
+  return `${customer.first_name || ""} ${
+    customer.last_name || ""
+  }`.trim();
+}
+
+/**
+ * Look up a current Customer record by normalized phone number.
+ */
+function findCustomerByPhone(customers, phoneNumber) {
+  const target = normalizePhone(phoneNumber);
+
+  if (!target) return null;
+
+  return (
+    customers.find(
+      (customer) =>
+        normalizePhone(customer.phone) === target
+    ) || null
+  );
+}
+
+/**
+ * Avoid duplicate labels such as:
  * Josh Keeler · Josh Keeler
- *
- * When the contact and customer names match, display the name once.
  */
 function getDisplayName(
   contactName,
@@ -190,10 +208,10 @@ function getDisplayName(
 }
 
 /**
- * Read media_urls regardless of whether Base44 returns it as:
- * - An array
- * - A JSON-encoded array
- * - A comma-separated string
+ * Read media_urls whether Base44 returns:
+ * - an array
+ * - a JSON string
+ * - a comma-separated string
  */
 function getMediaUrls(message) {
   const value = message?.media_urls;
@@ -224,7 +242,7 @@ function getMediaUrls(message) {
         .filter(Boolean);
     }
   } catch {
-    // Continue with comma/newline parsing.
+    // Continue with delimited parsing.
   }
 
   return value
@@ -233,9 +251,6 @@ function getMediaUrls(message) {
     .filter(Boolean);
 }
 
-/**
- * Generate the preview displayed in the conversation list.
- */
 function getConversationPreview(message) {
   if (!message) return "";
 
@@ -319,8 +334,7 @@ export default function Messaging() {
   } = usePushNotifications();
 
   /**
-   * Handle deep links:
-   *
+   * Deep links:
    * /Messaging?phone=...&compose=1
    * /Messaging?callId=...
    */
@@ -345,22 +359,22 @@ export default function Messaging() {
       const normalized =
         normalizePhone(phoneParam);
 
-      setSelectedPhone(
-        normalized
-      );
-
+      setSelectedPhone(normalized);
       setTab("messages");
 
       if (params.get("compose")) {
-        setComposePhone(
-          normalized
-        );
-
+        setComposePhone(normalized);
         setComposeOpen(true);
       }
     }
   }, []);
 
+  /**
+   * Always load customers.
+   *
+   * This allows conversations to update when a phone number is added
+   * to a customer after the original message was received.
+   */
   const {
     data: customers = [],
   } = useQuery({
@@ -372,7 +386,7 @@ export default function Messaging() {
         500
       ),
 
-    enabled: composeOpen,
+    refetchInterval: 30000,
   });
 
   const {
@@ -391,7 +405,7 @@ export default function Messaging() {
   });
 
   /**
-   * Group all SMS and MMS records by normalized phone number.
+   * Group SMS and MMS records by normalized phone number.
    */
   const conversations =
     useMemo(() => {
@@ -494,12 +508,23 @@ export default function Messaging() {
 
       return conversations.filter(
         (conversation) => {
-          const customerName =
+          const liveCustomer =
+            findCustomerByPhone(
+              customers,
+              conversation.phone
+            );
+
+          const liveCustomerName =
+            getCustomerFullName(
+              liveCustomer
+            ).toLowerCase();
+
+          const storedCustomerName =
             String(
-              conversation
-                .messages[0]
-                ?.customer_name ||
-                ""
+              conversation.messages.find(
+                (message) =>
+                  message.customer_name
+              )?.customer_name || ""
             ).toLowerCase();
 
           const contactName =
@@ -507,8 +532,7 @@ export default function Messaging() {
               conversation.messages.find(
                 (message) =>
                   message.contact_name
-              )?.contact_name ||
-                ""
+              )?.contact_name || ""
             ).toLowerCase();
 
           const phone =
@@ -517,7 +541,10 @@ export default function Messaging() {
             ).toLowerCase();
 
           return (
-            customerName.includes(
+            liveCustomerName.includes(
+              query
+            ) ||
+            storedCustomerName.includes(
               query
             ) ||
             contactName.includes(
@@ -529,6 +556,7 @@ export default function Messaging() {
       );
     }, [
       conversations,
+      customers,
       search,
     ]);
 
@@ -563,7 +591,7 @@ export default function Messaging() {
   }, [totalUnread]);
 
   /**
-   * Mark inbound messages read when the conversation opens.
+   * Mark inbound messages as read when opened.
    */
   useEffect(() => {
     if (
@@ -610,6 +638,7 @@ export default function Messaging() {
     selectedPhone,
     selectedConversation
       ?.messages.length,
+    queryClient,
   ]);
 
   /**
@@ -703,6 +732,17 @@ export default function Messaging() {
     const conversation =
       selectedConversation;
 
+    const liveCustomer =
+      findCustomerByPhone(
+        customers,
+        selectedPhone
+      );
+
+    const liveCustomerName =
+      getCustomerFullName(
+        liveCustomer
+      );
+
     if (isFacebookConv) {
       sendFacebookMutation.mutate(
         {
@@ -724,14 +764,22 @@ export default function Messaging() {
         draft.trim(),
 
       customer_id:
+        liveCustomer?.id ||
         conversation
-          ?.messages[0]
+          ?.messages.find(
+            (message) =>
+              message.customer_id
+          )
           ?.customer_id ||
         null,
 
       customer_name:
+        liveCustomerName ||
         conversation
-          ?.messages[0]
+          ?.messages.find(
+            (message) =>
+              message.customer_name
+          )
           ?.customer_name ||
         null,
     });
@@ -792,14 +840,9 @@ export default function Messaging() {
       }
 
       const matchedCustomer =
-        customers.find(
-          (customer) =>
-            normalizePhone(
-              customer.phone
-            ) ===
-            normalizePhone(
-              composePhone
-            )
+        findCustomerByPhone(
+          customers,
+          composePhone
         );
 
       composeMutation.mutate({
@@ -813,11 +856,9 @@ export default function Messaging() {
           null,
 
         customer_name:
-          matchedCustomer
-            ? `${matchedCustomer.first_name || ""} ${
-                matchedCustomer.last_name || ""
-              }`.trim()
-            : null,
+          getCustomerFullName(
+            matchedCustomer
+          ) || null,
       });
     };
 
@@ -836,9 +877,9 @@ export default function Messaging() {
       return customers
         .filter((customer) => {
           const name =
-            `${customer.first_name || ""} ${
-              customer.last_name || ""
-            }`.toLowerCase();
+            getCustomerFullName(
+              customer
+            ).toLowerCase();
 
           const phone =
             String(
@@ -959,15 +1000,15 @@ export default function Messaging() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() =>
-                  queryClient.invalidateQueries(
-                    {
-                      queryKey: [
-                        "messages",
-                      ],
-                    }
-                  )
-                }
+                onClick={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: ["messages"],
+                  });
+
+                  queryClient.invalidateQueries({
+                    queryKey: ["customers"],
+                  });
+                }}
               >
                 <RefreshCw className="w-4 h-4" />
               </Button>
@@ -1055,10 +1096,25 @@ export default function Messaging() {
                             1
                         ];
 
-                      const customerName =
-                        conversation
-                          .messages[0]
-                          ?.customer_name;
+                      const liveCustomer =
+                        findCustomerByPhone(
+                          customers,
+                          conversation.phone
+                        );
+
+                      const liveCustomerName =
+                        getCustomerFullName(
+                          liveCustomer
+                        );
+
+                      const storedCustomerName =
+                        conversation.messages.find(
+                          (
+                            message
+                          ) =>
+                            message.customer_name
+                        )?.customer_name ||
+                        "";
 
                       const contactName =
                         conversation.messages.find(
@@ -1066,7 +1122,12 @@ export default function Messaging() {
                             message
                           ) =>
                             message.contact_name
-                        )?.contact_name;
+                        )?.contact_name ||
+                        "";
+
+                      const customerName =
+                        liveCustomerName ||
+                        storedCustomerName;
 
                       const displayName =
                         getDisplayName(
@@ -1100,11 +1161,8 @@ export default function Messaging() {
                           )}
                         >
                           <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                            {displayName &&
-                            displayName !==
-                              formatPhoneDisplay(
-                                conversation.phone
-                              ) ? (
+                            {customerName ||
+                            contactName ? (
                               <span className="text-sm font-semibold text-slate-600">
                                 {displayName
                                   .charAt(
@@ -1196,101 +1254,103 @@ export default function Messaging() {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
 
-                <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                  {(() => {
-                    const contactName =
-                      selectedConversation.messages.find(
-                        (
-                          message
-                        ) =>
-                          message.contact_name
-                      )?.contact_name;
-
-                    const customerName =
-                      selectedConversation
-                        .messages[0]
-                        ?.customer_name;
-
-                    const name =
-                      getDisplayName(
-                        contactName,
-                        customerName,
-                        ""
-                      );
-
-                    if (name) {
-                      return (
-                        <span className="text-sm font-semibold text-slate-600">
-                          {name
-                            .charAt(
-                              0
-                            )
-                            .toUpperCase()}
-                        </span>
-                      );
-                    }
-
-                    return (
-                      <User className="w-5 h-5 text-slate-400" />
+                {(() => {
+                  const liveCustomer =
+                    findCustomerByPhone(
+                      customers,
+                      selectedPhone
                     );
-                  })()}
-                </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
-                    {isFacebookConv && (
-                      <Facebook className="w-3.5 h-3.5 text-[#1877F2] flex-shrink-0" />
-                    )}
+                  const liveCustomerName =
+                    getCustomerFullName(
+                      liveCustomer
+                    );
 
-                    {(() => {
-                      const contactName =
-                        selectedConversation.messages.find(
-                          (
-                            message
-                          ) =>
-                            message.contact_name
-                        )?.contact_name;
+                  const storedCustomerName =
+                    selectedConversation.messages.find(
+                      (message) =>
+                        message.customer_name
+                    )?.customer_name ||
+                    "";
 
-                      const customerName =
-                        selectedConversation
-                          .messages[0]
-                          ?.customer_name;
+                  const contactName =
+                    selectedConversation.messages.find(
+                      (message) =>
+                        message.contact_name
+                    )?.contact_name ||
+                    "";
 
-                      return getDisplayName(
-                        contactName,
-                        customerName,
-                        formatPhoneDisplay(
-                          selectedPhone
-                        )
-                      );
-                    })()}
-                  </div>
+                  const customerName =
+                    liveCustomerName ||
+                    storedCustomerName;
 
-                  <div className="text-xs text-slate-400">
-                    {isFacebookConv
-                      ? "Facebook Messenger"
-                      : formatPhoneDisplay(
-                          selectedPhone
-                        )}
-                  </div>
-                </div>
-
-                {selectedConversation
-                  .messages[0]
-                  ?.customer_id && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      window.open(
-                        `/CustomerDetail?id=${selectedConversation.messages[0].customer_id}`,
-                        "_blank"
+                  const displayName =
+                    getDisplayName(
+                      contactName,
+                      customerName,
+                      formatPhoneDisplay(
+                        selectedPhone
                       )
-                    }
-                  >
-                    <User className="w-4 h-4" />
-                  </Button>
-                )}
+                    );
+
+                  const customerId =
+                    liveCustomer?.id ||
+                    selectedConversation.messages.find(
+                      (message) =>
+                        message.customer_id
+                    )?.customer_id ||
+                    null;
+
+                  return (
+                    <>
+                      <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                        {customerName ||
+                        contactName ? (
+                          <span className="text-sm font-semibold text-slate-600">
+                            {displayName
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        ) : (
+                          <User className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
+                          {isFacebookConv && (
+                            <Facebook className="w-3.5 h-3.5 text-[#1877F2] flex-shrink-0" />
+                          )}
+
+                          {displayName}
+                        </div>
+
+                        <div className="text-xs text-slate-400">
+                          {isFacebookConv
+                            ? "Facebook Messenger"
+                            : formatPhoneDisplay(
+                                selectedPhone
+                              )}
+                        </div>
+                      </div>
+
+                      {customerId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(
+                              `/CustomerDetail?id=${customerId}`,
+                              "_blank"
+                            )
+                          }
+                        >
+                          <User className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Messages */}
@@ -1551,9 +1611,7 @@ export default function Messaging() {
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
 
                 <p className="text-sm">
-                  Select a
-                  conversation to
-                  view messages
+                  Select a conversation to view messages
                 </p>
               </div>
             </div>
@@ -1582,8 +1640,7 @@ export default function Messaging() {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">
-                To (phone
-                number)
+                To (phone number)
               </label>
 
               <Input
@@ -1627,21 +1684,17 @@ export default function Messaging() {
                             );
 
                             setComposeSearch(
-                              `${customer.first_name || ""} ${
-                                customer.last_name ||
-                                ""
-                              }`.trim()
+                              getCustomerFullName(
+                                customer
+                              )
                             );
                           }}
                           className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm"
                         >
                           <span className="font-medium">
-                            {
-                              customer.first_name
-                            }{" "}
-                            {
-                              customer.last_name
-                            }
+                            {getCustomerFullName(
+                              customer
+                            )}
                           </span>
 
                           {customer.phone && (
@@ -1693,8 +1746,7 @@ export default function Messaging() {
 
             {composeMutation.isError && (
               <p className="text-sm text-red-600">
-                Failed to send.
-                Please try again.
+                Failed to send. Please try again.
               </p>
             )}
 
