@@ -16,7 +16,7 @@
     },
     "phone_number": {
       "type": "string",
-      "description": "The other party's phone number (SMS) or Facebook sender PSID (Facebook)"
+      "description": "The other party's phone number (SMS/MMS) or Facebook sender PSID (Facebook)"
     },
     "direction": {
       "type": "string",
@@ -38,9 +38,17 @@
       "type": "string",
       "description": "Message text content"
     },
+    "media_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "List of inbound or outbound MMS attachment URLs"
+    },
     "message_id": {
       "type": "string",
-      "description": "VoIP.ms SMS ID or Facebook message ID (for dedup)"
+      "description": "VoIP.ms SMS/MMS ID or Facebook message ID (for dedup)"
     },
     "status": {
       "type": "string",
@@ -62,10 +70,11 @@
       "type": "string",
       "enum": [
         "sms",
+        "mms",
         "facebook"
       ],
       "default": "sms",
-      "description": "Message channel: sms = VoIP.ms SMS, facebook = Facebook Messenger"
+      "description": "Message channel: sms = VoIP.ms SMS, mms = VoIP.ms MMS, facebook = Facebook Messenger"
     },
     "sent_at": {
       "type": "string",
