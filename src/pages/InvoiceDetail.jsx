@@ -287,10 +287,18 @@ export default function InvoiceDetail() {
       }
       return result;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Invoice saved");
+      // Auto-sync to public viewer if this invoice has already been sent
+      if (variables?.public_access_token) {
+        const invoiceId = id || result?.id;
+        base44.functions.invoke("syncInvoiceSnapshot", {
+          invoiceId,
+          publicAccessToken: variables.public_access_token,
+        }).catch((e) => console.warn("Auto-sync to viewer failed:", e));
+      }
       if (isNew) navigate(`/InvoiceDetail?id=${result.id}`);
     },
   });

@@ -259,10 +259,18 @@ export default function EstimateDetail() {
       }
       return result;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["estimates"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Estimate saved");
+      // Auto-sync to public viewer if this estimate has already been sent
+      if (variables?.public_access_token) {
+        const estimateId = id || result?.id;
+        base44.functions.invoke("syncEstimateSnapshot", {
+          estimateId,
+          publicAccessToken: variables.public_access_token,
+        }).catch((e) => console.warn("Auto-sync to viewer failed:", e));
+      }
       if (isNew) navigate(`/EstimateDetail?id=${result.id}`);
     },
   });
