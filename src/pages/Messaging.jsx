@@ -21,7 +21,6 @@ import {
   Search,
   RefreshCw,
   PenSquare,
-  Facebook,
   Bell,
   BellOff,
   Image as ImageIcon,
@@ -741,29 +740,6 @@ export default function Messaging() {
     },
   });
 
-  const sendFacebookMutation = useMutation({
-    mutationFn: (variables) =>
-      base44.functions.invoke(
-        "sendFacebookMessage",
-        variables
-      ),
-
-    onSuccess: () => {
-      setDraft("");
-
-      queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-    },
-
-    onError: (error) => {
-      console.error(
-        "Facebook send failed",
-        error
-      );
-    },
-  });
-
   const deleteConversationMutation = useMutation({
     mutationFn: async ({ messagesToDelete }) => {
       if (
@@ -817,13 +793,6 @@ export default function Messaging() {
     },
   });
 
-  const isFacebookConv = Boolean(
-    selectedConversation?.messages.some(
-      (message) =>
-        message.channel === "facebook"
-    )
-  );
-
   const handleReplyFiles = (event) => {
     try {
       const additions = buildAttachmentsFromFiles(
@@ -872,22 +841,6 @@ export default function Messaging() {
       (!hasText && !hasAttachments) ||
       !selectedPhone
     ) {
-      return;
-    }
-
-    if (isFacebookConv) {
-      if (hasAttachments) {
-        setAttachmentError(
-          "Image sending is currently enabled for SMS/MMS conversations only."
-        );
-        return;
-      }
-
-      sendFacebookMutation.mutate({
-        recipient_psid: selectedPhone,
-        message: draft.trim(),
-      });
-
       return;
     }
 
@@ -1313,15 +1266,7 @@ export default function Messaging() {
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-sm text-slate-900 truncate flex items-center gap-1">
-                                {conversation.messages.some(
-                                  (message) =>
-                                    message.channel ===
-                                    "facebook"
-                                ) && (
-                                  <Facebook className="w-3 h-3 text-[#1877F2] flex-shrink-0" />
-                                )}
-
+                              <span className="font-medium text-sm text-slate-900 truncate">
                                 {displayName}
                               </span>
 
@@ -1405,20 +1350,12 @@ export default function Messaging() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-slate-900 truncate flex items-center gap-1.5">
-                        {isFacebookConv && (
-                          <Facebook className="w-3.5 h-3.5 text-[#1877F2] flex-shrink-0" />
-                        )}
-
+                      <div className="font-semibold text-sm text-slate-900 truncate">
                         {displayName}
                       </div>
 
                       <div className="text-xs text-slate-400">
-                        {isFacebookConv
-                          ? "Facebook Messenger"
-                          : formatPhoneDisplay(
-                              selectedPhone
-                            )}
+                        {formatPhoneDisplay(selectedPhone)}
 
                         {party.contact?.relationship
                           ? ` · ${party.contact.relationship}`
@@ -1606,13 +1543,10 @@ export default function Messaging() {
                   );
                 })()}
 
-                {(sendMutation.isPending ||
-                  sendFacebookMutation.isPending) && (
+                {sendMutation.isPending && (
                   <div className="flex justify-end">
                     <div className="bg-slate-200 text-slate-500 rounded-2xl rounded-br-sm px-4 py-2 text-sm italic">
-                      {sendMutation.isPending
-                        ? "Uploading and sending..."
-                        : "Sending..."}
+                      Uploading and sending...
                     </div>
                   </div>
                 )}
@@ -1650,30 +1584,26 @@ export default function Messaging() {
                     onChange={handleReplyFiles}
                   />
 
-                  {!isFacebookConv && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        replyFileInputRef.current?.click()
-                      }
-                      disabled={
-                        sendMutation.isPending ||
-                        attachments.length >=
-                          MAX_ATTACHMENTS
-                      }
-                      title="Attach images"
-                    >
-                      <Paperclip className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      replyFileInputRef.current?.click()
+                    }
+                    disabled={
+                      sendMutation.isPending ||
+                      attachments.length >=
+                        MAX_ATTACHMENTS
+                    }
+                    title="Attach images"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
 
                   <Input
                     placeholder={
-                      isFacebookConv
-                        ? "Type a Facebook message..."
-                        : attachments.length > 0
+                      attachments.length > 0
                         ? "Add a caption, optional..."
                         : "Type a message..."
                     }
@@ -1690,14 +1620,12 @@ export default function Messaging() {
                     disabled={
                       (!draft.trim() &&
                         attachments.length === 0) ||
-                      sendMutation.isPending ||
-                      sendFacebookMutation.isPending
+                      sendMutation.isPending
                     }
                     className="bg-[#e20404] hover:bg-red-700"
                     size="icon"
                   >
-                    {sendMutation.isPending ||
-                    sendFacebookMutation.isPending ? (
+                    {sendMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />
@@ -1707,15 +1635,13 @@ export default function Messaging() {
 
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>
-                    {!isFacebookConv &&
-                      `${attachments.length}/${MAX_ATTACHMENTS} images`}
+                    {`${attachments.length}/${MAX_ATTACHMENTS} images`}
                   </span>
 
                   <span>
                     {draft.length} characters
-                    {!isFacebookConv &&
-                      (draft.length > 160 ||
-                        attachments.length > 0) &&
+                    {(draft.length > 160 ||
+                      attachments.length > 0) &&
                       " · Sends as MMS"}
                   </span>
                 </div>

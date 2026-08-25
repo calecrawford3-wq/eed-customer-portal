@@ -291,28 +291,6 @@
     "voipms_pb_current_sync_status": {
       "type": "string",
       "description": "Current sync status text shown on the settings page (e.g. 'Syncing 45 customers\u2026', 'Idle', 'Last sync failed')"
-    },
-    "facebook_page_id": {
-      "type": "string",
-      "description": "Selected Facebook Page ID for Messenger integration"
-    },
-    "facebook_page_name": {
-      "type": "string",
-      "description": "Selected Facebook Page name for Messenger integration"
-    },
-    "facebook_last_sync": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When Facebook Messenger messages were last synced"
-    },
-    "facebook_page_access_token": {
-      "type": "string",
-      "description": "Cached long-lived Facebook Page access token (obtained via token exchange). Used by scheduled syncs that have no user context."
-    },
-    "facebook_page_token_cached_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When the cached Facebook Page access token was last refreshed"
     }
   },
   "required": [
