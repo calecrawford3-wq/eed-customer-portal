@@ -7,6 +7,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { MessagingProvider } from "@/contexts/MessagingContext";
 import CustomerPortal from './pages/CustomerPortal';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
@@ -121,6 +122,7 @@ function App() {
   // All protected routes go through auth
   return (
     <QueryClientProvider client={queryClientInstance}>
+      <MessagingProvider>
       <Router>
         <AuthProvider>
           <NavigationTracker />
@@ -130,6 +132,7 @@ function App() {
           </Routes>
         </AuthProvider>
       </Router>
+      </MessagingProvider>
       <Toaster />
       <SonnerToaster position="bottom-right" richColors />
     </QueryClientProvider>

@@ -46,6 +46,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
+import { useMessaging } from "@/contexts/MessagingContext";
 import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
@@ -454,7 +455,6 @@ export default function Messaging() {
 
   const [attachments, setAttachments] = useState([]);
   const [attachmentError, setAttachmentError] = useState("");
-  const [pendingMessages, setPendingMessages] = useState([]);
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [composePhone, setComposePhone] = useState("");
@@ -488,6 +488,9 @@ export default function Messaging() {
     permission,
     requestPermission,
   } = usePushNotifications();
+
+  const { pendingMessages, sendMessage, retrySend } =
+    useMessaging();
 
   useEffect(() => {
     const params = new URLSearchParams(
@@ -718,57 +721,6 @@ export default function Messaging() {
     selectedPhone,
   ]);
 
-  const sendMutation = useMutation({
-    mutationFn: async ({
-      tempId,
-      attachmentsToUpload = [],
-      ...variables
-    }) => {
-      const mediaUrls = await uploadAttachments(
-        attachmentsToUpload
-      );
-
-      return base44.functions.invoke("sendVoipSms", {
-        ...variables,
-        media_urls: mediaUrls,
-      });
-    },
-
-    onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-
-      setPendingMessages((prev) => {
-        const removed = prev.find(
-          (m) => m.tempId === variables.tempId
-        );
-
-        if (removed?.previewUrls) {
-          removed.previewUrls.forEach((url) =>
-            URL.revokeObjectURL(url)
-          );
-        }
-
-        return prev.filter(
-          (m) => m.tempId !== variables.tempId
-        );
-      });
-    },
-
-    onError: (error, variables) => {
-      console.error("Send failed", error);
-
-      setPendingMessages((prev) =>
-        prev.map((m) =>
-          m.tempId === variables.tempId
-            ? { ...m, status: "failed" }
-            : m
-        )
-      );
-    },
-  });
-
   const deleteConversationMutation = useMutation({
     mutationFn: async ({ messagesToDelete }) => {
       if (
@@ -891,30 +843,27 @@ export default function Messaging() {
     const capturedAttachments = attachments;
     const capturedDraft = draft.trim();
 
-    setPendingMessages((prev) => [
-      ...prev,
-      {
-        tempId,
-        phone_number: selectedPhone,
-        direction: "outbound",
-        body: capturedDraft,
-        media_urls: previewUrls,
-        previewUrls,
-        channel: isMms ? "mms" : "sms",
-        status: "sending",
-        is_read: true,
-        sent_at: new Date().toISOString(),
-        _pending: true,
-        _sendParams: {
-          to: selectedPhone,
-          message: capturedDraft,
-          customer_id: party.customerId || null,
-          customer_name: party.customerName || null,
-          contact_name: party.contactName || null,
-          attachmentsToUpload: capturedAttachments,
-        },
+    sendMessage({
+      tempId,
+      phone_number: selectedPhone,
+      direction: "outbound",
+      body: capturedDraft,
+      media_urls: previewUrls,
+      previewUrls,
+      channel: isMms ? "mms" : "sms",
+      status: "sending",
+      is_read: true,
+      sent_at: new Date().toISOString(),
+      _pending: true,
+      _sendParams: {
+        to: selectedPhone,
+        message: capturedDraft,
+        customer_id: party.customerId || null,
+        customer_name: party.customerName || null,
+        contact_name: party.contactName || null,
+        attachmentsToUpload: capturedAttachments,
       },
-    ]);
+    });
 
     setDraft("");
     setAttachments([]);
@@ -923,31 +872,6 @@ export default function Messaging() {
     if (replyFileInputRef.current) {
       replyFileInputRef.current.value = "";
     }
-
-    sendMutation.mutate({
-      tempId,
-      to: selectedPhone,
-      message: capturedDraft,
-      customer_id: party.customerId || null,
-      customer_name: party.customerName || null,
-      contact_name: party.contactName || null,
-      attachmentsToUpload: capturedAttachments,
-    });
-  };
-
-  const retrySend = (pendingMessage) => {
-    setPendingMessages((prev) =>
-      prev.map((m) =>
-        m.tempId === pendingMessage.tempId
-          ? { ...m, status: "sending" }
-          : m
-      )
-    );
-
-    sendMutation.mutate({
-      tempId: pendingMessage.tempId,
-      ...pendingMessage._sendParams,
-    });
   };
 
   const handleDeleteConversation = () => {
@@ -962,53 +886,6 @@ export default function Messaging() {
       messagesToDelete: selectedConversation.messages,
     });
   };
-
-  const composeMutation = useMutation({
-    mutationFn: async ({
-      attachmentsToUpload = [],
-      ...variables
-    }) => {
-      const mediaUrls = await uploadAttachments(
-        attachmentsToUpload
-      );
-
-      return base44.functions.invoke("sendVoipSms", {
-        ...variables,
-        media_urls: mediaUrls,
-      });
-    },
-
-    onSuccess: (_data, variables) => {
-      revokeAttachmentPreviews(composeAttachments);
-      setComposeAttachments([]);
-      setComposeAttachmentError("");
-      setComposeOpen(false);
-      setComposePhone("");
-      setComposeMessage("");
-      setComposeSearch("");
-
-      if (composeFileInputRef.current) {
-        composeFileInputRef.current.value = "";
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: ["messages"],
-      });
-
-      const phone = normalizePhone(variables.to);
-
-      setTimeout(() => {
-        setSelectedPhone(phone);
-      }, 300);
-    },
-
-    onError: (error) => {
-      console.error(
-        "Compose send failed",
-        error
-      );
-    },
-  });
 
   const handleComposeFiles = async (event) => {
     try {
@@ -1068,14 +945,60 @@ export default function Messaging() {
       []
     );
 
-    composeMutation.mutate({
-      to: composePhone.trim(),
-      message: composeMessage.trim(),
-      customer_id: party.customerId || null,
-      customer_name: party.customerName || null,
-      contact_name: party.contactName || null,
-      attachmentsToUpload: composeAttachments,
+    const tempId = `temp-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const previewUrls = composeAttachments.map(
+      (a) => a.previewUrl
+    );
+    const isMms =
+      composeMessage.trim().length > 160 ||
+      composeAttachments.length > 0;
+    const phone = normalizePhone(composePhone.trim());
+    const capturedAttachments = composeAttachments;
+    const capturedMessage = composeMessage.trim();
+    const capturedPhone = composePhone.trim();
+
+    sendMessage({
+      tempId,
+      phone_number: phone,
+      direction: "outbound",
+      body: capturedMessage,
+      media_urls: previewUrls,
+      previewUrls,
+      channel: isMms ? "mms" : "sms",
+      status: "sending",
+      is_read: true,
+      sent_at: new Date().toISOString(),
+      _pending: true,
+      _sendParams: {
+        to: capturedPhone,
+        message: capturedMessage,
+        customer_id: party.customerId || null,
+        customer_name: party.customerName || null,
+        contact_name: party.contactName || null,
+        attachmentsToUpload: capturedAttachments,
+      },
     });
+
+    setComposeAttachments([]);
+    setComposeAttachmentError("");
+    setComposeOpen(false);
+    setComposePhone("");
+    setComposeMessage("");
+    setComposeSearch("");
+
+    if (composeFileInputRef.current) {
+      composeFileInputRef.current.value = "";
+    }
+
+    queryClient.invalidateQueries({
+      queryKey: ["messages"],
+    });
+
+    setTimeout(() => {
+      setSelectedPhone(phone);
+    }, 300);
   };
 
   const composeRecipients = useMemo(() => {
@@ -1157,8 +1080,6 @@ export default function Messaging() {
   };
 
   const closeComposeDialog = (open) => {
-    if (composeMutation.isPending) return;
-
     setComposeOpen(open);
 
     if (!open) {
@@ -1696,21 +1617,11 @@ export default function Messaging() {
                 <AttachmentPreviewList
                   attachments={attachments}
                   onRemove={removeReplyAttachment}
-                  disabled={sendMutation.isPending}
                 />
 
                 {attachmentError && (
                   <p className="text-xs text-red-600">
                     {attachmentError}
-                  </p>
-                )}
-
-                {sendMutation.isError && (
-                  <p className="text-xs text-red-600">
-                    {getErrorMessage(
-                      sendMutation.error,
-                      "Unable to send message."
-                    )}
                   </p>
                 )}
 
@@ -1732,7 +1643,6 @@ export default function Messaging() {
                       replyFileInputRef.current?.click()
                     }
                     disabled={
-                      sendMutation.isPending ||
                       attachments.length >=
                         MAX_ATTACHMENTS
                     }
@@ -1915,7 +1825,6 @@ export default function Messaging() {
                   composeFileInputRef.current?.click()
                 }
                 disabled={
-                  composeMutation.isPending ||
                   composeAttachments.length >=
                     MAX_ATTACHMENTS
                 }
@@ -1927,7 +1836,6 @@ export default function Messaging() {
               <AttachmentPreviewList
                 attachments={composeAttachments}
                 onRemove={removeComposeAttachment}
-                disabled={composeMutation.isPending}
               />
 
               <div className="text-xs text-slate-400">
@@ -1942,36 +1850,17 @@ export default function Messaging() {
               )}
             </div>
 
-            {composeMutation.isError && (
-              <p className="text-sm text-red-600">
-                {getErrorMessage(
-                  composeMutation.error,
-                  "Failed to send. Please try again."
-                )}
-              </p>
-            )}
-
             <Button
               onClick={handleComposeSend}
               disabled={
                 !composePhone.trim() ||
                 (!composeMessage.trim() &&
-                  composeAttachments.length === 0) ||
-                composeMutation.isPending
+                  composeAttachments.length === 0)
               }
               className="w-full bg-[#e20404] hover:bg-red-700"
             >
-              {composeMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading and Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Message
-                </>
-              )}
+              <Send className="w-4 h-4 mr-2" />
+              Send Message
             </Button>
           </div>
         </DialogContent>
