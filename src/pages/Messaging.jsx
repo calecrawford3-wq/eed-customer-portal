@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/compressImage";
 import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
@@ -338,7 +339,7 @@ function revokeAttachmentPreviews(attachments) {
   });
 }
 
-function buildAttachmentsFromFiles(files, existingCount = 0) {
+async function buildAttachmentsFromFiles(files, existingCount = 0) {
   const selectedFiles = Array.from(files || []);
   const remainingSlots = MAX_ATTACHMENTS - existingCount;
 
@@ -362,15 +363,25 @@ function buildAttachmentsFromFiles(files, existingCount = 0) {
         "Only JPG, JPEG, PNG, and GIF images can be attached."
       );
     }
-
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      throw new Error(
-        "Each image must be 1,300 KB or smaller."
-      );
-    }
   }
 
-  return selectedFiles.map((file) => ({
+  // Compress any image that exceeds the MMS size limit
+  const processed = await Promise.all(
+    selectedFiles.map(async (file) => {
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        try {
+          return await compressImage(file, MAX_ATTACHMENT_BYTES);
+        } catch {
+          throw new Error(
+            `Could not compress "${file.name}" under 1,300 KB.`
+          );
+        }
+      }
+      return file;
+    })
+  );
+
+  return processed.map((file) => ({
     id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
     file,
     previewUrl: URL.createObjectURL(file),
@@ -793,9 +804,9 @@ export default function Messaging() {
     },
   });
 
-  const handleReplyFiles = (event) => {
+  const handleReplyFiles = async (event) => {
     try {
-      const additions = buildAttachmentsFromFiles(
+      const additions = await buildAttachmentsFromFiles(
         event.target.files,
         attachments.length
       );
@@ -921,9 +932,9 @@ export default function Messaging() {
     },
   });
 
-  const handleComposeFiles = (event) => {
+  const handleComposeFiles = async (event) => {
     try {
-      const additions = buildAttachmentsFromFiles(
+      const additions = await buildAttachmentsFromFiles(
         event.target.files,
         composeAttachments.length
       );
