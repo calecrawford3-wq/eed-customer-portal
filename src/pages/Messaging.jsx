@@ -28,6 +28,7 @@ import {
   Loader2,
   Paperclip,
   X,
+  AlertCircle,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -453,6 +454,7 @@ export default function Messaging() {
 
   const [attachments, setAttachments] = useState([]);
   const [attachmentError, setAttachmentError] = useState("");
+  const [pendingMessages, setPendingMessages] = useState([]);
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [composePhone, setComposePhone] = useState("");
@@ -718,6 +720,7 @@ export default function Messaging() {
 
   const sendMutation = useMutation({
     mutationFn: async ({
+      tempId,
       attachmentsToUpload = [],
       ...variables
     }) => {
@@ -731,23 +734,38 @@ export default function Messaging() {
       });
     },
 
-    onSuccess: () => {
-      revokeAttachmentPreviews(attachments);
-      setAttachments([]);
-      setAttachmentError("");
-      setDraft("");
-
-      if (replyFileInputRef.current) {
-        replyFileInputRef.current.value = "";
-      }
-
-      queryClient.invalidateQueries({
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
         queryKey: ["messages"],
+      });
+
+      setPendingMessages((prev) => {
+        const removed = prev.find(
+          (m) => m.tempId === variables.tempId
+        );
+
+        if (removed?.previewUrls) {
+          removed.previewUrls.forEach((url) =>
+            URL.revokeObjectURL(url)
+          );
+        }
+
+        return prev.filter(
+          (m) => m.tempId !== variables.tempId
+        );
       });
     },
 
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error("Send failed", error);
+
+      setPendingMessages((prev) =>
+        prev.map((m) =>
+          m.tempId === variables.tempId
+            ? { ...m, status: "failed" }
+            : m
+        )
+      );
     },
   });
 
@@ -862,13 +880,73 @@ export default function Messaging() {
       selectedConversation?.messages || []
     );
 
+    const tempId = `temp-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const previewUrls = attachments.map(
+      (a) => a.previewUrl
+    );
+    const isMms =
+      draft.trim().length > 160 || attachments.length > 0;
+    const capturedAttachments = attachments;
+    const capturedDraft = draft.trim();
+
+    setPendingMessages((prev) => [
+      ...prev,
+      {
+        tempId,
+        phone_number: selectedPhone,
+        direction: "outbound",
+        body: capturedDraft,
+        media_urls: previewUrls,
+        previewUrls,
+        channel: isMms ? "mms" : "sms",
+        status: "sending",
+        is_read: true,
+        sent_at: new Date().toISOString(),
+        _pending: true,
+        _sendParams: {
+          to: selectedPhone,
+          message: capturedDraft,
+          customer_id: party.customerId || null,
+          customer_name: party.customerName || null,
+          contact_name: party.contactName || null,
+          attachmentsToUpload: capturedAttachments,
+        },
+      },
+    ]);
+
+    setDraft("");
+    setAttachments([]);
+    setAttachmentError("");
+
+    if (replyFileInputRef.current) {
+      replyFileInputRef.current.value = "";
+    }
+
     sendMutation.mutate({
+      tempId,
       to: selectedPhone,
-      message: draft.trim(),
+      message: capturedDraft,
       customer_id: party.customerId || null,
       customer_name: party.customerName || null,
       contact_name: party.contactName || null,
-      attachmentsToUpload: attachments,
+      attachmentsToUpload: capturedAttachments,
+    });
+  };
+
+  const retrySend = (pendingMessage) => {
+    setPendingMessages((prev) =>
+      prev.map((m) =>
+        m.tempId === pendingMessage.tempId
+          ? { ...m, status: "sending" }
+          : m
+      )
+    );
+
+    sendMutation.mutate({
+      tempId: pendingMessage.tempId,
+      ...pendingMessage._sendParams,
     });
   };
 
@@ -1411,9 +1489,26 @@ export default function Messaging() {
                 className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
               >
                 {(() => {
+                  const pendingForConv =
+                    pendingMessages.filter(
+                      (m) =>
+                        normalizePhone(
+                          m.phone_number
+                        ) === selectedPhone
+                    );
+
+                  const allMessages = [
+                    ...selectedConversation.messages,
+                    ...pendingForConv,
+                  ].sort(
+                    (a, b) =>
+                      new Date(a.sent_at || 0) -
+                      new Date(b.sent_at || 0)
+                  );
+
                   let lastDay = "";
 
-                  return selectedConversation.messages.map(
+                  return allMessages.map(
                     (message) => {
                       const dayLabel = formatDayLabel(
                         message.sent_at
@@ -1445,22 +1540,53 @@ export default function Messaging() {
 
                           <div
                             className={cn(
-                              "flex",
+                              "flex items-end gap-1.5",
                               message.direction ===
                                 "outbound"
                                 ? "justify-end"
                                 : "justify-start"
                             )}
                           >
+                            {message._pending &&
+                              message.status ===
+                                "failed" && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    retrySend(message)
+                                  }
+                                  className="flex-shrink-0 w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                                  title="Tap to retry"
+                                >
+                                  <AlertCircle className="w-4 h-4" />
+                                </button>
+                              )}
                             <div
                               className={cn(
-                                "max-w-[75%] rounded-2xl px-4 py-2 text-sm overflow-hidden",
+                                "relative max-w-[75%] rounded-2xl px-4 py-2 text-sm overflow-hidden",
                                 message.direction ===
                                   "outbound"
                                   ? "bg-[#e20404] text-white rounded-br-sm"
-                                  : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm"
+                                  : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm",
+                                message._pending &&
+                                  message.status ===
+                                    "sending" &&
+                                  "opacity-70"
                               )}
                             >
+                              {message._pending &&
+                                message.status ===
+                                  "sending" && (
+                                  <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl overflow-hidden bg-white/20">
+                                    <div
+                                      className="h-full w-1/3 bg-white/80"
+                                      style={{
+                                        animation:
+                                          "pendingShimmer 1.2s ease-in-out infinite",
+                                      }}
+                                    />
+                                  </div>
+                                )}
                               {hasBody && (
                                 <p className="whitespace-pre-wrap break-words">
                                   {message.body}
@@ -1536,12 +1662,21 @@ export default function Messaging() {
                                     : "text-slate-400"
                                 )}
                               >
-                                {formatTime(
-                                  message.sent_at
-                                )}
+                                {message._pending &&
+                                message.status === "sending"
+                                  ? "Sending…"
+                                  : formatTime(
+                                      message.sent_at
+                                    )}
 
-                                {message.direction ===
-                                  "outbound" &&
+                                {message._pending &&
+                                  message.status ===
+                                    "failed" &&
+                                  " · Not Delivered"}
+
+                                {!message._pending &&
+                                  message.direction ===
+                                    "outbound" &&
                                   message.status ===
                                     "failed" &&
                                   " · Failed"}
@@ -1554,13 +1689,7 @@ export default function Messaging() {
                   );
                 })()}
 
-                {sendMutation.isPending && (
-                  <div className="flex justify-end">
-                    <div className="bg-slate-200 text-slate-500 rounded-2xl rounded-br-sm px-4 py-2 text-sm italic">
-                      Uploading and sending...
-                    </div>
-                  </div>
-                )}
+
               </div>
 
               <div className="bg-white border-t border-slate-200 p-3 space-y-2 flex-shrink-0">
@@ -1629,18 +1758,13 @@ export default function Messaging() {
                   <Button
                     onClick={handleSend}
                     disabled={
-                      (!draft.trim() &&
-                        attachments.length === 0) ||
-                      sendMutation.isPending
+                      !draft.trim() &&
+                      attachments.length === 0
                     }
                     className="bg-[#e20404] hover:bg-red-700"
                     size="icon"
                   >
-                    {sendMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
+                    <Send className="w-4 h-4" />
                   </Button>
                 </div>
 
