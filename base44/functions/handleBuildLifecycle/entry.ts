@@ -46,6 +46,30 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.warn("[handleBuildLifecycle] status notification failed:", e.message);
         }
+
+        // Auto-send portal invite on the customer's first completed build (never re-sent)
+        if (data?.customer_id) {
+          try {
+            const custs = await base44.asServiceRole.entities.Customer.filter({ id: data.customer_id });
+            const customer = custs && custs[0];
+            if (customer && customer.email && !customer.portal_invite_sent) {
+              try {
+                await base44.asServiceRole.users.inviteUser(customer.email, "user");
+                await base44.asServiceRole.entities.Customer.update(customer.id, {
+                  portal_invite_sent: true,
+                  portal_invite_sent_at: new Date().toISOString(),
+                });
+                console.log(`[handleBuildLifecycle] Portal invite sent to ${customer.email} (first completed build ${buildId})`);
+              } catch (inviteErr) {
+                console.warn("[handleBuildLifecycle] Portal invite failed:", inviteErr.message);
+              }
+            } else if (customer && !customer.email) {
+              console.log(`[handleBuildLifecycle] Skipping portal invite — customer ${data.customer_id} has no email`);
+            }
+          } catch (e) {
+            console.warn("[handleBuildLifecycle] Portal invite customer lookup failed:", e.message);
+          }
+        }
       }
 
       // Notify on engine pickup confirmed

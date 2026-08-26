@@ -77,6 +77,16 @@
       "type": "string",
       "description": "Temporary password for customer portal access"
     },
+    "portal_invite_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once the customer has been sent a portal invite (automatically on their first completed engine build). Prevents duplicate invites on subsequent builds."
+    },
+    "portal_invite_sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the portal invite was first sent to this customer"
+    },
     "voipms_phonebook_id": {
       "type": "string",
       "description": "VoIP.ms Phone Book entry ID for the primary phone (backward compat \u2014 VoipmsPhoneEntry entity is the source of truth for all numbers)"
