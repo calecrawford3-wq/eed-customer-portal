@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { EVENT_TYPE_META, TIMEFRAME_LABELS, dateToStr, todayStr } from "@/lib/customerSuccess";
+import { ChevronLeft, ChevronRight, Plus, Lock } from "lucide-react";
+import { EVENT_TYPE_META, TIMEFRAME_LABELS, dateToStr, todayStr, addDaysStr } from "@/lib/customerSuccess";
 import CalendarEventModal from "@/components/customersuccess/CalendarEventModal";
 import CustomerSuccessCallForm from "@/components/customersuccess/CustomerSuccessCallForm";
 import EventChip from "@/components/calendar/EventChip";
@@ -45,6 +45,19 @@ export default function CalendarPage() {
     });
     return map;
   }, [tasks, events]);
+
+  // Build cooldown: 7-day gap after each scheduled build event
+  const buildBlockedDates = useMemo(() => {
+    const blocked = new Set();
+    events
+      .filter((e) => e.event_type === "build" && e.status !== "cancelled" && e.start_date)
+      .forEach((e) => {
+        for (let i = 1; i < 7; i++) {
+          blocked.add(addDaysStr(e.start_date, i));
+        }
+      });
+    return blocked;
+  }, [events]);
 
   // Navigation offsets by view
   const step = (dir) => {
@@ -120,9 +133,12 @@ export default function CalendarPage() {
                 const items = byDate[ds] || [];
                 const inMonth = sameMonth(d, cursor);
                 return (
-                  <div key={i} className={`min-h-[96px] border-b border-r border-slate-100 p-1.5 ${inMonth ? "bg-white" : "bg-slate-50/50"}`}>
+                  <div key={i} className={`min-h-[96px] border-b border-r border-slate-100 p-1.5 ${buildBlockedDates.has(ds) ? "bg-slate-100/60" : inMonth ? "bg-white" : "bg-slate-50/50"}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${ds === today ? "bg-[#e20404] text-white" : inMonth ? "text-slate-700" : "text-slate-300"}`}>{d.getDate()}</span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${ds === today ? "bg-[#e20404] text-white" : inMonth ? "text-slate-700" : "text-slate-300"}`}>{d.getDate()}</span>
+                        {buildBlockedDates.has(ds) && <Lock className="w-3 h-3 text-slate-300" />}
+                      </div>
                       <button onClick={() => openNew(ds)} className="text-slate-300 hover:text-[#e20404]"><Plus className="w-3.5 h-3.5" /></button>
                     </div>
                     <div className="space-y-1">
@@ -144,16 +160,17 @@ export default function CalendarPage() {
       {view === "week" && (
         <Card className="border-0 shadow-sm overflow-hidden">
           <CardContent className="p-0">
-            <CalendarWeekView weekStart={weekStart} byDate={byDate} onEdit={openEdit} onTask={setActiveTask} onNew={openNew} />
+            <CalendarWeekView weekStart={weekStart} byDate={byDate} buildBlockedDates={buildBlockedDates} onEdit={openEdit} onTask={setActiveTask} onNew={openNew} />
           </CardContent>
         </Card>
       )}
 
       {view === "day" && (
-        <CalendarDayView day={cursor} byDate={byDate} onEdit={openEdit} onTask={setActiveTask} onNew={openNew} />
+        <CalendarDayView day={cursor} byDate={byDate} buildBlockedDates={buildBlockedDates} onEdit={openEdit} onTask={setActiveTask} onNew={openNew} />
       )}
 
       <div className="flex flex-wrap gap-3 mt-4">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500"><Lock className="w-3 h-3" /> Build cooldown (7 days)</div>
         {Object.entries(EVENT_TYPE_META).map(([k, m]) => (
           <div key={k} className="flex items-center gap-1.5 text-xs text-slate-600">
             <span className={`w-2.5 h-2.5 rounded-full ${m.dot}`} /> {m.label}
@@ -161,7 +178,7 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <CalendarEventModal open={modalOpen} onClose={() => setModalOpen(false)} defaultDate={defaultDate} event={editEvent} />
+      <CalendarEventModal open={modalOpen} onClose={() => setModalOpen(false)} defaultDate={defaultDate} event={editEvent} buildBlockedDates={buildBlockedDates} />
       <CustomerSuccessCallForm open={!!activeTask} onClose={() => setActiveTask(null)} task={activeTask} />
     </div>
   );

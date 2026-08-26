@@ -18,7 +18,8 @@
         "shop_task",
         "appointment",
         "internal_reminder",
-        "personal_reminder"
+        "personal_reminder",
+        "build"
       ],
       "default": "appointment"
     },

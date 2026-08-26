@@ -1,10 +1,11 @@
 import React from "react";
 import { EVENT_TYPE_META, dateToStr, todayStr } from "@/lib/customerSuccess";
 import EventChip from "./EventChip";
+import { Lock } from "lucide-react";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-export default function CalendarDayView({ day, byDate, onEdit, onTask, onNew }) {
+export default function CalendarDayView({ day, byDate, buildBlockedDates, onEdit, onTask, onNew }) {
   const ds = dateToStr(day);
   const items = byDate[ds] || [];
   const today = todayStr();
@@ -26,9 +27,16 @@ export default function CalendarDayView({ day, byDate, onEdit, onTask, onNew }) 
             {day.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <button onClick={() => onNew(ds)} className="text-slate-400 hover:text-[#e20404]">
-          <span className="text-2xl leading-none font-light">+</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {buildBlockedDates?.has(ds) && (
+            <span className="flex items-center gap-1 text-xs text-slate-400">
+              <Lock className="w-3 h-3" /> Build cooldown
+            </span>
+          )}
+          <button onClick={() => onNew(ds)} className="text-slate-400 hover:text-[#e20404]">
+            <span className="text-2xl leading-none font-light">+</span>
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

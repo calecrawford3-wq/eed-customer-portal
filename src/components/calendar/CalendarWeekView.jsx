@@ -1,10 +1,11 @@
 import React from "react";
 import { EVENT_TYPE_META, dateToStr, todayStr } from "@/lib/customerSuccess";
 import EventChip from "./EventChip";
+import { Lock } from "lucide-react";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export default function CalendarWeekView({ weekStart, byDate, onEdit, onTask, onNew }) {
+export default function CalendarWeekView({ weekStart, byDate, buildBlockedDates, onEdit, onTask, onNew }) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
@@ -20,14 +21,17 @@ export default function CalendarWeekView({ weekStart, byDate, onEdit, onTask, on
           const items = byDate[ds] || [];
           const isToday = ds === today;
           return (
-            <div key={ds} className="border-r border-slate-200 last:border-r-0 min-h-[400px] flex flex-col">
+            <div key={ds} className={`border-r border-slate-200 last:border-r-0 min-h-[400px] flex flex-col ${buildBlockedDates?.has(ds) ? "bg-slate-100/40" : ""}`}>
               <div className="px-3 py-2 border-b border-slate-200 sticky top-0 bg-slate-50 z-10">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-slate-400 uppercase">{WEEKDAYS[d.getDay()]}</p>
                     <p className={`text-lg font-semibold ${isToday ? "text-[#e20404]" : "text-slate-700"}`}>{d.getDate()}</p>
                   </div>
-                  <button onClick={() => onNew(ds)} className="text-slate-300 hover:text-[#e20404]"><span className="text-lg leading-none">+</span></button>
+                  <div className="flex items-center gap-1">
+                    {buildBlockedDates?.has(ds) && <Lock className="w-3 h-3 text-slate-300" title="Build cooldown" />}
+                    <button onClick={() => onNew(ds)} className="text-slate-300 hover:text-[#e20404]"><span className="text-lg leading-none">+</span></button>
+                  </div>
                 </div>
               </div>
               <div className="p-2 space-y-2 flex-1 overflow-y-auto">

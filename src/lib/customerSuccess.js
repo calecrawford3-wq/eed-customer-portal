@@ -120,6 +120,7 @@ export const EVENT_TYPE_META = {
   appointment: { label: "Appointment", dot: "bg-cyan-500", badge: "bg-cyan-100 text-cyan-700" },
   internal_reminder: { label: "Internal Reminder", dot: "bg-slate-500", badge: "bg-slate-100 text-slate-600" },
   personal_reminder: { label: "Personal Reminder", dot: "bg-purple-500", badge: "bg-purple-100 text-purple-700" },
+  build: { label: "Build Scheduled", dot: "bg-amber-500", badge: "bg-amber-100 text-amber-700" },
 };
 
 export const CALENDAR_EVENT_TYPES = [
@@ -130,4 +131,5 @@ export const CALENDAR_EVENT_TYPES = [
   { value: "shop_task", label: "Shop Task" },
   { value: "internal_reminder", label: "Internal Reminder" },
   { value: "personal_reminder", label: "Personal Reminder" },
+  { value: "build", label: "Build Scheduled" },
 ];
