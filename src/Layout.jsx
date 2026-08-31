@@ -54,6 +54,13 @@ export default function Layout({ children, currentPageName }) {
   });
   const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
 
+  const { data: messages = [] } = useQuery({
+    queryKey: ["messages-unread-count"],
+    queryFn: () => base44.entities.Message.list("-sent_at", 500),
+    refetchInterval: 30000,
+  });
+  const unreadMessageCount = messages.filter(m => !m.is_read && m.direction === "inbound").length;
+
 
 
   const navGroups = [
@@ -105,7 +112,7 @@ export default function Layout({ children, currentPageName }) {
       items: [
         { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
         { name: "Calendar", page: "Calendar", icon: Calendar },
-        { name: "Messages", page: "Messaging", icon: MessageSquare },
+        { name: "Messages", page: "Messaging", icon: MessageSquare, badge: true },
         { name: "Emails", page: "Emails", icon: Mail },
       ],
     },
@@ -190,6 +197,16 @@ export default function Layout({ children, currentPageName }) {
                         {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
                           <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                             {pendingRefreshCount}
+                          </span>
+                        )}
+                        {!collapsed && item.badge && item.page === "Messaging" && unreadMessageCount > 0 && (
+                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                          </span>
+                        )}
+                        {collapsed && item.badge && item.page === "Messaging" && unreadMessageCount > 0 && (
+                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                           </span>
                         )}
                       </Link>

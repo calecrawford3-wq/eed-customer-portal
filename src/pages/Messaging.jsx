@@ -1261,16 +1261,21 @@ export default function Messaging() {
                               "bg-slate-100"
                           )}
                         >
-                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                            {party.contactName ||
-                            party.customerName ? (
-                              <span className="text-sm font-semibold text-slate-600">
-                                {displayName
-                                  .charAt(0)
-                                  .toUpperCase()}
-                              </span>
-                            ) : (
-                              <User className="w-5 h-5 text-slate-400" />
+                          <div className="relative flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                              {party.contactName ||
+                              party.customerName ? (
+                                <span className="text-sm font-semibold text-slate-600">
+                                  {displayName
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </span>
+                              ) : (
+                                <User className="w-5 h-5 text-slate-400" />
+                              )}
+                            </div>
+                            {conversation.unread > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#e20404] rounded-full border-2 border-white" />
                             )}
                           </div>
 
