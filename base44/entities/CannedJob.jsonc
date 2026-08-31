@@ -1,0 +1,69 @@
+{
+  "name": "CannedJob",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Canned job name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description shown in the picker"
+    },
+    "line_items": {
+      "type": "array",
+      "description": "Parts included in this canned job",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "labor_items": {
+      "type": "array",
+      "description": "Labor items included in this canned job",
+      "items": {
+        "type": "object",
+        "properties": {
+          "labor_item_id": {
+            "type": "string",
+            "description": "Reference to the LaborItem catalog entry this canned labor was picked from \u2014 used to pull current pricing when loaded onto an estimate"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes about this canned job"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

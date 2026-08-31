@@ -10,8 +10,7 @@ import {
   GitCompare,
   Copy,
   CheckCircle,
-  AlertCircle,
-  ShoppingCart
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import CannedItemsEditor from "@/components/specsheets/CannedItemsEditor";
 
 const SPEC_SECTIONS = {
   block: {
@@ -135,7 +133,6 @@ const SPEC_SECTIONS = {
 export default function SpecEditor() {
   const [specId, setSpecId] = useState(null);
   const [localSpecs, setLocalSpecs] = useState({});
-  const [localCannedItems, setLocalCannedItems] = useState({});
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("draft");
   const [hasChanges, setHasChanges] = useState(false);
@@ -163,7 +160,6 @@ export default function SpecEditor() {
   useEffect(() => {
     if (spec) {
       setLocalSpecs(spec.specs || {});
-      setLocalCannedItems(spec.canned_items || {});
       setNotes(spec.notes || "");
       setStatus(spec.status || "draft");
     }
@@ -216,7 +212,6 @@ export default function SpecEditor() {
   const handleSave = () => {
     updateMutation.mutate({
       specs: localSpecs,
-      canned_items: localCannedItems,
       notes: notes,
       status: status
     });
@@ -333,9 +328,7 @@ export default function SpecEditor() {
               {section.label}
             </TabsTrigger>
           ))}
-          <TabsTrigger value="canned_items" className="text-sm flex items-center gap-1">
-            <ShoppingCart className="w-3.5 h-3.5" /> Canned Job Items
-          </TabsTrigger>
+
         </TabsList>
 
         {Object.entries(SPEC_SECTIONS).map(([sectionKey, section]) => (
@@ -368,12 +361,7 @@ export default function SpecEditor() {
           </TabsContent>
         ))}
 
-        <TabsContent value="canned_items">
-          <CannedItemsEditor
-            cannedItems={localCannedItems}
-            onChange={(updated) => { setLocalCannedItems(updated); setHasChanges(true); }}
-          />
-        </TabsContent>
+
       </Tabs>
     </div>
   );

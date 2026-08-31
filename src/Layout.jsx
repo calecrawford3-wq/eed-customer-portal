@@ -30,6 +30,7 @@ import {
   X,
   ClipboardCheck,
   FlaskConical,
+  Boxes,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -78,6 +79,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Builds", page: "Builds", icon: Wrench },
         { name: "Platforms", page: "Platforms", icon: Layers },
         { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
+        { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
         { name: "Documents", page: "Documents", icon: FolderOpen },
       ],
     },

@@ -96,7 +96,6 @@ export default function EstimateDetail() {
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [cannedJobOpen, setCannedJobOpen] = useState(false);
   const [selectedSpec, setSelectedSpec] = useState(null);
-  const [selectedSpecPlatform, setSelectedSpecPlatform] = useState(null);
   const [printMode, setPrintMode] = useState(false);
   const [laborPickerOpen, setLaborPickerOpen] = useState(false);
   const [laborPickingIdx, setLaborPickingIdx] = useState(null);
@@ -525,9 +524,8 @@ export default function EstimateDetail() {
     setForm(f => ({ ...f, shipping_cost: shipping, ...totals }));
   };
 
-  const handleCannedJobSelect = async (spec, platform) => {
-    setSelectedSpec(spec);
-    setSelectedSpecPlatform(platform);
+  const handleCannedJobSelect = async (cannedJob) => {
+    setSelectedSpec(cannedJob);
 
     // Fetch current inventory prices at the moment the canned job is loaded
     const [allParts, allLaborItems] = await Promise.all([
@@ -539,8 +537,8 @@ export default function EstimateDetail() {
     const laborMap = Object.fromEntries(allLaborItems.map(l => [l.id, l]));
 
     // Build line items with current sell prices from inventory
-    const cannedLineItems = (spec.canned_items?.line_items || []).length > 0
-      ? spec.canned_items.line_items.map(item => {
+    const cannedLineItems = (cannedJob.line_items || []).length > 0
+      ? cannedJob.line_items.map(item => {
           const inventoryPart = item.part_id ? partsMap[item.part_id] : null;
           const unitPrice = inventoryPart ? (Number(inventoryPart.sell_price) || 0) : 0;
           const unitCost = inventoryPart ? (Number(inventoryPart.unit_cost) || 0) : 0;
@@ -558,8 +556,8 @@ export default function EstimateDetail() {
       : [{ ...emptyPart }];
 
     // Build labor items with current prices from labor catalog
-    const cannedLaborItems = (spec.canned_items?.labor_items || []).length > 0
-      ? spec.canned_items.labor_items.map(item => {
+    const cannedLaborItems = (cannedJob.labor_items || []).length > 0
+      ? cannedJob.labor_items.map(item => {
           let inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
           if (!inventoryLabor && item.name) {
             inventoryLabor = allLaborItems.find(l => l.name && l.name.toLowerCase() === item.name.toLowerCase());
@@ -570,14 +568,14 @@ export default function EstimateDetail() {
             price: inventoryLabor ? (Number(inventoryLabor.price) || 0) : 0,
           };
         })
-      : [{ name: "Engine Assembly & Dyno", description: `${spec.custom_name || spec.spec_type} spec build`, price: 0 }];
+      : [{ name: "Engine Assembly & Dyno", description: `${cannedJob.name} build`, price: 0 }];
 
     const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
-      `Engine Build: ${spec.custom_name || spec.spec_type} — ${platform?.manufacturer || ""} ${platform?.name || ""}\n` +
-      (spec.notes ? `Spec Notes: ${spec.notes}` : "");
+      `Canned Job: ${cannedJob.name}\n` +
+      (cannedJob.description ? `Description: ${cannedJob.description}` : "");
 
     const totals = recalc(cannedLineItems, cannedLaborItems, form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
-    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, notes: updatedNotes, spec_sheet_id: spec.id, ...totals }));
+    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, notes: updatedNotes, ...totals }));
     toast.success("Canned job loaded with current inventory prices");
   };
 
@@ -1251,9 +1249,6 @@ export default function EstimateDetail() {
       <CannedJobPicker
         open={cannedJobOpen}
         onClose={() => setCannedJobOpen(false)}
-        specSheets={allSpecSheets}
-        platforms={platforms}
-        parts={parts}
         onSelect={handleCannedJobSelect}
       />
       <QuickCreateCustomerModal
@@ -1453,13 +1448,13 @@ export default function EstimateDetail() {
                 <div className="flex items-center justify-between border-t border-slate-100 pt-2">
                   {selectedSpec ? (
                     <span className="text-xs text-purple-700 font-medium">
-                      {selectedSpec.custom_name || selectedSpec.spec_type} — {selectedSpecPlatform?.manufacturer} {selectedSpecPlatform?.name}
+                      {selectedSpec.name}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400">No spec sheet selected</span>
+                    <span className="text-xs text-slate-400">No canned job selected</span>
                   )}
                   <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 text-xs h-7" onClick={() => setCannedJobOpen(true)}>
-                    <WrenchIcon className="w-3 h-3 mr-1" /> {selectedSpec ? "Change Spec" : "Load Canned Job"}
+                    <WrenchIcon className="w-3 h-3 mr-1" /> {selectedSpec ? "Change Canned Job" : "Load Canned Job"}
                   </Button>
                 </div>
               )}
