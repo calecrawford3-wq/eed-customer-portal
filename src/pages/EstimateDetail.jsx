@@ -42,6 +42,7 @@ import EstimateDepositSection from "@/components/estimates/EstimateDepositSectio
 import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
+import StageComparisonSection from "@/components/estimates/StageComparisonSection";
 import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
@@ -178,6 +179,11 @@ export default function EstimateDetail() {
   const { data: allSpecSheets = [] } = useQuery({
     queryKey: ["allSpecSheets"],
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 200),
+  });
+
+  const { data: allEstimates = [] } = useQuery({
+    queryKey: ["estimates"],
+    queryFn: () => base44.entities.Estimate.list("-created_date", 200),
   });
 
   // Fetch builds for the selected engine to find the most recent spec sheet used
@@ -1568,6 +1574,15 @@ export default function EstimateDetail() {
       </div>
 
 
+
+      {id && (
+        <StageComparisonSection
+          estimate={form}
+          estimates={allEstimates}
+          customer={customer}
+          onNavigateToEstimate={(estId) => navigate(`/EstimateDetail?id=${estId}`)}
+        />
+      )}
 
       <EstimateDepositSection
         form={form}

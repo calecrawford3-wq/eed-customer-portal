@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2, Layers, Star } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -267,9 +267,17 @@ export default function Estimates() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Badge className={`${STATUS_STYLES[e.status]} border-0 capitalize`}>
-                        <StatusIcon className="w-3 h-3 mr-1" />{e.status}
-                      </Badge>
+                      <div className="flex flex-col items-center gap-1">
+                        <Badge className={`${STATUS_STYLES[e.status]} border-0 capitalize`}>
+                          <StatusIcon className="w-3 h-3 mr-1" />{e.status}
+                        </Badge>
+                        {e.comparison_group_id && (
+                          <Badge className={`border-0 text-[10px] ${e.comparison_choice === 'chosen' ? 'bg-emerald-100 text-emerald-700' : e.comparison_choice === 'interested' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                            {e.comparison_choice === 'chosen' ? <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> : e.comparison_choice === 'interested' ? <Star className="w-2.5 h-2.5 mr-0.5" /> : <Layers className="w-2.5 h-2.5 mr-0.5" />}
+                            {e.comparison_stage_label || 'Stage'}
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
