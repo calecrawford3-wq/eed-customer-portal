@@ -46,6 +46,9 @@ import StageComparisonSection from "@/components/estimates/StageComparisonSectio
 import AddonPickerModal from "@/components/addons/AddonPickerModal";
 import EstimateAddonsSection from "@/components/estimates/EstimateAddonsSection";
 import LoadingState from "@/components/LoadingState";
+import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
+
+const COMPARISON_VIEWER_BASE = "https://elite-viewer.base44.app/comparison";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -977,6 +980,34 @@ export default function EstimateDetail() {
     const customer = customers.find(c => c.id === form.customer_id);
     if (!customer?.email) { toast.error("Customer has no email address"); return; }
     setSending(true);
+
+    // If this estimate is part of a stage comparison group, send the comparison
+    // email with the comparison link instead of the single-estimate email.
+    if (form.comparison_group_id && form.comparison_public_token) {
+      try {
+        const groupEstimates = (allEstimates || []).filter(e => e.comparison_group_id === form.comparison_group_id);
+        const sortedGroup = groupEstimates.sort((a, b) => (a.comparison_sort_order || 0) - (b.comparison_sort_order || 0));
+        const url = `${COMPARISON_VIEWER_BASE}/${form.comparison_public_token}`;
+        const settings = settingsData?.[0] || {};
+        const html = buildComparisonEmailHtml({ stages: sortedGroup, customer, settings, url });
+        const res = await base44.functions.invoke("sendSmtpEmail", {
+          to: customer.email,
+          subject: comparisonEmailSubject(sortedGroup),
+          html,
+          usePOSmtp: false,
+        });
+        if (res?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
+        qc.invalidateQueries({ queryKey: ["estimates"] });
+        toast.success(`Comparison sent to ${customer.email}`);
+      } catch (err) {
+        toast.error("Failed to send comparison email");
+        console.error(err);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     try {
       console.log(`[sendEstimate] Starting send for estimate ${form.estimate_number}`);
       await saveMutation.mutateAsync(form);
