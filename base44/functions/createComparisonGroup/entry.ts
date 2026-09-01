@@ -69,7 +69,8 @@ Keep it customer-facing — no part numbers, no internal jargon beyond common en
       console.warn('AI summary generation failed:', e.message);
     }
 
-    // Update each estimate
+    // Update each estimate and sync its snapshot to the public app
+    const syncResults: Array<{ estimate_id: string; ok: boolean; error?: string }> = [];
     for (const s of stages) {
       const est = estimates.find(e => e.id === s.estimate_id);
       const update: any = {
@@ -83,10 +84,24 @@ Keep it customer-facing — no part numbers, no internal jargon beyond common en
         status: 'sent',
       };
       // Ensure each estimate has its own public_access_token for individual viewing
-      if (!est.public_access_token) {
-        update.public_access_token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      let stageToken = est.public_access_token;
+      if (!stageToken) {
+        stageToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        update.public_access_token = stageToken;
       }
       await base44.asServiceRole.entities.Estimate.update(s.estimate_id, update);
+
+      // Sync this stage's snapshot to the public app so /estimate/:token resolves after the customer picks a stage
+      try {
+        await base44.functions.invoke('syncEstimateSnapshot', {
+          estimateId: s.estimate_id,
+          publicAccessToken: stageToken,
+        });
+        syncResults.push({ estimate_id: s.estimate_id, ok: true });
+      } catch (e) {
+        console.warn(`[createComparisonGroup] syncEstimateSnapshot failed for ${s.estimate_id}:`, e.message);
+        syncResults.push({ estimate_id: s.estimate_id, ok: false, error: e.message });
+      }
     }
 
     return Response.json({
@@ -94,6 +109,7 @@ Keep it customer-facing — no part numbers, no internal jargon beyond common en
       comparison_group_id: groupId,
       comparison_public_token: publicToken,
       ai_summary: aiSummary,
+      sync_results: syncResults,
     });
   } catch (error) {
     console.error('Error creating comparison group:', error);
