@@ -268,6 +268,32 @@ export default function EstimateDetail() {
       } else if (priorRedemption) {
         await base44.entities.AccountCredit.delete(priorRedemption.id);
       }
+      // If this estimate has already been sent and the deposit fields changed,
+      // regenerate the Stripe checkout URL so the public viewer's payment link matches the new deposit.
+      if (data.public_access_token && estimate?.[0]) {
+        const orig = estimate[0];
+        const depositChanged =
+          (orig.deposit_required || false) !== (data.deposit_required || false) ||
+          Number(orig.deposit_amount || 0) !== Number(data.deposit_amount || 0);
+        if (depositChanged) {
+          try {
+            const amount = data.deposit_required ? Number(data.deposit_amount || 0) : Number(data.total || 0);
+            const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
+              type: "estimate",
+              documentId: estimateId,
+              amount,
+              description: `Estimate ${data.estimate_number} - ${data.deposit_required ? "Deposit" : "Full Payment"}`,
+              publicAccessToken: data.public_access_token,
+              customerEmail: customers.find(c => c.id === data.customer_id)?.email,
+            });
+            if (stripeUrlRes?.data?.checkout_url) {
+              await base44.entities.Estimate.update(estimateId, { stripe_checkout_url: stripeUrlRes.data.checkout_url });
+            }
+          } catch (e) {
+            console.warn("Failed to regenerate Stripe checkout URL after deposit change:", e);
+          }
+        }
+      }
       return result;
     },
     onSuccess: (result, variables) => {
@@ -280,7 +306,8 @@ export default function EstimateDetail() {
         base44.functions.invoke("syncEstimateSnapshot", {
           estimateId,
           publicAccessToken: variables.public_access_token,
-        }).catch((e) => console.warn("Auto-sync to viewer failed:", e));
+        }).then(() => toast.success("Customer view updated — no need to resend"))
+          .catch((e) => console.warn("Auto-sync to viewer failed:", e));
       }
       if (isNew) navigate(`/EstimateDetail?id=${result.id}`);
     },
