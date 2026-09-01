@@ -224,6 +224,113 @@
         }
       }
     },
+    "addons": {
+      "type": "array",
+      "description": "Optional add-ons attached to this estimate. Selected add-ons (preselected by admin or selected by customer) contribute to the subtotal/total.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "description": "Unique id within this estimate for referencing the addon entry from the public viewer"
+          },
+          "addon_id": {
+            "type": "string",
+            "description": "Reference to the Addon catalog entry"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "description": "Frozen total price for this addon at the time it was added"
+          },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_id": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "item_name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unit_price": {
+                  "type": "number"
+                },
+                "total": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "labor_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "machining_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "selection_state": {
+            "type": "string",
+            "enum": [
+              "preselected",
+              "customer_selected",
+              "optional"
+            ],
+            "default": "optional",
+            "description": "preselected = admin chose it (counts in total); customer_selected = customer opted in via viewer (counts in total); optional = shown to customer, not yet selected"
+          },
+          "selected_by_customer_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
     "payments": {
       "type": "array",
       "items": {

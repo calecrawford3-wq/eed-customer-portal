@@ -1,0 +1,25 @@
+{
+  "name": "AddonCategory",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Category name (e.g. Yamaha, Suzuki, Honda)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description shown in the picker"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

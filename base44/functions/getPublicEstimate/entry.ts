@@ -36,6 +36,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Return only safe public fields — strip part_numbers/costs from addons (customer-facing)
+    const safeAddons = (est.addons || []).map((a: any) => ({
+      uid: a.uid,
+      name: a.name,
+      description: a.description || "",
+      category_name: a.category_name || "",
+      price: a.price,
+      line_items: (a.line_items || []).map((li: any) => ({ item_name: li.item_name, quantity: li.quantity, unit_price: li.unit_price, total: li.total })),
+      labor_items: (a.labor_items || []).map((li: any) => ({ name: li.name, description: li.description, price: li.price })),
+      machining_items: (a.machining_items || []).map((mi: any) => ({ name: mi.name, description: mi.description, price: mi.price })),
+      selection_state: a.selection_state || "optional",
+    }));
+
     // Return only safe public fields
     const safeEstimate = {
       id: est.id,
@@ -45,6 +58,7 @@ Deno.serve(async (req) => {
       expiry_date: est.expiry_date,
       line_items: est.line_items,
       labor_items: est.labor_items,
+      addons: safeAddons,
       subtotal: est.subtotal,
       tax_rate: est.tax_rate,
       tax_amount: est.tax_amount,

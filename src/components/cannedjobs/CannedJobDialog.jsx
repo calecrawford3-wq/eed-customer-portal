@@ -12,7 +12,7 @@ export default function CannedJobDialog({ open, onClose, cannedJob, onSave, isPe
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
-  const [cannedItems, setCannedItems] = useState({ line_items: [], labor_items: [] });
+  const [cannedItems, setCannedItems] = useState({ line_items: [], labor_items: [], machining_items: [] });
 
   useEffect(() => {
     if (cannedJob) {
@@ -23,13 +23,14 @@ export default function CannedJobDialog({ open, onClose, cannedJob, onSave, isPe
       setCannedItems({
         line_items: cannedJob.line_items || [],
         labor_items: cannedJob.labor_items || [],
+        machining_items: cannedJob.machining_items || [],
       });
     } else {
       setName("");
       setDescription("");
       setStatus("active");
       setNotes("");
-      setCannedItems({ line_items: [], labor_items: [] });
+      setCannedItems({ line_items: [], labor_items: [], machining_items: [] });
     }
   }, [cannedJob, open]);
 
@@ -42,6 +43,7 @@ export default function CannedJobDialog({ open, onClose, cannedJob, onSave, isPe
       notes: notes.trim(),
       line_items: cannedItems.line_items || [],
       labor_items: cannedItems.labor_items || [],
+      machining_items: cannedItems.machining_items || [],
     });
   };
 
@@ -72,7 +74,7 @@ export default function CannedJobDialog({ open, onClose, cannedJob, onSave, isPe
             <Label>Description</Label>
             <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description shown in the picker..." />
           </div>
-          <CannedItemsEditor cannedItems={cannedItems} onChange={setCannedItems} />
+          <CannedItemsEditor cannedItems={cannedItems} onChange={setCannedItems} showMachining />
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes..." rows={2} />

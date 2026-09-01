@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Package, Wrench, Search, Boxes } from "lucide-react";
+import { Plus, Trash2, Package, Wrench, Search, Boxes, Cog } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -11,14 +11,18 @@ import { base44 } from "@/api/base44Client";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1 };
 const emptyLabor = { labor_item_id: "", name: "", description: "" };
+const emptyMachining = { machining_item_id: "", name: "", description: "" };
 
-export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
+export default function CannedItemsEditor({ cannedItems = {}, onChange, showMachining = false }) {
   const lineItems = cannedItems.line_items || [];
   const laborItems = cannedItems.labor_items || [];
+  const machiningItems = cannedItems.machining_items || [];
 
   const [partPickerOpen, setPartPickerOpen] = useState(false);
   const [laborPickerOpen, setLaborPickerOpen] = useState(false);
+  const [machiningPickerOpen, setMachiningPickerOpen] = useState(false);
   const [pickingIdx, setPickingIdx] = useState(null);
+  const [machiningPickingIdx, setMachiningPickingIdx] = useState(null);
   const [selectedPartIds, setSelectedPartIds] = useState([]);
   const [pickerTab, setPickerTab] = useState("parts");
   const [search, setSearch] = useState("");
@@ -38,6 +42,11 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
     queryFn: () => base44.entities.LaborItem.list("-created_date", 200),
   });
 
+  const { data: inventoryMachiningItems = [] } = useQuery({
+    queryKey: ["machiningItems"],
+    queryFn: () => base44.entities.MachiningItem.list("-created_date", 200),
+  });
+
   const filteredParts = parts.filter(p =>
     !search ||
     p.part_number?.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,6 +63,12 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
     !search ||
     l.name?.toLowerCase().includes(search.toLowerCase()) ||
     l.description?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredMachining = inventoryMachiningItems.filter(m =>
+    !search ||
+    m.name?.toLowerCase().includes(search.toLowerCase()) ||
+    m.description?.toLowerCase().includes(search.toLowerCase())
   );
 
   const updateLine = (idx, field, value) => {
@@ -125,6 +140,27 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
 
   const addLabor = () => onChange({ ...cannedItems, labor_items: [...laborItems, { ...emptyLabor }] });
   const removeLabor = (idx) => onChange({ ...cannedItems, labor_items: laborItems.filter((_, i) => i !== idx) });
+
+  const selectMachiningItem = (machiningItem) => {
+    const items = [...machiningItems];
+    items[machiningPickingIdx] = {
+      machining_item_id: machiningItem.id,
+      name: machiningItem.name,
+      description: machiningItem.description || "",
+    };
+    onChange({ ...cannedItems, machining_items: items });
+    setMachiningPickerOpen(false);
+    setSearch("");
+  };
+
+  const updateMachining = (idx, field, value) => {
+    const items = [...machiningItems];
+    items[idx] = { ...items[idx], [field]: value };
+    onChange({ ...cannedItems, machining_items: items });
+  };
+
+  const addMachining = () => onChange({ ...cannedItems, machining_items: [...machiningItems, { ...emptyMachining }] });
+  const removeMachining = (idx) => onChange({ ...cannedItems, machining_items: machiningItems.filter((_, i) => i !== idx) });
 
   return (
     <div className="space-y-6">
@@ -263,6 +299,71 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
         </CardContent>
       </Card>
 
+      {/* Machining */}
+      {showMachining && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Cog className="w-4 h-4" /> Default Machining Items
+            </CardTitle>
+            <Button size="sm" variant="outline" onClick={addMachining}>
+              <Plus className="w-4 h-4 mr-1" /> Add Machining
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {machiningItems.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-4">No machining items. Click "Add Machining" to pick from your machining catalog.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 font-medium text-slate-600">Name</th>
+                    <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                    <th className="w-12"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {machiningItems.map((item, idx) => (
+                    <tr key={idx} className="border-b border-slate-100">
+                      <td className="py-2 pr-2">
+                        <div className="flex gap-1">
+                          <Input
+                            value={item.name}
+                            onChange={e => updateMachining(idx, "name", e.target.value)}
+                            placeholder="Machining name..."
+                            className="border-slate-200"
+                          />
+                          <Button
+                            size="sm" variant="ghost"
+                            className="text-slate-400 hover:text-[#e20404] px-2 shrink-0"
+                            onClick={() => { setMachiningPickingIdx(idx); setSearch(""); setMachiningPickerOpen(true); }}
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="py-2 pr-2">
+                        <Input
+                          value={item.description}
+                          onChange={e => updateMachining(idx, "description", e.target.value)}
+                          placeholder="Description..."
+                          className="border-slate-200"
+                        />
+                      </td>
+                      <td className="py-2">
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Part Picker */}
       <Dialog open={partPickerOpen} onOpenChange={setPartPickerOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
@@ -378,6 +479,43 @@ export default function CannedItemsEditor({ cannedItems = {}, onChange }) {
                     <td className="py-2 font-medium">{l.name}</td>
                     <td className="py-2 text-slate-500 text-xs">{l.description || "—"}</td>
                     <td className="py-2 text-right px-2">${Number(l.price || 0).toFixed(2)}</td>
+                    <td className="py-2 text-right">
+                      <Button size="sm" variant="ghost" className="text-[#e20404] h-7 px-2">Select</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Machining Picker */}
+      <Dialog open={machiningPickerOpen} onOpenChange={setMachiningPickerOpen}>
+        <DialogContent className="max-w-xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Cog className="w-4 h-4" /> Select Machining Item</DialogTitle>
+          </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search machining items..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" autoFocus />
+          </div>
+          <div className="overflow-y-auto flex-1">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white border-b border-slate-200">
+                <tr>
+                  <th className="text-left py-2 font-medium text-slate-600">Name</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                  <th className="text-right py-2 font-medium text-slate-600 px-2">Price</th>
+                  <th className="w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMachining.map(m => (
+                  <tr key={m.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => selectMachiningItem(m)}>
+                    <td className="py-2 font-medium">{m.name}</td>
+                    <td className="py-2 text-slate-500 text-xs">{m.description || "—"}</td>
+                    <td className="py-2 text-right px-2">${Number(m.price || 0).toFixed(2)}</td>
                     <td className="py-2 text-right">
                       <Button size="sm" variant="ghost" className="text-[#e20404] h-7 px-2">Select</Button>
                     </td>

@@ -11,6 +11,11 @@ export default function EstimateTotals({ form, customer, setForm, updateTaxRate,
         <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
         <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
         <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
+        {(() => {
+          const selAddons = (form.addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected');
+          if (selAddons.length === 0) return null;
+          return <div className="flex justify-between text-amber-700"><span className="flex items-center gap-1">✦ Selected Addons ({selAddons.length})</span><span>${selAddons.reduce((s, a) => s + (Number(a.price) || 0), 0).toFixed(2)}</span></div>;
+        })()}
         <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
         {(() => {
           const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0);

@@ -22,6 +22,9 @@ export default function EstimateViewer({ buildVersion }) {
   const [approvingError, setApprovingError] = useState(null);
   const [approvingSuccess, setApprovingSuccess] = useState(false);
   const [payingError, setPayingError] = useState(null);
+  const [selectedOptionalUids, setSelectedOptionalUids] = useState([]);
+  const [updatingAddons, setUpdatingAddons] = useState(false);
+  const [addonError, setAddonError] = useState(null);
 
   useEffect(() => {
     console.log("EstimateViewer mounted with token:", token);
@@ -46,6 +49,8 @@ export default function EstimateViewer({ buildVersion }) {
         }
         
         setData(response.data);
+        const addons = response.data?.estimate?.addons || [];
+        setSelectedOptionalUids(addons.filter(a => a.selection_state === 'customer_selected').map(a => a.uid));
       } catch (err) {
         console.error("Estimate fetch error:", err);
         setError(err?.message || "Failed to load estimate");
@@ -88,6 +93,34 @@ export default function EstimateViewer({ buildVersion }) {
       setApprovingError(errorMsg);
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleUpdateAddons = async () => {
+    setUpdatingAddons(true);
+    setAddonError(null);
+    try {
+      const response = await base44Public.functions.invoke("selectPublicEstimateAddons", {
+        publicAccessToken: token,
+        selectedUids: selectedOptionalUids,
+      });
+      if (response?.data?.success) {
+        setData(prev => ({
+          ...prev,
+          estimate: {
+            ...prev.estimate,
+            total: response.data.estimate.total,
+            subtotal: response.data.estimate.subtotal,
+            addons: response.data.estimate.addons,
+          },
+        }));
+      } else {
+        setAddonError(response?.data?.error || "Failed to update addons");
+      }
+    } catch (err) {
+      setAddonError(err?.message || "Failed to update addons");
+    } finally {
+      setUpdatingAddons(false);
     }
   };
 
@@ -270,6 +303,66 @@ export default function EstimateViewer({ buildVersion }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Optional Addons */}
+            {data.estimate?.addons && data.estimate.addons.length > 0 && (
+              <div className="bg-white rounded-lg border border-amber-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                  <span className="text-amber-500">✦</span> Optional Addons
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">Select any addons you'd like added to your build. Your total updates when you confirm below.</p>
+                <div className="space-y-3">
+                  {data.estimate.addons.map((addon, idx) => {
+                    const isPreselected = addon.selection_state === 'preselected';
+                    const isCustomerSelected = addon.selection_state === 'customer_selected';
+                    const checked = isPreselected || isCustomerSelected || selectedOptionalUids.includes(addon.uid);
+                    const disabled = isPreselected;
+                    return (
+                      <div key={addon.uid || idx} className={`p-3 rounded-lg border ${checked ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}>
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={(e) => {
+                              if (disabled) return;
+                              setSelectedOptionalUids(prev => e.target.checked ? [...prev, addon.uid] : prev.filter(u => u !== addon.uid));
+                            }}
+                            className="w-5 h-5 mt-0.5 rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-medium text-slate-900">{addon.name}</p>
+                              <p className="font-semibold text-slate-900">${Number(addon.price || 0).toFixed(2)}</p>
+                            </div>
+                            {addon.description && <p className="text-xs text-slate-500 mt-0.5">{addon.description}</p>}
+                            {isPreselected && <p className="text-xs text-amber-600 mt-1 font-medium">Included by shop</p>}
+                            {isCustomerSelected && <p className="text-xs text-emerald-600 mt-1 font-medium">✓ You selected this</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const hasTogglable = data.estimate.addons.some(a => a.selection_state === 'optional' || a.selection_state === 'customer_selected');
+                  if (!hasTogglable) return null;
+                  return (
+                    <div className="mt-4">
+                      {addonError && <p className="text-red-600 text-sm mb-2">{addonError}</p>}
+                      <button
+                        onClick={handleUpdateAddons}
+                        disabled={updatingAddons || data.estimate?.status !== 'sent'}
+                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-semibold py-2 px-4 rounded-lg transition"
+                      >
+                        {updatingAddons ? "Updating..." : "Update Addons & Total"}
+                      </button>
+                      {data.estimate?.status !== 'sent' && <p className="text-xs text-slate-400 text-center mt-2">Addons can only be updated before approval.</p>}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

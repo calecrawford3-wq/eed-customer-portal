@@ -155,6 +155,25 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
         </table>
       </div>
 
+      {(() => {
+        const selAddons = (estimate.addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected');
+        if (selAddons.length === 0) return null;
+        return (
+          <div style={{ marginBottom: "24px" }}>
+            <h3 style={{ fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "8px" }}>Selected Addons</h3>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <tbody>
+                {selAddons.map((addon, idx) => (
+                  <tr key={idx}>
+                    <td style={{ padding: "8px", borderBottom: "1px solid #eee" }}>{addon.name}{addon.description ? ` — ${addon.description}` : ""}</td>
+                    <td style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #eee", fontWeight: "600" }}>${Number(addon.price || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
       {estimate.notes && (
         <div style={{ marginBottom: "24px", backgroundColor: "#fafafa", padding: "12px", borderRadius: "4px" }}>
           <h3 style={{ fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "6px" }}>Notes</h3>

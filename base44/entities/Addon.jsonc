@@ -1,18 +1,26 @@
 {
-  "name": "CannedJob",
+  "name": "Addon",
   "type": "object",
   "properties": {
     "name": {
       "type": "string",
-      "description": "Canned job name"
+      "description": "Addon name (e.g. 'Port & Polish', 'Billet Cam')"
     },
     "description": {
       "type": "string",
-      "description": "Short description shown in the picker"
+      "description": "Short description shown in the estimate picker"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "AddonCategory this addon belongs to"
+    },
+    "category_name": {
+      "type": "string",
+      "description": "Denormalized category name for display"
     },
     "line_items": {
       "type": "array",
-      "description": "Parts included in this canned job",
+      "description": "Parts included in this addon (references to inventory, no pricing stored \u2014 pulled at add time)",
       "items": {
         "type": "object",
         "properties": {
@@ -33,13 +41,11 @@
     },
     "labor_items": {
       "type": "array",
-      "description": "Labor items included in this canned job",
       "items": {
         "type": "object",
         "properties": {
           "labor_item_id": {
-            "type": "string",
-            "description": "Reference to the LaborItem catalog entry this canned labor was picked from \u2014 used to pull current pricing when loaded onto an estimate"
+            "type": "string"
           },
           "name": {
             "type": "string"
@@ -52,13 +58,11 @@
     },
     "machining_items": {
       "type": "array",
-      "description": "Machining operations included in this canned job",
       "items": {
         "type": "object",
         "properties": {
           "machining_item_id": {
-            "type": "string",
-            "description": "Reference to the MachiningItem catalog entry \u2014 used to pull current pricing when loaded onto an estimate"
+            "type": "string"
           },
           "name": {
             "type": "string"
@@ -69,6 +73,10 @@
         }
       }
     },
+    "price_override": {
+      "type": "number",
+      "description": "Optional flat price for the addon. If set, used instead of summing current inventory prices when added to an estimate."
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -78,8 +86,7 @@
       "default": "active"
     },
     "notes": {
-      "type": "string",
-      "description": "Internal notes about this canned job"
+      "type": "string"
     }
   },
   "required": [

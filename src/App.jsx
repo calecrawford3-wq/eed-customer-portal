@@ -28,6 +28,7 @@ import SimilarBuilds from './pages/SimilarBuilds';
 import ControlledChanges from './pages/ControlledChanges';
 import RnDEngineDeveloper from './pages/RnDEngineDeveloper';
 import CannedJobs from './pages/CannedJobs';
+import Addons from './pages/Addons';
 import VoipPhonebookSettings from './pages/VoipPhonebookSettings';
 import VoipPhonebookSyncHistory from './pages/VoipPhonebookSyncHistory';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -111,6 +112,7 @@ const AuthenticatedApp = () => {
       <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
       <Route path="/RnDEngineDeveloper" element={<LayoutWrapper currentPageName="RnDEngineDeveloper"><RnDEngineDeveloper /></LayoutWrapper>} />
       <Route path="/CannedJobs" element={<LayoutWrapper currentPageName="CannedJobs"><CannedJobs /></LayoutWrapper>} />
+      <Route path="/Addons" element={<LayoutWrapper currentPageName="Addons"><Addons /></LayoutWrapper>} />
       <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
       <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />

@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare, Sparkles
 } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
@@ -43,6 +43,8 @@ import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import StageComparisonSection from "@/components/estimates/StageComparisonSection";
+import AddonPickerModal from "@/components/addons/AddonPickerModal";
+import EstimateAddonsSection from "@/components/estimates/EstimateAddonsSection";
 import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
@@ -112,6 +114,7 @@ export default function EstimateDetail() {
   const [contractEngineViewOpen, setContractEngineViewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [multiPartPickerOpen, setMultiPartPickerOpen] = useState(false);
+  const [addonPickerOpen, setAddonPickerOpen] = useState(false);
 
   const { data: estimate, isLoading: estimateLoading } = useQuery({
     queryKey: ["estimate", id],
@@ -280,11 +283,12 @@ export default function EstimateDetail() {
     },
   });
 
-  const recalc = (lineItems, laborItems, machiningItems, taxRate, discountType = "none", discountValue = 0, shippingCost) => {
+  const recalc = (lineItems, laborItems, machiningItems, taxRate, discountType = "none", discountValue = 0, shippingCost, addons = form.addons || []) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
-    const subtotal = partTotal + laborTotal + machiningTotal;
+    const selectedAddonTotal = (addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected').reduce((s, a) => s + (Number(a.price) || 0), 0);
+    const subtotal = partTotal + laborTotal + machiningTotal + selectedAddonTotal;
     const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
     let discount_amount = 0;
     if (discountType === "amount") {
@@ -512,6 +516,30 @@ export default function EstimateDetail() {
     setForm({ ...form, machining_items: items, ...totals });
   };
 
+  const addAddon = (addonEntry) => {
+    const addons = [...(form.addons || []), addonEntry];
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0, form.shipping_cost, addons);
+    setForm(f => ({ ...f, addons, ...totals }));
+  };
+  const toggleAddonPreselected = (uid, preselected) => {
+    const addons = (form.addons || []).map(a => a.uid === uid ? { ...a, selection_state: preselected ? "preselected" : "optional" } : a);
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0, form.shipping_cost, addons);
+    setForm(f => ({ ...f, addons, ...totals }));
+  };
+  const removeAddon = (uid) => {
+    const addons = (form.addons || []).filter(a => a.uid !== uid);
+    const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0, form.shipping_cost, addons);
+    setForm(f => ({ ...f, addons, ...totals }));
+  };
+  const expandSelectedAddonLines = (addons) => {
+    const selected = (addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected');
+    return {
+      lineItems: selected.flatMap(a => (a.line_items || []).map(li => ({ part_id: li.part_id, part_number: li.part_number, item_name: `${a.name}: ${li.item_name}`, quantity: li.quantity, unit_cost: 0, unit_price: li.unit_price, total: li.total }))),
+      laborItems: selected.flatMap(a => (a.labor_items || []).map(li => ({ name: `${a.name}: ${li.name}`, description: li.description || "", price: li.price }))),
+      machiningItems: selected.flatMap(a => (a.machining_items || []).map(mi => ({ name: `${a.name}: ${mi.name}`, description: mi.description || "", price: mi.price }))),
+    };
+  };
+
   const updateTaxRate = (rate) => {
     const totals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], rate, form.discount_type || "none", form.discount_value || 0);
     setForm({ ...form, tax_rate: rate, ...totals });
@@ -603,9 +631,9 @@ export default function EstimateDetail() {
       build_id: form.build_id || "",
       status: newTotalDeposit >= (form.total || 0) ? "paid" : "partial",
       issue_date: new Date().toISOString().split("T")[0],
-      line_items: form.line_items,
-      labor_items: form.labor_items || [],
-      machining_items: form.machining_items || [],
+      line_items: [...form.line_items, ...expandSelectedAddonLines(form.addons).lineItems],
+      labor_items: [...(form.labor_items || []), ...expandSelectedAddonLines(form.addons).laborItems],
+      machining_items: [...(form.machining_items || []), ...expandSelectedAddonLines(form.addons).machiningItems],
       subtotal: form.subtotal,
       tax_rate: form.tax_rate,
       tax_amount: form.tax_amount,
@@ -813,9 +841,9 @@ export default function EstimateDetail() {
           build_id: build.id,
           status: "sent",
           issue_date: new Date().toISOString().split("T")[0],
-          line_items: form.line_items,
-          labor_items: form.labor_items || [],
-          machining_items: form.machining_items || [],
+          line_items: [...form.line_items, ...expandSelectedAddonLines(form.addons).lineItems],
+          labor_items: [...(form.labor_items || []), ...expandSelectedAddonLines(form.addons).laborItems],
+          machining_items: [...(form.machining_items || []), ...expandSelectedAddonLines(form.addons).machiningItems],
           subtotal: form.subtotal,
           tax_rate: form.tax_rate,
           tax_amount: form.tax_amount,
@@ -869,9 +897,9 @@ export default function EstimateDetail() {
         customer_engine_id: form.customer_engine_id || "",
         status: "sent",
         issue_date: new Date().toISOString().split("T")[0],
-        line_items: form.line_items,
-        labor_items: form.labor_items || [],
-        machining_items: form.machining_items || [],
+        line_items: [...form.line_items, ...expandSelectedAddonLines(form.addons).lineItems],
+        labor_items: [...(form.labor_items || []), ...expandSelectedAddonLines(form.addons).laborItems],
+        machining_items: [...(form.machining_items || []), ...expandSelectedAddonLines(form.addons).machiningItems],
         subtotal: form.subtotal,
         tax_rate: form.tax_rate,
         tax_amount: form.tax_amount,
@@ -1281,6 +1309,11 @@ export default function EstimateDetail() {
         parts={parts}
         onAddSelected={addMultipleParts}
       />
+      <AddonPickerModal
+        open={addonPickerOpen}
+        onClose={() => setAddonPickerOpen(false)}
+        onAdd={addAddon}
+      />
       <CoreCreditModal
         open={coreCreditOpen}
         onClose={() => setCoreCreditOpen(false)}
@@ -1680,6 +1713,17 @@ export default function EstimateDetail() {
         onAdd={addMachining}
         onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
       />
+
+      <div className="mb-6">
+        <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50 mb-3" onClick={() => setAddonPickerOpen(true)}>
+          <Sparkles className="w-4 h-4 mr-1" /> Add Addons
+        </Button>
+        <EstimateAddonsSection
+          addons={form.addons || []}
+          onTogglePreselected={toggleAddonPreselected}
+          onRemove={removeAddon}
+        />
+      </div>
 
       <EstimateTotals
         form={form}

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Wrench, Package, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Plus, Search, Wrench, Package, Pencil, Trash2, MoreVertical, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -107,6 +107,7 @@ export default function CannedJobs() {
                     <div className="flex gap-3 mt-2 text-xs text-slate-500">
                       <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {(job.line_items || []).length} part{(job.line_items || []).length === 1 ? "" : "s"}</span>
                       <span className="flex items-center gap-1"><Wrench className="w-3 h-3" /> {(job.labor_items || []).length} labor</span>
+                      {(job.machining_items || []).length > 0 && <span className="flex items-center gap-1"><Cog className="w-3 h-3" /> {(job.machining_items || []).length} machining</span>}
                     </div>
                   </div>
                   <DropdownMenu>
