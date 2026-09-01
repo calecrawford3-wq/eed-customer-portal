@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
+import { bridgeCall } from "../../shared/voipPhonebook.ts";
 
 const MAX_MESSAGE_LENGTH = 2048;
 const MAX_MEDIA_FILES = 3;
@@ -377,24 +378,6 @@ Deno.serve(async (req) => {
 
     const apiFrom = canonicalFrom.slice(1);
 
-    const apiUser = Deno.env.get(
-      "VOIP_MS_API_USERNAME"
-    );
-
-    const apiPass = Deno.env.get(
-      "VOIP_MS_API_PASSWORD"
-    );
-
-    if (!apiUser || !apiPass) {
-      return Response.json(
-        {
-          error:
-            "VoIP.ms API credentials are not configured",
-        },
-        { status: 500 }
-      );
-    }
-
     /*
      * Any media attachment forces MMS.
      * Text over 160 characters also forces MMS.
@@ -407,44 +390,48 @@ Deno.serve(async (req) => {
       ? "sendMMS"
       : "sendSMS";
 
-    const params = new URLSearchParams({
-      api_username: apiUser,
-      api_password: apiPass,
-      method,
+    /*
+     * Build params for the bridge — the bridge adds api_username/api_password
+     * from its own local settings.env, so VoIP.ms only sees the bridge's IP.
+     */
+    const voipParams = {
       did: apiFrom,
       dst: apiTo,
       message,
-      content_type: "json",
-    });
+    };
 
-    /*
-     * VoIP.ms accepts up to three media parameters.
-     */
     mediaUrls.forEach((mediaUrl, index) => {
-      params.set(
-        `media${index + 1}`,
-        mediaUrl
-      );
+      voipParams[`media${index + 1}`] = mediaUrl;
     });
 
-    const url =
-      `https://voip.ms/api/v1/rest.php?${params.toString()}`;
+    let data;
+    try {
+      data = await bridgeCall(method, voipParams);
+    } catch (bridgeError) {
+      console.error(
+        `${method} bridge call failed`,
+        JSON.stringify({
+          error: bridgeError?.message || String(bridgeError),
+          destination: apiTo,
+          characterCount: message.length,
+          mediaCount: mediaUrls.length,
+        })
+      );
 
-    const resp = await fetch(url);
+      return Response.json(
+        {
+          error:
+            bridgeError?.message ||
+            `Bridge ${method} call failed`,
+        },
+        { status: 502 }
+      );
+    }
 
-    const data = await resp
-      .json()
-      .catch(() => null);
-
-    if (
-      !resp.ok ||
-      !data ||
-      data.status !== "success"
-    ) {
+    if (!data || data.status !== "success") {
       console.error(
         `${method} failed`,
         JSON.stringify({
-          httpStatus: resp.status,
           response: data,
           destination: apiTo,
           characterCount: message.length,

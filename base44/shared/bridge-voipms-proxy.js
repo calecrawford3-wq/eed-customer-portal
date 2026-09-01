@@ -92,6 +92,8 @@ async function voipmsProxyHandler(req, res) {
     'getPhonebookGroups',
     'setPhonebookGroup',
     'delPhonebookGroup',
+    'sendSMS',
+    'sendMMS',
   ];
   if (!ALLOWED_METHODS.includes(method)) {
     return res.status(403).json({ status: 'error', message: `VoIP.ms method not permitted: ${method}` });
