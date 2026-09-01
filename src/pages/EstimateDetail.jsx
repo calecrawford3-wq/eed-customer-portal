@@ -565,13 +565,15 @@ export default function EstimateDetail() {
     setSelectedSpec(cannedJob);
 
     // Fetch current inventory prices at the moment the canned job is loaded
-    const [allParts, allLaborItems] = await Promise.all([
+    const [allParts, allLaborItems, allMachiningItems] = await Promise.all([
       base44.entities.Part.list("-created_date", 500),
       base44.entities.LaborItem.list("-created_date", 200),
+      base44.entities.MachiningItem.list("-created_date", 200),
     ]);
 
     const partsMap = Object.fromEntries(allParts.map(p => [p.id, p]));
     const laborMap = Object.fromEntries(allLaborItems.map(l => [l.id, l]));
+    const machiningMap = Object.fromEntries(allMachiningItems.map(m => [m.id, m]));
 
     // Build line items with current sell prices from inventory
     const cannedLineItems = (cannedJob.line_items || []).length > 0
@@ -607,12 +609,27 @@ export default function EstimateDetail() {
         })
       : [{ name: "Engine Assembly & Dyno", description: `${cannedJob.name} build`, price: 0 }];
 
+    // Build machining items with current prices from machining catalog
+    const cannedMachiningItems = (cannedJob.machining_items || []).length > 0
+      ? cannedJob.machining_items.map(item => {
+          let inventoryMachining = item.machining_item_id ? machiningMap[item.machining_item_id] : null;
+          if (!inventoryMachining && item.name) {
+            inventoryMachining = allMachiningItems.find(m => m.name && m.name.toLowerCase() === item.name.toLowerCase());
+          }
+          return {
+            name: item.name || "",
+            description: item.description || "",
+            price: inventoryMachining ? (Number(inventoryMachining.price) || 0) : 0,
+          };
+        })
+      : [];
+
     const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
       `Canned Job: ${cannedJob.name}\n` +
       (cannedJob.description ? `Description: ${cannedJob.description}` : "");
 
-    const totals = recalc(cannedLineItems, cannedLaborItems, form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
-    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, notes: updatedNotes, ...totals }));
+    const totals = recalc(cannedLineItems, cannedLaborItems, cannedMachiningItems, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
+    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, machining_items: cannedMachiningItems, notes: updatedNotes, ...totals }));
     toast.success("Canned job loaded with current inventory prices");
   };
 

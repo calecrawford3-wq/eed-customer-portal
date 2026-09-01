@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
       expiry_date: est.expiry_date,
       line_items: est.line_items,
       labor_items: est.labor_items,
+      machining_items: est.machining_items || [],
       addons: safeAddons,
       subtotal: est.subtotal,
       tax_rate: est.tax_rate,
