@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { buildAndPushEstimateSnapshot } from '../../shared/syncEstimateSnapshot.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -91,13 +92,11 @@ Keep it customer-facing — no part numbers, no internal jargon beyond common en
       }
       await base44.asServiceRole.entities.Estimate.update(s.estimate_id, update);
 
-      // Sync this stage's snapshot to the public app so /estimate/:token resolves after the customer picks a stage
+      // Sync this stage's snapshot to the public app so /estimate/:token resolves after the customer picks a stage.
+      // Uses the shared module directly (asServiceRole) so the token and "sent" status are guaranteed correct before pushing.
       try {
-        await base44.functions.invoke('syncEstimateSnapshot', {
-          estimateId: s.estimate_id,
-          publicAccessToken: stageToken,
-        });
-        syncResults.push({ estimate_id: s.estimate_id, ok: true });
+        const syncRes = await buildAndPushEstimateSnapshot(base44, s.estimate_id, stageToken);
+        syncResults.push({ estimate_id: s.estimate_id, ok: syncRes.success, error: syncRes.success ? undefined : syncRes.error });
       } catch (e) {
         console.warn(`[createComparisonGroup] syncEstimateSnapshot failed for ${s.estimate_id}:`, e.message);
         syncResults.push({ estimate_id: s.estimate_id, ok: false, error: e.message });
