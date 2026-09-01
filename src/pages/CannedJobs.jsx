@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Wrench, Package, Pencil, Trash2, MoreVertical, Cog } from "lucide-react";
+import { Plus, Search, Wrench, Package, Pencil, Trash2, MoreVertical, Cog, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +64,20 @@ export default function CannedJobs() {
     }
   };
 
+  const handleDuplicate = (job) => {
+    createMutation.mutate({
+      name: `${job.name} (Copy)`,
+      description: job.description || "",
+      line_items: job.line_items || [],
+      labor_items: job.labor_items || [],
+      machining_items: job.machining_items || [],
+      status: "active",
+      notes: job.notes || "",
+    }, {
+      onSuccess: () => toast.success(`Duplicated "${job.name}"`),
+    });
+  };
+
   return (
     <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
@@ -119,6 +134,9 @@ export default function CannedJobs() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => { setEditingJob(job); setDialogOpen(true); }}>
                         <Pencil className="w-4 h-4 mr-2" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDuplicate(job)}>
+                        <Copy className="w-4 h-4 mr-2" /> Duplicate
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => deleteMutation.mutate(job.id)} className="text-red-600">
                         <Trash2 className="w-4 h-4 mr-2" /> Delete
