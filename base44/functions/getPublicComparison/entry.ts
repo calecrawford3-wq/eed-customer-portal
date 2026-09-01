@@ -39,6 +39,7 @@ export default async function(req: Request): Promise<Response> {
     // Build safe stage objects — strip part_numbers and costs per customer-facing preference
     const stages = sorted.map(est => ({
       id: est.id,
+      public_access_token: est.public_access_token,
       estimate_number: est.estimate_number,
       status: est.status,
       comparison_stage_label: est.comparison_stage_label,
