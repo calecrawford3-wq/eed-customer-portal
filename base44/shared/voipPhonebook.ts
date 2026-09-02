@@ -213,6 +213,7 @@ export async function bridgeCall(method: string, params: Record<string, any> = {
     if (voipmsStatus === "no_phonebook" || voipmsStatus === "no_records" || voipmsStatus === "no_records_found") {
       return parsed.data;
     }
+    console.error(`[Bridge] ${method} returned ok=false`, JSON.stringify({ voipmsStatus, voipmsMessage: parsed.data?.message, bridgeMessage: parsed.message, httpStatus: resp.status }));
     throw new BridgeError(
       parsed.message || parsed.error || "Bridge returned an error",
       { httpStatus: resp.status, method, voipmsStatus: parsed.data?.status, voipmsMessage: parsed.data?.message, params: parsed.params || params }

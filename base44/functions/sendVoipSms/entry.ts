@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
-import { bridgeCall } from "../../shared/voipPhonebook.ts";
+import { bridgeCall, BridgeError } from "../../shared/voipPhonebook.ts";
 
 const MAX_MESSAGE_LENGTH = 2048;
 const MAX_MEDIA_FILES = 3;
@@ -405,6 +405,9 @@ Deno.serve(async (req) => {
     });
 
     let data;
+    let indeterminate = false;
+    let indeterminateReason = "";
+
     try {
       data = await bridgeCall(method, voipParams);
     } catch (bridgeError) {
@@ -412,23 +415,48 @@ Deno.serve(async (req) => {
         `${method} bridge call failed`,
         JSON.stringify({
           error: bridgeError?.message || String(bridgeError),
+          httpStatus: bridgeError?.httpStatus,
+          voipmsStatus: bridgeError?.voipmsStatus,
           destination: apiTo,
           characterCount: message.length,
           mediaCount: mediaUrls.length,
         })
       );
 
-      return Response.json(
-        {
-          error:
-            bridgeError?.message ||
-            `Bridge ${method} call failed`,
-        },
-        { status: 502 }
-      );
+      /*
+       * Hard errors mean the message definitely did NOT send:
+       *   403 = method not permitted, 401 = auth/sig failure, 503 = credentials incomplete
+       * Anything else (502 gateway timeout, network error, etc.) typically means
+       * the bridge forwarded the request to VoIP.ms but the response timed out —
+       * the message likely went through even though we couldn't confirm it.
+       */
+      const isHardError =
+        bridgeError instanceof BridgeError &&
+        ([403, 401, 503].includes(bridgeError.httpStatus) ||
+          bridgeError.voipmsStatus === "invalid_phonebook");
+
+      if (isHardError) {
+        return Response.json(
+          {
+            error:
+              bridgeError?.message ||
+              `Bridge ${method} call failed`,
+          },
+          { status: 502 }
+        );
+      }
+
+      /*
+       * Indeterminate: the bridge timed out or returned a non-definitive error.
+       * The message was likely forwarded to VoIP.ms — save it as sent so the
+       * user doesn't see a false "failed" error.
+       */
+      indeterminate = true;
+      indeterminateReason =
+        bridgeError?.message || "Bridge response timeout";
     }
 
-    if (!data || data.status !== "success") {
+    if (!indeterminate && (!data || data.status !== "success")) {
       console.error(
         `${method} failed`,
         JSON.stringify({
@@ -504,6 +532,11 @@ Deno.serve(async (req) => {
         mediaUrls.length,
 
       media_urls: mediaUrls,
+
+      indeterminate: indeterminate || undefined,
+      indeterminate_reason: indeterminate
+        ? indeterminateReason
+        : undefined,
     });
   } catch (error) {
     console.error(
