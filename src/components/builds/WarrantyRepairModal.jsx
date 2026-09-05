@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Search, Plus, Trash2, Package, Boxes, FileText, X } from "lucide-react";
 import { toast } from "sonner";
+import InventoryBrowseModal from "./InventoryBrowseModal";
+import POBrowseModal from "./POBrowseModal";
 
 export default function WarrantyRepairModal({ open, onClose, build, onConfirm }) {
   const [description, setDescription] = useState("");
@@ -24,9 +26,11 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
   const [selected, setSelected] = useState([]);
 
   // PO attachment
-  const [pos, setPos] = useState([]);
-  const [poSearch, setPoSearch] = useState("");
   const [attachedPOs, setAttachedPOs] = useState([]); // { id, po_number, supplier_name, total }
+
+  // Browse modals
+  const [showInventory, setShowInventory] = useState(false);
+  const [showPOs, setShowPOs] = useState(false);
 
   // Labor
   const [laborHours, setLaborHours] = useState("");
@@ -40,7 +44,6 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
       setLaborHours("");
       setLaborRate("");
       setSearch("");
-      setPoSearch("");
       setBrowseType("part");
     }
   }, [open, build]);
@@ -49,37 +52,13 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
     if (!open) return;
     setLoading(true);
     Promise.all([
-      base44.entities.Part.list("-updated_date", 500).catch(() => []),
-      base44.entities.EngineCore.list("-updated_date", 500).catch(() => []),
-      base44.entities.PurchaseOrder.list("-updated_date", 200).catch(() => []),
-    ]).then(([p, c, po]) => {
+      base44.entities.Part.list("-updated_date", 1000).catch(() => []),
+      base44.entities.EngineCore.list("-updated_date", 1000).catch(() => []),
+    ]).then(([p, c]) => {
       setParts(Array.isArray(p) ? p : []);
       setCores(Array.isArray(c) ? c : []);
-      setPos(Array.isArray(po) ? po : []);
     }).finally(() => setLoading(false));
   }, [open]);
-
-  const inventoryResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    const source = browseType === "part" ? parts : cores;
-    const skuField = browseType === "part" ? "part_number" : "core_number";
-    return source
-      .filter(p =>
-        !selected.find(s => s.ref_id === p.id && s.item_type === browseType) &&
-        (p.name?.toLowerCase().includes(q) || p[skuField]?.toLowerCase().includes(q))
-      )
-      .slice(0, 8);
-  }, [parts, cores, search, browseType, selected]);
-
-  const poResults = useMemo(() => {
-    const q = poSearch.trim().toLowerCase();
-    if (!q) return [];
-    return pos
-      .filter(p => !attachedPOs.find(a => a.id === p.id))
-      .filter(p => p.po_number?.toLowerCase().includes(q) || (p.supplier_name || "").toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [pos, poSearch, attachedPOs]);
 
   const partsCost = useMemo(
     () => selected.reduce((sum, s) => sum + (Number(s.unit_cost) || 0) * (Number(s.qty) || 0), 0),
@@ -138,7 +117,6 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
       po_number: po.po_number,
     }));
     setSelected(prev => [...prev, ...items]);
-    setPoSearch("");
   };
 
   const detachPO = (poId) => {
@@ -245,97 +223,33 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-slate-500" />
-                Browse Inventory
+                Inventory
               </Label>
-              <div className="flex bg-slate-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setBrowseType("part")}
-                  className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${browseType === "part" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}
-                >
-                  Parts
-                </button>
-                <button
-                  onClick={() => setBrowseType("core")}
-                  className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${browseType === "core" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}
-                >
-                  Cores
-                </button>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowInventory(true)}>
+                <Search className="w-4 h-4" />
+                Browse Parts &amp; Cores
+              </Button>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={`Search ${browseType === "part" ? "parts" : "cores"} by name or ${browseType === "part" ? "part number" : "core number"}...`}
-                className="pl-9"
-              />
-              {inventoryResults.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                  {loading && <p className="p-2 text-xs text-slate-400">Loading inventory...</p>}
-                  {inventoryResults.map(p => {
-                    const sku = browseType === "part" ? p.part_number : p.core_number;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => addInventoryItem(p, browseType)}
-                        className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 text-left border-b border-slate-100 last:border-0"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{p.name}</p>
-                          <p className="text-xs text-slate-400 font-mono">{sku}</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Badge variant="outline" className="text-[10px]">{p.quantity_on_hand} in stock</Badge>
-                          <span className="text-sm font-semibold text-slate-700">${(Number(p.unit_cost) || 0).toFixed(2)}</span>
-                          <Plus className="w-4 h-4 text-emerald-600" />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {selected.filter(s => s.source === "inventory").length === 0 && (
+              <p className="text-xs text-slate-400">No inventory items added yet — click browse to scroll and search all parts &amp; cores.</p>
+            )}
           </div>
 
           {/* PO attachment */}
           <div className="border border-slate-200 rounded-lg p-3 space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-slate-500" />
-              Attach Purchase Orders
-            </Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                value={poSearch}
-                onChange={(e) => setPoSearch(e.target.value)}
-                placeholder="Search POs by number or supplier..."
-                className="pl-9"
-              />
-              {poResults.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                  {poResults.map(po => (
-                    <button
-                      key={po.id}
-                      type="button"
-                      onClick={() => attachPO(po)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 text-left border-b border-slate-100 last:border-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium font-mono text-[#e20404]">{po.po_number}</p>
-                        <p className="text-xs text-slate-400">{po.supplier_name || "—"} · {(po.line_items || []).length} items</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="outline" className="text-[10px]">{po.status}</Badge>
-                        <span className="text-sm font-semibold text-slate-700">${(po.total || 0).toLocaleString()}</span>
-                        <Plus className="w-4 h-4 text-emerald-600" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-slate-500" />
+                Purchase Orders
+              </Label>
+              <Button variant="outline" size="sm" onClick={() => setShowPOs(true)}>
+                <Search className="w-4 h-4" />
+                Browse POs
+              </Button>
             </div>
+            {attachedPOs.length === 0 && (
+              <p className="text-xs text-slate-400">No POs attached yet — click browse to search and attach POs (items auto-populate).</p>
+            )}
             {attachedPOs.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {attachedPOs.map(po => (
@@ -453,6 +367,19 @@ export default function WarrantyRepairModal({ open, onClose, build, onConfirm })
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <InventoryBrowseModal
+        open={showInventory}
+        onClose={() => setShowInventory(false)}
+        onAdd={(p, type) => { addInventoryItem(p, type); }}
+        selectedIds={selected.filter(s => s.source === "inventory").map(s => s.uid)}
+      />
+      <POBrowseModal
+        open={showPOs}
+        onClose={() => setShowPOs(false)}
+        onAttach={(po) => { attachPO(po); }}
+        attachedIds={attachedPOs.map(p => p.id)}
+      />
     </Dialog>
   );
 }
