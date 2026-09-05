@@ -59,6 +59,8 @@ import StorageLocationPrompt from "@/components/engines/StorageLocationPrompt";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
 import ReprintLabelModal from "@/components/engines/ReprintLabelModal";
 import NewBuildDialog from "@/components/builds/NewBuildDialog";
+import WarrantyRepairModal from "@/components/builds/WarrantyRepairModal";
+import { ShieldCheck } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued", color: "bg-slate-100 text-slate-700" },
@@ -98,6 +100,7 @@ export default function Builds() {
   const [pickupScan, setPickupScan] = useState(null);
   const [reprintBuild, setReprintBuild] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [warrantyCompleteBuild, setWarrantyCompleteBuild] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -209,6 +212,24 @@ export default function Builds() {
   };
 
   const handleMarkComplete = (build) => {
+    // Warranty builds: record repair cost (debit) before completing
+    if (build.is_warranty) {
+      setWarrantyCompleteBuild(build);
+      return;
+    }
+    setStoragePrompt({
+      build,
+      statusLabel: "COMPLETED",
+      title: "Storage Location for Completed Engine",
+      description: "Enter where this completed engine is being stored for customer pickup. A completed label will be printed.",
+      onComplete: true,
+    });
+  };
+
+  const handleWarrantyRepairConfirmed = (cost) => {
+    const build = warrantyCompleteBuild;
+    setWarrantyCompleteBuild(null);
+    // Now proceed to the normal storage location + completion flow
     setStoragePrompt({
       build,
       statusLabel: "COMPLETED",
@@ -658,6 +679,12 @@ export default function Builds() {
                                 <h3 className="font-bold text-lg">{build.engine_serial_number}</h3>
                                 {build.eed_id && <span className="font-mono text-sm text-[#e20404] font-semibold">{build.eed_id}</span>}
                                 <Badge className={queueInfo.color}>{queueInfo.label}</Badge>
+                                {build.is_warranty && (
+                                  <Badge className="bg-purple-100 text-purple-700 border-0 flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3" />
+                                    Warranty
+                                  </Badge>
+                                )}
                                 {build.work_tag && build.work_tag !== "none" && (
                                   <Badge className={workTagInfo.color}>{workTagInfo.label}</Badge>
                                 )}
@@ -788,6 +815,12 @@ export default function Builds() {
                             {build.picked_up && (
                               <Badge className="bg-slate-100 text-slate-600 border-0">Picked Up</Badge>
                             )}
+                            {build.is_warranty && (
+                              <Badge className="bg-purple-100 text-purple-700 border-0 flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                Warranty
+                              </Badge>
+                            )}
                             <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>
                           </div>
                         </div>
@@ -896,6 +929,16 @@ export default function Builds() {
           title={storagePrompt.title}
           description={storagePrompt.description}
           onConfirm={handleStorageConfirm}
+        />
+      )}
+
+      {/* Warranty Repair Cost Modal — shown when completing a warranty build */}
+      {warrantyCompleteBuild && (
+        <WarrantyRepairModal
+          open={!!warrantyCompleteBuild}
+          onClose={() => setWarrantyCompleteBuild(null)}
+          build={warrantyCompleteBuild}
+          onConfirm={handleWarrantyRepairConfirmed}
         />
       )}
 

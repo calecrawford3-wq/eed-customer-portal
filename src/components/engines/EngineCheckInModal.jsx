@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Cpu, Printer, ClipboardList, MapPin, Plus, UserPlus, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { Cpu, Printer, ClipboardList, MapPin, Plus, UserPlus, RefreshCw, FileSpreadsheet, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
@@ -33,6 +34,8 @@ export default function EngineCheckInModal({ open, onClose }) {
     storage_location: "",
     notes: "",
   });
+  const [isWarranty, setIsWarranty] = useState(false);
+  const [warrantyReason, setWarrantyReason] = useState("");
   const [checkedInEngine, setCheckedInEngine] = useState(null);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [selectedExistingEngineId, setSelectedExistingEngineId] = useState("__new__");
@@ -89,10 +92,49 @@ export default function EngineCheckInModal({ open, onClose }) {
       }
       return base44.entities.CustomerEngine.create(data);
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
       qc.invalidateQueries({ queryKey: ["customer-engines"] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
+
+      // If warranty work, create an EngineBuild flagged as warranty so it shows in the queue
+      if (isWarranty) {
+        try {
+          const existingBuilds = await base44.entities.EngineBuild.list("queue_position", 100);
+          const queuedBuilds = (existingBuilds || []).filter(b =>
+            ["queued", "in_progress", "assembly", "testing"].includes(b.status)
+          );
+          const maxPosition = queuedBuilds.length > 0
+            ? Math.max(...queuedBuilds.map(b => b.queue_position || 0))
+            : 0;
+
+          await base44.entities.EngineBuild.create({
+            engine_serial_number: created.engine_serial_number,
+            eed_id: created.eed_id,
+            customer_engine_id: created.id,
+            customer_id: created.customer_id,
+            platform_id: created.platform_id,
+            build_number: `WARR-${Date.now().toString().slice(-5)}`,
+            status: "queued",
+            work_tag: "none",
+            queue_position: maxPosition + 1,
+            is_warranty: true,
+            warranty_reason: warrantyReason || "",
+            assembly_notes: `Warranty work — ${warrantyReason || "see warranty reason"}`,
+            start_date: new Date().toISOString().split("T")[0],
+          });
+
+          // Mark engine as in_build since we created a build directly
+          await base44.entities.CustomerEngine.update(created.id, { check_in_status: "in_build" });
+
+          qc.invalidateQueries({ queryKey: ["builds"] });
+          toast.success(`Warranty build created for ${created.eed_id}`);
+        } catch (e) {
+          console.error("Failed to create warranty build:", e);
+          toast.error("Engine checked in, but failed to create warranty build: " + (e.message || e));
+        }
+      }
+
       setCheckedInEngine(created);
       toast.success(`Engine ${created.eed_id} checked in!`);
       // Auto-print check-in label
@@ -121,6 +163,8 @@ export default function EngineCheckInModal({ open, onClose }) {
         storage_location: "",
         notes: "",
       });
+      setIsWarranty(false);
+      setWarrantyReason("");
       setCheckedInEngine(null);
       setSelectedExistingEngineId("__new__");
       setLabelStartPos(1);
@@ -372,6 +416,36 @@ export default function EngineCheckInModal({ open, onClose }) {
                   ))}
                 </div>
               </div>
+              {/* Warranty Work Toggle */}
+              <div className="border border-purple-200 rounded-lg p-3 space-y-3 bg-purple-50/30">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isWarranty}
+                    onChange={(e) => setIsWarranty(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-medium text-slate-700">Warranty Work</span>
+                </label>
+                {isWarranty && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Warranty Issue / Reason</Label>
+                      <Textarea
+                        value={warrantyReason}
+                        onChange={(e) => setWarrantyReason(e.target.value)}
+                        placeholder="What went wrong with the original build? What needs to be fixed?"
+                        className="mt-1 min-h-[60px] text-sm"
+                      />
+                    </div>
+                    <p className="text-xs text-purple-600 bg-purple-100 rounded-md px-2.5 py-1.5">
+                      A warranty build will be created automatically and added to the work queue. On completion, you'll record the repair cost as a debit to track the loss.
+                    </p>
+                  </>
+                )}
+              </div>
+
               <div>
                 <Label>Notes</Label>
                 <Input

@@ -63,6 +63,23 @@
       "default": "none",
       "description": "Current work status tag"
     },
+    "is_warranty": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this build is a warranty repair (no-charge work for a previous build issue). Warranty builds show a badge in the queue and prompt for repair cost on completion to track the loss."
+    },
+    "warranty_reason": {
+      "type": "string",
+      "description": "Description of the warranty issue / what went wrong with the original build"
+    },
+    "warranty_repair_cost": {
+      "type": "number",
+      "description": "Total cost of the warranty repair (parts + labor) recorded on completion. Used to track the loss/warranty expense."
+    },
+    "warranty_expense_id": {
+      "type": "string",
+      "description": "Reference to the Expense record created to debit the warranty repair cost"
+    },
     "transmission_type": {
       "type": "string",
       "description": "Transmission type (e.g., 01H, 14J)"

@@ -19,6 +19,7 @@
         "marketing",
         "insurance",
         "taxes",
+        "warranty_repair",
         "other"
       ],
       "default": "other",
@@ -81,7 +82,8 @@
       "type": "string",
       "enum": [
         "manual",
-        "purchase_order"
+        "purchase_order",
+        "warranty"
       ],
       "default": "manual",
       "description": "How this expense was created"
