@@ -101,6 +101,7 @@ export default function Builds() {
   const [reprintBuild, setReprintBuild] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [warrantyCompleteBuild, setWarrantyCompleteBuild] = useState(null);
+  const [deleteEngine, setDeleteEngine] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -145,6 +146,22 @@ export default function Builds() {
       toast.success("Notes updated");
     } catch (e) {
       toast.error("Failed to update notes: " + (e.message || e));
+    }
+  };
+
+  const handleDeleteCheckedInEngine = async (engine) => {
+    try {
+      // Delete any associated EngineBuild (e.g. warranty build auto-created at check-in)
+      const linkedBuilds = builds.filter(b => b.customer_engine_id === engine.id);
+      for (const b of linkedBuilds) {
+        await base44.entities.EngineBuild.delete(b.id);
+      }
+      await base44.entities.CustomerEngine.delete(engine.id);
+      queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
+      queryClient.invalidateQueries({ queryKey: ["builds"] });
+      toast.success(`Engine ${engine.eed_id} deleted`);
+    } catch (e) {
+      toast.error("Failed to delete engine: " + (e.message || e));
     }
   };
 
@@ -625,6 +642,14 @@ export default function Builds() {
                                 <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
                               </Button>
                             </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setDeleteEngine(engine)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -959,6 +984,21 @@ export default function Builds() {
         title={confirmState.title}
         message={confirmState.message}
         confirmLabel={confirmState.confirmLabel}
+      />
+
+      {/* Delete Checked-In Engine Confirmation */}
+      <ConfirmDialog
+        open={!!deleteEngine}
+        onClose={() => setDeleteEngine(null)}
+        onConfirm={() => {
+          const eng = deleteEngine;
+          setDeleteEngine(null);
+          handleDeleteCheckedInEngine(eng);
+        }}
+        title="Delete Checked-In Engine"
+        message={deleteEngine ? `Delete ${deleteEngine.eed_id} (${deleteEngine.engine_serial_number})? This removes the engine from check-in${builds.some(b => b.customer_engine_id === deleteEngine.id) ? " and its linked build" : ""}. This cannot be undone.` : ""}
+        confirmLabel="Delete"
+        variant="destructive"
       />
     </div>
   );
