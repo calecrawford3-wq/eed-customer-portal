@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Cpu, Printer, ClipboardList, MapPin, Plus, UserPlus, RefreshCw, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
@@ -40,6 +41,9 @@ export default function EngineCheckInModal({ open, onClose }) {
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [selectedExistingEngineId, setSelectedExistingEngineId] = useState("__new__");
   const [labelStartPos, setLabelStartPos] = useState(1);
+  const [linkType, setLinkType] = useState("none"); // "none" | "estimate" | "invoice"
+  const [linkEstimateId, setLinkEstimateId] = useState("");
+  const [linkInvoiceId, setLinkInvoiceId] = useState("");
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
@@ -56,6 +60,24 @@ export default function EngineCheckInModal({ open, onClose }) {
     queryFn: () => base44.entities.CustomerEngine.list("-created_date", 1000),
     enabled: open,
   });
+
+  // Open estimates for the selected customer (draft or sent)
+  const { data: allEstimates = [] } = useQuery({
+    queryKey: ["estimates"],
+    queryFn: () => base44.entities.Estimate.list("-created_date", 500),
+  });
+  const openEstimates = allEstimates.filter(e =>
+    e.customer_id === form.customer_id && ["draft", "sent"].includes(e.status)
+  );
+
+  // Open invoices for the selected customer (not paid or void)
+  const { data: allInvoices = [] } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => base44.entities.Invoice.list("-created_date", 500),
+  });
+  const openInvoices = allInvoices.filter(i =>
+    i.customer_id === form.customer_id && !["paid", "void"].includes(i.status)
+  );
 
   // Existing engines for the selected customer
   const customerEngines = allEngines.filter(e => e.customer_id === form.customer_id);
@@ -96,6 +118,25 @@ export default function EngineCheckInModal({ open, onClose }) {
       qc.invalidateQueries({ queryKey: ["customer-engines"] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
+
+      // Link to selected estimate or invoice
+      if (linkType === "estimate" && linkEstimateId) {
+        try {
+          await base44.entities.Estimate.update(linkEstimateId, { customer_engine_id: created.id });
+          qc.invalidateQueries({ queryKey: ["estimates"] });
+        } catch (e) {
+          console.warn("Failed to link estimate:", e);
+          toast.error("Engine checked in, but failed to link estimate: " + (e.message || e));
+        }
+      } else if (linkType === "invoice" && linkInvoiceId) {
+        try {
+          await base44.entities.Invoice.update(linkInvoiceId, { customer_engine_id: created.id });
+          qc.invalidateQueries({ queryKey: ["invoices"] });
+        } catch (e) {
+          console.warn("Failed to link invoice:", e);
+          toast.error("Engine checked in, but failed to link invoice: " + (e.message || e));
+        }
+      }
 
       // If warranty work, create an EngineBuild flagged as warranty so it shows in the queue
       if (isWarranty) {
@@ -168,12 +209,18 @@ export default function EngineCheckInModal({ open, onClose }) {
       setCheckedInEngine(null);
       setSelectedExistingEngineId("__new__");
       setLabelStartPos(1);
+      setLinkType("none");
+      setLinkEstimateId("");
+      setLinkInvoiceId("");
     }
   }, [open]);
 
   const handleCustomerChange = (v) => {
     setForm(f => ({ ...f, customer_id: v, engine_serial_number: "", platform_id: "", notes: "" }));
     setSelectedExistingEngineId("__new__");
+    setLinkType("none");
+    setLinkEstimateId("");
+    setLinkInvoiceId("");
   };
 
   const handleExistingEngineSelect = (engineId) => {
@@ -265,6 +312,16 @@ export default function EngineCheckInModal({ open, onClose }) {
                 {selectedCustomer && (
                   <p className="text-xs text-emerald-500 mt-1">{selectedCustomer.first_name} {selectedCustomer.last_name}</p>
                 )}
+                {linkType === "estimate" && linkEstimateId && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Linked to estimate {openEstimates.find(e => e.id === linkEstimateId)?.estimate_number}
+                  </p>
+                )}
+                {linkType === "invoice" && linkInvoiceId && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Linked to invoice {openInvoices.find(i => i.id === linkInvoiceId)?.invoice_number}
+                  </p>
+                )}
               </div>
               <p className="text-sm text-slate-500 text-center">
                 A check-in label has been sent to the printer. Stick it on the engine or storage container.
@@ -353,6 +410,74 @@ export default function EngineCheckInModal({ open, onClose }) {
                       <RefreshCw className="w-3.5 h-3.5" />
                       Refreshing existing engine — keeps the same EED ID & serial number.
                     </div>
+                  )}
+                </div>
+              )}
+
+              {form.customer_id && (openEstimates.length > 0 || openInvoices.length > 0) && (
+                <div className="border border-blue-200 rounded-lg p-3 space-y-2 bg-blue-50/30">
+                  <Label className="flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                    Link to Existing Document (Optional)
+                  </Label>
+                  <Select value={linkType} onValueChange={(v) => {
+                    setLinkType(v);
+                    setLinkEstimateId("");
+                    setLinkInvoiceId("");
+                  }}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="No link — just check in" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No link — just check in</SelectItem>
+                      {openEstimates.length > 0 && (
+                        <SelectItem value="estimate">Link to an open estimate</SelectItem>
+                      )}
+                      {openInvoices.length > 0 && (
+                        <SelectItem value="invoice">Link to an open invoice</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {linkType === "estimate" && (
+                    <Select value={linkEstimateId} onValueChange={setLinkEstimateId}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select an estimate..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {openEstimates.map((est) => (
+                          <SelectItem key={est.id} value={est.id}>
+                            <span className="flex items-center gap-2">
+                              <span className="font-mono text-[#e20404] font-semibold">{est.estimate_number}</span>
+                              <span className="text-slate-500 text-xs">${(est.total || 0).toLocaleString()}</span>
+                              <Badge className="bg-slate-100 text-slate-600 border-0 text-[10px]">{est.status}</Badge>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {linkType === "invoice" && (
+                    <Select value={linkInvoiceId} onValueChange={setLinkInvoiceId}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select an invoice..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {openInvoices.map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            <span className="flex items-center gap-2">
+                              <span className="font-mono text-[#e20404] font-semibold">{inv.invoice_number}</span>
+                              <span className="text-slate-500 text-xs">${(inv.total || 0).toLocaleString()}</span>
+                              <Badge className="bg-slate-100 text-slate-600 border-0 text-[10px]">{inv.status}</Badge>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {linkType !== "none" && (
+                    <p className="text-xs text-blue-600 bg-blue-100 rounded-md px-2.5 py-1.5">
+                      The engine will be linked to this document so it shows up on the estimate/invoice detail.
+                    </p>
                   )}
                 </div>
               )}
