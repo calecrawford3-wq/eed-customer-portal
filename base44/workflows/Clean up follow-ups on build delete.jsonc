@@ -1,0 +1,37 @@
+{
+  "name": "Clean up follow-ups on build delete",
+  "description": "When an engine build is deleted, remove its Customer Success follow-up tasks and the Engine Delivered calendar event so they don't orphan.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "delete"
+      ],
+      "entity_name": "EngineBuild"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "clean_up_follow_ups_on_build_delete",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "handleBuildLifecycle",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "handleBuildLifecycle"
+  }
+}
