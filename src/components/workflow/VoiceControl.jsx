@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 
 // Wake phrase — two words so it's hard to trigger by accident and won't be confused
 // with the company name ("Elite Engine Development") or normal shop talk.
-const WAKE_PHRASES = ["hey atlas", "atlas"];
+// Includes common speech-recognition mishearings ("Hey at last", "Hey atlus") so the
+// assistant still arms when the recognizer garbles "Atlas".
+const WAKE_PHRASES = ["hey atlas", "atlas", "hey at last", "hey atlus", "hey at lass"];
 
 function normalize(s) {
   return (s || "").toLowerCase().trim();
@@ -14,13 +16,19 @@ function normalize(s) {
 
 function containsWakeWord(text) {
   const t = normalize(text);
-  return /\bhey atlas\b/.test(t) || /\batlas\b/.test(t);
+  return (
+    /\bhey atlas\b/.test(t) ||
+    /\batlas\b/.test(t) ||
+    /\bhey at last\b/.test(t) ||
+    /\bhey atlus\b/.test(t) ||
+    /\bhey at lass\b/.test(t)
+  );
 }
 
 function stripWakeWord(text) {
   // Remove the wake phrase (and any leading filler) from the utterance, keep the command after it.
   return text
-    .replace(/^(.*?)\b(hey atlas|atlas)\b[,.!?\s]*/i, "")
+    .replace(/^(.*?)\b(hey atlas|atlas|hey at last|hey atlus|hey at lass)\b[,.!?\s]*/i, "")
     .trim();
 }
 
@@ -83,24 +91,35 @@ ${currentBuildInfo}
 Other available builds: ${otherBuilds || "none"}
 Available workflow templates: ${templateList || "none"}
 
-Determine the intent:
-- "complete_step": the mechanic wants to mark a workflow task complete on the current build. Match the spoken task name to the closest actual task name.
-- "switch_build": the mechanic wants to switch to a different build. Extract the identifier — it may be an EED ID, a serial number, or a customer name.
-- "assign_workflow": the mechanic wants to assign/apply a workflow template to the current build. Match the spoken template name to the closest actual template name.
-- "status_query": the mechanic is asking where the build is at / what's done / what's left.
-- "unknown": could not understand.
+The mechanic may give SEVERAL instructions in one sentence (e.g. "open Chris Dave's build and mark the head install complete"). Break the sentence into individual actions and return them ALL in order. Do not require exact wording — match loosely by meaning.
 
-Return JSON with: action, step_name (the matched actual task name for complete_step), build_identifier (for switch_build), template_name (the matched actual template name for assign_workflow), response_message (a short confirmation to speak back).`;
+Each action is one of:
+- "complete_step": mark a workflow task complete on the current (or just-switched) build. Match the spoken task name to the closest actual task name.
+- "switch_build": switch to a different build. Extract the identifier — it may be an EED ID, a serial number, or a customer name.
+- "assign_workflow": assign/apply a workflow template to the current build. Match the spoken template name to the closest actual template name.
+- "status_query": ask where the build is at / what's done / what's left.
+
+If you cannot understand any part, return a single action with type "unknown".
+
+Return JSON with: actions (an array, each item has action, step_name, build_identifier, template_name) and response_message (one short confirmation covering everything, spoken back to the mechanic).`;
 
   const res = await base44.integrations.Core.InvokeLLM({
     prompt,
     response_json_schema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["complete_step", "switch_build", "assign_workflow", "status_query", "unknown"] },
-        step_name: { type: "string" },
-        build_identifier: { type: "string" },
-        template_name: { type: "string" },
+        actions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["complete_step", "switch_build", "assign_workflow", "status_query", "unknown"] },
+              step_name: { type: "string" },
+              build_identifier: { type: "string" },
+              template_name: { type: "string" },
+            },
+          },
+        },
         response_message: { type: "string" },
       },
     },
@@ -201,77 +220,106 @@ export default function VoiceControl({
       setTranscript(text);
       try {
         const result = await parseCommand(text, currentBuild, currentTasks, allBuilds, templates);
-        if (!result || !result.action) {
+        // Support both the new multi-action shape (result.actions) and a legacy single action.
+        const rawActions = result && Array.isArray(result.actions) && result.actions.length
+          ? result.actions
+          : result && result.action
+          ? [result]
+          : [];
+        if (!rawActions.length) {
           speak("Sorry, I didn't catch that.");
           return;
         }
-        switch (result.action) {
-          case "complete_step": {
-            const match =
-              (currentTasks || []).find(
-                (t) => t.name.toLowerCase() === (result.step_name || "").toLowerCase()
-              ) ||
-              (currentTasks || []).find((t) =>
-                t.name.toLowerCase().includes((result.step_name || "").toLowerCase())
+
+        // Track the build we're operating on as we walk through the actions, so a
+        // "switch build AND mark X complete" utterance completes the task on the
+        // newly-selected build rather than the old one.
+        let activeBuild = currentBuild;
+        let activeTasks = currentTasks || [];
+        const summaries = [];
+
+        for (const act of rawActions) {
+          switch (act.action) {
+            case "switch_build": {
+              const ident = (act.build_identifier || "")
+                .toLowerCase()
+                .replace(/^eed\s*/i, "")
+                .trim();
+              const target = allBuilds.find(
+                (b) =>
+                  (b.eed_id || "").toLowerCase() === ident ||
+                  (b.engine_serial_number || "").toLowerCase() === ident ||
+                  (b.eed_id || "").toLowerCase().includes(ident) ||
+                  (b.customer_name || "").toLowerCase() === ident ||
+                  (b._customer_name || "").toLowerCase() === ident ||
+                  (b.customer_name || "").toLowerCase().includes(ident) ||
+                  (b._customer_name || "").toLowerCase().includes(ident)
               );
-            if (match) {
-              await onCompleteTask(match);
-              speak(result.response_message || `Marked ${match.name} complete.`);
-            } else {
-              speak("I couldn't find that task on the current build.");
+              if (target) {
+                await onSwitchBuild(target);
+                activeBuild = target;
+                // Fetch the target build's tasks so a following complete_step acts on it.
+                try {
+                  activeTasks = await base44.entities.BuildTask.filter(
+                    { build_id: target.id }, "sort_order", 200
+                  );
+                } catch {
+                  activeTasks = [];
+                }
+                const label = target.customer_name || target._customer_name
+                  ? `${target.customer_name || target._customer_name}'s build (EED ${target.eed_id || target.engine_serial_number})`
+                  : `EED ${target.eed_id || target.engine_serial_number}`;
+                summaries.push(`Switched to ${label}`);
+              } else {
+                summaries.push("I couldn't find a build matching " + (act.build_identifier || "that"));
+              }
+              break;
             }
-            break;
-          }
-          case "switch_build": {
-            const ident = (result.build_identifier || "")
-              .toLowerCase()
-              .replace(/^eed\s*/i, "")
-              .trim();
-            const target = allBuilds.find(
-              (b) =>
-                (b.eed_id || "").toLowerCase() === ident ||
-                (b.engine_serial_number || "").toLowerCase() === ident ||
-                (b.eed_id || "").toLowerCase().includes(ident) ||
-                (b.customer_name || "").toLowerCase() === ident ||
-                (b._customer_name || "").toLowerCase() === ident ||
-                (b.customer_name || "").toLowerCase().includes(ident) ||
-                (b._customer_name || "").toLowerCase().includes(ident)
-            );
-            if (target) {
-              await onSwitchBuild(target);
-              const label = target.customer_name || target._customer_name
-                ? `${target.customer_name || target._customer_name}'s build (EED ${target.eed_id || target.engine_serial_number})`
-                : `EED ${target.eed_id || target.engine_serial_number}`;
-              speak(result.response_message || `Switched to ${label}.`);
-            } else {
-              speak("I couldn't find a build matching " + (result.build_identifier || "that") + ".");
+            case "complete_step": {
+              const stepName = (act.step_name || "").toLowerCase();
+              const match =
+                activeTasks.find((t) => t.name.toLowerCase() === stepName) ||
+                activeTasks.find((t) => t.name.toLowerCase().includes(stepName)) ||
+                activeTasks.find((t) => stepName.includes(t.name.toLowerCase()));
+              if (match) {
+                await onCompleteTask(match);
+                summaries.push(`Marked ${match.name} complete`);
+              } else {
+                summaries.push(activeTasks.length
+                  ? `Couldn't find "${act.step_name || "that task"}" on this build`
+                  : "No workflow tasks on this build yet");
+              }
+              break;
             }
-            break;
-          }
-          case "assign_workflow": {
-            const tmpl = (templates || []).find(
-              (t) => t.name.toLowerCase() === (result.template_name || "").toLowerCase()
-            ) || (templates || []).find((t) =>
-              t.name.toLowerCase().includes((result.template_name || "").toLowerCase())
-            );
-            if (!currentBuild) {
-              speak("Select a build first, then I can assign a workflow to it.");
-            } else if (tmpl) {
-              await onAssignWorkflow(tmpl);
-              speak(result.response_message || `Applied the ${tmpl.name} workflow to this build.`);
-            } else {
-              speak("I couldn't find a workflow template matching " + (result.template_name || "that") + ".");
+            case "assign_workflow": {
+              const tmpl =
+                (templates || []).find(
+                  (t) => t.name.toLowerCase() === (act.template_name || "").toLowerCase()
+                ) || (templates || []).find((t) =>
+                  t.name.toLowerCase().includes((act.template_name || "").toLowerCase())
+                );
+              if (!activeBuild) {
+                summaries.push("Select a build first before assigning a workflow");
+              } else if (tmpl) {
+                await onAssignWorkflow(tmpl);
+                summaries.push(`Applied the ${tmpl.name} workflow`);
+              } else {
+                summaries.push("Couldn't find a workflow template matching " + (act.template_name || "that"));
+              }
+              break;
             }
-            break;
+            case "status_query": {
+              const msg = onStatusQuery ? onStatusQuery() : "Status unknown.";
+              summaries.push(msg);
+              break;
+            }
+            default:
+              // unknown — skip, the combined response_message will speak.
+              break;
           }
-          case "status_query": {
-            const msg = onStatusQuery ? onStatusQuery() : result.response_message || "Status unknown.";
-            speak(msg);
-            break;
-          }
-          default:
-            speak(result.response_message || "Sorry, I didn't understand that.");
         }
+
+        speak(result.response_message || summaries.join(". ") || "Sorry, I didn't understand that.");
       } catch (e) {
         toast.error("Voice command failed: " + (e?.message || "Unknown error"));
       } finally {
