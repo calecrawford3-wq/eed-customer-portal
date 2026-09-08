@@ -158,6 +158,7 @@ export default function VoiceControl({
   const armedRef = useRef(false);
   const speakingRef = useRef(false);
   const cmdBufferRef = useRef(""); // accumulates final chunks while armed
+  const lastFinalChunkRef = useRef(""); // last finalized phrase, used to drop duplicate emissions
   const cmdTimerRef = useRef(null); // debounce timer before processing the command
   const recentSpeechRef = useRef([]); // rolling {text, t} of recent final transcripts for split wake-word detection
   const armedTimeoutRef = useRef(null); // disarms back to wake-word listening if no command arrives
@@ -187,6 +188,7 @@ export default function VoiceControl({
       setArmed(false);
       armedRef.current = false;
       cmdBufferRef.current = "";
+      lastFinalChunkRef.current = "";
       if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
       setTranscript("");
     }, 10000);
@@ -198,6 +200,7 @@ export default function VoiceControl({
     if (armedTimeoutRef.current) { clearTimeout(armedTimeoutRef.current); armedTimeoutRef.current = null; }
     if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
     cmdBufferRef.current = "";
+    lastFinalChunkRef.current = "";
   }, []);
 
   const stopRecognition = useCallback(() => {
@@ -390,12 +393,23 @@ export default function VoiceControl({
         // command that the recognizer splits across several final results (common on
         // tablets) isn't truncated. Process once the user pauses for ~900ms.
         if (final && final.trim().length > 0) {
-          cmdBufferRef.current = (cmdBufferRef.current + " " + final.trim()).trim();
+          const chunk = final.trim();
+          // Some tablet recognizers re-emit the SAME finalized phrase several times in
+          // a row; appending each one would show "open open open" for a single "open".
+          // Skip a chunk that is identical to (or already the tail of) the last one.
+          const last = lastFinalChunkRef.current;
+          // Some tablet recognizers re-emit the SAME finalized phrase several times in
+          // a row; appending each one would show "open open open" for a single "open".
+          if (chunk.toLowerCase() !== (last || "").toLowerCase()) {
+            cmdBufferRef.current = (cmdBufferRef.current + " " + chunk).trim();
+          }
+          lastFinalChunkRef.current = chunk;
           setTranscript(cmdBufferRef.current);
           if (cmdTimerRef.current) clearTimeout(cmdTimerRef.current);
           cmdTimerRef.current = setTimeout(() => {
             const text = cmdBufferRef.current;
             cmdBufferRef.current = "";
+            lastFinalChunkRef.current = "";
             cmdTimerRef.current = null;
             if (text) (processCommandRef.current || processCommand)(text);
           }, 900);
