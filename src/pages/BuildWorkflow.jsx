@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
@@ -123,14 +123,11 @@ export default function BuildWorkflow() {
     }
   };
 
-  // Apply a template to the current build
-  const assignMutation = useMutation({
-    mutationFn: async () => {
-      const template = templates.find((t) => t.id === assignTemplateId);
-      if (!template) throw new Error("Template not found");
-      // Remove existing tasks for this build
+  // Apply a template to the current build (shared by the dialog button and voice)
+  const applyTemplate = useCallback(
+    async (template) => {
+      if (!selectedBuildId || !template) throw new Error("Missing build or template");
       await base44.entities.BuildTask.deleteMany({ build_id: selectedBuildId });
-      // Create new tasks from template
       const newTasks = (template.items || []).map((item, idx) => ({
         build_id: selectedBuildId,
         template_id: template.id,
@@ -144,6 +141,15 @@ export default function BuildWorkflow() {
         await base44.entities.BuildTask.bulkCreate(newTasks);
       }
       return template;
+    },
+    [selectedBuildId]
+  );
+
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      const template = templates.find((t) => t.id === assignTemplateId);
+      if (!template) throw new Error("Template not found");
+      return applyTemplate(template);
     },
     onSuccess: (template) => {
       qc.invalidateQueries({ queryKey: ["build-tasks", selectedBuildId] });
@@ -160,6 +166,15 @@ export default function BuildWorkflow() {
   };
   const handleVoiceSwitch = async (build) => {
     selectBuild(build.id);
+  };
+  const handleVoiceAssign = async (template) => {
+    try {
+      await applyTemplate(template);
+      qc.invalidateQueries({ queryKey: ["build-tasks", selectedBuildId] });
+      toast.success(`"${template.name}" workflow applied`);
+    } catch (e) {
+      toast.error("Failed to apply workflow: " + (e?.message || "Unknown error"));
+    }
   };
   const handleVoiceStatus = () => {
     if (!tasks.length) return "No workflow assigned to this build yet.";
@@ -300,8 +315,10 @@ export default function BuildWorkflow() {
           currentBuild={currentBuild}
           currentTasks={tasks}
           allBuilds={builds}
+          templates={templates}
           onCompleteTask={handleVoiceComplete}
           onSwitchBuild={handleVoiceSwitch}
+          onAssignWorkflow={handleVoiceAssign}
           onStatusQuery={handleVoiceStatus}
         />
       </div>

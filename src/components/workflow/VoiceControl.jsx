@@ -1,11 +1,36 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Ear, AudioLines, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+// Wake word variants the assistant will respond to. "Elite" = Elite Engine Development.
+const WAKE_WORDS = ["elite", "hey elite", "ok elite", "a leet", "e e d"];
+
+function normalize(s) {
+  return (s || "").toLowerCase().trim();
+}
+
+function containsWakeWord(text) {
+  const t = normalize(text);
+  return (
+    /\belite\b/.test(t) ||
+    /hey elite/.test(t) ||
+    /ok elite/.test(t) ||
+    /\ba leet\b/.test(t) ||
+    /\be e d\b/.test(t)
+  );
+}
+
+function stripWakeWord(text) {
+  // Remove the wake word (and any leading filler) from the utterance, keep the command after it.
+  return text
+    .replace(/^(.*?)\b(elite|hey elite|ok elite|a leet|e e d)\b[,.!?\s]*/i, "")
+    .trim();
+}
+
 // Parses a spoken command via InvokeLLM and returns a structured action.
-async function parseCommand(transcript, currentBuild, currentTasks, allBuilds) {
+async function parseCommand(transcript, currentBuild, currentTasks, allBuilds, templates) {
   const currentBuildInfo = currentBuild
     ? `Active build: EED ${currentBuild.eed_id || "?"}, serial ${currentBuild.engine_serial_number || "?"}. Its tasks: ${(currentTasks || []).map((t) => t.name).join(", ")}.`
     : "No build is currently selected.";
@@ -16,35 +41,41 @@ async function parseCommand(transcript, currentBuild, currentTasks, allBuilds) {
     .map((b) => `EED ${b.eed_id || "?"} (serial ${b.engine_serial_number || "?"})`)
     .join("; ");
 
+  const templateList = (templates || [])
+    .map((t) => `${t.name} (${(t.items || []).length} tasks)`)
+    .join("; ");
+
   const prompt = `You are a voice command parser for an engine build shop workflow system.
 The mechanic said: "${transcript}"
 
 Context:
 ${currentBuildInfo}
 Other available builds: ${otherBuilds || "none"}
+Available workflow templates: ${templateList || "none"}
 
 Determine the intent:
 - "complete_step": the mechanic wants to mark a workflow task complete on the current build. Match the spoken task name to the closest actual task name.
 - "switch_build": the mechanic wants to switch to a different build. Extract the identifier (EED ID or serial number).
+- "assign_workflow": the mechanic wants to assign/apply a workflow template to the current build. Match the spoken template name to the closest actual template name.
 - "status_query": the mechanic is asking where the build is at / what's done / what's left.
 - "unknown": could not understand.
 
-Return JSON with: action, step_name (the matched actual task name for complete_step), build_identifier (for switch_build), response_message (a short confirmation to speak back).`;
+Return JSON with: action, step_name (the matched actual task name for complete_step), build_identifier (for switch_build), template_name (the matched actual template name for assign_workflow), response_message (a short confirmation to speak back).`;
 
   const res = await base44.integrations.Core.InvokeLLM({
     prompt,
     response_json_schema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["complete_step", "switch_build", "status_query", "unknown"] },
+        action: { type: "string", enum: ["complete_step", "switch_build", "assign_workflow", "status_query", "unknown"] },
         step_name: { type: "string" },
         build_identifier: { type: "string" },
+        template_name: { type: "string" },
         response_message: { type: "string" },
       },
     },
   });
 
-  // InvokeLLM with response_json_schema returns a dict directly
   return res;
 }
 
@@ -57,12 +88,136 @@ function speak(text) {
   }
 }
 
-export default function VoiceControl({ currentBuild, currentTasks, allBuilds, onCompleteTask, onSwitchBuild, onStatusQuery }) {
-  const [listening, setListening] = useState(false);
+export default function VoiceControl({
+  currentBuild,
+  currentTasks,
+  allBuilds,
+  templates,
+  onCompleteTask,
+  onSwitchBuild,
+  onAssignWorkflow,
+  onStatusQuery,
+}) {
+  const [alwaysOn, setAlwaysOn] = useState(true);
+  const [armed, setArmed] = useState(false); // wake word heard, waiting for / capturing command
   const [processing, setProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [supported, setSupported] = useState(true);
+
   const recRef = useRef(null);
+  const alwaysOnRef = useRef(true);
+  const armedRef = useRef(false);
+  const speakingRef = useRef(false);
+
+  // Keep refs in sync with state so the recognition callbacks always see fresh values.
+  useEffect(() => { alwaysOnRef.current = alwaysOn; }, [alwaysOn]);
+  useEffect(() => { armedRef.current = armed; }, [armed]);
+
+  const startRecognition = useCallback(() => {
+    const rec = recRef.current;
+    if (!rec) return;
+    try {
+      if (rec.state !== "running") rec.start();
+    } catch {
+      // start() throws if already started — ignore.
+    }
+  }, []);
+
+  const stopRecognition = useCallback(() => {
+    const rec = recRef.current;
+    if (!rec) return;
+    try { rec.stop(); } catch {}
+  }, []);
+
+  const processCommand = useCallback(
+    async (rawText) => {
+      const text = stripWakeWord(rawText).trim();
+      if (!text) {
+        // Wake word with nothing after it — arm and wait for the next utterance.
+        setArmed(true);
+        armedRef.current = true;
+        setTranscript("Yes? Listening for your command…");
+        return;
+      }
+      setArmed(false);
+      armedRef.current = false;
+      setProcessing(true);
+      setTranscript(text);
+      try {
+        const result = await parseCommand(text, currentBuild, currentTasks, allBuilds, templates);
+        if (!result || !result.action) {
+          speak("Sorry, I didn't catch that.");
+          return;
+        }
+        switch (result.action) {
+          case "complete_step": {
+            const match =
+              (currentTasks || []).find(
+                (t) => t.name.toLowerCase() === (result.step_name || "").toLowerCase()
+              ) ||
+              (currentTasks || []).find((t) =>
+                t.name.toLowerCase().includes((result.step_name || "").toLowerCase())
+              );
+            if (match) {
+              await onCompleteTask(match);
+              speak(result.response_message || `Marked ${match.name} complete.`);
+            } else {
+              speak("I couldn't find that task on the current build.");
+            }
+            break;
+          }
+          case "switch_build": {
+            const ident = (result.build_identifier || "")
+              .toLowerCase()
+              .replace(/^eed\s*/i, "")
+              .trim();
+            const target = allBuilds.find(
+              (b) =>
+                (b.eed_id || "").toLowerCase() === ident ||
+                (b.engine_serial_number || "").toLowerCase() === ident ||
+                (b.eed_id || "").toLowerCase().includes(ident)
+            );
+            if (target) {
+              await onSwitchBuild(target);
+              speak(result.response_message || `Switched to EED ${target.eed_id || target.engine_serial_number}.`);
+            } else {
+              speak("I couldn't find a build matching " + (result.build_identifier || "that") + ".");
+            }
+            break;
+          }
+          case "assign_workflow": {
+            const tmpl = (templates || []).find(
+              (t) => t.name.toLowerCase() === (result.template_name || "").toLowerCase()
+            ) || (templates || []).find((t) =>
+              t.name.toLowerCase().includes((result.template_name || "").toLowerCase())
+            );
+            if (!currentBuild) {
+              speak("Select a build first, then I can assign a workflow to it.");
+            } else if (tmpl) {
+              await onAssignWorkflow(tmpl);
+              speak(result.response_message || `Applied the ${tmpl.name} workflow to this build.`);
+            } else {
+              speak("I couldn't find a workflow template matching " + (result.template_name || "that") + ".");
+            }
+            break;
+          }
+          case "status_query": {
+            const msg = onStatusQuery ? onStatusQuery() : result.response_message || "Status unknown.";
+            speak(msg);
+            break;
+          }
+          default:
+            speak(result.response_message || "Sorry, I didn't understand that.");
+        }
+      } catch (e) {
+        toast.error("Voice command failed: " + (e?.message || "Unknown error"));
+      } finally {
+        setProcessing(false);
+        setTranscript("");
+      }
+    },
+    [currentBuild, currentTasks, allBuilds, templates, onCompleteTask, onSwitchBuild, onAssignWorkflow, onStatusQuery]
+  );
 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -71,132 +226,147 @@ export default function VoiceControl({ currentBuild, currentTasks, allBuilds, on
       return;
     }
     const rec = new SR();
-    rec.continuous = false;
-    rec.interimResults = false;
+    rec.continuous = true;
+    rec.interimResults = true;
     rec.lang = "en-US";
+
     rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      setTranscript(text);
-      handleCommand(text);
+      // Accumulate the current utterance (interim + final from resultIndex onward).
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      const utterance = (final + " " + interim).trim();
+
+      if (!armedRef.current) {
+        // Passively listening for the wake word.
+        if (containsWakeWord(utterance)) {
+          const after = stripWakeWord(utterance);
+          if (after) {
+            // Command came in the same breath as the wake word.
+            processCommand(after);
+          } else {
+            // Just the wake word — arm and wait for the command.
+            setArmed(true);
+            armedRef.current = true;
+            setTranscript("Yes? Listening…");
+          }
+        }
+      } else {
+        // Armed: this utterance is the command. Wait for a final chunk before acting.
+        if (final && final.trim().length > 0) {
+          processCommand(final.trim());
+        } else if (interim) {
+          setTranscript(interim);
+        }
+      }
     };
+
     rec.onerror = (e) => {
-      setListening(false);
-      setProcessing(false);
-      if (e.error !== "no-speech" && e.error !== "aborted") {
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        setAlwaysOn(false);
+        alwaysOnRef.current = false;
+        toast.error("Microphone access denied. Enable mic permissions to use voice control.");
+      } else {
         toast.error(`Voice error: ${e.error}`);
       }
     };
-    rec.onend = () => setListening(false);
-    recRef.current = rec;
-    return () => { try { rec.abort(); } catch {} };
-  }, [currentBuild, currentTasks, allBuilds]);
 
-  const handleCommand = async (text) => {
-    setProcessing(true);
-    try {
-      const result = await parseCommand(text, currentBuild, currentTasks, allBuilds);
-      if (!result || !result.action) {
-        speak("Sorry, I didn't catch that.");
-        return;
+    rec.onend = () => {
+      // Browsers auto-stop after silence; restart if always-on is active and we're not speaking.
+      if (alwaysOnRef.current && !speakingRef.current) {
+        setTimeout(startRecognition, 150);
       }
-      switch (result.action) {
-        case "complete_step": {
-          const match = (currentTasks || []).find(
-            (t) => t.name.toLowerCase() === (result.step_name || "").toLowerCase()
-          ) || (currentTasks || []).find(
-            (t) => t.name.toLowerCase().includes((result.step_name || "").toLowerCase())
-          );
-          if (match) {
-            await onCompleteTask(match);
-            speak(result.response_message || `Marked ${match.name} complete.`);
-          } else {
-            speak("I couldn't find that task on the current build.");
-          }
-          break;
-        }
-        case "switch_build": {
-          const ident = (result.build_identifier || "").toLowerCase().replace(/^eed\s*/i, "").trim();
-          const target = allBuilds.find(
-            (b) =>
-              (b.eed_id || "").toLowerCase() === ident ||
-              (b.engine_serial_number || "").toLowerCase() === ident ||
-              (b.eed_id || "").toLowerCase().includes(ident)
-          );
-          if (target) {
-            await onSwitchBuild(target);
-            speak(result.response_message || `Switched to EED ${target.eed_id || target.engine_serial_number}.`);
-          } else {
-            speak("I couldn't find a build matching " + (result.build_identifier || "that") + ".");
-          }
-          break;
-        }
-        case "status_query": {
-          const msg = onStatusQuery
-            ? onStatusQuery()
-            : result.response_message || "Status unknown.";
-          speak(msg);
-          break;
-        }
-        default:
-          speak(result.response_message || "Sorry, I didn't understand that.");
-      }
-    } catch (e) {
-      toast.error("Voice command failed: " + (e?.message || "Unknown error"));
-    } finally {
-      setProcessing(false);
+    };
+
+    recRef.current = rec;
+
+    if (alwaysOnRef.current) startRecognition();
+
+    return () => {
+      alwaysOnRef.current = false;
+      try { rec.abort(); } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Start/stop recognition when always-on is toggled.
+  useEffect(() => {
+    if (!recRef.current) return;
+    if (alwaysOn) {
+      startRecognition();
+    } else {
+      stopRecognition();
+      setArmed(false);
+      armedRef.current = false;
       setTranscript("");
     }
-  };
-
-  const toggle = () => {
-    if (!recRef.current) return;
-    if (listening) {
-      recRef.current.stop();
-      setListening(false);
-      return;
-    }
-    setTranscript("");
-    try {
-      recRef.current.start();
-      setListening(true);
-    } catch (e) {
-      toast.error("Could not start microphone");
-    }
-  };
+  }, [alwaysOn, startRecognition, stopRecognition]);
 
   if (!supported) {
     return (
-      <div className="text-xs text-slate-400 text-center px-3 py-2 bg-slate-100 rounded-lg">
+      <div className="text-xs text-slate-400 text-center px-3 py-2 bg-slate-100 rounded-lg max-w-[220px]">
         Voice control isn't supported on this browser. Try Chrome.
       </div>
     );
   }
 
+  const status = processing ? "processing" : armed ? "armed" : alwaysOn ? "listening" : "off";
+
   return (
     <div className="flex flex-col items-center gap-2">
-      <button
-        onClick={toggle}
-        disabled={processing}
-        className={cn(
-          "w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 disabled:opacity-50",
-          listening ? "bg-red-500 animate-pulse" : "bg-[#e20404] hover:bg-[#c00303]",
-          processing && "bg-slate-400"
+      {/* Always-on indicator + mic button */}
+      <div className="relative">
+        {alwaysOn && !processing && (
+          <span
+            className={cn(
+              "absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white",
+              armed ? "bg-red-500 animate-ping" : "bg-emerald-500"
+            )}
+          />
         )}
-      >
-        {processing ? (
-          <Loader2 className="w-7 h-7 text-white animate-spin" />
-        ) : listening ? (
-          <MicOff className="w-7 h-7 text-white" />
-        ) : (
-          <Mic className="w-7 h-7 text-white" />
+        <button
+          onClick={() => setAlwaysOn((v) => !v)}
+          disabled={processing}
+          className={cn(
+            "w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 disabled:opacity-50",
+            status === "processing" && "bg-slate-400",
+            status === "armed" && "bg-red-500 animate-pulse",
+            status === "listening" && "bg-[#e20404] hover:bg-[#c00303]",
+            status === "off" && "bg-slate-300 hover:bg-slate-400"
+          )}
+          title={alwaysOn ? "Voice assistant on — say \"Elite\" then your command" : "Tap to turn voice assistant on"}
+        >
+          {processing ? (
+            <Loader2 className="w-7 h-7 text-white animate-spin" />
+          ) : armed ? (
+            <Ear className="w-7 h-7 text-white" />
+          ) : alwaysOn ? (
+            <AudioLines className="w-7 h-7 text-white" />
+          ) : (
+            <MicOff className="w-7 h-7 text-white" />
+          )}
+        </button>
+      </div>
+
+      <div className="text-center">
+        <p className="text-xs font-medium text-slate-600">
+          {processing
+            ? "Processing…"
+            : armed
+            ? "Listening for command…"
+            : alwaysOn
+            ? 'Say "Elite" then your command'
+            : "Voice off — tap to enable"}
+        </p>
+        {transcript && (
+          <p className="text-sm text-slate-500 italic max-w-[240px] mt-1">"{transcript}"</p>
         )}
-      </button>
-      <p className="text-xs font-medium text-slate-500">
-        {processing ? "Processing..." : listening ? "Listening..." : "Tap to speak"}
-      </p>
-      {transcript && (
-        <p className="text-sm text-slate-600 italic max-w-xs text-center">"{transcript}"</p>
-      )}
+      </div>
     </div>
   );
 }
