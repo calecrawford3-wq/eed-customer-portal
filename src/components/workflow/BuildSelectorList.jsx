@@ -45,7 +45,12 @@ export default function BuildSelectorList({ builds, selectedId, onSelect, getPla
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 truncate mt-0.5">{getPlatformName(b.platform_id)}</p>
-                      <p className="text-xs text-slate-400 truncate">{getCustomerName(b.customer_id)}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-slate-400 truncate">{getCustomerName(b.customer_id)}</p>
+                        {b.engine_serial_number && (
+                          <span className="text-[10px] text-slate-400 truncate font-mono">S/N {b.engine_serial_number}</span>
+                        )}
+                      </div>
                     </div>
                     <Badge className={cn("shrink-0 text-[10px] capitalize", STATUS_COLORS[b.status] || "bg-slate-100 text-slate-600")}>
                       {(b.status || "").replace("_", " ")}
