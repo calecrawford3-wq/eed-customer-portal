@@ -74,7 +74,18 @@ export default function BuildWorkflow() {
     [builds]
   );
 
-  const currentBuild = builds.find((b) => b.id === selectedBuildId);
+  // Enrich builds with the resolved customer name so voice commands can match by name.
+  const buildsWithCustomerName = useMemo(
+    () =>
+      builds.map((b) => {
+        const c = customers.find((c) => c.id === b.customer_id);
+        const name = c ? `${c.first_name} ${c.last_name}`.trim() : b.customer_name || "";
+        return { ...b, _customer_name: name };
+      }),
+    [builds, customers]
+  );
+
+  const currentBuild = buildsWithCustomerName.find((b) => b.id === selectedBuildId);
 
   const { data: tasks = [], refetch: refetchTasks } = useQuery({
     queryKey: ["build-tasks", selectedBuildId],
@@ -314,7 +325,7 @@ export default function BuildWorkflow() {
         <VoiceControl
           currentBuild={currentBuild}
           currentTasks={tasks}
-          allBuilds={builds}
+          allBuilds={buildsWithCustomerName}
           templates={templates}
           onCompleteTask={handleVoiceComplete}
           onSwitchBuild={handleVoiceSwitch}

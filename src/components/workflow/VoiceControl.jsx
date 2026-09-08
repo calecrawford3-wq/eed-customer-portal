@@ -65,7 +65,10 @@ async function parseCommand(transcript, currentBuild, currentTasks, allBuilds, t
   const otherBuilds = allBuilds
     .filter((b) => b.id !== currentBuild?.id)
     .slice(0, 20)
-    .map((b) => `EED ${b.eed_id || "?"} (serial ${b.engine_serial_number || "?"})`)
+    .map((b) => {
+      const name = b.customer_name || b._customer_name || "";
+      return `EED ${b.eed_id || "?"} (serial ${b.engine_serial_number || "?"}${name ? `, customer ${name}` : ""})`;
+    })
     .join("; ");
 
   const templateList = (templates || [])
@@ -82,7 +85,7 @@ Available workflow templates: ${templateList || "none"}
 
 Determine the intent:
 - "complete_step": the mechanic wants to mark a workflow task complete on the current build. Match the spoken task name to the closest actual task name.
-- "switch_build": the mechanic wants to switch to a different build. Extract the identifier (EED ID or serial number).
+- "switch_build": the mechanic wants to switch to a different build. Extract the identifier — it may be an EED ID, a serial number, or a customer name.
 - "assign_workflow": the mechanic wants to assign/apply a workflow template to the current build. Match the spoken template name to the closest actual template name.
 - "status_query": the mechanic is asking where the build is at / what's done / what's left.
 - "unknown": could not understand.
@@ -202,11 +205,18 @@ export default function VoiceControl({
               (b) =>
                 (b.eed_id || "").toLowerCase() === ident ||
                 (b.engine_serial_number || "").toLowerCase() === ident ||
-                (b.eed_id || "").toLowerCase().includes(ident)
+                (b.eed_id || "").toLowerCase().includes(ident) ||
+                (b.customer_name || "").toLowerCase() === ident ||
+                (b._customer_name || "").toLowerCase() === ident ||
+                (b.customer_name || "").toLowerCase().includes(ident) ||
+                (b._customer_name || "").toLowerCase().includes(ident)
             );
             if (target) {
               await onSwitchBuild(target);
-              speak(result.response_message || `Switched to EED ${target.eed_id || target.engine_serial_number}.`);
+              const label = target.customer_name || target._customer_name
+                ? `${target.customer_name || target._customer_name}'s build (EED ${target.eed_id || target.engine_serial_number})`
+                : `EED ${target.eed_id || target.engine_serial_number}`;
+              speak(result.response_message || `Switched to ${label}.`);
             } else {
               speak("I couldn't find a build matching " + (result.build_identifier || "that") + ".");
             }
