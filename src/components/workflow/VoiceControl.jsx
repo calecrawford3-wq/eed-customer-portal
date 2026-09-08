@@ -140,6 +140,9 @@ export default function VoiceControl({
   const speakingRef = useRef(false);
   const cmdBufferRef = useRef(""); // accumulates final chunks while armed
   const cmdTimerRef = useRef(null); // debounce timer before processing the command
+  const recentSpeechRef = useRef([]); // rolling {text, t} of recent final transcripts for split wake-word detection
+  const armedTimeoutRef = useRef(null); // disarms back to wake-word listening if no command arrives
+  const restartTimerRef = useRef(null);
 
   // Keep refs in sync with state so the recognition callbacks always see fresh values.
   useEffect(() => { alwaysOnRef.current = alwaysOn; }, [alwaysOn]);
@@ -155,6 +158,28 @@ export default function VoiceControl({
     }
   }, []);
 
+  const arm = useCallback(() => {
+    setArmed(true);
+    armedRef.current = true;
+    if (armedTimeoutRef.current) clearTimeout(armedTimeoutRef.current);
+    // If no command is spoken within 10s, drop back to wake-word listening.
+    armedTimeoutRef.current = setTimeout(() => {
+      setArmed(false);
+      armedRef.current = false;
+      cmdBufferRef.current = "";
+      if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+      setTranscript("");
+    }, 10000);
+  }, []);
+
+  const disarm = useCallback(() => {
+    setArmed(false);
+    armedRef.current = false;
+    if (armedTimeoutRef.current) { clearTimeout(armedTimeoutRef.current); armedTimeoutRef.current = null; }
+    if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+    cmdBufferRef.current = "";
+  }, []);
+
   const stopRecognition = useCallback(() => {
     const rec = recRef.current;
     if (!rec) return;
@@ -166,15 +191,11 @@ export default function VoiceControl({
       const text = stripWakeWord(rawText).trim();
       if (!text) {
         // Wake word with nothing after it — arm and wait for the next utterance.
-        setArmed(true);
-        armedRef.current = true;
+        arm();
         setTranscript("Yes? Listening for your command…");
         return;
       }
-      setArmed(false);
-      armedRef.current = false;
-      if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
-      cmdBufferRef.current = "";
+      disarm();
       setProcessing(true);
       setTranscript(text);
       try {
@@ -284,25 +305,35 @@ export default function VoiceControl({
 
       if (!armedRef.current) {
         // Passively listening for the wake word.
-        if (containsWakeWord(utterance)) {
+        // Push final chunks into a rolling ~6s history so a wake word split across
+        // separate final results (e.g. "Hey" then "Atlas" on Samsung) still triggers.
+        if (final && final.trim()) {
+          const now = Date.now();
+          recentSpeechRef.current.push({ text: final.trim(), t: now });
+          recentSpeechRef.current = recentSpeechRef.current.filter(
+            (s) => now - s.t < 6000
+          );
+        }
+        const recentText = recentSpeechRef.current.map((s) => s.text).join(" ") + " " + utterance;
+        if (containsWakeWord(utterance) || containsWakeWord(recentText)) {
           playTriggerChime();
+          recentSpeechRef.current = [];
           if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
           cmdBufferRef.current = "";
-          const after = stripWakeWord(utterance);
+          const after = stripWakeWord(utterance) || stripWakeWord(recentText);
           if (after) {
             // Command came in the same breath as the wake word.
             processCommand(after);
           } else {
             // Just the wake word — arm and wait for the command.
-            setArmed(true);
-            armedRef.current = true;
+            arm();
             setTranscript("Yes? Listening…");
           }
         }
       } else {
         // Armed: accumulate final chunks into a buffer and debounce, so a multi-word
         // command that the recognizer splits across several final results (common on
-        // tablets) isn't truncated. Process once the user pauses for ~700ms.
+        // tablets) isn't truncated. Process once the user pauses for ~900ms.
         if (final && final.trim().length > 0) {
           cmdBufferRef.current = (cmdBufferRef.current + " " + final.trim()).trim();
           setTranscript(cmdBufferRef.current);
@@ -312,7 +343,7 @@ export default function VoiceControl({
             cmdBufferRef.current = "";
             cmdTimerRef.current = null;
             if (text) processCommand(text);
-          }, 700);
+          }, 900);
         } else if (interim) {
           setTranscript((cmdBufferRef.current ? cmdBufferRef.current + " " : "") + interim);
         }
@@ -331,9 +362,25 @@ export default function VoiceControl({
     };
 
     rec.onend = () => {
-      // Browsers auto-stop after silence; restart if always-on is active and we're not speaking.
+      // Browsers (especially Samsung) auto-stop after short silence; restart if
+      // always-on is active and we're not speaking. Retry a few times in case the
+      // recognizer is stuck in a transitional state.
       if (alwaysOnRef.current && !speakingRef.current) {
-        setTimeout(startRecognition, 150);
+        if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+        const tryStart = (attempt) => {
+          const rec2 = recRef.current;
+          if (!rec2 || !alwaysOnRef.current) return;
+          try {
+            if (rec2.state !== "running") {
+              rec2.start();
+            }
+          } catch {
+            if (attempt < 4) {
+              restartTimerRef.current = setTimeout(() => tryStart(attempt + 1), 250);
+            }
+          }
+        };
+        restartTimerRef.current = setTimeout(() => tryStart(0), 150);
       }
     };
 
@@ -343,6 +390,9 @@ export default function VoiceControl({
 
     return () => {
       alwaysOnRef.current = false;
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+      if (armedTimeoutRef.current) clearTimeout(armedTimeoutRef.current);
+      if (cmdTimerRef.current) clearTimeout(cmdTimerRef.current);
       try { rec.abort(); } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -355,10 +405,8 @@ export default function VoiceControl({
       startRecognition();
     } else {
       stopRecognition();
-      setArmed(false);
-      armedRef.current = false;
-      if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
-      cmdBufferRef.current = "";
+      disarm();
+      recentSpeechRef.current = [];
       setTranscript("");
     }
   }, [alwaysOn, startRecognition, stopRecognition]);
