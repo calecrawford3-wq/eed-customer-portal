@@ -1,0 +1,61 @@
+{
+  "name": "WorkflowTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name (e.g. 'Stock Rebuild', 'Stage 3 Race', 'Warranty Repair')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description shown in the picker"
+    },
+    "stages": {
+      "type": "array",
+      "description": "Ordered workflow stages (phases) that group action items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "description": "Ordered action items, each assigned to a stage by name",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string",
+            "description": "Stage name this item belongs to (must match a stage in stages array)"
+          },
+          "sort_order": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

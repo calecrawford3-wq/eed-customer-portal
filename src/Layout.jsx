@@ -16,6 +16,7 @@ import {
   Truck,
   ShoppingCart,
   ScanLine,
+  ListChecks,
   Settings2,
   Sparkles,
   DollarSign,
@@ -85,6 +86,7 @@ export default function Layout({ children, currentPageName }) {
       label: "Engine Shop",
       items: [
         { name: "Builds", page: "Builds", icon: Wrench },
+        { name: "Build Workflow", page: "BuildWorkflow", icon: ListChecks },
         { name: "Platforms", page: "Platforms", icon: Layers },
         { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
         { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },

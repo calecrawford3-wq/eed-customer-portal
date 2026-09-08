@@ -27,6 +27,7 @@ import PredictionRules from './pages/PredictionRules';
 import SimilarBuilds from './pages/SimilarBuilds';
 import ControlledChanges from './pages/ControlledChanges';
 import RnDEngineDeveloper from './pages/RnDEngineDeveloper';
+import BuildWorkflow from './pages/BuildWorkflow';
 import CannedJobs from './pages/CannedJobs';
 import Addons from './pages/Addons';
 import VoipPhonebookSettings from './pages/VoipPhonebookSettings';
@@ -111,6 +112,7 @@ const AuthenticatedApp = () => {
       <Route path="/SimilarBuilds" element={<LayoutWrapper currentPageName="SimilarBuilds"><SimilarBuilds /></LayoutWrapper>} />
       <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
       <Route path="/RnDEngineDeveloper" element={<LayoutWrapper currentPageName="RnDEngineDeveloper"><RnDEngineDeveloper /></LayoutWrapper>} />
+      <Route path="/BuildWorkflow" element={<LayoutWrapper currentPageName="BuildWorkflow"><BuildWorkflow /></LayoutWrapper>} />
       <Route path="/CannedJobs" element={<LayoutWrapper currentPageName="CannedJobs"><CannedJobs /></LayoutWrapper>} />
       <Route path="/Addons" element={<LayoutWrapper currentPageName="Addons"><Addons /></LayoutWrapper>} />
       <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
