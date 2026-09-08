@@ -291,7 +291,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                             onChange={(e) => updateLineItem(currentIdx, i, "description", e.target.value)}
                           />
                         </td>
-                        <td className="px-2 py-1.5 text-center">
+                        <td className="px-2 py-1.5 text-center align-top">
                           <input
                             type="number"
                             min="0"
@@ -299,6 +299,16 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                             value={l.quantity}
                             onChange={(e) => updateLineItem(currentIdx, i, "quantity", Number(e.target.value) || 0)}
                           />
+                          {(() => {
+                            const stockPart = parts.find(p => p.id === l.part_id);
+                            const onHand = stockPart?.quantity_on_hand ?? 0;
+                            const stockClass = onHand > 0 ? "text-emerald-600" : "text-slate-400";
+                            return (
+                              <div className={`text-[10px] font-medium ${stockClass} mt-0.5`}>
+                                {onHand} in stock
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-2 py-1.5 text-right">
                           <div className="flex items-center justify-end">
