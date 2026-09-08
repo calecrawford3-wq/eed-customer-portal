@@ -4,8 +4,9 @@ import { Mic, MicOff, Loader2, Ear, AudioLines, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Wake word variants the assistant will respond to. "Elite" = Elite Engine Development.
-const WAKE_WORDS = ["elite", "hey elite", "ok elite", "a leet", "e e d"];
+// Wake phrase — two words so it's hard to trigger by accident and won't be confused
+// with the company name ("Elite Engine Development") or normal shop talk.
+const WAKE_PHRASES = ["hey atlas", "atlas"];
 
 function normalize(s) {
   return (s || "").toLowerCase().trim();
@@ -13,20 +14,46 @@ function normalize(s) {
 
 function containsWakeWord(text) {
   const t = normalize(text);
-  return (
-    /\belite\b/.test(t) ||
-    /hey elite/.test(t) ||
-    /ok elite/.test(t) ||
-    /\ba leet\b/.test(t) ||
-    /\be e d\b/.test(t)
-  );
+  return /\bhey atlas\b/.test(t) || /\batlas\b/.test(t);
 }
 
 function stripWakeWord(text) {
-  // Remove the wake word (and any leading filler) from the utterance, keep the command after it.
+  // Remove the wake phrase (and any leading filler) from the utterance, keep the command after it.
   return text
-    .replace(/^(.*?)\b(elite|hey elite|ok elite|a leet|e e d)\b[,.!?\s]*/i, "")
+    .replace(/^(.*?)\b(hey atlas|atlas)\b[,.!?\s]*/i, "")
     .trim();
+}
+
+// Short ascending two-tone chime played when the wake word is heard.
+let audioCtxRef = null;
+function playTriggerChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtxRef) audioCtxRef = new AC();
+    const ctx = audioCtxRef;
+    if (ctx.state === "suspended") ctx.resume();
+    const now = ctx.currentTime;
+    const notes = [
+      { f: 660, t: 0.0, d: 0.09 },
+      { f: 990, t: 0.1, d: 0.14 },
+    ];
+    notes.forEach((n) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = n.f;
+      gain.gain.setValueAtTime(0, now + n.t);
+      gain.gain.linearRampToValueAtTime(0.18, now + n.t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + n.t);
+      osc.stop(now + n.t + n.d + 0.02);
+    });
+  } catch {
+    // Audio not available — silent fallback.
+  }
 }
 
 // Parses a spoken command via InvokeLLM and returns a structured action.
@@ -244,6 +271,7 @@ export default function VoiceControl({
       if (!armedRef.current) {
         // Passively listening for the wake word.
         if (containsWakeWord(utterance)) {
+          playTriggerChime();
           const after = stripWakeWord(utterance);
           if (after) {
             // Command came in the same breath as the wake word.
@@ -339,7 +367,7 @@ export default function VoiceControl({
             status === "listening" && "bg-[#e20404] hover:bg-[#c00303]",
             status === "off" && "bg-slate-300 hover:bg-slate-400"
           )}
-          title={alwaysOn ? "Voice assistant on — say \"Elite\" then your command" : "Tap to turn voice assistant on"}
+          title={alwaysOn ? "Voice assistant on — say \"Hey Atlas\" then your command" : "Tap to turn voice assistant on"}
         >
           {processing ? (
             <Loader2 className="w-7 h-7 text-white animate-spin" />
@@ -360,7 +388,7 @@ export default function VoiceControl({
             : armed
             ? "Listening for command…"
             : alwaysOn
-            ? 'Say "Elite" then your command'
+            ? 'Say "Hey Atlas" then your command'
             : "Voice off — tap to enable"}
         </p>
         {transcript && (
