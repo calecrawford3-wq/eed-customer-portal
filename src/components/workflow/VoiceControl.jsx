@@ -138,6 +138,8 @@ export default function VoiceControl({
   const alwaysOnRef = useRef(true);
   const armedRef = useRef(false);
   const speakingRef = useRef(false);
+  const cmdBufferRef = useRef(""); // accumulates final chunks while armed
+  const cmdTimerRef = useRef(null); // debounce timer before processing the command
 
   // Keep refs in sync with state so the recognition callbacks always see fresh values.
   useEffect(() => { alwaysOnRef.current = alwaysOn; }, [alwaysOn]);
@@ -171,6 +173,8 @@ export default function VoiceControl({
       }
       setArmed(false);
       armedRef.current = false;
+      if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+      cmdBufferRef.current = "";
       setProcessing(true);
       setTranscript(text);
       try {
@@ -282,6 +286,8 @@ export default function VoiceControl({
         // Passively listening for the wake word.
         if (containsWakeWord(utterance)) {
           playTriggerChime();
+          if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+          cmdBufferRef.current = "";
           const after = stripWakeWord(utterance);
           if (after) {
             // Command came in the same breath as the wake word.
@@ -294,11 +300,21 @@ export default function VoiceControl({
           }
         }
       } else {
-        // Armed: this utterance is the command. Wait for a final chunk before acting.
+        // Armed: accumulate final chunks into a buffer and debounce, so a multi-word
+        // command that the recognizer splits across several final results (common on
+        // tablets) isn't truncated. Process once the user pauses for ~700ms.
         if (final && final.trim().length > 0) {
-          processCommand(final.trim());
+          cmdBufferRef.current = (cmdBufferRef.current + " " + final.trim()).trim();
+          setTranscript(cmdBufferRef.current);
+          if (cmdTimerRef.current) clearTimeout(cmdTimerRef.current);
+          cmdTimerRef.current = setTimeout(() => {
+            const text = cmdBufferRef.current;
+            cmdBufferRef.current = "";
+            cmdTimerRef.current = null;
+            if (text) processCommand(text);
+          }, 700);
         } else if (interim) {
-          setTranscript(interim);
+          setTranscript((cmdBufferRef.current ? cmdBufferRef.current + " " : "") + interim);
         }
       }
     };
@@ -341,6 +357,8 @@ export default function VoiceControl({
       stopRecognition();
       setArmed(false);
       armedRef.current = false;
+      if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+      cmdBufferRef.current = "";
       setTranscript("");
     }
   }, [alwaysOn, startRecognition, stopRecognition]);
