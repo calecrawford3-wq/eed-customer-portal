@@ -143,6 +143,7 @@ export default function VoiceControl({
   const recentSpeechRef = useRef([]); // rolling {text, t} of recent final transcripts for split wake-word detection
   const armedTimeoutRef = useRef(null); // disarms back to wake-word listening if no command arrives
   const restartTimerRef = useRef(null);
+  const processCommandRef = useRef(null); // always-latest processCommand so the one-shot recognition callback never calls a stale closure
 
   // Keep refs in sync with state so the recognition callbacks always see fresh values.
   useEffect(() => { alwaysOnRef.current = alwaysOn; }, [alwaysOn]);
@@ -281,6 +282,12 @@ export default function VoiceControl({
     [currentBuild, currentTasks, allBuilds, templates, onCompleteTask, onSwitchBuild, onAssignWorkflow, onStatusQuery]
   );
 
+  // Keep a ref to the latest processCommand so the recognition callback (created once
+  // on mount) always invokes the current version with fresh allBuilds/currentBuild.
+  useEffect(() => {
+    processCommandRef.current = processCommand;
+  }, [processCommand]);
+
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -323,7 +330,7 @@ export default function VoiceControl({
           const after = stripWakeWord(utterance) || stripWakeWord(recentText);
           if (after) {
             // Command came in the same breath as the wake word.
-            processCommand(after);
+            processCommandRef.current ? processCommandRef.current(after) : processCommand(after);
           } else {
             // Just the wake word — arm and wait for the command.
             arm();
@@ -342,7 +349,7 @@ export default function VoiceControl({
             const text = cmdBufferRef.current;
             cmdBufferRef.current = "";
             cmdTimerRef.current = null;
-            if (text) processCommand(text);
+            if (text) (processCommandRef.current || processCommand)(text);
           }, 900);
         } else if (interim) {
           setTranscript((cmdBufferRef.current ? cmdBufferRef.current + " " : "") + interim);
