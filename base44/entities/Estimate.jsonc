@@ -58,6 +58,11 @@
       ],
       "default": "draft"
     },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this estimate has been archived (auto-set when it expires, or manually toggled). Archived estimates are hidden from the active list and shown in the Archived tab."
+    },
     "issue_date": {
       "type": "string",
       "format": "date"

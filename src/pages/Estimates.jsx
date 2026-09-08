@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2, Layers, Star } from "lucide-react";
+import { Plus, Search, FileText, Send, CheckCircle, XCircle, Clock, Trash2, Layers, Star, Archive, ArchiveRestore } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -32,8 +32,10 @@ export default function Estimates() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortKey, setSortKey] = useState("recent");
+  const [view, setView] = useState("active");
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState({ open: false });
+  const autoArchiveRan = useRef(false);
 
   const { data: estimates = [], isLoading } = useQuery({
     queryKey: ["estimates"],
@@ -54,6 +56,38 @@ export default function Estimates() {
     mutationFn: ({ id, status }) => base44.entities.Estimate.update(id, { status }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); toast.success("Status updated"); },
   });
+
+  const archiveMutation = useMutation({
+    mutationFn: ({ id, archived }) => base44.entities.Estimate.update(id, { archived }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); },
+  });
+
+  // Auto-archive expired estimates (past expiry date, still "sent", not yet archived)
+  useEffect(() => {
+    if (autoArchiveRan.current || !estimates.length) return;
+    autoArchiveRan.current = true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const toArchive = estimates.filter(e => {
+      if (e.archived) return false;
+      if (e.status !== "sent") return false;
+      if (!e.expiry_date) return false;
+      const exp = new Date(e.expiry_date);
+      return exp < today;
+    });
+    if (toArchive.length === 0) return;
+    (async () => {
+      await Promise.all(toArchive.map(e =>
+        base44.entities.Estimate.update(e.id, { status: "expired", archived: true })
+      ));
+      qc.invalidateQueries({ queryKey: ["estimates"] });
+      if (toArchive.length === 1) {
+        toast.info(`Auto-archived 1 expired estimate`);
+      } else {
+        toast.info(`Auto-archived ${toArchive.length} expired estimates`);
+      }
+    })();
+  }, [estimates, qc]);
 
   const navigate = useNavigate();
 
@@ -94,6 +128,9 @@ export default function Estimates() {
   const getCustomer = (id) => customers.find(c => c.id === id);
 
   let filtered = estimates.filter(e => {
+    const isArchived = !!e.archived;
+    if (view === "active" && isArchived) return false;
+    if (view === "archived" && !isArchived) return false;
     const customer = getCustomer(e.customer_id);
     const matchSearch = `${e.estimate_number} ${customer?.first_name} ${customer?.last_name} ${customer?.company_name}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || e.status === filterStatus;
@@ -109,12 +146,14 @@ export default function Estimates() {
     return an.localeCompare(bn);
   });
 
+  const activeEstimates = estimates.filter(e => !e.archived);
+  const archivedEstimates = estimates.filter(e => !!e.archived);
   const totalValue = filtered.reduce((sum, e) => sum + (e.total || 0), 0);
-  const pendingEstimates = estimates.filter(e => e.status === "sent");
+  const pendingEstimates = activeEstimates.filter(e => e.status === "sent");
   const pendingValue = pendingEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
-  const approvedEstimates = estimates.filter(e => e.status === "approved");
+  const approvedEstimates = activeEstimates.filter(e => e.status === "approved");
   const approvedValue = approvedEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
-  const draftEstimates = estimates.filter(e => e.status === "draft");
+  const draftEstimates = activeEstimates.filter(e => e.status === "draft");
   const draftValue = draftEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
 
   return (
@@ -129,6 +168,28 @@ export default function Estimates() {
             <Plus className="w-4 h-4 mr-2" /> New Estimate
           </Button>
         </Link>
+      </div>
+
+      {/* Active / Archived Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <button
+          onClick={() => { setView("active"); setFilterStatus("all"); }}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === "active" ? "bg-slate-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+        >
+          Active
+        </button>
+        <button
+          onClick={() => { setView("archived"); setFilterStatus("all"); }}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === "archived" ? "bg-slate-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+        >
+          <Archive className="w-4 h-4" />
+          Archived
+          {archivedEstimates.length > 0 && (
+            <span className={`text-xs rounded-full px-1.5 py-0.5 ${view === "archived" ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>
+              {archivedEstimates.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -292,6 +353,15 @@ export default function Estimates() {
                         <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Estimate", message: "Delete this estimate? This cannot be undone.", confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(e.id) })}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
+                        {e.archived ? (
+                          <Button size="sm" variant="ghost" className="text-blue-500 hover:text-blue-700" title="Unarchive" onClick={() => { archiveMutation.mutate({ id: e.id, archived: false }); toast.success("Estimate restored to active"); }}>
+                            <ArchiveRestore className="w-3.5 h-3.5" />
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="text-slate-400 hover:text-slate-700" title="Archive" onClick={() => { archiveMutation.mutate({ id: e.id, archived: true }); toast.success("Estimate archived"); }}>
+                            <Archive className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
