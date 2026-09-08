@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Wrench, ScanLine, X, CheckCircle2, ClipboardList, ArrowRight } from "lucide-react";
 import BuildTaskList from "@/components/workflow/BuildTaskList";
+import BuildSelectorList from "@/components/workflow/BuildSelectorList";
 import VoiceControl from "@/components/workflow/VoiceControl";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
 
@@ -240,84 +241,78 @@ export default function BuildWorkflow() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 max-w-5xl mx-auto">
-        {/* Build selector */}
-        <div className="mb-6">
-          <label className="text-sm font-medium text-slate-600 mb-1 block">Select Build</label>
-          <Select value={selectedBuildId || ""} onValueChange={(v) => selectBuild(v)}>
-            <SelectTrigger className="bg-white">
-              <SelectValue placeholder="Choose a build to work on..." />
-            </SelectTrigger>
-            <SelectContent>
-              {activeBuilds.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.eed_id ? `EED ${b.eed_id}` : b.engine_serial_number} — {getPlatformName(b.platform_id)}
-                </SelectItem>
-              ))}
-              {currentBuild && !activeBuilds.includes(currentBuild) && (
-                <SelectItem value={currentBuild.id}>
-                  {currentBuild.eed_id ? `EED ${currentBuild.eed_id}` : currentBuild.engine_serial_number} — {getPlatformName(currentBuild.platform_id)}
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {!currentBuild ? (
-          <div className="text-center py-20">
-            <ClipboardList className="w-14 h-14 mx-auto mb-4 text-slate-300" />
-            <h2 className="text-xl font-semibold text-slate-500 mb-1">No build selected</h2>
-            <p className="text-slate-400">Scan an engine label or pick a build above to start tracking its workflow.</p>
-          </div>
-        ) : (
-          <>
-            {/* Build summary card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-2xl font-bold text-slate-900">
-                      {currentBuild.eed_id ? `EED ${currentBuild.eed_id}` : currentBuild.engine_serial_number}
-                    </h2>
-                    <Badge className="bg-[#e20404]">{currentBuild.status?.replace("_", " ")}</Badge>
-                  </div>
-                  <p className="text-slate-500">{getPlatformName(currentBuild.platform_id)}</p>
-                  <p className="text-sm text-slate-400 mt-1">
-                    {getCustomerName(currentBuild.customer_id)}
-                    {currentBuild.engine_serial_number && ` • S/N ${currentBuild.engine_serial_number}`}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-[#e20404]">{progressPct}%</div>
-                  <p className="text-sm text-slate-400">{completedCount} of {tasks.length} tasks done</p>
-                </div>
-              </div>
-              {/* Progress bar */}
-              <div className="mt-4 h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#e20404] transition-all duration-500" style={{ width: `${progressPct}%` }} />
-              </div>
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-xs text-slate-400">
-                  {tasks.length === 0
-                    ? "No workflow assigned"
-                    : `${tasks.length - completedCount} remaining`}
-                </span>
-                <Button size="sm" variant="outline" onClick={() => setShowAssign(true)}>
-                  <ClipboardList className="w-4 h-4 mr-1" />
-                  {tasks.length === 0 ? "Assign Workflow" : "Change Workflow"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Task list */}
-            <BuildTaskList
-              tasks={tasks}
-              onToggle={toggleTask}
-              onSetStatus={setTaskStatus}
-              large
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 items-start">
+          {/* Persistent build list — always visible */}
+          <div className="md:sticky md:top-24">
+            <BuildSelectorList
+              builds={activeBuilds}
+              selectedId={selectedBuildId}
+              onSelect={selectBuild}
+              getPlatformName={getPlatformName}
+              getCustomerName={getCustomerName}
             />
-          </>
-        )}
+          </div>
+
+          {/* Build details */}
+          <div className="min-w-0">
+            {!currentBuild ? (
+              <div className="text-center py-20">
+                <ClipboardList className="w-14 h-14 mx-auto mb-4 text-slate-300" />
+                <h2 className="text-xl font-semibold text-slate-500 mb-1">No build selected</h2>
+                <p className="text-slate-400">Scan an engine label or pick a build from the list to start tracking its workflow.</p>
+              </div>
+            ) : (
+              <>
+                {/* Build summary card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-2xl font-bold text-slate-900">
+                          {currentBuild.eed_id ? `EED ${currentBuild.eed_id}` : currentBuild.engine_serial_number}
+                        </h2>
+                        <Badge className="bg-[#e20404]">{currentBuild.status?.replace("_", " ")}</Badge>
+                      </div>
+                      <p className="text-slate-500">{getPlatformName(currentBuild.platform_id)}</p>
+                      <p className="text-sm text-slate-400 mt-1">
+                        {getCustomerName(currentBuild.customer_id)}
+                        {currentBuild.engine_serial_number && ` • S/N ${currentBuild.engine_serial_number}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-[#e20404]">{progressPct}%</div>
+                      <p className="text-sm text-slate-400">{completedCount} of {tasks.length} tasks done</p>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="mt-4 h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#e20404] transition-all duration-500" style={{ width: `${progressPct}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-slate-400">
+                      {tasks.length === 0
+                        ? "No workflow assigned"
+                        : `${tasks.length - completedCount} remaining`}
+                    </span>
+                    <Button size="sm" variant="outline" onClick={() => setShowAssign(true)}>
+                      <ClipboardList className="w-4 h-4 mr-1" />
+                      {tasks.length === 0 ? "Assign Workflow" : "Change Workflow"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Task list */}
+                <BuildTaskList
+                  tasks={tasks}
+                  onToggle={toggleTask}
+                  onSetStatus={setTaskStatus}
+                  large
+                />
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Floating voice control */}
