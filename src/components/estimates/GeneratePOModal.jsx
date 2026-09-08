@@ -326,11 +326,11 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
                         <td className="px-2 py-1.5 text-right font-medium">${Number(l.total).toFixed(2)}</td>
                         <td className="px-1 py-1.5 text-center">
                           <button
-                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                            className="text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors p-1.5 rounded-md"
                             onClick={() => removeLineItem(currentIdx, i)}
                             title="Remove item"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
