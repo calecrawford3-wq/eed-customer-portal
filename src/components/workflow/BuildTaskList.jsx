@@ -32,15 +32,15 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
   const stageNames = Object.keys(stages);
 
   return (
-    <div className="space-y-6">
+    <div className={large ? "space-y-3" : "space-y-6"}>
       {stageNames.map((stageName) => {
         const stageTasks = stages[stageName];
         const done = stageTasks.filter((t) => t.status === "complete").length;
         return (
           <div key={stageName}>
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className={cn("font-bold text-slate-700", large ? "text-xl" : "text-base")}>{stageName}</h3>
-              <span className="text-sm text-slate-400">
+            <div className={cn("flex items-center gap-2", large ? "mb-1.5" : "mb-3")}>
+              <h3 className={cn("font-bold text-slate-700", large ? "text-sm uppercase tracking-wide" : "text-base")}>{stageName}</h3>
+              <span className={cn("text-slate-400", large ? "text-xs" : "text-sm")}>
                 {done}/{stageTasks.length}
               </span>
               <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -50,7 +50,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className={large ? "grid gap-2 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]" : "space-y-2"}>
               {stageTasks.map((task) => {
                 const cfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
                 const Icon = cfg.icon;
@@ -60,34 +60,34 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                     key={task.id}
                     onClick={() => onToggle(task)}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all active:scale-[0.99] select-none",
+                      "flex items-center gap-2 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.99] select-none",
                       cfg.ring,
-                      large ? "min-h-[72px]" : "min-h-[56px]"
+                      large ? "p-2.5 min-h-[48px]" : "p-4 min-h-[56px]"
                     )}
                   >
-                    <Icon className={cn("flex-shrink-0", large ? "w-7 h-7" : "w-5 h-5", cfg.color)} />
+                    <Icon className={cn("flex-shrink-0", large ? "w-5 h-5" : "w-5 h-5", cfg.color)} />
                     <div className="flex-1 min-w-0">
                       <p
                         className={cn(
                           "font-medium text-slate-800",
-                          large ? "text-lg" : "text-base",
+                          large ? "text-sm line-clamp-2 leading-tight" : "text-base",
                           isComplete && "line-through text-slate-400"
                         )}
                       >
                         {task.name}
                       </p>
                       {task.completed_by && isComplete && (
-                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <p className={cn("text-slate-400 mt-0.5 flex items-center gap-1 truncate", large ? "text-[10px]" : "text-xs")}>
+                          <Clock className="w-3 h-3 flex-shrink-0" />
                           {task.completed_by}
-                          {task.completed_at && ` • ${new Date(task.completed_at).toLocaleString()}`}
+                          {!large && task.completed_at && ` • ${new Date(task.completed_at).toLocaleString()}`}
                         </p>
                       )}
                     </div>
                     {task.status === "in_progress" && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onSetStatus(task, "pending"); }}
-                        className="text-xs text-blue-600 font-medium px-2 py-1 rounded hover:bg-blue-100"
+                        className={cn("text-blue-600 font-medium rounded hover:bg-blue-100 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
                       >
                         Reset
                       </button>
@@ -95,7 +95,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                     {task.status === "pending" && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onSetStatus(task, "in_progress"); }}
-                        className="text-xs text-slate-500 font-medium px-2 py-1 rounded hover:bg-slate-100"
+                        className={cn("text-slate-500 font-medium rounded hover:bg-slate-100 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
                       >
                         Start
                       </button>
