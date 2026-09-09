@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import {
@@ -62,6 +62,13 @@ export default function Layout({ children, currentPageName }) {
     refetchInterval: 30000,
   });
   const unreadMessageCount = messages.filter(m => !m.is_read && m.direction === "inbound").length;
+
+  // On the Build Workflow page the nav sidebar is hidden on desktop and revealed on hover.
+  const isWorkflow = currentPageName === "BuildWorkflow";
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const hoverTimerRef = useRef(null);
+  const enterSidebar = () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); setSidebarHovered(true); };
+  const leaveSidebar = () => { hoverTimerRef.current = setTimeout(() => setSidebarHovered(false), 250); };
 
 
 
@@ -142,14 +149,26 @@ export default function Layout({ children, currentPageName }) {
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
       )}
+      {/* Hover trigger to reveal the hidden sidebar on the Build Workflow page (desktop only) */}
+      {isWorkflow && (
+        <div
+          className="hidden md:block fixed left-0 top-0 h-full w-3 z-50"
+          onMouseEnter={enterSidebar}
+          onMouseLeave={leaveSidebar}
+        />
+      )}
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed left-0 top-0 h-full bg-slate-900 text-white transition-all duration-300 z-50 flex flex-col w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "md:translate-x-0",
+          isWorkflow
+            ? (sidebarHovered ? "md:translate-x-0" : "md:-translate-x-full")
+            : "md:translate-x-0",
           collapsed && "md:w-16"
         )}
+        onMouseEnter={isWorkflow ? enterSidebar : undefined}
+        onMouseLeave={isWorkflow ? leaveSidebar : undefined}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-2 border-b border-slate-800">
@@ -238,7 +257,7 @@ export default function Layout({ children, currentPageName }) {
       <main
         className={cn(
           "flex-1 min-w-0 transition-all duration-300",
-          collapsed ? "md:ml-16" : "md:ml-64"
+          isWorkflow ? "md:ml-0" : (collapsed ? "md:ml-16" : "md:ml-64")
         )}
       >
         {/* Mobile top bar */}
