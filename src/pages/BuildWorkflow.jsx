@@ -241,7 +241,7 @@ export default function BuildWorkflow() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="p-4 md:p-6 lg:p-8">
         <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 items-start">
           {/* Persistent build list — always visible */}
           <div className="md:sticky md:top-24">
