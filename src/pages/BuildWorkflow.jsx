@@ -220,9 +220,9 @@ export default function BuildWorkflow() {
   const progressPct = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-24">
+    <div className="h-[100dvh] flex flex-col bg-slate-100 overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-900 text-white px-4 md:px-8 py-4 sticky top-0 z-20">
+      <div className="bg-slate-900 text-white px-4 md:px-8 py-3 md:py-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#e20404] flex items-center justify-center">
@@ -241,10 +241,10 @@ export default function BuildWorkflow() {
         </div>
       </div>
 
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 items-start">
+      <div className="flex-1 min-h-0 p-4 md:p-6 overflow-hidden">
+        <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6">
           {/* Persistent build list — always visible */}
-          <div className="md:sticky md:top-24">
+          <div className="md:w-[280px] md:flex-shrink-0 min-h-0 max-h-[30vh] md:max-h-none overflow-y-auto md:pr-1">
             <BuildSelectorList
               builds={activeBuilds}
               selectedId={selectedBuildId}
@@ -255,9 +255,9 @@ export default function BuildWorkflow() {
           </div>
 
           {/* Build details */}
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
             {!currentBuild ? (
-              <div className="text-center py-20">
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <ClipboardList className="w-14 h-14 mx-auto mb-4 text-slate-300" />
                 <h2 className="text-xl font-semibold text-slate-500 mb-1">No build selected</h2>
                 <p className="text-slate-400">Scan an engine label or pick a build from the list to start tracking its workflow.</p>
@@ -265,7 +265,7 @@ export default function BuildWorkflow() {
             ) : (
               <>
                 {/* Build summary card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-5 mb-4 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -303,12 +303,14 @@ export default function BuildWorkflow() {
                 </div>
 
                 {/* Task list */}
-                <BuildTaskList
-                  tasks={tasks}
-                  onToggle={toggleTask}
-                  onSetStatus={setTaskStatus}
-                  large
-                />
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1">
+                  <BuildTaskList
+                    tasks={tasks}
+                    onToggle={toggleTask}
+                    onSetStatus={setTaskStatus}
+                    large
+                  />
+                </div>
               </>
             )}
           </div>

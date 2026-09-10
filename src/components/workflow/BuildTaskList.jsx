@@ -32,13 +32,13 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
   const stageNames = Object.keys(stages);
 
   return (
-    <div className={large ? "space-y-3" : "space-y-6"}>
+    <div className={large ? "min-h-full flex flex-col gap-3" : "space-y-6"}>
       {stageNames.map((stageName) => {
         const stageTasks = stages[stageName];
         const done = stageTasks.filter((t) => t.status === "complete").length;
         return (
-          <div key={stageName}>
-            <div className={cn("flex items-center gap-2", large ? "mb-1.5" : "mb-3")}>
+          <div key={stageName} className={large ? "flex flex-col grow shrink-0" : ""}>
+            <div className={cn("flex items-center gap-2", large ? "mb-1.5 shrink-0" : "mb-3")}>
               <h3 className={cn("font-bold text-slate-700", large ? "text-sm uppercase tracking-wide" : "text-base")}>{stageName}</h3>
               <span className={cn("text-slate-400", large ? "text-xs" : "text-sm")}>
                 {done}/{stageTasks.length}
@@ -50,7 +50,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                 />
               </div>
             </div>
-            <div className={large ? "grid gap-2 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]" : "space-y-2"}>
+            <div className={large ? "flex-1 min-h-0 grid gap-2 grid-cols-[repeat(auto-fill,minmax(220px,1fr))] grid-auto-rows-[minmax(48px,1fr)]" : "space-y-2"}>
               {stageTasks.map((task) => {
                 const cfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
                 const Icon = cfg.icon;
