@@ -8,27 +8,60 @@ import { cn } from "@/lib/utils";
 // with the company name ("Elite Engine Development") or normal shop talk.
 // Includes common speech-recognition mishearings ("Hey at last", "Hey atlus") so the
 // assistant still arms when the recognizer garbles "Atlas".
-const WAKE_PHRASES = ["hey atlas", "atlas", "hey at last", "hey atlus", "hey at lass"];
+const WAKE_PHRASES = ["hey atlas", "atlas", "hey at last", "hey atlus", "hey at lass", "hey at lis", "hey at less", "atlus", "atlis", "atles", "at last", "at less"];
 
 function normalize(s) {
   return (s || "").toLowerCase().trim();
 }
 
+// Tiny Levenshtein distance — used so common speech-recognition mishearings of
+// "Atlas" (atlus, at last, at less, atlis…) still arm the assistant instead of
+// being silently ignored.
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Array(n + 1);
+  let curr = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
 function containsWakeWord(text) {
-  const t = normalize(text);
-  return (
-    /\bhey atlas\b/.test(t) ||
-    /\batlas\b/.test(t) ||
-    /\bhey at last\b/.test(t) ||
-    /\bhey atlus\b/.test(t) ||
-    /\bhey at lass\b/.test(t)
-  );
+  const t = normalize(text).replace(/[^a-z0-9\s]/g, "");
+  if (!t) return false;
+  // Cheap exact path first.
+  if (t.includes("hey atlas") || t.includes("atlas")) return true;
+  const words = t.split(/\s+/).filter(Boolean);
+  // Single-word fuzzy: "atlas"-sized words within edit distance 1 (catches atlus,
+  // atlis, atles, atlass) but skips short common words like "alas" or "atoms".
+  for (const w of words) {
+    if (w.length >= 5 && w.length <= 6 && levenshtein(w, "atlas") <= 1) return true;
+  }
+  // Joined consecutive windows of 2-3 words — catches split mishearings where the
+  // recognizer inserts a space ("at last", "at less", "hey at last", "hey atlus").
+  for (let i = 0; i < words.length; i++) {
+    for (let len = 2; len <= 3 && i + len <= words.length; len++) {
+      const joined = words.slice(i, i + len).join("");
+      if (levenshtein(joined, "atlas") <= 2) return true;
+      if (levenshtein(joined, "heyatlas") <= 2) return true;
+    }
+  }
+  return false;
 }
 
 function stripWakeWord(text) {
   // Remove the wake phrase (and any leading filler) from the utterance, keep the command after it.
   return text
-    .replace(/^(.*?)\b(hey atlas|atlas|hey at last|hey atlus|hey at lass)\b[,.!?\s]*/i, "")
+    .replace(/^(.*?)\b(hey atlas|hey at last|hey atlus|hey at lass|hey at lis|hey at less|atlas|atlus|atlis|atles|at last|at less)\b[,.!?\s]*/i, "")
     .trim();
 }
 
@@ -369,7 +402,7 @@ export default function VoiceControl({
           const now = Date.now();
           recentSpeechRef.current.push({ text: final.trim(), t: now });
           recentSpeechRef.current = recentSpeechRef.current.filter(
-            (s) => now - s.t < 6000
+            (s) => now - s.t < 8000
           );
         }
         const recentText = recentSpeechRef.current.map((s) => s.text).join(" ") + " " + utterance;
