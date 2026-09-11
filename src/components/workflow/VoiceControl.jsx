@@ -417,32 +417,9 @@ export default function VoiceControl({
       const utterance = (final + " " + interim).trim();
 
       if (!armedRef.current) {
-        // Passively listening for the wake word.
-        // Push final chunks into a rolling ~6s history so a wake word split across
-        // separate final results (e.g. "Hey" then "Atlas" on Samsung) still triggers.
-        if (final && final.trim()) {
-          const now = Date.now();
-          recentSpeechRef.current.push({ text: final.trim(), t: now });
-          recentSpeechRef.current = recentSpeechRef.current.filter(
-            (s) => now - s.t < 8000
-          );
-        }
-        const recentText = recentSpeechRef.current.map((s) => s.text).join(" ") + " " + utterance;
-        if (containsWakeWord(utterance) || containsWakeWord(recentText)) {
-          playTriggerChime();
-          recentSpeechRef.current = [];
-          if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
-          cmdBufferRef.current = "";
-          const after = stripWakeWord(utterance) || stripWakeWord(recentText);
-          if (after) {
-            // Command came in the same breath as the wake word.
-            processCommandRef.current ? processCommandRef.current(after) : processCommand(after);
-          } else {
-            // Just the wake word — arm and wait for the command.
-            arm();
-            setTranscript("Yes? Listening…");
-          }
-        }
+        // Wake-word listening is disabled — arming is done only via the SPACE key.
+        // Keep the rolling history cleared so it can't accumulate.
+        recentSpeechRef.current = [];
       } else {
         // Armed: accumulate final chunks into a buffer and debounce, so a multi-word
         // command that the recognizer splits across several final results (common on
@@ -567,7 +544,7 @@ export default function VoiceControl({
             status === "listening" && "bg-[#e20404] hover:bg-[#c00303]",
             status === "off" && "bg-slate-300 hover:bg-slate-400"
           )}
-          title={alwaysOn ? "Voice assistant on — say \"Hey Atlas\" or press SPACE, then your command" : "Tap to turn voice assistant on"}
+          title={alwaysOn ? "Voice assistant on — press SPACE, then your command" : "Tap to turn voice assistant on"}
         >
           {processing ? (
             <Loader2 className="w-7 h-7 text-white animate-spin" />
@@ -588,7 +565,7 @@ export default function VoiceControl({
             : armed
             ? "Listening for command…"
             : alwaysOn
-            ? 'Say "Hey Atlas" or press SPACE, then speak'
+            ? 'Press SPACE, then speak your command'
             : "Voice off — tap to enable"}
         </p>
         {transcript && (
