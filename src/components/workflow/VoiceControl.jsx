@@ -372,6 +372,28 @@ export default function VoiceControl({
     processCommandRef.current = processCommand;
   }, [processCommand]);
 
+  // Keyboard push-to-arm: tap SPACE (when not typing in an input) to arm the
+  // listener, just like saying the wake word. Reliable trigger for a conference mic.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (processing || armed || !alwaysOn) return;
+      const tag = (e.target?.tagName || "").toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) return;
+      if (e.repeat) return;
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        playTriggerChime();
+        if (cmdTimerRef.current) { clearTimeout(cmdTimerRef.current); cmdTimerRef.current = null; }
+        cmdBufferRef.current = "";
+        lastFinalChunkRef.current = "";
+        arm();
+        setTranscript("Listening… speak your command");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [processing, armed, alwaysOn, arm]);
+
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -545,7 +567,7 @@ export default function VoiceControl({
             status === "listening" && "bg-[#e20404] hover:bg-[#c00303]",
             status === "off" && "bg-slate-300 hover:bg-slate-400"
           )}
-          title={alwaysOn ? "Voice assistant on — say \"Hey Atlas\" then your command" : "Tap to turn voice assistant on"}
+          title={alwaysOn ? "Voice assistant on — say \"Hey Atlas\" or press SPACE, then your command" : "Tap to turn voice assistant on"}
         >
           {processing ? (
             <Loader2 className="w-7 h-7 text-white animate-spin" />
@@ -566,7 +588,7 @@ export default function VoiceControl({
             : armed
             ? "Listening for command…"
             : alwaysOn
-            ? 'Say "Hey Atlas" then your command'
+            ? 'Say "Hey Atlas" or press SPACE, then speak'
             : "Voice off — tap to enable"}
         </p>
         {transcript && (
