@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   FlaskConical,
   ListChecks,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import BarcodeVerifyModal from "@/components/engines/BarcodeVerifyModal";
@@ -28,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
+import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
 import BuildTimeline from "@/components/engines/BuildTimeline";
 import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
 import BuildDetailsTab from "@/components/builds/BuildDetailsTab";
@@ -341,6 +343,25 @@ export default function BuildDetail() {
               Simulate
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            className="border-[#e20404] text-[#e20404] hover:bg-red-50"
+            onClick={() => {
+              printEngineLabel({
+                engineSerialNumber: build.engine_serial_number,
+                eedId: build.eed_id,
+                customerName: linkedCustomer ? `${linkedCustomer.first_name} ${linkedCustomer.last_name}` : build.customer_name || "",
+                platformName: platform ? `${platform.manufacturer} ${platform.name}` : "",
+                storageLocation: build.storage_location,
+                statusLabel: (build.status || "").replace("_", " ").toUpperCase(),
+                barcodeValue: build.engine_serial_number,
+                startPos: 1,
+              });
+            }}
+          >
+            <Tag className="w-4 h-4 mr-2" />
+            Engine Tag
+          </Button>
           <Button variant="outline" onClick={() => setShowPrintDialog(true)}>
             <Printer className="w-4 h-4 mr-2" />
             Print
