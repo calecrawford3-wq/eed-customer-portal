@@ -261,7 +261,7 @@ export default function Layout({ children, currentPageName }) {
         )}
       >
         {/* Mobile top bar */}
-        <div className="md:hidden sticky top-0 z-30 bg-slate-900 text-white flex items-center justify-between px-4 h-14 border-b border-slate-800">
+        <div className="md:hidden sticky top-0 z-30 bg-slate-900 text-white flex items-center justify-between px-4 h-14 border-b border-slate-800 print:hidden">
           <button onClick={() => setMobileOpen(true)} className="text-white p-1">
             <Menu className="w-6 h-6" />
           </button>
@@ -273,7 +273,7 @@ export default function Layout({ children, currentPageName }) {
           <NotificationBell />
         </div>
         {/* Desktop sticky bar — always visible with bell; Back button shown on non-Dashboard pages */}
-        <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between">
+        <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between print:hidden">
           {currentPageName !== "Dashboard" ? (
             <button
               onClick={() => navigate(-1)}

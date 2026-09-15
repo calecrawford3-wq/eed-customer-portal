@@ -113,18 +113,14 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
             <span>Subtotal:</span>
             <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
           </div>
-          {Number(invoice.tax_amount) > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>Tax ({invoice.tax_rate}%):</span>
-              <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {Number(invoice.discount_amount) > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#22c55e" }}>
-              <span>Discount:</span>
-              <span>-${Number(invoice.discount_amount).toFixed(2)}</span>
-            </div>
-          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+            <span>Tax{invoice.tax_rate ? ` (${invoice.tax_rate}%)` : ""}:</span>
+            <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: Number(invoice.discount_amount) > 0 ? "#22c55e" : "#333" }}>
+            <span>Discount:</span>
+            <span>{Number(invoice.discount_amount) > 0 ? "-" : ""}${Number(invoice.discount_amount || 0).toFixed(2)}</span>
+          </div>
           {Number(invoice.shipping_cost) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
               <span>Shipping:</span>
