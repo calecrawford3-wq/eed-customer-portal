@@ -246,14 +246,14 @@ export default function Builds() {
   const handleWarrantyRepairConfirmed = (cost) => {
     const build = warrantyCompleteBuild;
     setWarrantyCompleteBuild(null);
-    // Now proceed to the normal storage location + completion flow
-    setStoragePrompt({
-      build,
-      statusLabel: "COMPLETED",
-      title: "Storage Location for Completed Engine",
-      description: "Enter where this completed engine is being stored for customer pickup. A completed label will be printed.",
-      onComplete: true,
-    });
+    // Warranty repair recorded — mark the build complete directly. Opening a second
+    // Radix dialog (storage prompt) in the same tick as closing the warranty modal
+    // suppresses it, so the build never actually completed. Warranty builds are
+    // repairs of an existing engine that already has a storage location, so we skip
+    // the storage prompt and complete immediately. The user can reprint a label from
+    // the Completed section if needed.
+    executeMarkComplete(build, build?.storage_location || "");
+    toast.success("Warranty repair recorded — build marked complete");
   };
 
   const executeMarkComplete = async (build, storageLocation) => {
