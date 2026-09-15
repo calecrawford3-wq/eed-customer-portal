@@ -29,6 +29,7 @@ import {
   Paperclip,
   X,
   AlertCircle,
+  UserPlus,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,14 @@ import { compressImage } from "@/lib/compressImage";
 import { useMessaging } from "@/contexts/MessagingContext";
 import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
+import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
+import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const MAX_ATTACHMENTS = 3;
 const MAX_ATTACHMENT_BYTES = 1300 * 1024;
@@ -477,6 +486,11 @@ export default function Messaging() {
     deleteConfirmation,
     setDeleteConfirmation,
   ] = useState("");
+
+  const [createCustomerOpen, setCreateCustomerOpen] =
+    useState(false);
+  const [createSupplierOpen, setCreateSupplierOpen] =
+    useState(false);
 
   const [tab, setTab] = useState("messages");
 
@@ -1394,6 +1408,32 @@ export default function Messaging() {
                       </Button>
                     )}
 
+                    {!party.customerId && !party.contact && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Add this number to contacts"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setCreateCustomerOpen(true)}
+                          >
+                            Create Customer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setCreateSupplierOpen(true)}
+                          >
+                            Create Vendor
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -1993,6 +2033,24 @@ export default function Messaging() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <QuickCreateCustomerModal
+        open={createCustomerOpen}
+        onClose={() => setCreateCustomerOpen(false)}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["customers"] });
+        }}
+        defaultPhone={selectedPhone || ""}
+      />
+
+      <QuickCreateSupplierModal
+        open={createSupplierOpen}
+        onClose={() => setCreateSupplierOpen(false)}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        }}
+        defaultPhone={selectedPhone || ""}
+      />
     </div>
   );
 }
