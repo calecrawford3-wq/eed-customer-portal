@@ -69,6 +69,7 @@ export default function EstimateDetail() {
   const isNew = params.get("new") === "1";
   const prefillCustomerId = params.get("customer_id");
   const prefillBuildId = params.get("build_id");
+  const prefillEngineId = params.get("customer_engine_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState({ open: false });
@@ -229,9 +230,9 @@ export default function EstimateDetail() {
 
   useEffect(() => {
     if (isNew && prefillCustomerId) {
-      setForm(f => ({ ...f, customer_id: prefillCustomerId, build_id: prefillBuildId || "" }));
+      setForm(f => ({ ...f, customer_id: prefillCustomerId, build_id: prefillBuildId || "", customer_engine_id: prefillEngineId || "" }));
     }
-  }, [isNew, prefillCustomerId, prefillBuildId]);
+  }, [isNew, prefillCustomerId, prefillBuildId, prefillEngineId]);
 
   // Auto-calculate deposit amount when in percent mode
   useEffect(() => {
