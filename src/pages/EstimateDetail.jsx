@@ -759,8 +759,8 @@ export default function EstimateDetail() {
               await base44.entities.CustomerEngine.update(eng.id, { check_in_status: "in_build" });
               qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
              } catch (e) { console.warn("Failed to update engine check-in status:", e); }
-             await base44.entities.Estimate.update(id, { build_id: build.id });
-            setForm(f => ({ ...f, build_id: build.id }));
+             await base44.entities.Estimate.update(id, { build_id: build.id, customer_engine_id: eng.id });
+             setForm(f => ({ ...f, build_id: build.id, customer_engine_id: eng.id }));
             qc.invalidateQueries({ queryKey: ["builds"] });
             toast.success("Deposit received — engine build created and queued!");
             buildCreated = true;
@@ -785,7 +785,7 @@ export default function EstimateDetail() {
             work_tag: "none",
             assembly_notes: form.notes || "",
             });
-            await base44.entities.Estimate.update(id, { build_id: build.id });
+            await base44.entities.Estimate.update(id, { build_id: build.id, ...(form.customer_engine_id ? { customer_engine_id: form.customer_engine_id } : {}) });
             setForm(f => ({ ...f, build_id: build.id }));
             qc.invalidateQueries({ queryKey: ["builds"] });
             toast.success("Deposit received — engine build created and queued!");
@@ -806,7 +806,7 @@ export default function EstimateDetail() {
     }
     const updated = { ...form, status: "approved" };
     setForm(updated);
-    await saveMutation.mutateAsync_PLACEHOLDER(updated);
+    await saveMutation.mutateAsync(updated);
 
     if (form.is_engine_build) {
       // Auto-create engine build + invoice, prefilling from previous build for this engine
@@ -922,7 +922,7 @@ export default function EstimateDetail() {
           payments: form.payments || [],
         });
         await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
-        await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id });
+        await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id, ...(form.customer_engine_id ? { customer_engine_id: form.customer_engine_id } : {}) });
         // Link the legal document (if any) to the new invoice and engine
         if (form.contains_illegal_parts) {
           try {
