@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
-import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
+import ReprintLabelModal from "@/components/engines/ReprintLabelModal";
 import BuildTimeline from "@/components/engines/BuildTimeline";
 import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
 import BuildDetailsTab from "@/components/builds/BuildDetailsTab";
@@ -64,6 +64,7 @@ export default function BuildDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);
   const [showPickupScan, setShowPickupScan] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const printRef = useRef();
 
   const queryClient = useQueryClient();
@@ -346,18 +347,7 @@ export default function BuildDetail() {
           <Button
             variant="outline"
             className="border-[#e20404] text-[#e20404] hover:bg-red-50"
-            onClick={() => {
-              printEngineLabel({
-                engineSerialNumber: build.engine_serial_number,
-                eedId: build.eed_id,
-                customerName: linkedCustomer ? `${linkedCustomer.first_name} ${linkedCustomer.last_name}` : build.customer_name || "",
-                platformName: platform ? `${platform.manufacturer} ${platform.name}` : "",
-                storageLocation: build.storage_location,
-                statusLabel: (build.status || "").replace("_", " ").toUpperCase(),
-                barcodeValue: build.engine_serial_number,
-                startPos: 1,
-              });
-            }}
+            onClick={() => setShowTagModal(true)}
           >
             <Tag className="w-4 h-4 mr-2" />
             Engine Tag
@@ -533,6 +523,20 @@ export default function BuildDetail() {
           setShowPickupScan(false);
           handlePickupVerified();
         }}
+      />
+
+      {/* Engine Tag Label Printer */}
+      <ReprintLabelModal
+        open={showTagModal}
+        onClose={() => setShowTagModal(false)}
+        engineInfo={{
+          serial: build.engine_serial_number,
+          eedId: build.eed_id,
+          customerName: linkedCustomer ? `${linkedCustomer.first_name} ${linkedCustomer.last_name}` : build.customer_name || "",
+          platformName: platform ? `${platform.manufacturer} ${platform.name}` : "",
+          storageLocation: build.storage_location,
+        }}
+        statusLabel={(build.status || "").replace("_", " ").toUpperCase()}
       />
     </div>
   );
