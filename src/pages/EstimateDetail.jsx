@@ -754,7 +754,11 @@ export default function EstimateDetail() {
                assembly_notes: form.notes || "",
                ...prevBuildData,
              });
-            await base44.entities.Estimate.update(id, { build_id: build.id });
+             try {
+              await base44.entities.CustomerEngine.update(eng.id, { check_in_status: "in_build" });
+              qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
+             } catch (e) { console.warn("Failed to update engine check-in status:", e); }
+             await base44.entities.Estimate.update(id, { build_id: build.id });
             setForm(f => ({ ...f, build_id: build.id }));
             qc.invalidateQueries({ queryKey: ["builds"] });
             toast.success("Deposit received — engine build created and queued!");
@@ -879,6 +883,12 @@ export default function EstimateDetail() {
 
       try {
         const build = await base44.entities.EngineBuild.create(buildData);
+        if (eng) {
+          try {
+            await base44.entities.CustomerEngine.update(eng.id, { check_in_status: "in_build" });
+            qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
+          } catch (e) { console.warn("Failed to update engine check-in status:", e); }
+        }
         // 3) Create the invoice simultaneously — errors surface to the user now
         const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
         const invoice = await base44.entities.Invoice.create({
