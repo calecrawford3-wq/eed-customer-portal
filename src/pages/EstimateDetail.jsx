@@ -76,7 +76,7 @@ export default function EstimateDetail() {
 
   const [form, setForm] = useState({
     estimate_number: `EST-${Date.now().toString().slice(-6)}`,
-    customer_id: "", status: "draft",
+    customer_id: "", customer_engine_id: "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
     expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     deposit_required: false,
@@ -229,8 +229,13 @@ export default function EstimateDetail() {
   }, [settingsData, isNew]);
 
   useEffect(() => {
-    if (isNew && prefillCustomerId) {
-      setForm(f => ({ ...f, customer_id: prefillCustomerId, build_id: prefillBuildId || "", customer_engine_id: prefillEngineId || "" }));
+    if (isNew && (prefillCustomerId || prefillEngineId)) {
+      setForm(f => ({
+        ...f,
+        ...(prefillCustomerId ? { customer_id: prefillCustomerId } : {}),
+        build_id: prefillBuildId || "",
+        customer_engine_id: prefillEngineId || "",
+      }));
     }
   }, [isNew, prefillCustomerId, prefillBuildId, prefillEngineId]);
 
