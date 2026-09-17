@@ -45,6 +45,8 @@ export default function Dashboard() {
     queryKey: ["purchaseOrders"],
     queryFn: () => base44.entities.PurchaseOrder.list("-created_date", 100),
     staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   });
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses"],
