@@ -136,7 +136,8 @@ export default function PurchaseOrderDetail() {
     const baseUrl = (appParams.appBaseUrl || window.location.origin).replace(/\/$/, "");
     const ackUrl = `${baseUrl}/functions/acknowledgePO?po_id=${poId}&token=${token}`;
 
-    const subject = `Purchase Order ${form.po_number} from Elite Engine Development`;
+    const accountRef = supplier.account_number ? ` (Acct #${supplier.account_number})` : "";
+    const subject = `Purchase Order ${form.po_number}${accountRef} from Elite Engine Development`;
     const lineRows = (form.line_items || []).map(l =>
       `<tr>
         <td style="padding:6px 12px 6px 0;border-bottom:1px solid #eee;font-family:monospace;font-size:13px">${l.part_number || "—"}</td>
@@ -147,6 +148,7 @@ export default function PurchaseOrderDetail() {
     const html = `
       <p>To: ${supplier.name}${supplier.contact_name ? ` / ${supplier.contact_name}` : ""}</p>
       <h3>Purchase Order #${form.po_number}</h3>
+      ${supplier.account_number ? `<p style="font-size:15px;font-weight:600;color:#e20404">Our Account #: ${supplier.account_number}</p>` : ""}
       <p>Order Date: ${form.order_date || ""}${form.expected_date ? ` | Expected Delivery: ${form.expected_date}` : ""}</p>
       <hr/>
       <table style="width:100%;border-collapse:collapse;font-size:14px">
