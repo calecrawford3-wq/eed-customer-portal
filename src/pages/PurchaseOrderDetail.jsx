@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
 import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
+import PoKitPickerModal from "@/components/estimates/PoKitPickerModal";
 import EmailsSection from "@/components/emails/EmailsSection";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
@@ -48,6 +49,7 @@ export default function PurchaseOrderDetail() {
   const [receiveQtys, setReceiveQtys] = useState({});
   const [receiveCosts, setReceiveCosts] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [kitPickerOpen, setKitPickerOpen] = useState(false);
 
   const { data: settingsList = [] } = useQuery({
     queryKey: ["appSettings"],
@@ -69,6 +71,11 @@ export default function PurchaseOrderDetail() {
   const { data: parts = [] } = useQuery({
     queryKey: ["parts"],
     queryFn: () => base44.entities.Part.list("-created_date", 500),
+  });
+
+  const { data: kits = [] } = useQuery({
+    queryKey: ["partKits"],
+    queryFn: () => base44.entities.PartKit.list("-created_date", 200),
   });
 
   useEffect(() => {
@@ -271,6 +278,15 @@ export default function PurchaseOrderDetail() {
       } else {
         lines = [...(f.line_items || []), { ...newLine }];
       }
+      recalc(lines, f.shipping_cost, f.tax_amount);
+      return { ...f, line_items: lines };
+    });
+    toast.success(`${newLine.description} added to PO`);
+  };
+
+  const addKitFromPicker = (newLine) => {
+    setForm(f => {
+      const lines = [...(f.line_items || []), { ...newLine }];
       recalc(lines, f.shipping_cost, f.tax_amount);
       return { ...f, line_items: lines };
     });
@@ -480,6 +496,7 @@ export default function PurchaseOrderDetail() {
           <CardTitle className="text-base">Order Items</CardTitle>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}><Package className="w-4 h-4 mr-1" /> Add Part</Button>
+            <Button size="sm" variant="outline" onClick={() => setKitPickerOpen(true)}><Boxes className="w-4 h-4 mr-1" /> Add Kit</Button>
             <Button size="sm" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-1" /> Add Blank Item</Button>
           </div>
         </CardHeader>
@@ -645,6 +662,15 @@ export default function PurchaseOrderDetail() {
         currentSupplierName={supplier?.name}
         existingPartIds={(form.line_items || []).map(l => l.part_id).filter(Boolean)}
         onAdd={addPartFromPicker}
+      />
+
+      <PoKitPickerModal
+        open={kitPickerOpen}
+        onClose={() => setKitPickerOpen(false)}
+        kits={kits}
+        suppliers={suppliers}
+        currentSupplierId={form.supplier_id}
+        onAdd={addKitFromPicker}
       />
     </div>
   );
