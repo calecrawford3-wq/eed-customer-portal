@@ -18,43 +18,57 @@ const CATEGORY_LABELS = {
 
 /**
  * Prints a sheet of storage location labels (Avery 18163, 4in × 2in).
- * @param {Object} opts
+ * Accepts either a single location or an array of locations.
+ *
+ * @param {Object|Array} opts
  * @param {string} opts.name        — The location name to print (e.g. "Cart 1", "ES1")
  * @param {string} opts.category   — One of: engines, carts, stands, parts
- * @param {number} opts.startPos    — Starting label position (1-10) on the sheet
- * @param {number} opts.copies      — Number of labels to print (1-10)
+ * @param {number} opts.startPos   — Starting label position (1-10) on the sheet
+ * @param {number} opts.copies     — Number of labels to print (1-10)  [single-location mode only]
+ * @param {Array}  opts.locations  — Array of { name, category } to print multiple locations on one sheet
  */
-export function printStorageLocationLabel({ name, category = "parts", startPos = 1, copies = 1 }) {
-  const barcode = generateBarcodeSVG(name, { width: 2, height: 50, fontSize: 14 });
-  const catColor = CATEGORY_COLORS[category] || "#475569";
-  const catLabel = CATEGORY_LABELS[category] || "STORAGE";
+export function printStorageLocationLabel(opts) {
+  // Normalize into a flat list of { name, category } entries
+  let entries = [];
+  if (Array.isArray(opts?.locations)) {
+    entries = opts.locations.filter((l) => l && l.name).map((l) => ({ name: l.name, category: l.category || "parts" }));
+  } else {
+    const copies = Math.min(10, Math.max(1, opts?.copies || 1));
+    for (let i = 0; i < copies; i++) {
+      entries.push({ name: opts?.name, category: opts?.category || "parts" });
+    }
+  }
 
-  const blanks = Math.max(0, Math.min(9, (startPos || 1) - 1));
-  const totalLabels = Math.min(10 - blanks, Math.max(1, copies || 1));
+  if (entries.length === 0) return false;
+
+  const blanks = Math.max(0, Math.min(9, (opts?.startPos || 1) - 1));
   const cells = [
     ...Array.from({ length: blanks }).map(() => ({ empty: true })),
-    ...Array.from({ length: totalLabels }).map(() => ({ real: true })),
+    ...entries.slice(0, 10 - blanks).map((e) => ({ real: true, ...e })),
   ];
   while (cells.length < 10) cells.push({ empty: true });
 
   const renderCell = (c) => {
     if (c.empty) return `<div class="label empty"></div>`;
+    const barcode = generateBarcodeSVG(c.name, { width: 2, height: 50, fontSize: 14 });
+    const catColor = CATEGORY_COLORS[c.category] || "#475569";
+    const catLabel = CATEGORY_LABELS[c.category] || "STORAGE";
     return `
       <div class="label">
         <div class="header">
-          <div class="cat-badge">${esc(catLabel)}</div>
+          <div class="cat-badge" style="background:${catColor}">${esc(catLabel)}</div>
         </div>
-        <div class="name">${esc(name)}</div>
+        <div class="name">${esc(c.name)}</div>
         <div class="barcode">${barcode || ""}</div>
         <div class="footer">
           <span class="loc-icon">📍</span>
-          <span class="code">${esc(name)}</span>
+          <span class="code">${esc(c.name)}</span>
         </div>
       </div>`;
   };
 
   const html = `<!DOCTYPE html>
-<html><head><title>Storage Label - ${esc(name)}</title>
+<html><head><title>Storage Labels</title>
 <style>
   @page { size: 8.5in 11in; margin: 0; }
   * { box-sizing: border-box; }
@@ -87,7 +101,7 @@ export function printStorageLocationLabel({ name, category = "parts", startPos =
   .header { display: flex; justify-content: flex-start; }
   .cat-badge {
     font-size: 9px; font-weight: 700; color: white;
-    padding: 3px 10px; border-radius: 4px; background: ${catColor};
+    padding: 3px 10px; border-radius: 4px;
     letter-spacing: 0.5px;
   }
   .name {

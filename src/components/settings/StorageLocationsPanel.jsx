@@ -16,6 +16,8 @@ import {
   ShoppingCart,
   Boxes,
   Save,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { printStorageLocationLabel } from "@/components/engines/StorageLocationLabelPrint";
 
@@ -48,6 +50,8 @@ export default function StorageLocationsPanel() {
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
   const [newEntries, setNewEntries] = useState({ engines: "", carts: "", stands: "", parts: "" });
   const [printOpts, setPrintOpts] = useState({}); // { [`${cat}:${name}`]: { startPos, copies } }
+  const [selected, setSelected] = useState({}); // { [`${cat}:${name}`]: true }
+  const [bulkStartPos, setBulkStartPos] = useState(1);
 
   const { data: settingsData } = useQuery({
     queryKey: ["app-settings"],
@@ -89,6 +93,11 @@ export default function StorageLocationsPanel() {
 
   const removeLocation = (cat, name) => {
     setLocations((prev) => ({ ...prev, [cat]: prev[cat].filter((l) => l !== name) }));
+    setSelected((prev) => {
+      const next = { ...prev };
+      delete next[`${cat}:${name}`];
+      return next;
+    });
   };
 
   const handlePrint = (cat, name) => {
@@ -108,6 +117,51 @@ export default function StorageLocationsPanel() {
     }));
   };
 
+  const toggleSelected = (cat, name) => {
+    const key = `${cat}:${name}`;
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (next[key]) delete next[key];
+      else next[key] = true;
+      return next;
+    });
+  };
+
+  const toggleCategoryAll = (cat) => {
+    const items = locations[cat] || [];
+    const allSelected = items.every((n) => selected[`${cat}:${n}`]);
+    setSelected((prev) => {
+      const next = { ...prev };
+      items.forEach((n) => {
+        const key = `${cat}:${n}`;
+        if (allSelected) delete next[key];
+        else next[key] = true;
+      });
+      return next;
+    });
+  };
+
+  const selectedCount = Object.keys(selected).length;
+
+  const handleBulkPrint = () => {
+    const entries = Object.keys(selected)
+      .map((key) => {
+        const [cat, ...nameParts] = key.split(":");
+        return { name: nameParts.join(":"), category: cat };
+      })
+      .filter((e) => e.name);
+    if (entries.length === 0) {
+      toast.error("Select at least one location to print.");
+      return;
+    }
+    if (entries.length > 10 - (bulkStartPos - 1)) {
+      toast.warning(`Only ${10 - (bulkStartPos - 1)} labels fit on the sheet from slot ${bulkStartPos}. The first ${10 - (bulkStartPos - 1)} selected will print.`);
+    }
+    printStorageLocationLabel({ locations: entries, startPos: bulkStartPos });
+  };
+
+  const clearSelection = () => setSelected({});
+
   const hasChanges = (() => {
     const saved = parseLocations(settingsData?.[0]?.storage_locations);
     return JSON.stringify(saved) !== JSON.stringify(locations);
@@ -121,7 +175,7 @@ export default function StorageLocationsPanel() {
             <MapPin className="w-5 h-5 text-[#e20404]" /> Storage Locations
           </h3>
           <p className="text-sm text-slate-500 mt-1">
-            Manage storage locations for engines, carts, stands, and parts. Print barcode labels for any location to stick on bins, carts, and shelves.
+            Manage storage locations for engines, carts, stands, and parts. Select multiple locations and print them on a single label sheet.
           </p>
         </div>
         <Button
@@ -133,14 +187,55 @@ export default function StorageLocationsPanel() {
         </Button>
       </div>
 
+      {/* Bulk print bar */}
+      <div className="sticky top-12 z-10 flex items-center gap-3 flex-wrap p-3 rounded-lg bg-white border border-slate-200 shadow-sm">
+        <span className="text-sm font-medium text-slate-700">
+          {selectedCount > 0 ? `${selectedCount} selected` : "No locations selected"}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs whitespace-nowrap text-slate-500">Starting slot</Label>
+          <Input
+            type="number"
+            min="1"
+            max="10"
+            className="w-16 h-8 text-center text-sm"
+            value={bulkStartPos}
+            onChange={(e) => setBulkStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+          />
+        </div>
+        <Button
+          className="bg-[#e20404] hover:bg-[#c00303] text-white"
+          onClick={handleBulkPrint}
+          disabled={selectedCount === 0}
+        >
+          <Printer className="w-4 h-4 mr-2" /> Print Selected
+        </Button>
+        {selectedCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearSelection} className="text-slate-500">
+            Clear
+          </Button>
+        )}
+      </div>
+
       {CATEGORIES.map((cat) => {
         const Icon = cat.icon;
         const items = locations[cat.key] || [];
+        const allSelected = items.length > 0 && items.every((n) => selected[`${cat.key}:${n}`]);
+        const someSelected = items.some((n) => selected[`${cat.key}:${n}`]);
         return (
           <Card key={cat.key} className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Icon className="w-4 h-4 text-[#e20404]" /> {cat.label} ({items.length})
+                {items.length > 0 && (
+                  <button
+                    onClick={() => toggleCategoryAll(cat.key)}
+                    className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500 hover:text-[#e20404] transition-colors"
+                  >
+                    {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    {allSelected ? "Unselect all" : "Select all"}
+                  </button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -175,11 +270,21 @@ export default function StorageLocationsPanel() {
                   {items.map((name) => {
                     const key = `${cat.key}:${name}`;
                     const opts = printOpts[key] || { startPos: 1, copies: 1 };
+                    const isSelected = !!selected[key];
                     return (
                       <div
                         key={name}
-                        className="flex items-center gap-2 flex-wrap p-2.5 rounded-lg bg-slate-50 border border-slate-100"
+                        className={`flex items-center gap-2 flex-wrap p-2.5 rounded-lg border transition-colors ${
+                          isSelected ? "bg-red-50 border-[#e20404]/30" : "bg-slate-50 border-slate-100"
+                        }`}
                       >
+                        <button
+                          onClick={() => toggleSelected(cat.key, name)}
+                          className="flex-shrink-0 text-slate-400 hover:text-[#e20404] transition-colors"
+                          title={isSelected ? "Unselect" : "Select for bulk print"}
+                        >
+                          {isSelected ? <CheckSquare className="w-5 h-5 text-[#e20404]" /> : <Square className="w-5 h-5" />}
+                        </button>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
                           <span className="font-medium text-slate-800 truncate">{name}</span>
