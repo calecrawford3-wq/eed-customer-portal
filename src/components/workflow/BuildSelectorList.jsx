@@ -1,7 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Wrench } from "lucide-react";
+import { Wrench, MapPin } from "lucide-react";
 
 const STATUS_COLORS = {
   queued: "bg-slate-200 text-slate-700",
@@ -51,6 +51,12 @@ export default function BuildSelectorList({ builds, selectedId, onSelect, getPla
                           <span className="text-[10px] text-slate-400 truncate font-mono">S/N {b.engine_serial_number}</span>
                         )}
                       </div>
+                      {b.storage_location && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <MapPin className="w-3 h-3 text-[#e20404]" />
+                          <span className="text-[11px] text-slate-600 font-medium truncate">{b.storage_location}</span>
+                        </div>
+                      )}
                     </div>
                     <Badge className={cn("shrink-0 text-[10px] capitalize", STATUS_COLORS[b.status] || "bg-slate-100 text-slate-600")}>
                       {(b.status || "").replace("_", " ")}
