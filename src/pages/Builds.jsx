@@ -732,14 +732,19 @@ export default function Builds() {
                                     <span>{getCustomerName(build)}</span>
                                   </>
                                 )}
-                                {build.storage_location && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="inline-flex items-center gap-1 text-slate-600">
-                                      <MapPin className="w-3.5 h-3.5" /> {build.storage_location}
-                                    </span>
-                                  </>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setStoragePrompt({ build, onComplete: null })}
+                                  className="inline-flex items-center gap-1 text-slate-600 hover:text-[#e20404] transition-colors group/loc"
+                                  title="Edit storage location"
+                                >
+                                  <MapPin className="w-3.5 h-3.5 group-hover/loc:scale-110 transition-transform" />
+                                  {build.storage_location ? (
+                                    <span className="underline decoration-dotted underline-offset-2">{build.storage_location}</span>
+                                  ) : (
+                                    <span className="text-slate-400 italic">+ Set location</span>
+                                  )}
+                                </button>
                               </div>
                             </div>
                           </div>
