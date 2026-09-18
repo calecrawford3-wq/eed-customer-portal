@@ -291,6 +291,10 @@
     "voipms_pb_current_sync_status": {
       "type": "string",
       "description": "Current sync status text shown on the settings page (e.g. 'Syncing 45 customers\u2026', 'Idle', 'Last sync failed')"
+    },
+    "storage_locations": {
+      "type": "string",
+      "description": "JSON object mapping category keys (engines, carts, stands, parts) to arrays of storage location names (e.g. {\"engines\":[\"ES1\",\"ES2\"],\"carts\":[\"Cart 1\",\"Cart 2\"]}). Used to populate location pickers and print location labels."
     }
   },
   "required": [

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +9,7 @@ import { MapPin, Printer, Check } from "lucide-react";
 import { printEngineLabel } from "./EngineLabelPrint";
 import { toast } from "sonner";
 
-const COMMON_LOCATIONS = ["Cart 1", "Cart 2", "Cart 3", "Tote 1", "Tote 2", "Tote 3", "Rack A-1", "Rack A-2", "Bench 1", "Bench 2"];
+const FALLBACK_LOCATIONS = ["Cart 1", "Cart 2", "Cart 3", "Tote 1", "Tote 2", "Tote 3", "Rack A-1", "Rack A-2", "Bench 1", "Bench 2"];
 
 export default function StorageLocationPrompt({
   open,
@@ -23,6 +25,23 @@ export default function StorageLocationPrompt({
   const [labelNote, setLabelNote] = useState("");
   const [printed, setPrinted] = useState(false);
   const inputRef = useRef(null);
+
+  // Load configured storage locations from AppSettings to use as quick-pick suggestions
+  const { data: settingsData } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
+  });
+  const configuredLocations = (() => {
+    const raw = settingsData?.[0]?.storage_locations;
+    if (!raw) return FALLBACK_LOCATIONS;
+    try {
+      const parsed = JSON.parse(raw);
+      return Object.values(parsed).flat().filter(Boolean);
+    } catch {
+      return FALLBACK_LOCATIONS;
+    }
+  })();
+  const COMMON_LOCATIONS = configuredLocations.length > 0 ? configuredLocations.slice(0, 16) : FALLBACK_LOCATIONS;
 
   useEffect(() => {
     if (open) {

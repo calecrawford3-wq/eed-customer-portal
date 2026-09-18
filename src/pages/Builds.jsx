@@ -23,7 +23,8 @@ import {
   Printer,
   Cpu,
   Pencil,
-  FileText
+  FileText,
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -729,6 +730,14 @@ export default function Builds() {
                                   <>
                                     <span>•</span>
                                     <span>{getCustomerName(build)}</span>
+                                  </>
+                                )}
+                                {build.storage_location && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="inline-flex items-center gap-1 text-slate-600">
+                                      <MapPin className="w-3.5 h-3.5" /> {build.storage_location}
+                                    </span>
                                   </>
                                 )}
                               </div>
