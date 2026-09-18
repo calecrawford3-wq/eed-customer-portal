@@ -3,17 +3,17 @@ import { CheckCircle2, Circle, Loader2, SkipForward, Clock } from "lucide-react"
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG = {
-  pending: { icon: Circle, color: "text-slate-300", ring: "border-slate-200", label: "Pending" },
-  in_progress: { icon: Loader2, color: "text-blue-500", ring: "border-blue-400 bg-blue-50", label: "In Progress" },
-  complete: { icon: CheckCircle2, color: "text-emerald-600", ring: "border-emerald-500 bg-emerald-50", label: "Complete" },
-  skipped: { icon: SkipForward, color: "text-slate-400", ring: "border-slate-300 bg-slate-50", label: "Skipped" },
+  pending: { icon: Circle, color: "text-zinc-600", ring: "border-zinc-800 bg-zinc-900", label: "Pending" },
+  in_progress: { icon: Loader2, color: "text-blue-400", ring: "border-blue-600 bg-blue-950", label: "In Progress" },
+  complete: { icon: CheckCircle2, color: "text-emerald-400", ring: "border-emerald-600 bg-emerald-950", label: "Complete" },
+  skipped: { icon: SkipForward, color: "text-zinc-500", ring: "border-zinc-700 bg-zinc-800", label: "Skipped" },
 };
 
 export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = false }) {
   if (!tasks || tasks.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-400">No workflow tasks yet. Assign a workflow template to this build.</p>
+        <p className="text-zinc-600">No workflow tasks yet. Assign a workflow template to this build.</p>
       </div>
     );
   }
@@ -39,11 +39,11 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
         return (
           <div key={stageName} className={large ? "flex flex-col grow shrink-0" : ""}>
             <div className={cn("flex items-center gap-2", large ? "mb-1.5 shrink-0" : "mb-3")}>
-              <h3 className={cn("font-bold text-slate-700", large ? "text-sm uppercase tracking-wide" : "text-base")}>{stageName}</h3>
-              <span className={cn("text-slate-400", large ? "text-xs" : "text-sm")}>
+              <h3 className={cn("font-bold text-white", large ? "text-sm uppercase tracking-wide" : "text-base")}>{stageName}</h3>
+              <span className={cn("text-zinc-500", large ? "text-xs" : "text-sm")}>
                 {done}/{stageTasks.length}
               </span>
-              <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#e20404] transition-all"
                   style={{ width: `${stageTasks.length ? (done / stageTasks.length) * 100 : 0}%` }}
@@ -69,15 +69,15 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                     <div className="flex-1 min-w-0">
                       <p
                         className={cn(
-                          "font-medium text-slate-800",
+                          "font-medium text-white",
                           large ? "text-sm line-clamp-2 leading-tight" : "text-base",
-                          isComplete && "line-through text-slate-400"
+                          isComplete && "line-through text-zinc-600"
                         )}
                       >
                         {task.name}
                       </p>
                       {task.completed_by && isComplete && (
-                        <p className={cn("text-slate-400 mt-0.5 flex items-center gap-1 truncate", large ? "text-[10px]" : "text-xs")}>
+                        <p className={cn("text-zinc-500 mt-0.5 flex items-center gap-1 truncate", large ? "text-[10px]" : "text-xs")}>
                           <Clock className="w-3 h-3 flex-shrink-0" />
                           {task.completed_by}
                           {!large && task.completed_at && ` • ${new Date(task.completed_at).toLocaleString()}`}
@@ -87,7 +87,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                     {task.status === "in_progress" && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onSetStatus(task, "pending"); }}
-                        className={cn("text-blue-600 font-medium rounded hover:bg-blue-100 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
+                        className={cn("text-blue-400 font-medium rounded hover:bg-blue-900 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
                       >
                         Reset
                       </button>
@@ -95,7 +95,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                     {task.status === "pending" && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onSetStatus(task, "in_progress"); }}
-                        className={cn("text-slate-500 font-medium rounded hover:bg-slate-100 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
+                        className={cn("text-zinc-400 font-medium rounded hover:bg-zinc-800 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
                       >
                         Start
                       </button>

@@ -220,9 +220,9 @@ export default function BuildWorkflow() {
   const progressPct = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-slate-100 overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-900 text-white px-4 md:px-8 py-3 md:py-4 flex-shrink-0">
+      <div className="bg-black text-white px-4 md:px-8 py-3 md:py-4 flex-shrink-0 border-b border-zinc-800">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#e20404] flex items-center justify-center">
@@ -230,11 +230,11 @@ export default function BuildWorkflow() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-bold">Build Workflow</h1>
-              <p className="text-slate-400 text-xs md:text-sm">Tap tasks to mark complete • auto-updates live</p>
+              <p className="text-zinc-500 text-xs md:text-sm">Tap tasks to mark complete • auto-updates live</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700" onClick={() => setShowScanner(true)}>
+            <Button variant="outline" className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800" onClick={() => setShowScanner(true)}>
               <ScanLine className="w-4 h-4 mr-1" /> Scan
             </Button>
           </div>
@@ -258,44 +258,44 @@ export default function BuildWorkflow() {
           <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
             {!currentBuild ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <ClipboardList className="w-14 h-14 mx-auto mb-4 text-slate-300" />
-                <h2 className="text-xl font-semibold text-slate-500 mb-1">No build selected</h2>
-                <p className="text-slate-400">Scan an engine label or pick a build from the list to start tracking its workflow.</p>
+                <ClipboardList className="w-14 h-14 mx-auto mb-4 text-zinc-700" />
+                <h2 className="text-xl font-semibold text-zinc-400 mb-1">No build selected</h2>
+                <p className="text-zinc-600">Scan an engine label or pick a build from the list to start tracking its workflow.</p>
               </div>
             ) : (
               <>
                 {/* Build summary card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-5 mb-4 flex-shrink-0">
+                <div className="bg-zinc-900 rounded-2xl shadow-sm border border-zinc-800 p-4 md:p-5 mb-4 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-2xl font-bold text-slate-900">
+                        <h2 className="text-2xl font-bold text-white">
                           {currentBuild.eed_id ? `EED ${currentBuild.eed_id}` : currentBuild.engine_serial_number}
                         </h2>
                         <Badge className="bg-[#e20404]">{currentBuild.status?.replace("_", " ")}</Badge>
                       </div>
-                      <p className="text-slate-500">{getPlatformName(currentBuild.platform_id)}</p>
-                      <p className="text-sm text-slate-400 mt-1">
+                      <p className="text-zinc-400">{getPlatformName(currentBuild.platform_id)}</p>
+                      <p className="text-sm text-zinc-500 mt-1">
                         {getCustomerName(currentBuild.customer_id)}
                         {currentBuild.engine_serial_number && ` • S/N ${currentBuild.engine_serial_number}`}
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="text-3xl font-bold text-[#e20404]">{progressPct}%</div>
-                      <p className="text-sm text-slate-400">{completedCount} of {tasks.length} tasks done</p>
+                      <p className="text-sm text-zinc-500">{completedCount} of {tasks.length} tasks done</p>
                     </div>
                   </div>
                   {/* Progress bar */}
-                  <div className="mt-4 h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="mt-4 h-3 bg-zinc-800 rounded-full overflow-hidden">
                     <div className="h-full bg-[#e20404] transition-all duration-500" style={{ width: `${progressPct}%` }} />
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-zinc-500">
                       {tasks.length === 0
                         ? "No workflow assigned"
                         : `${tasks.length - completedCount} remaining`}
                     </span>
-                    <Button size="sm" variant="outline" onClick={() => setShowAssign(true)}>
+                    <Button size="sm" variant="outline" className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700" onClick={() => setShowAssign(true)}>
                       <ClipboardList className="w-4 h-4 mr-1" />
                       {tasks.length === 0 ? "Assign Workflow" : "Change Workflow"}
                     </Button>
