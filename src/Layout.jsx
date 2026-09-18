@@ -272,29 +272,31 @@ export default function Layout({ children, currentPageName }) {
           />
           <NotificationBell />
         </div>
-        {/* Desktop sticky bar — always visible with bell; Back button shown on non-Dashboard pages */}
-        <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between print:hidden">
-          {currentPageName !== "Dashboard" ? (
+        {/* Desktop sticky bar — hidden on Build Workflow (full-screen dark mode); Back button shown on non-Dashboard pages */}
+        {!isWorkflow && (
+          <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between print:hidden">
+            {currentPageName !== "Dashboard" ? (
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back
+              </button>
+            ) : (
+              <div />
+            )}
             <button
-              onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"
+              onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
             >
-              <ChevronLeft className="w-4 h-4" />
-              Back
+              <Search className="w-4 h-4" />
+              <span className="hidden lg:inline">Search</span>
+              <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
             </button>
-          ) : (
-            <div />
-          )}
-          <button
-            onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
-          >
-            <Search className="w-4 h-4" />
-            <span className="hidden lg:inline">Search</span>
-            <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
-          </button>
-          <NotificationBell />
-        </div>
+            <NotificationBell />
+          </div>
+        )}
         {children}
       </main>
     </div>
