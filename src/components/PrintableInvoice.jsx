@@ -6,6 +6,85 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
+function SectionedItems({ invoice }) {
+  // Collect all items with their engine_section, preserving order
+  const sections = {};
+  const order = [];
+  const addItem = (section, item) => {
+    const key = section || "General";
+    if (!sections[key]) { sections[key] = { parts: [], labor: [], machining: [] }; order.push(key); }
+  };
+
+  (invoice.line_items || []).forEach((l) => {
+    const key = l.engine_section || "General";
+    if (!sections[key]) { sections[key] = { parts: [], labor: [], machining: [] }; order.push(key); }
+    sections[key].parts.push(l);
+  });
+  (invoice.labor_items || []).forEach((l) => {
+    const key = l.engine_section || "General";
+    if (!sections[key]) { sections[key] = { parts: [], labor: [], machining: [] }; order.push(key); }
+    sections[key].labor.push(l);
+  });
+  (invoice.machining_items || []).forEach((m) => {
+    const key = m.engine_section || "General";
+    if (!sections[key]) { sections[key] = { parts: [], labor: [], machining: [] }; order.push(key); }
+    sections[key].machining.push(m);
+  });
+
+  return (
+    <>
+      {order.map((key) => {
+        const s = sections[key];
+        const sectionSubtotal =
+          s.parts.reduce((sum, l) => sum + (Number(l.total) || 0), 0) +
+          s.labor.reduce((sum, l) => sum + (Number(l.price) || 0), 0) +
+          s.machining.reduce((sum, m) => sum + (Number(m.price) || 0), 0);
+        return (
+          <React.Fragment key={key}>
+            <tr className="inv-section-row">
+              <td colSpan={4}>{key}</td>
+            </tr>
+            {s.parts.map((item, idx) => (
+              <tr key={`p-${key}-${idx}`}>
+                <td>{item.item_name}</td>
+                <td className="inv-center">{item.quantity}</td>
+                <td className="inv-right">${Number(item.unit_price).toFixed(2)}</td>
+                <td className="inv-right">${Number(item.total).toFixed(2)}</td>
+              </tr>
+            ))}
+            {s.labor.length > 0 && (
+              <tr className="inv-section-row"><td colSpan={4} style={{ fontSize: "9px" }}>Labor</td></tr>
+            )}
+            {s.labor.map((item, idx) => (
+              <tr key={`l-${key}-${idx}`}>
+                <td>{item.name} {item.description && `— ${item.description}`}</td>
+                <td className="inv-center">1</td>
+                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+              </tr>
+            ))}
+            {s.machining.length > 0 && (
+              <tr className="inv-section-row"><td colSpan={4} style={{ fontSize: "9px" }}>Machining</td></tr>
+            )}
+            {s.machining.map((item, idx) => (
+              <tr key={`m-${key}-${idx}`}>
+                <td>{item.name} {item.description && `— ${item.description}`}</td>
+                <td className="inv-center">1</td>
+                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr className="inv-section-subtotal">
+              <td colSpan={3} style={{ textAlign: "right", fontWeight: "bold", fontSize: "10px", color: "#666", borderTop: "1px solid #eee", paddingTop: "2px" }}>{key} Subtotal</td>
+              <td className="inv-right" style={{ fontWeight: "bold", fontSize: "10px", color: "#666", borderTop: "1px solid #eee", paddingTop: "2px" }}>${sectionSubtotal.toFixed(2)}</td>
+            </tr>
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform, specSheet }) {
   if (!invoice || !customer) return null;
 
@@ -17,13 +96,21 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
   const hasLabor = (invoice.labor_items || []).length > 0;
   const hasMachining = (invoice.machining_items || []).length > 0;
 
+  // Use sectioned layout when this is a combined invoice OR any item carries an engine_section
+  const useSections = invoice.is_combined ||
+    (invoice.line_items || []).some(l => l.engine_section) ||
+    (invoice.labor_items || []).some(l => l.engine_section) ||
+    (invoice.machining_items || []).some(m => m.engine_section);
+
   return (
     <div className="invoice-page" style={{ fontFamily: "Arial, sans-serif", color: "#333" }}>
       {/* Header */}
       <div className="inv-header">
         <div>
           <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "50px", marginBottom: "6px" }} />
-          <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>INVOICE</h1>
+          <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>
+            {invoice.is_combined ? "COMBINED INVOICE" : "INVOICE"}
+          </h1>
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "18px", fontWeight: "bold", color: "#e20404", marginBottom: "2px" }}>#{invoice.invoice_number}</p>
@@ -32,8 +119,8 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
         </div>
       </div>
 
-      {/* Engine Details */}
-      {customerEngine && (
+      {/* Engine Details (only for single-engine invoices) */}
+      {!useSections && customerEngine && (
         <div className="inv-engine-bar">
           {customerEngine.eed_id && <div><span className="lbl">EED ID</span><br /><strong style={{ fontFamily: "monospace", color: "#e20404" }}>{customerEngine.eed_id}</strong></div>}
           {customerEngine.engine_serial_number && <div><span className="lbl">Serial #</span><br /><strong>{customerEngine.engine_serial_number}</strong></div>}
@@ -62,40 +149,46 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
           </tr>
         </thead>
         <tbody>
-          {(invoice.line_items || []).map((item, idx) => (
-            <tr key={`part-${idx}`}>
-              <td>{item.item_name}</td>
-              <td className="inv-center">{item.quantity}</td>
-              <td className="inv-right">${Number(item.unit_price).toFixed(2)}</td>
-              <td className="inv-right">${Number(item.total).toFixed(2)}</td>
-            </tr>
-          ))}
-          {hasLabor && (
-            <tr className="inv-section-row">
-              <td colSpan={4}>Labor</td>
-            </tr>
+          {useSections ? (
+            <SectionedItems invoice={invoice} />
+          ) : (
+            <>
+              {(invoice.line_items || []).map((item, idx) => (
+                <tr key={`part-${idx}`}>
+                  <td>{item.item_name}</td>
+                  <td className="inv-center">{item.quantity}</td>
+                  <td className="inv-right">${Number(item.unit_price).toFixed(2)}</td>
+                  <td className="inv-right">${Number(item.total).toFixed(2)}</td>
+                </tr>
+              ))}
+              {hasLabor && (
+                <tr className="inv-section-row">
+                  <td colSpan={4}>Labor</td>
+                </tr>
+              )}
+              {(invoice.labor_items || []).map((item, idx) => (
+                <tr key={`labor-${idx}`}>
+                  <td>{item.name} {item.description && `— ${item.description}`}</td>
+                  <td className="inv-center">1</td>
+                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                </tr>
+              ))}
+              {hasMachining && (
+                <tr className="inv-section-row">
+                  <td colSpan={4}>Machining</td>
+                </tr>
+              )}
+              {(invoice.machining_items || []).map((item, idx) => (
+                <tr key={`machining-${idx}`}>
+                  <td>{item.name} {item.description && `— ${item.description}`}</td>
+                  <td className="inv-center">1</td>
+                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                </tr>
+              ))}
+            </>
           )}
-          {(invoice.labor_items || []).map((item, idx) => (
-            <tr key={`labor-${idx}`}>
-              <td>{item.name} {item.description && `— ${item.description}`}</td>
-              <td className="inv-center">1</td>
-              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-            </tr>
-          ))}
-          {hasMachining && (
-            <tr className="inv-section-row">
-              <td colSpan={4}>Machining</td>
-            </tr>
-          )}
-          {(invoice.machining_items || []).map((item, idx) => (
-            <tr key={`machining-${idx}`}>
-              <td>{item.name} {item.description && `— ${item.description}`}</td>
-              <td className="inv-center">1</td>
-              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-              <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-            </tr>
-          ))}
         </tbody>
       </table>
 

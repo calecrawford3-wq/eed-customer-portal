@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History, MessageSquare } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History, MessageSquare, Layers } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -48,6 +48,7 @@ export default function InvoiceDetail() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
   const isNew = params.get("new") === "1";
+  const isCombinedNew = params.get("combined") === "1";
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -56,6 +57,8 @@ export default function InvoiceDetail() {
     customer_id: "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
     due_date: "",
+    is_combined: isCombinedNew,
+    member_invoice_ids: [],
     line_items: [{ ...emptyPart }],
     labor_items: [],
     machining_items: [],
@@ -169,6 +172,13 @@ export default function InvoiceDetail() {
     queryFn: () => base44.entities.Invoice.filter({ id }),
     enabled: !!id,
   });
+
+  const { data: allInvoices = [] } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => base44.entities.Invoice.list("-created_date", 200),
+  });
+  const memberInvoices = (form.member_invoice_ids || []).map(mid => allInvoices.find(i => i.id === mid)).filter(Boolean);
+  const parentInvoice = form.combined_parent_id ? allInvoices.find(i => i.id === form.combined_parent_id) : null;
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
@@ -886,6 +896,43 @@ export default function InvoiceDetail() {
         </Button>
       </div>
 
+      {/* Combined invoice banner */}
+      {form.is_combined && (
+        <div className="mb-6 bg-[#e20404]/5 border border-[#e20404]/30 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Layers className="w-5 h-5 text-[#e20404] flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#e20404]">Combined Multi-Engine Invoice</p>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Items below are grouped by engine section for the customer-facing view. Each line item has an "Engine" tag you can edit. The customer sees one invoice with per-engine sections.
+              </p>
+              {memberInvoices.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="text-xs text-slate-500">Source invoices:</span>
+                  {memberInvoices.map(mi => (
+                    <Link key={mi.id} to={`/InvoiceDetail?id=${mi.id}`}>
+                      <Badge className="bg-white border border-slate-200 text-slate-700 hover:border-[#e20404] cursor-pointer text-xs">{mi.invoice_number}</Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button size="sm" variant="outline" className="border-[#e20404] text-[#e20404] hover:bg-[#e20404]/10" onClick={() => setForm(f => ({ ...f, is_combined: false }))}>
+              Convert to single-engine
+            </Button>
+          </div>
+        </div>
+      )}
+      {parentInvoice && (
+        <div className="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <Layers className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <p className="text-sm text-slate-600 flex-1">
+            This invoice is part of combined invoice{" "}
+            <Link to={`/InvoiceDetail?id=${parentInvoice.id}`} className="font-mono font-medium text-[#e20404] hover:underline">{parentInvoice.invoice_number}</Link>
+          </p>
+        </div>
+      )}
+
       {/* Illegal Parts Agreement bar */}
       {form.contains_illegal_parts && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
@@ -986,13 +1033,18 @@ export default function InvoiceDetail() {
                 </SelectContent>
               </Select>
             </div>
-            {form.customer_id && (
+            {form.customer_id && !form.is_combined && (
               <EngineSelector
                 customerId={form.customer_id}
                 value={form.customer_engine_id || ""}
                 onChange={(v) => setForm({...form, customer_engine_id: v})}
                 platforms={platforms}
               />
+            )}
+            {form.customer_id && !form.is_combined && (
+              <Button size="sm" variant="outline" className="w-full border-[#e20404] text-[#e20404] hover:bg-[#e20404]/5" onClick={() => setForm(f => ({ ...f, is_combined: true, customer_engine_id: "" }))}>
+                <Layers className="w-4 h-4 mr-1" /> Convert to Multi-Engine Invoice
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -1041,6 +1093,7 @@ export default function InvoiceDetail() {
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-28">Part #</th>
                   <th className="text-left py-2 font-medium text-slate-600">Item Name</th>
+                  {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-40">Engine</th>}
                   <th className="text-center py-2 font-medium text-slate-600 w-16">Qty</th>
                   <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Cost</th>
                   <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Price</th>
@@ -1068,6 +1121,11 @@ export default function InvoiceDetail() {
                         </div>
                       )}
                     </td>
+                    {form.is_combined && (
+                      <td className="py-2 pr-2">
+                        <Input value={line.engine_section || ""} onChange={e => updateLine(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" />
+                      </td>
+                    )}
                     <td className="py-2 px-1">
                       <Input type="number" value={line.quantity} onChange={e => updateLine(idx, "quantity", Number(e.target.value))} className="text-center border-slate-200" min="0" />
                     </td>
@@ -1109,6 +1167,7 @@ export default function InvoiceDetail() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
+                  {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-40">Engine</th>}
                   <th className="text-left py-2 font-medium text-slate-600">Description</th>
                   <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
                   <th className="w-10"></th>
@@ -1123,6 +1182,7 @@ export default function InvoiceDetail() {
                         <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
                       </div>
                     </td>
+                    {form.is_combined && <td className="py-2 pr-2"><Input value={item.engine_section || ""} onChange={e => updateLabor(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" /></td>}
                     <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateLabor(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
                     <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateLabor(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
                     <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLabor(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
@@ -1148,6 +1208,7 @@ export default function InvoiceDetail() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
+                  {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-40">Engine</th>}
                   <th className="text-left py-2 font-medium text-slate-600">Description</th>
                   <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
                   <th className="w-10"></th>
@@ -1162,6 +1223,7 @@ export default function InvoiceDetail() {
                         <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
                       </div>
                     </td>
+                    {form.is_combined && <td className="py-2 pr-2"><Input value={item.engine_section || ""} onChange={e => updateMachining(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" /></td>}
                     <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
                     <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
                     <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>

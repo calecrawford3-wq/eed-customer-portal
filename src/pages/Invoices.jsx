@@ -11,7 +11,9 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import LegacyInvoiceImportModal from "@/components/invoices/LegacyInvoiceImportModal";
+import CombineInvoicesModal from "@/components/invoices/CombineInvoicesModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { Layers } from "lucide-react";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -26,6 +28,7 @@ export default function Invoices() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [legacyImportOpen, setLegacyImportOpen] = useState(false);
+  const [combineOpen, setCombineOpen] = useState(false);
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState({ open: false });
 
@@ -75,10 +78,18 @@ export default function Invoices() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Invoices</h1>
           <p className="text-slate-500 mt-1">{invoices.length} total invoices</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setLegacyImportOpen(true)}>
             <Upload className="w-4 h-4 mr-2" /> Import Legacy
           </Button>
+          <Button variant="outline" onClick={() => setCombineOpen(true)} className="border-[#e20404] text-[#e20404] hover:bg-[#e20404]/5">
+            <Layers className="w-4 h-4 mr-2" /> Combine Invoices
+          </Button>
+          <Link to="/InvoiceDetail?new=1&combined=1">
+            <Button variant="outline">
+              <Layers className="w-4 h-4 mr-2" /> New Multi-Engine Invoice
+            </Button>
+          </Link>
           <Link to="/InvoiceDetail?new=1">
             <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
               <Plus className="w-4 h-4 mr-2" /> New Invoice
@@ -88,6 +99,7 @@ export default function Invoices() {
       </div>
 
       <LegacyInvoiceImportModal open={legacyImportOpen} onClose={() => setLegacyImportOpen(false)} />
+      <CombineInvoicesModal open={combineOpen} onClose={() => setCombineOpen(false)} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
@@ -164,6 +176,8 @@ export default function Invoices() {
                   <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-4 py-3 font-mono font-medium text-[#e20404]">
                       <Link to={`/InvoiceDetail?id=${inv.id}`} className="hover:underline">{inv.invoice_number}</Link>
+                      {inv.is_combined && <Badge className="ml-2 bg-[#e20404] text-white border-0 text-[10px]">COMBINED</Badge>}
+                      {inv.combined_parent_id && <Badge className="ml-2 bg-slate-200 text-slate-600 border-0 text-[10px]">MEMBER</Badge>}
                     </td>
                     <td className="px-4 py-3 text-slate-900">
                       {customer ? `${customer.first_name} ${customer.last_name}` : "—"}

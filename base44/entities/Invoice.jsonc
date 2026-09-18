@@ -31,6 +31,22 @@
       "type": "boolean",
       "default": false
     },
+    "is_combined": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this is a combined/multi-engine invoice that aggregates items from multiple member invoices (or was built from scratch with multiple engine sections). The customer sees one sectioned invoice; the admin sees per-engine attribution."
+    },
+    "member_invoice_ids": {
+      "type": "array",
+      "description": "IDs of the source invoices that were merged into this combined invoice (empty when the combined invoice was built from scratch).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "combined_parent_id": {
+      "type": "string",
+      "description": "On a member invoice, points to the combined invoice that absorbed it. Lets the admin navigate from a member to its combined parent."
+    },
     "is_legacy": {
       "type": "boolean",
       "default": false
@@ -88,6 +104,10 @@
           },
           "total": {
             "type": "number"
+          },
+          "engine_section": {
+            "type": "string",
+            "description": "Engine label this line item belongs to on a combined/multi-engine invoice (e.g. 'EED 1040 \u2014 GSX600'). Blank on single-engine invoices."
           },
           "is_kit": {
             "type": "boolean",
@@ -183,6 +203,10 @@
           },
           "price": {
             "type": "number"
+          },
+          "engine_section": {
+            "type": "string",
+            "description": "Engine label this labor item belongs to on a combined invoice."
           }
         }
       }
@@ -201,6 +225,10 @@
           },
           "price": {
             "type": "number"
+          },
+          "engine_section": {
+            "type": "string",
+            "description": "Engine label this machining item belongs to on a combined invoice."
           }
         }
       }

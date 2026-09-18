@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
       status: inv.status === "draft" ? "sent" : inv.status,
       issue_date: inv.issue_date,
       due_date: inv.due_date,
+      is_combined: inv.is_combined || false,
       line_items: inv.line_items || [],
       labor_items: inv.labor_items || [],
       machining_items: inv.machining_items || [],
