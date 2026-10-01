@@ -7,6 +7,7 @@ import React, {
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import { uploadAttachments } from "@/lib/messagingUtils";
 
 const MessagingContext = createContext(null);
 
@@ -52,22 +53,6 @@ function playSuccessSound() {
 
 function playErrorSound() {
   playTone(196, 0.25, "sawtooth", 0.08);
-}
-
-async function uploadAttachments(attachments) {
-  const uploadedUrls = [];
-  for (const attachment of attachments) {
-    const result = await base44.integrations.Core.UploadFile({
-      file: attachment.file,
-    });
-    if (!result?.file_url) {
-      throw new Error(
-        `Upload failed for ${attachment.file.name}.`
-      );
-    }
-    uploadedUrls.push(result.file_url);
-  }
-  return uploadedUrls;
 }
 
 export function MessagingProvider({ children }) {
