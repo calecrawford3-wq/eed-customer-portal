@@ -123,7 +123,10 @@ export default function EngineCheckInModal({ open, onClose }) {
       if (linkType === "estimate" && linkEstimateId) {
         try {
           await base44.entities.Estimate.update(linkEstimateId, { customer_engine_id: created.id });
+          // Reconcile/create the job so it appears on the Jobs board
+          await base44.functions.invoke("ensureJobForEstimate", { estimate_id: linkEstimateId, activate: true });
           qc.invalidateQueries({ queryKey: ["estimates"] });
+          qc.invalidateQueries({ queryKey: ["jobs"] });
         } catch (e) {
           console.warn("Failed to link estimate:", e);
           toast.error("Engine checked in, but failed to link estimate: " + (e.message || e));

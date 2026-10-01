@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, RotateCcw, Tag } from "lucide-react";
+import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, RotateCcw, Tag, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import IntakeEngineDialog from "@/components/jobs/IntakeEngineDialog";
 import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDialog";
 import { moveJobStage, getIntakeAction } from "@/lib/jobMoveHelpers";
 import LocationBoard from "@/components/jobs/LocationBoard";
+import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 
 // --- View definitions ---
 // Views change which columns are shown. Jobs can appear in multiple views.
@@ -113,6 +114,7 @@ export default function Jobs() {
   const [movingId, setMovingId] = useState(null);
   const [intakeDialog, setIntakeDialog] = useState(null); // { type: "estimate"|"engine", job, customer }
   const [pickupDialog, setPickupDialog] = useState(null); // job
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs", showArchive],
@@ -317,6 +319,9 @@ export default function Jobs() {
               <List className="w-4 h-4" />
             </button>
           </div>
+          <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setCheckInOpen(true)}>
+            <Cpu className="w-4 h-4 mr-1" /> Check In Engine
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowArchive(!showArchive)}>
             {showArchive ? <ArchiveRestore className="w-4 h-4 mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
             {showArchive ? "Active" : "Archive"}
@@ -460,6 +465,9 @@ export default function Jobs() {
           onLinked={() => invalidateAll()}
         />
       )}
+      {/* Check In Engine modal */}
+      <EngineCheckInModal open={checkInOpen} onClose={() => { setCheckInOpen(false); invalidateAll(); }} />
+
       {/* Pickup/shipping check dialog */}
       {pickupDialog && (
         <PickupShippingCheckDialog
