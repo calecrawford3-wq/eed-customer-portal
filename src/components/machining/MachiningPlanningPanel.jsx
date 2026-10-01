@@ -12,10 +12,23 @@ import { Plus, Trash2, Pencil, Check, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { TYPE_LABELS, TYPE_OPTIONS, defaultMeasurements, TaskFields } from "@/components/machining/MachiningTaskFields";
 
+// Map a machining item name (from an estimate/invoice) to a MachiningTask type.
+// Only the name is available on the document line, so we match by keyword.
+function nameToTaskType(name) {
+  const n = (name || "").toLowerCase();
+  if (n.includes("shave") || n.includes("surfacing") || n.includes("surface head") || n.includes("mill head")) return "shave_head";
+  if (n.includes("deck")) return "deck_case";
+  if (n.includes("valve")) return "valve_work";
+  if (n.includes("polish")) return "polishing";
+  return "other";
+}
+
 // Planning panel: add, edit, and review machining tasks for a job.
 // Opens when an engine moves into the Machining stage, or manually from the
 // Job Card Machining tab. If tasks already exist, shows them for review
-// instead of creating duplicates.
+// instead of creating duplicates. When opening with no existing tasks, it
+// pre-populates drafts from the estimate/invoice machining items (only those
+// actually present on the documents) so the shop doesn't have to re-enter them.
 export default function MachiningPlanningPanel({ job, build, engine, open, onClose }) {
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState([]);
@@ -29,20 +42,73 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   });
   const existingTasks = tasksData?.items || tasksData || [];
 
+  // Fetch the machining items from the linked estimate and invoice(s) so we
+  // can pre-populate drafts. Only items actually on the documents are used —
+  // we never invent tasks (deck case, polish valves, etc.) that aren't billed.
+  const { data: sourceItems } = useQuery({
+    queryKey: ["machining-source-items", job?.estimate_id, job?.invoice_ids?.join(",") || ""],
+    queryFn: async () => {
+      const items = [];
+      const seen = new Set();
+      const add = (mi) => {
+        const key = (mi?.name || "").toLowerCase().trim();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        items.push({ name: mi.name, description: mi.description || "" });
+      };
+      if (job?.estimate_id) {
+        try {
+          const est = await base44.entities.Estimate.get(job.estimate_id);
+          (est.machining_items || []).forEach(add);
+        } catch {}
+      }
+      if (job?.invoice_ids?.length) {
+        for (const invId of job.invoice_ids) {
+          try {
+            const inv = await base44.entities.Invoice.get(invId);
+            (inv.machining_items || []).forEach(add);
+          } catch {}
+        }
+      }
+      return items;
+    },
+    enabled: !!job?.id && open,
+  });
+
   useEffect(() => {
-    if (open && drafts.length === 0 && existingTasks.length === 0) {
-      // Start with one blank draft
-      setDrafts([blankDraft()]);
-    }
-    if (open && existingTasks.length > 0 && drafts.length === 0) {
-      setDrafts([]); // review mode — no new drafts until user adds
-    }
     if (!open) {
       setDrafts([]);
       setEditingId(null);
       setEditDraft(null);
+      return;
     }
-  }, [open]); // eslint-disable-line
+    if (existingTasks.length > 0 && drafts.length === 0) {
+      setDrafts([]); // review mode — no new drafts until user adds
+      return;
+    }
+    if (drafts.length === 0 && existingTasks.length === 0 && sourceItems) {
+      // Pre-populate from the estimate/invoice machining items. Each draft
+      // leaves affected_component blank — the shop must specify which head,
+      // which seats, etc. before saving (enforced in saveAll).
+      if (sourceItems.length > 0) {
+        setDrafts(sourceItems.map(item => {
+          const taskType = nameToTaskType(item.name);
+          return {
+            _id: Math.random().toString(36).slice(2),
+            task_type: taskType,
+            task_label: item.name,
+            affected_component: "",
+            instructions: item.description || "",
+            include_in_customer_docs: false,
+            is_required: true,
+            measurements: defaultMeasurements(taskType),
+          };
+        }));
+      } else {
+        setDrafts([blankDraft()]);
+      }
+    }
+  }, [open, sourceItems]); // eslint-disable-line
 
   const blankDraft = () => ({
     _id: Math.random().toString(36).slice(2),
@@ -72,10 +138,16 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   const removeDraft = (id) => setDrafts(drafts.filter(d => d._id !== id));
 
   const saveAll = async () => {
-    // Validate drafts have a component or label
+    // Validate drafts: affected component is required for every task type except
+    // "other" (where the custom task label is the identifier). This forces the
+    // shop to specify which head, which seats, etc. rather than assuming.
     for (const d of drafts) {
-      if (!d.affected_component && !d.task_label && d.task_type !== "other") {
-        toast.error(`Please enter an affected component for each ${TYPE_LABELS[d.task_type]} task.`);
+      if (!d.affected_component && d.task_type !== "other") {
+        toast.error(`Specify the affected component for "${d.task_label || TYPE_LABELS[d.task_type]}" (e.g. which head, which seats).`);
+        return;
+      }
+      if (d.task_type === "other" && !d.task_label?.trim()) {
+        toast.error("Enter a custom task name for each 'Other Machining' task.");
         return;
       }
     }
@@ -183,7 +255,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
                       {t.instructions && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{t.instructions}</p>}
                       {t.include_in_customer_docs && <span className="text-[10px] text-blue-600">Visible in customer docs</span>}
                     </div>
-                    {t.status === "pending" && (
+                    {(t.status === "pending" || t.status === "in_progress") && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button onClick={() => startEdit(t)} className="p-1 text-slate-400 hover:text-[#e20404]"><Pencil className="w-3.5 h-3.5" /></button>
                         <button onClick={() => deleteTask(t.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
