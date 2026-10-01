@@ -34,6 +34,8 @@ import VoipPhonebookSettings from './pages/VoipPhonebookSettings';
 import VoipPhonebookSyncHistory from './pages/VoipPhonebookSyncHistory';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import OAuthConsent from './pages/OAuthConsent';
+import Jobs from './pages/Jobs';
+import JobCard from './pages/JobCard';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -118,6 +120,8 @@ const AuthenticatedApp = () => {
       <Route path="/Addons" element={<LayoutWrapper currentPageName="Addons"><Addons /></LayoutWrapper>} />
       <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
       <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
+      <Route path="/Jobs" element={<LayoutWrapper currentPageName="Jobs"><Jobs /></LayoutWrapper>} />
+      <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCard /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

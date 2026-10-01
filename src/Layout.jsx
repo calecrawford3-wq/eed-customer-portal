@@ -33,6 +33,7 @@ import {
   ClipboardCheck,
   FlaskConical,
   Boxes,
+  Briefcase,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -77,6 +78,7 @@ export default function Layout({ children, currentPageName }) {
       label: "Overview",
       items: [
         { name: "Dashboard", page: "Dashboard", icon: Gauge },
+        { name: "Jobs", page: "Jobs", icon: Briefcase },
       ],
     },
     {

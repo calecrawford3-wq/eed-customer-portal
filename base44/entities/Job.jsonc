@@ -1,0 +1,146 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "job_number": {
+      "type": "string",
+      "description": "Stable job identifier independent of estimate/invoice numbers (e.g. JOB-100001)"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer"
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Linked CustomerEngine (the physical engine this job services)"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Primary linked Estimate"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked EngineBuild (set on activation)"
+    },
+    "invoice_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "All invoices linked to this job (single + combined members)"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform ID (denormalized for filtering)"
+    },
+    "service_package": {
+      "type": "string",
+      "description": "Service package / spec type (stock, stage_1, stage_2, stage_3, contract, custom)"
+    },
+    "is_engine_build": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this job is an engine build (vs standalone parts/service). Controls whether activation creates a build and whether inventory is reserved."
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "awaiting_approval",
+        "awaiting_deposit",
+        "queued",
+        "teardown",
+        "waiting_on_parts",
+        "machining",
+        "assembly",
+        "testing",
+        "ready_for_pickup",
+        "picked_up"
+      ],
+      "default": "awaiting_approval",
+      "description": "Lifecycle stage. awaiting_approval/awaiting_deposit are pre-activation. The rest are active-shop stages."
+    },
+    "blocking_condition": {
+      "type": "string",
+      "enum": [
+        "none",
+        "awaiting_approval",
+        "awaiting_deposit",
+        "waiting_on_parts",
+        "waiting_on_approval",
+        "waiting_on_customer"
+      ],
+      "default": "awaiting_approval",
+      "description": "Separate from stage \u2014 a job can be in machining while also waiting_on_parts"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once activation requirements are met (approved + deposit satisfied). Controls whether the job appears in the active work queue."
+    },
+    "deposit_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "deposit_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "deposit_met": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the required deposit has been received"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deposit_met_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "storage_location": {
+      "type": "string"
+    },
+    "parts_readiness": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "partially_supplied",
+        "waiting_on_parts",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Computed from reservations: ready = no shortages, partially_supplied = some received, waiting_on_parts = outstanding shortages"
+    },
+    "next_action": {
+      "type": "string",
+      "description": "Computed next-step guidance for the persistent header"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for completed/picked-up jobs moved to the archive"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "warranty_for_job_id": {
+      "type": "string",
+      "description": "When this job is a warranty repair, points to the original job it warranties"
+    },
+    "is_warranty": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "job_number",
+    "customer_id"
+  ]
+}

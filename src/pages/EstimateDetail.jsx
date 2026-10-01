@@ -956,6 +956,11 @@ export default function EstimateDetail() {
         setForm(f => ({ ...f, build_id: build.id, invoice_id: invoice.id }));
         qc.invalidateQueries({ queryKey: ["builds"] });
         qc.invalidateQueries({ queryKey: ["invoices"] });
+        // Create/activate the unified Job for this estimate
+        try {
+          await base44.functions.invoke("ensureJobForEstimate", { estimate_id: id, activate: true });
+          qc.invalidateQueries({ queryKey: ["jobs"] });
+        } catch (e) { console.warn("Failed to create/activate job:", e); }
         setConvertingToBuild(false);
         toast.success("Estimate approved — engine build & invoice created!");
         navigate(`/BuildDetail?id=${build.id}`);
@@ -1008,6 +1013,11 @@ export default function EstimateDetail() {
       }
       setForm(f => ({ ...f, invoice_id: invoice.id }));
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      // Create/activate the unified Job for this estimate
+      try {
+        await base44.functions.invoke("ensureJobForEstimate", { estimate_id: id, activate: true });
+        qc.invalidateQueries({ queryKey: ["jobs"] });
+      } catch (e) { console.warn("Failed to create/activate job:", e); }
       toast.success("Estimate approved — invoice created!");
       navigate(`/InvoiceDetail?id=${invoice.id}`);
     }
@@ -1096,6 +1106,11 @@ export default function EstimateDetail() {
       try {
         await base44.functions.invoke("linkReservationsToBuild", { estimate_id: id, build_id: build.id });
       } catch (e) { console.warn("Failed to link reservations to build:", e); }
+      // Reconcile the unified Job (activate now that a build exists)
+      try {
+        await base44.functions.invoke("ensureJobForEstimate", { estimate_id: id, activate: true });
+        qc.invalidateQueries({ queryKey: ["jobs"] });
+      } catch (e) { console.warn("Failed to reconcile job:", e); }
       qc.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Engine build created! Redirecting...");
       navigate(`/BuildDetail?id=${build.id}`);
