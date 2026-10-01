@@ -320,7 +320,7 @@ export default function CallsView() {
             <Button onClick={handleDialNew} disabled={!ncPhone.trim()} className="w-full bg-[#e20404] hover:bg-[#c00303] text-white">
               <Phone className="w-4 h-4 mr-2" /> Dial {ncPhone ? formatPhoneDisplay(ncPhone) : ""}
             </Button>
-            <p className="text-xs text-slate-400 text-center">On desktop this rings your Cisco desk phone then connects the customer. On mobile it opens your phone's dialer.</p>
+            <p className="text-xs text-slate-400 text-center">Copy the number to dial from your VoIP.ms app or phone. On mobile, tap to dial directly.</p>
           </div>
         </DialogContent>
       </Dialog>

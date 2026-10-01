@@ -95,7 +95,7 @@ export default function VoipPhonebookPanel() {
 
   const handleTestConnection = async () => {
     const data = await invokeBridge("test_connection", setConnTest);
-    if (data?.ok) toast.success("Bridge connection successful");
+    if (data?.ok) toast.success("VoIP.ms connection successful");
     else toast.error("Connection failed: " + (data?.message || "Unknown"));
   };
 
@@ -175,7 +175,7 @@ export default function VoipPhonebookPanel() {
         <div className="flex items-center gap-2">
           <Phone className="w-5 h-5 text-slate-600" />
           <p className="text-sm text-muted-foreground">
-            Synchronize customer names and phone numbers to the VoIP.ms Phone Book via the ElitePhoneBridge proxy.
+            Synchronize customer names and phone numbers directly to the VoIP.ms Phone Book via the REST API.
           </p>
         </div>
         <Link to="/VoipPhonebookSyncHistory">
@@ -274,7 +274,7 @@ export default function VoipPhonebookPanel() {
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={handleTestConnection} disabled={connTest?.loading}>
               {connTest?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wifi className="w-4 h-4 mr-1" />}
-              Test Bridge Connection
+              Test VoIP.ms Connection
             </Button>
 
             <Button variant="outline" onClick={handleGetIP} disabled={ipResult?.loading}>
@@ -303,7 +303,7 @@ export default function VoipPhonebookPanel() {
             <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${connTest.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
               {connTest.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
               <div>
-                <p className="font-medium">{connTest.ok ? "Bridge Connection Successful" : "Connection Failed"}</p>
+                <p className="font-medium">{connTest.ok ? "VoIP.ms Connection Successful" : "Connection Failed"}</p>
                 <p className="text-xs mt-0.5">{connTest.message}</p>
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function VoipPhonebookPanel() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Verify the ElitePhoneBridge connectivity and VoIP.ms API status.
+            Verify direct VoIP.ms API connectivity and credential status.
           </p>
           <Button variant="outline" onClick={handleDiagnostics} disabled={diagnostics?.loading}>
             {diagnostics?.loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wifi className="w-4 h-4 mr-1" />}
@@ -453,19 +453,30 @@ export default function VoipPhonebookPanel() {
                 <code className="bg-muted px-2 py-0.5 rounded">{diagnostics.outbound_ip || "Unknown"}</code>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Bridge Mode</span>
-                <Badge variant={diagnostics.bridge_mode ? "default" : "outline"}>
-                  {diagnostics.bridge_mode ? "Active" : "Off"}
+                <span className="text-muted-foreground">API Mode</span>
+                <Badge variant={diagnostics.direct_api_mode ? "default" : "outline"}>
+                  {diagnostics.direct_api_mode ? "Direct" : "Unknown"}
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Bridge Connection</span>
-                <Badge variant={diagnostics.bridge_connection?.ok ? "default" : "destructive"}>
-                  {diagnostics.bridge_connection?.ok ? "Connected" : "Failed"}
+                <span className="text-muted-foreground">VoIP.ms Connection</span>
+                <Badge variant={diagnostics.connection?.ok ? "default" : "destructive"}>
+                  {diagnostics.connection?.ok ? "Connected" : "Failed"}
                 </Badge>
               </div>
-              {diagnostics.bridge_connection && !diagnostics.bridge_connection.ok && (
-                <p className="text-xs text-red-600">{diagnostics.bridge_connection.message}</p>
+              {diagnostics.phonebook_read && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Authenticated Read</span>
+                  <Badge variant={diagnostics.phonebook_read.ok ? "default" : "destructive"}>
+                    {diagnostics.phonebook_read.ok ? "Success" : "Failed"}
+                  </Badge>
+                </div>
+              )}
+              {diagnostics.connection && !diagnostics.connection.ok && (
+                <p className="text-xs text-red-600">{diagnostics.connection.message}</p>
+              )}
+              {diagnostics.phonebook_read && !diagnostics.phonebook_read.ok && (
+                <p className="text-xs text-red-600">{diagnostics.phonebook_read.message}</p>
               )}
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 text-amber-800 text-sm">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />

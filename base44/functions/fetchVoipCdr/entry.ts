@@ -103,18 +103,6 @@ Deno.serve(async (req) => {
       const startedMs = c.date ? parseVoipCdrDateMs(c.date) : 0;
       const startedAt = startedMs ? new Date(startedMs).toISOString() : new Date().toISOString();
 
-      // Outbound only: if a manual log (click-to-call) already covers this call
-      // within a 5-minute window, skip it to avoid duplicates.
-      if (isOutbound) {
-        const manualTimes = manualOutboundByPhone.get(phone);
-        if (manualTimes && manualTimes.length) {
-          const cdrMs = startedMs || new Date(startedAt).getTime();
-          if (manualTimes.some((t) => Math.abs(t - cdrMs) < 5 * 60 * 1000)) {
-            if (callId) seenIds.add(callId);
-            continue;
-          }
-        }
-      }
       const endedAt = duration > 0
         ? new Date(new Date(startedAt).getTime() + duration * 1000).toISOString()
         : startedAt;

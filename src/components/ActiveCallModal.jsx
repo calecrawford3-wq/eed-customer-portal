@@ -30,8 +30,6 @@ function fmtTime(s) {
 export default function ActiveCallModal({ open, onClose, customer, customerSuccessTask, builds, onSaved }) {
   const qc = useQueryClient();
   const csMode = !!customerSuccessTask;
-  const [dialMethod, setDialMethod] = useState(null);
-
   const [seconds, setSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [outcome, setOutcome] = useState("connected");
@@ -39,13 +37,12 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
   const [scheduleFollowup, setScheduleFollowup] = useState(false);
   const [followupDate, setFollowupDate] = useState("");
   const [followupTime, setFollowupTime] = useState("");
-  const [callState, setCallState] = useState("dialing"); // dialing | ringing | connected | failed
-  const [callMsg, setCallMsg] = useState("");
   const [selectedBuildId, setSelectedBuildId] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const customerBuilds = (builds || []).filter((b) => b.customer_id === customer?.id);
 
-  // start timer when modal opens; user picks dial method (no auto-dial)
+  // start timer when modal opens
   useEffect(() => {
     if (!open || !customer?.phone) return;
     setSeconds(0);
@@ -56,42 +53,19 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
     setFollowupDate("");
     setFollowupTime("");
     setSelectedBuildId(customerBuilds[0]?.id || "");
-    setDialMethod(null);
-    setCallState("idle");
-    setCallMsg("");
+    setCopied(false);
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const placeDeskCall = async () => {
-    setDialMethod("desk");
-    setCallState("ringing");
-    setCallMsg("Dialing from your Cisco phone…");
-    try {
-      const res = await base44.functions.invoke("voipClick2Call", { to: customer.phone });
-      if (res?.data?.success) {
-        setCallState("connected");
-        setCallMsg("Call placed — your Cisco phone is dialing. Pick up to talk.");
-      } else {
-        setCallState("failed");
-        setCallMsg(res?.data?.error || "Dial failed. You can still log the call manually.");
-      }
-    } catch (err) {
-      setCallState("failed");
-      setCallMsg(err?.message || "Click-to-call failed. You can still log the call manually.");
-    }
-  };
-
   const copyNumber = async () => {
-    setDialMethod("copied");
-    setCallState("connected");
     try {
       await navigator.clipboard.writeText(customer.phone);
-      setCallMsg("Number copied — paste it into the VoIP.ms app to dial.");
+      setCopied(true);
       toast.success("Phone number copied");
     } catch {
-      setCallMsg(`Copy this number: ${customer.phone}`);
+      setCopied(true);
     }
   };
 
@@ -116,10 +90,10 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
         ended_at: endedAt,
         satisfaction: csMode ? satisfaction || null : null,
         followup_date: fuDate,
-        source: csMode ? "customer_success" : "click_to_call",
+        source: csMode ? "customer_success" : "manual",
         related_build_id: selectedBuildId || "",
         related_task_id: csMode ? customerSuccessTask?.id || "" : "",
-        via_voip: dialMethod === "desk" && callState !== "failed",
+        via_voip: false,
       });
 
       if (csMode && customerSuccessTask) {
@@ -189,43 +163,23 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
 
         <div className="space-y-4">
           {/* Call status + timer */}
-          {dialMethod === null ? (
-            <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-800">{customer.phone}</p>
-                <div className="flex items-center gap-1.5 text-lg font-bold text-slate-900 tabular-nums">
-                  <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
-                </div>
-              </div>
-              <p className="text-xs text-slate-500">How do you want to place this call?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button type="button" onClick={placeDeskCall} disabled={callState === "ringing"} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-60">
-                  {callState === "ringing" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />} Dial desk phone
-                </button>
-                <button type="button" onClick={copyNumber} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-slate-200 text-slate-700 font-medium hover:bg-slate-100">
-                  <Copy className="w-4 h-4" /> Copy number
-                </button>
-              </div>
-              <p className="text-xs text-slate-400">Copy the number, then paste it into the VoIP.ms app to dial from your account.</p>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between rounded-lg border bg-slate-50 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${callState === "failed" ? "bg-red-100 text-red-600" : callState === "connected" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                  {callState === "failed" ? <PhoneOff className="w-5 h-5" /> : callState === "connected" ? <PhoneCall className="w-5 h-5" /> : <Loader2 className="w-5 h-5 animate-spin" />}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{customer.phone}</p>
-                  {callMsg ? <p className="text-xs text-slate-500">{callMsg}</p> : <p className="text-xs text-slate-400">In progress…</p>}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 tabular-nums">
-                  <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
-                </div>
+          <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-slate-800">{customer.phone}</p>
+              <div className="flex items-center gap-1.5 text-lg font-bold text-slate-900 tabular-nums">
+                <Clock className="w-4 h-4 text-slate-400" /> {fmtTime(seconds)}
               </div>
             </div>
-          )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button type="button" onClick={copyNumber} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800">
+                <Copy className="w-4 h-4" /> {copied ? "Copied!" : "Copy number"}
+              </button>
+              <a href={`tel:${customer.phone}`} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-slate-200 text-slate-700 font-medium hover:bg-slate-100">
+                <Phone className="w-4 h-4" /> Call on mobile
+              </a>
+            </div>
+            <p className="text-xs text-slate-400">Copy the number to dial from your VoIP.ms app, or tap "Call on mobile" to dial directly.</p>
+          </div>
 
           {/* Satisfaction (CS mode) or Outcome (general) */}
           {csMode ? (
