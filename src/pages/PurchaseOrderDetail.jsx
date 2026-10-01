@@ -210,63 +210,64 @@ export default function PurchaseOrderDetail() {
 
   const handleReceiveItems = async () => {
     setReceiving(true);
-    const updatedLines = (form.line_items || []).map((line, idx) => {
-      const qtyToReceive = Number(receiveQtys[idx] || 0);
-      const newCost = Number(receiveCosts[idx] ?? line.unit_cost ?? 0);
-      return {
-        ...line,
-        received_qty: (line.received_qty || 0) + qtyToReceive,
-        unit_cost: newCost,
-        total: (line.quantity || 0) * newCost,
-      };
-    });
+    try {
+      const receivedItems = (form.line_items || [])
+        .map((line, idx) => ({ line_idx: idx, qty: Number(receiveQtys[idx] || 0), unit_cost: Number(receiveCosts[idx] ?? line.unit_cost ?? 0) }))
+        .filter(item => item.qty > 0);
 
-    // Determine new PO status
-    const allReceived = updatedLines.every(l => (l.received_qty || 0) >= (l.quantity || 0));
-    const anyReceived = updatedLines.some(l => (l.received_qty || 0) > 0);
-    const newStatus = allReceived ? "received" : anyReceived ? "partial" : form.status;
-
-    const subtotal = updatedLines.reduce((s, l) => s + (l.total || 0), 0);
-    const updatedForm = {
-      ...form,
-      line_items: updatedLines,
-      subtotal,
-      total: subtotal + (Number(form.shipping_cost) || 0) + (Number(form.tax_amount) || 0),
-      status: newStatus,
-      received_date: allReceived ? new Date().toISOString().split("T")[0] : form.received_date,
-    };
-
-    // Save PO first
-    await base44.entities.PurchaseOrder.update(id, updatedForm);
-
-    // Update inventory for each line item that has a part_id and received qty > 0
-    const inventoryUpdates = [];
-    for (const [idx, line] of updatedLines.entries()) {
-      const qtyReceived = Number(receiveQtys[idx] || 0);
-      if (line.part_id && qtyReceived > 0) {
-        const part = parts.find(p => p.id === line.part_id);
-        if (part) {
-          const newCost = line.unit_cost;
-          const partUpdates = {
-            quantity_on_hand: (part.quantity_on_hand || 0) + qtyReceived,
-            unit_cost: newCost,
-          };
-          // Auto-update sell price if part uses markup pricing
-          if (part.use_markup && part.markup_percentage) {
-            partUpdates.sell_price = parseFloat((newCost * (1 + part.markup_percentage / 100)).toFixed(2));
-          }
-          inventoryUpdates.push(base44.entities.Part.update(line.part_id, partUpdates));
-        }
+      if (receivedItems.length === 0) {
+        toast.error("No quantities entered to receive");
+        setReceiving(false);
+        return;
       }
-    }
-    await Promise.all(inventoryUpdates);
 
-    setForm(updatedForm);
-    qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
-    qc.invalidateQueries({ queryKey: ["parts"] });
-    setReceiveMode(false);
+      const result = await base44.functions.invoke("receivePurchaseOrder", {
+        po_id: id,
+        received_items: receivedItems,
+      });
+
+      const data = result?.data || result;
+      if (data.error) { toast.error(data.error); setReceiving(false); return; }
+
+      const allocCount = (data.shortage_allocations || []).reduce((s, a) => s + a.allocations.length, 0);
+      const jobsUpdated = (data.jobs_updated || []).length;
+
+      // Refresh local form from the updated PO
+      const updatedLines = (form.line_items || []).map((line, idx) => {
+        const item = receivedItems.find(r => r.line_idx === idx);
+        if (!item) return line;
+        return {
+          ...line,
+          received_qty: (line.received_qty || 0) + item.qty,
+          unit_cost: item.unit_cost,
+          total: (line.quantity || 0) * item.unit_cost,
+        };
+      });
+      const allReceived = updatedLines.every(l => (l.received_qty || 0) >= (l.quantity || 0));
+      const subtotal = updatedLines.reduce((s, l) => s + (l.total || 0), 0);
+      setForm(f => ({
+        ...f,
+        line_items: updatedLines,
+        subtotal,
+        total: subtotal + (Number(f.shipping_cost) || 0) + (Number(f.tax_amount) || 0),
+        status: data.po_status || f.status,
+        received_date: allReceived ? new Date().toISOString().split("T")[0] : f.received_date,
+      }));
+
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["parts"] });
+      qc.invalidateQueries({ queryKey: ["job-parts-tab"] });
+      qc.invalidateQueries({ queryKey: ["job-reservations"] });
+      setReceiveMode(false);
+
+      let msg = `Items received — ${(data.inventory_updates || []).length} inventory record(s) updated`;
+      if (allocCount > 0) msg += `, ${allocCount} shortage(s) resolved`;
+      if (jobsUpdated > 0) msg += `, ${jobsUpdated} job(s) updated`;
+      toast.success(msg);
+    } catch (e) {
+      toast.error("Failed to receive items: " + e.message);
+    }
     setReceiving(false);
-    toast.success(`Items received${inventoryUpdates.length > 0 ? ` — ${inventoryUpdates.length} inventory record(s) updated` : ""}`);
   };
 
   const addPartFromPicker = (newLine) => {

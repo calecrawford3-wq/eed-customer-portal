@@ -67,8 +67,14 @@ export default function JobPartsTab({ job }) {
                         <td className="py-2 px-3 text-center text-slate-500">{part ? (part.quantity_on_hand ?? "—") : "—"}</td>
                         <td className="py-2 px-3 text-center">{r.quantity_required}</td>
                         <td className="py-2 px-3 text-center text-blue-600">{r.quantity_reserved}</td>
-                        <td className="py-2 px-3 text-center">{(Number(r.quantity_short) || 0) > 0 ? <Badge className="bg-red-100 text-red-700">{r.quantity_short}</Badge> : "—"}</td>
-                        <td className="py-2 px-3"><Badge variant="outline" className="text-xs capitalize">{r.status}</Badge></td>
+                        <td className="py-2 px-3 text-center">{(Number(r.quantity_short) || 0) > 0 ? <Badge className="bg-red-100 text-red-700">{r.quantity_short}</Badge> : <Badge className="bg-emerald-100 text-emerald-700">✓</Badge>}</td>
+                        <td className="py-2 px-3">
+                          <Badge variant="outline" className={`text-xs capitalize ${
+                            r.status === "consumed" ? "border-emerald-300 text-emerald-700" :
+                            r.status === "partially_consumed" ? "border-amber-300 text-amber-700" :
+                            (Number(r.quantity_short) || 0) > 0 ? "border-red-300 text-red-700" : ""
+                          }`}>{r.status}</Badge>
+                        </td>
                       </tr>
                     );
                   })}

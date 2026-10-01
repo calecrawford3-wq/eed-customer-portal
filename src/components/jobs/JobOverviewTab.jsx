@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
 import { Package, Receipt, ListChecks, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import CompletionBillingAudit from "@/components/jobs/CompletionBillingAudit";
 
 export default function JobOverviewTab({ job, customer, engine, platform, estimate, build, invoices }) {
   const { data: reservations = [], isLoading: resLoading } = useQuery({
@@ -99,6 +100,11 @@ export default function JobOverviewTab({ job, customer, engine, platform, estima
           {engine && <LinkTile label="Engine" value={engine.eed_id} to={`/CustomerDetail?id=${customer?.id}`} />}
         </CardContent>
       </Card>
+
+      {/* Completion Billing Audit */}
+      <div className="md:col-span-2 lg:col-span-3">
+        <CompletionBillingAudit job={job} />
+      </div>
     </div>
   );
 }

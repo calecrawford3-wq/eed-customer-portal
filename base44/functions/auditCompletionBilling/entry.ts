@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const jobId = body.job_id;
-    const buildId = body.build_id;
+    let jobId = body.job_id;
+    let buildId = body.build_id;
 
     if (!jobId && !buildId) {
       return Response.json({ error: "job_id or build_id required" }, { status: 400 });
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       const jobRes = await base44.asServiceRole.entities.Job.filter({ id: jobId });
       job = (jobRes.items || jobRes || [])[0];
       if (!job) return Response.json({ error: "Job not found" }, { status: 404 });
-      buildId = buildId || job.build_id;
+      if (!buildId) buildId = job.build_id;
     }
 
     // Load build
@@ -116,20 +116,17 @@ Deno.serve(async (req) => {
       }
 
       // CHECK 5: Status doesn't match balance
-      const expectedStatus = computedBalance < 0.01
-        ? (paymentsSum > 0 ? "paid" : (inv.status === "draft" ? "draft" : "sent"))
-        : (paymentsSum > 0 ? "partial" : inv.status);
-      if (inv.status !== "void" && inv.status !== "draft" && expectedStatus !== inv.status) {
-        // Only flag if the status is materially wrong (e.g. "paid" but has balance, or "sent" but fully paid)
-        if ((inv.status === "paid" && computedBalance > 0.01) ||
-            (computedBalance < 0.01 && paymentsSum > 0 && inv.status !== "paid")) {
+      if (inv.status !== "void" && inv.status !== "draft") {
+        const shouldBePaid = computedBalance < 0.01 && paymentsSum > 0;
+        const hasBalance = computedBalance > 0.01;
+        if ((shouldBePaid && inv.status !== "paid") || (inv.status === "paid" && hasBalance)) {
           issues.push({
             severity: "warning",
             check: "status_mismatch",
             invoice_id: inv.id,
             invoice_number: inv.invoice_number,
-            message: `Invoice ${inv.invoice_number}: status is "${inv.status}" but balance suggests "${expectedStatus}".`,
-            detail: { current_status: inv.status, expected_status: expectedStatus, balance: computedBalance },
+            message: `Invoice ${inv.invoice_number}: status is "${inv.status}" but balance is ${computedBalance.toFixed(2)} and payments total ${paymentsSum.toFixed(2)}.`,
+            detail: { current_status: inv.status, balance: computedBalance, payments: paymentsSum },
           });
         }
       }
