@@ -25,7 +25,7 @@ import {
  * Fetches estimates and build tasks itself.
  */
 export default function TodayWorkPanel({ builds, invoices, customers, platforms }) {
-  const { data: estimates = [] } = useQuery({
+  const { data: estimatesPage } = useQuery({
     queryKey: ["estimates-today-work"],
     queryFn: () =>
       base44.entities.Estimate.filter(
@@ -33,11 +33,12 @@ export default function TodayWorkPanel({ builds, invoices, customers, platforms 
         { sort: "-created_date", limit: 100 }
       ),
   });
+  const estimates = estimatesPage?.items || [];
 
   const activeBuilds = (builds || []).filter((b) => !["complete", "shipped"].includes(b.status));
   const activeBuildIds = activeBuilds.map((b) => b.id);
 
-  const { data: buildTasks = [] } = useQuery({
+  const { data: buildTasksPage } = useQuery({
     queryKey: ["build-tasks-today-work", activeBuildIds.join(",")],
     queryFn: () =>
       base44.entities.BuildTask.filter(
@@ -46,6 +47,7 @@ export default function TodayWorkPanel({ builds, invoices, customers, platforms 
       ),
     enabled: activeBuildIds.length > 0,
   });
+  const buildTasks = buildTasksPage?.items || [];
 
   const tasksByBuild = {};
   (buildTasks || []).forEach((t) => {
