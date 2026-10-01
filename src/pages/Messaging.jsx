@@ -48,6 +48,7 @@ import {
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
 import { useMessaging } from "@/contexts/MessagingContext";
+import { toast } from "sonner";
 import CallsView from "@/components/messaging/CallsView";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
@@ -785,6 +786,38 @@ export default function Messaging() {
         "Delete conversation failed:",
         error
       );
+    },
+  });
+
+  const resendMessageMutation = useMutation({
+    mutationFn: async (message) => {
+      const mediaUrls = getMediaUrls(message);
+      return base44.functions.invoke("sendVoipSms", {
+        to: message.to_number || message.phone_number,
+        message: message.body || "",
+        media_urls: mediaUrls,
+        customer_id: message.customer_id || null,
+        customer_name: message.customer_name || null,
+        contact_name: message.contact_name || null,
+        message_id_to_update: message.id,
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: ["messages"],
+      });
+      if (result?.status === "sent") {
+        toast.success("Message resent successfully.");
+      } else {
+        toast.error(
+          result?.status === "unknown"
+            ? "Resent but delivery still unconfirmed."
+            : "Resend failed — try again."
+        );
+      }
+    },
+    onError: () => {
+      toast.error("Resend failed — try again.");
     },
   });
 
@@ -1527,6 +1560,34 @@ export default function Messaging() {
                                   <AlertCircle className="w-4 h-4" />
                                 </button>
                               )}
+
+                            {!message._pending &&
+                              message.direction ===
+                                "outbound" &&
+                              (message.status ===
+                                "failed" ||
+                                message.status ===
+                                  "unknown") && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    resendMessageMutation.mutate(
+                                      message
+                                    )
+                                  }
+                                  disabled={
+                                    resendMessageMutation.isPending
+                                  }
+                                  className="flex-shrink-0 w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center hover:bg-amber-200 transition-colors disabled:opacity-50"
+                                  title="Resend message"
+                                >
+                                  {resendMessageMutation.isPending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
                             <div
                               className={cn(
                                 "relative max-w-[75%] rounded-2xl px-4 py-2 text-sm overflow-hidden",
@@ -1645,7 +1706,14 @@ export default function Messaging() {
                                     "outbound" &&
                                   message.status ===
                                     "failed" &&
-                                  " · Failed"}
+                                  " · Not delivered"}
+
+                                {!message._pending &&
+                                  message.direction ===
+                                    "outbound" &&
+                                  message.status ===
+                                    "unknown" &&
+                                  " · Unconfirmed"}
                               </div>
                             </div>
                           </div>

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 import { bridgeCall, BridgeError } from "../../shared/voipPhonebook.ts";
+import { sendPushToAllSubscriptions } from "../../shared/sendPush.ts";
 
 const MAX_MESSAGE_LENGTH = 2048;
 const MAX_MEDIA_FILES = 3;
@@ -404,139 +405,186 @@ Deno.serve(async (req) => {
       voipParams[`media${index + 1}`] = mediaUrl;
     });
 
-    let data;
-    let indeterminate = false;
-    let indeterminateReason = "";
+    /*
+     * Retry loop: up to 3 total attempts (1s, 2s backoff) on indeterminate
+     * errors (timeout, 502, network). Hard errors (403/401/503) fail immediately.
+     */
+    const MAX_ATTEMPTS = 3;
+    let data = null;
+    let finalStatus = "sent";
+    let confirmationId = "";
+    let failReason = "";
 
-    try {
-      data = await bridgeCall(method, voipParams);
-    } catch (bridgeError) {
-      console.error(
-        `${method} bridge call failed`,
-        JSON.stringify({
-          error: bridgeError?.message || String(bridgeError),
-          httpStatus: bridgeError?.httpStatus,
-          voipmsStatus: bridgeError?.voipmsStatus,
-          destination: apiTo,
-          characterCount: message.length,
-          mediaCount: mediaUrls.length,
-        })
-      );
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        data = await bridgeCall(method, voipParams);
 
-      /*
-       * Hard errors mean the message definitely did NOT send:
-       *   403 = method not permitted, 401 = auth/sig failure, 503 = credentials incomplete
-       * Anything else (502 gateway timeout, network error, etc.) typically means
-       * the bridge forwarded the request to VoIP.ms but the response timed out —
-       * the message likely went through even though we couldn't confirm it.
-       */
-      const isHardError =
-        bridgeError instanceof BridgeError &&
-        ([403, 401, 503].includes(bridgeError.httpStatus) ||
-          bridgeError.voipmsStatus === "invalid_phonebook");
+        if (data && data.status === "success") {
+          confirmationId = String(
+            data.sms_id || data.message_id || data.id || ""
+          );
+          finalStatus = "sent";
+          break;
+        }
 
-      if (isHardError) {
-        return Response.json(
-          {
-            error:
-              bridgeError?.message ||
-              `Bridge ${method} call failed`,
-          },
-          { status: 502 }
+        /*
+         * VoIP.ms returned a non-success response — definitive failure, no retry.
+         */
+        finalStatus = "failed";
+        failReason =
+          data?.message ||
+          `VoIP.ms ${method} returned status: ${data?.status || "unknown"}`;
+        break;
+      } catch (bridgeError) {
+        console.error(
+          `${method} bridge call failed (attempt ${attempt + 1}/${MAX_ATTEMPTS})`,
+          JSON.stringify({
+            error: bridgeError?.message || String(bridgeError),
+            httpStatus: bridgeError?.httpStatus,
+            voipmsStatus: bridgeError?.voipmsStatus,
+            destination: apiTo,
+            characterCount: message.length,
+            mediaCount: mediaUrls.length,
+          })
         );
+
+        const isHardError =
+          bridgeError instanceof BridgeError &&
+          ([403, 401, 503].includes(bridgeError.httpStatus) ||
+            bridgeError.voipmsStatus === "invalid_phonebook");
+
+        if (isHardError) {
+          finalStatus = "failed";
+          failReason =
+            bridgeError?.message || `Bridge ${method} call failed`;
+          break;
+        }
+
+        /*
+         * Indeterminate error — retry if attempts remain.
+         */
+        if (attempt < MAX_ATTEMPTS - 1) {
+          const delay = 1000 * Math.pow(2, attempt);
+          await new Promise((resolve) =>
+            setTimeout(resolve, delay)
+          );
+          continue;
+        }
+
+        finalStatus = "unknown";
+        failReason =
+          bridgeError?.message || "Bridge response timeout";
       }
-
-      /*
-       * Indeterminate: the bridge timed out or returned a non-definitive error.
-       * The message was likely forwarded to VoIP.ms — save it as sent so the
-       * user doesn't see a false "failed" error.
-       */
-      indeterminate = true;
-      indeterminateReason =
-        bridgeError?.message || "Bridge response timeout";
-    }
-
-    if (!indeterminate && (!data || data.status !== "success")) {
-      console.error(
-        `${method} failed`,
-        JSON.stringify({
-          response: data,
-          destination: apiTo,
-          characterCount: message.length,
-          mediaCount: mediaUrls.length,
-        })
-      );
-
-      return Response.json(
-        {
-          error:
-            data?.message ||
-            `VoIP.ms ${method} failed`,
-          raw: data,
-        },
-        { status: 502 }
-      );
     }
 
     const now = new Date().toISOString();
 
     /*
-     * Save the outgoing message and its attachments.
+     * Save (or update on resend) the outgoing message with the accurate status.
      */
-    await base44.asServiceRole.entities.Message.create({
-      customer_id:
-        body?.customer_id || null,
-
-      customer_name:
-        body?.customer_name || null,
-
-      contact_name:
-        body?.contact_name || null,
-
+    const messageRecord = {
+      customer_id: body?.customer_id || null,
+      customer_name: body?.customer_name || null,
+      contact_name: body?.contact_name || null,
       phone_number: canonicalTo,
-
       direction: "outbound",
-
       from_number: canonicalFrom,
       to_number: canonicalTo,
-
       body: enteredMessage,
-
       media_urls: mediaUrls,
-
-      channel: isMms
-        ? "mms"
-        : "sms",
-
-      status: "sent",
+      channel: isMms ? "mms" : "sms",
+      status: finalStatus,
+      message_id: confirmationId || null,
       is_read: true,
       sent_at: now,
-    });
+    };
+
+    const messageIdToUpdate = body?.message_id_to_update || null;
+
+    if (messageIdToUpdate) {
+      await base44.asServiceRole.entities.Message.update(
+        messageIdToUpdate,
+        messageRecord
+      );
+    } else {
+      await base44.asServiceRole.entities.Message.create(messageRecord);
+    }
+
+    /*
+     * On failure or unconfirmed status, alert admins so they don't
+     * assume the text reached the customer.
+     */
+    if (finalStatus === "failed" || finalStatus === "unknown") {
+      const displayNumber = (() => {
+        const d = canonicalTo.replace(/\D/g, "");
+        if (d.length === 11 && d.startsWith("1")) {
+          const ten = d.slice(1);
+          return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+        }
+        return canonicalTo;
+      })();
+
+      const label =
+        finalStatus === "failed"
+          ? "failed to send"
+          : "was not confirmed";
+
+      const preview = enteredMessage
+        ? `"${enteredMessage.substring(0, 80)}${enteredMessage.length > 80 ? "…" : ""}"`
+        : "";
+
+      const notifMessage = `Text to ${displayNumber} ${label}.${preview ? ` ${preview}` : ""}`;
+
+      try {
+        await base44.asServiceRole.entities.Notification.create({
+          title: "SMS failed to send",
+          message: notifMessage,
+          type: "other",
+          link_url: `/Messaging?phone=${canonicalTo}`,
+          is_read: false,
+        });
+      } catch (e) {
+        console.error(
+          "Failed to create SMS failure notification:",
+          e?.message || e
+        );
+      }
+
+      try {
+        await sendPushToAllSubscriptions(base44, {
+          title: "SMS failed to send",
+          body: notifMessage,
+          url: `/Messaging?phone=${canonicalTo}`,
+        });
+      } catch (e) {
+        console.error(
+          "Failed to send SMS failure push:",
+          e?.message || e
+        );
+      }
+    }
 
     return Response.json({
-      success: true,
+      success: finalStatus === "sent",
+      status: finalStatus,
 
       to: canonicalTo,
       api_to: apiTo,
 
       message: enteredMessage,
 
-      message_type: isMms
-        ? "mms"
-        : "sms",
+      message_type: isMms ? "mms" : "sms",
 
-      character_count:
-        enteredMessage.length,
+      character_count: enteredMessage.length,
 
-      media_count:
-        mediaUrls.length,
+      media_count: mediaUrls.length,
 
       media_urls: mediaUrls,
 
-      indeterminate: indeterminate || undefined,
-      indeterminate_reason: indeterminate
-        ? indeterminateReason
-        : undefined,
+      confirmation_id: confirmationId || undefined,
+
+      fail_reason:
+        finalStatus !== "sent" ? failReason : undefined,
     });
   } catch (error) {
     console.error(

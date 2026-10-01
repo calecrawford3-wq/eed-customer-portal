@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 const MessagingContext = createContext(null);
 
@@ -86,10 +87,13 @@ export function MessagingProvider({ children }) {
           attachmentsToUpload
         );
 
-        await base44.functions.invoke("sendVoipSms", {
-          ...variables,
-          media_urls: mediaUrls,
-        });
+        const result = await base44.functions.invoke(
+          "sendVoipSms",
+          {
+            ...variables,
+            media_urls: mediaUrls,
+          }
+        );
 
         await queryClient.invalidateQueries({
           queryKey: ["messages"],
@@ -107,7 +111,16 @@ export function MessagingProvider({ children }) {
           return prev.filter((m) => m.tempId !== tempId);
         });
 
-        playSuccessSound();
+        if (result?.status === "sent") {
+          playSuccessSound();
+        } else {
+          playErrorSound();
+          toast.error(
+            result?.status === "unknown"
+              ? "Message sent but delivery unconfirmed — check the conversation."
+              : "Message failed to send — check the conversation."
+          );
+        }
       } catch (error) {
         console.error("Send failed", error);
 
