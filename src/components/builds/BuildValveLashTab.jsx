@@ -2,8 +2,13 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PriorValue from "@/components/builds/PriorValue";
 
-export default function BuildValveLashTab({ getValveLash, handleValveLashChange }) {
+export default function BuildValveLashTab({ getValveLash, handleValveLashChange, priorBuild }) {
+  const priorVL = (type, valve) => {
+    const field = type === "intake" ? "valve_lash_intake" : "valve_lash_exhaust";
+    return priorBuild?.[field]?.[valve];
+  };
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card className="border-0 shadow-sm">
@@ -21,6 +26,7 @@ export default function BuildValveLashTab({ getValveLash, handleValveLashChange 
                   placeholder="0.000"
                   className="text-center"
                 />
+                <PriorValue value={priorVL("intake", `valve_${num}`)} />
               </div>
             ))}
           </div>
@@ -42,6 +48,7 @@ export default function BuildValveLashTab({ getValveLash, handleValveLashChange 
                   placeholder="0.000"
                   className="text-center"
                 />
+                <PriorValue value={priorVL("exhaust", `valve_${num}`)} />
               </div>
             ))}
           </div>

@@ -2,8 +2,10 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PriorValue from "@/components/builds/PriorValue";
 
-export default function BuildInternalTab({ getInternalValue, handleInternalChange }) {
+export default function BuildInternalTab({ getInternalValue, handleInternalChange, priorBuild }) {
+  const prior = (field) => priorBuild?.internal_measurements?.[field];
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card className="border-0 shadow-sm">
@@ -18,6 +20,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
               onChange={(e) => handleInternalChange("head_original_height_in", e.target.value)}
               placeholder="e.g., 3.150"
             />
+            <PriorValue value={prior("head_original_height_in")} />
           </div>
           <div>
             <Label>Shaved Head Height (in)</Label>
@@ -26,6 +29,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
               onChange={(e) => handleInternalChange("head_shaved_height_in", e.target.value)}
               placeholder="e.g., 3.140"
             />
+            <PriorValue value={prior("head_shaved_height_in")} />
           </div>
         </CardContent>
       </Card>
@@ -45,6 +49,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
                   placeholder="0.000"
                   className="text-center"
                 />
+                <PriorValue value={prior(`piston_pop_up_${num}`)} />
               </div>
             ))}
           </div>
@@ -66,6 +71,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
                   placeholder="0.000"
                   className="text-center"
                 />
+                <PriorValue value={prior(`main_bearing_clearance_${num}`)} />
               </div>
             ))}
           </div>
@@ -87,6 +93,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
                   placeholder="psi"
                   className="text-center"
                 />
+                <PriorValue value={prior(`measured_compression_${num}`)} />
               </div>
             ))}
           </div>
@@ -108,6 +115,7 @@ export default function BuildInternalTab({ getInternalValue, handleInternalChang
                   placeholder="0.000"
                   className="text-center"
                 />
+                <PriorValue value={prior(`rod_bearing_clearance_${num}`)} />
               </div>
             ))}
           </div>

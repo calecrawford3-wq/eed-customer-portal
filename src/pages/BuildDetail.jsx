@@ -117,6 +117,21 @@ export default function BuildDetail() {
     enabled: !!buildId,
   });
 
+  // Prior build of the same engine for historical measurement reference
+  const { data: priorBuildData } = useQuery({
+    queryKey: ["prior-build", build?.customer_engine_id, build?.engine_serial_number, buildId],
+    queryFn: async () => {
+      // Prefer matching by customer_engine_id, fall back to engine_serial_number
+      const filter = build?.customer_engine_id
+        ? { customer_engine_id: build.customer_engine_id, id: { $ne: buildId } }
+        : { engine_serial_number: build?.engine_serial_number, id: { $ne: buildId } };
+      const res = await base44.entities.EngineBuild.filter(filter, "-completion_date", 1);
+      return res?.[0] || null;
+    },
+    enabled: !!buildId && (!!build?.customer_engine_id || !!build?.engine_serial_number),
+  });
+  const priorBuild = priorBuildData || null;
+
   const build = buildData?.[0];
   const effectivePlatformId = localChanges.platform_id ?? build?.platform_id;
   const effectiveSpecSheetId = localChanges.spec_sheet_id ?? build?.spec_sheet_id;
@@ -444,6 +459,7 @@ export default function BuildDetail() {
             calculateEffectiveCenterline={calculateEffectiveCenterline}
             calculateLSA={calculateLSA}
             calculateCenterlineSeparation={calculateCenterlineSeparation}
+            priorBuild={priorBuild}
           />
         </TabsContent>
 
@@ -451,6 +467,7 @@ export default function BuildDetail() {
           <BuildValveLashTab
             getValveLash={getValveLash}
             handleValveLashChange={handleValveLashChange}
+            priorBuild={priorBuild}
           />
         </TabsContent>
 
@@ -458,6 +475,7 @@ export default function BuildDetail() {
           <BuildInternalTab
             getInternalValue={getInternalValue}
             handleInternalChange={handleInternalChange}
+            priorBuild={priorBuild}
           />
         </TabsContent>
 

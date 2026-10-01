@@ -11,7 +11,10 @@ export default function BuildCamTab({
   calculateEffectiveCenterline,
   calculateLSA,
   calculateCenterlineSeparation,
+  priorBuild,
 }) {
+  const priorCam = priorBuild?.cam_info;
+  const hasPriorCam = priorCam && (priorCam.intake_direction || priorCam.exhaust_direction);
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Stock Centerline Reference */}
@@ -43,6 +46,33 @@ export default function BuildCamTab({
             <p className="text-sm text-slate-400">
               {specSheet ? "No cam centerlines set in this spec sheet. Add them in the Camshaft section of the Spec Editor." : "Assign a spec sheet to see stock cam centerlines."}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Prior build cam reference */}
+      {hasPriorCam && (
+        <Card className="border-0 shadow-sm md:col-span-2 bg-slate-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-slate-600">
+              Prior Build Cam Settings {priorBuild?.completion_date ? `(${new Date(priorBuild.completion_date).toLocaleDateString()})` : ""}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-8 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 mb-0.5">Intake</p>
+                <p className="font-medium text-slate-700">
+                  {priorCam.intake_direction ? `${priorCam.intake_direction} ${priorCam.intake_degrees || 0}°` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-0.5">Exhaust</p>
+                <p className="font-medium text-slate-700">
+                  {priorCam.exhaust_direction ? `${priorCam.exhaust_direction} ${priorCam.exhaust_degrees || 0}°` : "—"}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
