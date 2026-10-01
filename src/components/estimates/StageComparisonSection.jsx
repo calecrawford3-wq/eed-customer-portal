@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
 
-const COMPARISON_VIEWER_BASE = "https://elite-viewer.base44.app/comparison";
+const COMPARISON_VIEWER_BASE = "https://billing.eedpower.com/comparison";
 
 export default function StageComparisonSection({ estimate, estimates, customer, onNavigateToEstimate }) {
   const qc = useQueryClient();

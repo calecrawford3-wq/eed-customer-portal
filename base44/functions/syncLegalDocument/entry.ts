@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     const syncSecret = Deno.env.get("SYNC_SECRET");
     const syncApiKey = Deno.env.get("SYNC_API_KEY");
-    const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncLegalDocument";
+    const destinationUrl = "https://billing.eedpower.com/api/functions/syncLegalDocument";
 
     if (!syncSecret || !syncApiKey) {
       console.error("[syncLegalDocument] Missing SYNC_SECRET or SYNC_API_KEY");

@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     // Get sync credentials
     const syncSecret = Deno.env.get("SYNC_SECRET");
     const syncApiKey = Deno.env.get("SYNC_API_KEY");
-    const destinationUrl = "https://elite-viewer.base44.app/api/functions/syncInvoiceSnapshot";
+    const destinationUrl = "https://billing.eedpower.com/api/functions/syncInvoiceSnapshot";
 
     console.log("SYNC_SECRET exists:", !!syncSecret);
     console.log("SYNC_API_KEY exists:", !!syncApiKey);
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const invoiceViewerLink = `https://elite-viewer.base44.app/invoice/${publicAccessToken}`;
+      const invoiceViewerLink = `https://billing.eedpower.com/invoice/${publicAccessToken}`;
       console.log("Invoice snapshot synced successfully");
       console.log("Viewer link:", invoiceViewerLink);
 

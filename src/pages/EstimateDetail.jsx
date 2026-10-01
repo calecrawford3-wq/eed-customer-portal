@@ -49,7 +49,7 @@ import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
 
-const COMPARISON_VIEWER_BASE = "https://elite-viewer.base44.app/comparison";
+const COMPARISON_VIEWER_BASE = "https://billing.eedpower.com/comparison";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -1241,7 +1241,7 @@ export default function EstimateDetail() {
         toast.error(`Snapshot sync error: ${syncError.message} - Continuing with email anyway...`);
       }
 
-      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
+      const viewUrl = `https://billing.eedpower.com/estimate/${publicAccessToken}`;
       console.log(`[sendEstimate] Public viewer URL: ${viewUrl}`);
       
       const settings = settingsData?.[0] || {};
@@ -1371,7 +1371,7 @@ export default function EstimateDetail() {
       try {
         await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken });
       } catch (e) { /* link still usable */ }
-      const viewUrl = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
+      const viewUrl = `https://billing.eedpower.com/estimate/${publicAccessToken}`;
       const body = `Hi ${customer.first_name}, your estimate ${form.estimate_number} from Elite Engine Development is ready. Total: $${Number(form.total || 0).toFixed(2)}. Review & approve here: ${viewUrl}`;
       if (openSmsDraft(customer.phone, body)) {
         toast.success("Opening text message with estimate link…");

@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
-    const origin = req.headers.get("origin") || "https://elite-viewer.base44.app";
+    const origin = req.headers.get("origin") || "https://billing.eedpower.com";
 
     const metadata = {
       base44_app_id: appId,

@@ -9,7 +9,7 @@ const STAGE_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
-const PUBLIC_APP_SYNC_URL = "https://elite-viewer.base44.app/api/functions/syncEstimateSnapshot";
+const PUBLIC_APP_SYNC_URL = "https://billing.eedpower.com/api/functions/syncEstimateSnapshot";
 
 /**
  * Core snapshot-build + push logic shared by the syncEstimateSnapshot backend function
@@ -246,6 +246,6 @@ export async function buildAndPushEstimateSnapshot(
     }
   }
 
-  const viewerLink = `https://elite-viewer.base44.app/estimate/${publicAccessToken}`;
+  const viewerLink = `https://billing.eedpower.com/estimate/${publicAccessToken}`;
   return { success: true, viewerLink };
 }

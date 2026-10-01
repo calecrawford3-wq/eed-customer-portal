@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const appId = Deno.env.get("BASE44_APP_ID");
-    const PUBLIC_VIEWER_URL = "https://elite-viewer.base44.app";
+    const PUBLIC_VIEWER_URL = "https://billing.eedpower.com";
 
     const metadata = {
       base44_app_id: appId,
