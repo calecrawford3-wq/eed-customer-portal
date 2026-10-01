@@ -42,10 +42,13 @@ export default function ExceptionDashboard() {
 
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ["exception-alerts"],
-    queryFn: () => base44.entities.ExceptionAlert.filter(
-      { status: { $in: ["active", "snoozed"] } },
-      { sort: "-created_date", limit: 500 }
-    ),
+    queryFn: async () => {
+      const res = await base44.entities.ExceptionAlert.filter(
+        { status: { $in: ["active", "snoozed"] } },
+        { sort: "-created_date", limit: 500 }
+      );
+      return res?.items || res || [];
+    },
     refetchInterval: 60000,
   });
 
