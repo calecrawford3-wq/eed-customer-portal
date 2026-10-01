@@ -1,5 +1,5 @@
 // Resolve an inbound phone number to a Customer / CustomerContact / Supplier (vendor).
-// Used by receiveVoipSms, fetchVoipCdr, and the Cisco call-state webhook.
+// Used by receiveVoipSms and fetchVoipCdr to resolve inbound caller IDs to customers.
 //
 // Returns: { customer_id, customer_name, contact_name, contact_id, relationship,
 //            supplier_id, supplier_name, match_type }

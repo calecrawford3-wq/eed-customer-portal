@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         created++;
 
         // Outbound calls have no real-time webhook — notify here.
-        // Inbound calls are notified by receiveCiscoCallState, so skip to avoid duplicates.
+        // Inbound calls are detected via CDR polling; push is sent separately after the loop.
         if (isOutbound) {
           const statusLabel = (rec.call_status || "outbound").replace(/_/g, " ");
           const dispPhone = formatPhoneDisplay(phone);

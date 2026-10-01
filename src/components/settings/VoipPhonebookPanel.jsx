@@ -354,7 +354,7 @@ export default function VoipPhonebookPanel() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Terminal className="w-4 h-4" />
-              Phone Book Bridge Response
+              Phone Book API Response
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">

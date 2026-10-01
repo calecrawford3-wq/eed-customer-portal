@@ -4,10 +4,9 @@ import { Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Click-to-call button. On desktop triggers VoIP.ms click2call (rings the desk
- * phone); on mobile shows a tel: link inside the modal. Both open the
- * ActiveCallModal with a timer, notes, outcome, follow-up scheduling,
- * create-estimate, and engine-record links.
+ * Call button. Opens the ActiveCallModal with a timer, notes, outcome,
+ * follow-up scheduling, create-estimate, and engine-record links.
+ * On mobile, a tel: link is available inside the modal.
  *
  * Props:
  *  - customer: { id, name, phone }  (or pass customerId/customerName/customerPhone)

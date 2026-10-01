@@ -249,7 +249,7 @@ export default function CallsView() {
               <div className="flex justify-between text-sm"><span className="text-slate-500">When</span><span className="font-medium">{new Date(selected.started_at || selected.created_date).toLocaleString("en-US")}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-500">Duration</span><span className="font-medium">{fmtDuration(selected.duration_seconds)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-500">Outcome</span><Badge variant="outline">{OUTCOME_LABEL[selected.call_status] || selected.call_status || "—"}</Badge></div>
-              {selected.via_voip && <div className="flex justify-between text-sm"><span className="text-slate-500">Via</span><span className="font-medium">VoIP.ms (desk phone)</span></div>}
+              {selected.via_voip && <div className="flex justify-between text-sm"><span className="text-slate-500">Via</span><span className="font-medium">VoIP.ms</span></div>}
               {selected.outcome && <div className="text-sm"><span className="text-slate-500">Result: </span><span>{selected.outcome}</span></div>}
               {selected.followup_date && <div className="flex justify-between text-sm"><span className="text-slate-500">Follow-up</span><span className="font-medium">{selected.followup_date}</span></div>}
             </div>

@@ -20,8 +20,8 @@ import { voipGetIP } from '../../shared/voipMsApi.ts';
 //
 // sync_all:       Sync every active customer to the VoIP.ms Phone Book.
 // dry_run:        Same as sync_all but preview changes without writing to VoIP.ms.
-// test_connection: Quick bridge connectivity check via getIP.
-// get_ip:         Call getIP through the bridge and return the result.
+// test_connection: Quick VoIP.ms API connectivity check via getIP.
+// get_ip:         Call getIP directly via the VoIP.ms API and return the result.
 // get_phonebook:  Retrieve the full phone book and return raw entries + field names.
 //
 // Returns a summary { total, created, updated, deleted, skipped, failed, noop, errors }
@@ -45,13 +45,13 @@ export default async function(req: Request): Promise<Response> {
     const body = await req.json().catch(() => ({}));
     const mode = String(body.mode || "sync_all");
 
-    // ── Test bridge connection ────────────────────────────────────────
+    // ── Test VoIP.ms API connection ───────────────────────────────────
     if (mode === "test_connection") {
       const result = await testBridgeConnection();
       return Response.json(result);
     }
 
-    // ── getIP — verify bridge + VoIP.ms credentials ───────────────────
+    // ── getIP — verify VoIP.ms API credentials ────────────────────────
     if (mode === "get_ip") {
       try {
         const data = await voipGetIP();
@@ -183,11 +183,11 @@ export default async function(req: Request): Promise<Response> {
         voipms_pb_current_sync_status: `Sync aborted: ${safeError}`,
       });
 
-      // Alert admins so bridge outages don't fail silently for days
+      // Alert admins so API outages don't fail silently for days
       try {
         await base44.asServiceRole.entities.Notification.create({
           title: "Phone Book Sync Failed",
-          message: `Nightly reconciliation aborted: ${safeError}. The ElitePhoneBridge may be offline.`,
+          message: `Nightly reconciliation aborted: ${safeError}. The VoIP.ms API may be unreachable or credentials may be invalid.`,
           type: "other",
           link_url: "/VoipPhonebookSyncHistory",
           is_read: false,
@@ -226,7 +226,7 @@ export default async function(req: Request): Promise<Response> {
 
     // Track newly created entries for batch ID discovery after the loop.
     // Avoids re-fetching the entire phone book after each create (which doubles
-    // bridge calls and causes the sync to time out before finishing all customers).
+    // API calls and causes the sync to time out before finishing all customers).
     const pendingIdDiscovery: Array<{ customerId: string; normalizedPhone: string; source: string; normalizedName: string }> = [];
 
     for (const { customer, phone: normalizedPhone, source } of deduped) {
@@ -321,7 +321,7 @@ export default async function(req: Request): Promise<Response> {
             }
           }
         } else {
-          // Create new entry — call setPhonebook directly (1 bridge call, no per-entry re-fetch).
+          // Create new entry — call setPhonebook directly (1 API call, no per-entry re-fetch).
           // Entry ID is discovered in a single batch getPhonebook pass after the loop.
           if (!dryRun) {
             try {

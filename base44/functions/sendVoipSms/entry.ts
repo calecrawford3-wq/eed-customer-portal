@@ -392,8 +392,8 @@ Deno.serve(async (req) => {
       : "sendSMS";
 
     /*
-     * Build params for the bridge — the bridge adds api_username/api_password
-     * from its own local settings.env, so VoIP.ms only sees the bridge's IP.
+     * Build params for the VoIP.ms API call. Credentials (api_username /
+     * api_password) are added by voipMsCall from Base44 secrets.
      */
     const voipParams = {
       did: apiFrom,
