@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { AlertCircle, ArrowLeft, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import JobHeader from "@/components/jobs/JobHeader";
 import JobOverviewTab from "@/components/jobs/JobOverviewTab";
 import JobPartsTab from "@/components/jobs/JobPartsTab";
@@ -20,9 +22,13 @@ import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import { BookOpen } from "lucide-react";
 
 export default function JobCard() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const [jobId, setJobId] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [printBuildBook, setPrintBuildBook] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -90,6 +96,19 @@ export default function JobCard() {
     setTimeout(() => window.print(), 500);
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await base44.entities.Job.delete(jobId);
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Job deleted");
+      navigate("/Jobs");
+    } catch (e) {
+      toast.error("Failed to delete job: " + e.message);
+    }
+    setDeleting(false);
+  };
+
   const bookTasks = bookTasksData?.items || bookTasksData || [];
   const bookFindings = (bookFindingsData?.items || bookFindingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled");
   const bookReplacements = bookReplacementsData?.items || bookReplacementsData || [];
@@ -132,13 +151,32 @@ export default function JobCard() {
       )}
       <div className="px-4 md:px-8 pt-4 print:hidden flex items-center justify-between">
         <Link to="/Jobs"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> All Jobs</Button></Link>
-        {build && (
-          <Button variant="outline" size="sm" onClick={handlePrintBuildBook}>
-            <BookOpen className="w-4 h-4 mr-1" /> Build Book
+        <div className="flex items-center gap-2">
+          {build && (
+            <Button variant="outline" size="sm" onClick={handlePrintBuildBook}>
+              <BookOpen className="w-4 h-4 mr-1" /> Build Book
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-1" /> Delete
           </Button>
-        )}
+        </div>
       </div>
       <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} build={build} />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title={`Delete ${job.job_number}?`}
+        message="This permanently removes the job card. Linked estimates, invoices, and builds will remain but will no longer be associated with a job."
+        confirmLabel={deleting ? "Deleting..." : "Delete Job"}
+      />
 
       <div className="px-4 md:px-8 mt-4">
         <Tabs value={activeTab} onValueChange={(v) => {

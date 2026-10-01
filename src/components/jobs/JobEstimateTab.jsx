@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { FileText, CheckCircle2, Clock, XCircle, Link2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import LinkEstimateDialog from "./LinkEstimateDialog";
 
 const STATUS_CLS = {
   draft: "bg-slate-100 text-slate-600",
@@ -15,8 +16,22 @@ const STATUS_CLS = {
 };
 
 export default function JobEstimateTab({ job, estimate }) {
+  const [linkOpen, setLinkOpen] = useState(false);
+
   if (!estimate) {
-    return <Card className="border-0 shadow-sm"><CardContent><p className="text-sm text-slate-400 py-8 text-center">No estimate linked to this job.</p></CardContent></Card>;
+    return (
+      <>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-slate-400 mb-3">No estimate linked to this job.</p>
+            <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+              <Link2 className="w-4 h-4 mr-1" /> Link Estimate
+            </Button>
+          </CardContent>
+        </Card>
+        <LinkEstimateDialog open={linkOpen} onClose={() => setLinkOpen(false)} job={job} />
+      </>
+    );
   }
 
   const lineCount = (estimate.line_items || []).length;
@@ -72,6 +87,14 @@ export default function JobEstimateTab({ job, estimate }) {
           {job.stage === "awaiting_approval" && <p className="text-xs text-slate-400">The job becomes active once the estimate is approved{estimate.deposit_required ? " and the deposit is received" : ""}.</p>}
         </CardContent>
       </Card>
+
+      <div>
+        <Button size="sm" variant="ghost" className="text-slate-500" onClick={() => setLinkOpen(true)}>
+          <Link2 className="w-3.5 h-3.5 mr-1" /> Link Different Estimate
+        </Button>
+      </div>
+
+      <LinkEstimateDialog open={linkOpen} onClose={() => setLinkOpen(false)} job={job} />
     </div>
   );
 }

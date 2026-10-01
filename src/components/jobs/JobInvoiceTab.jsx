@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Receipt, CreditCard, Plus, Trash2, X } from "lucide-react";
+import { Receipt, CreditCard, Plus, Trash2, X, Link2 } from "lucide-react";
+import LinkInvoiceDialog from "./LinkInvoiceDialog";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
 
@@ -26,9 +27,22 @@ export default function JobInvoiceTab({ job, invoices }) {
   const [recordingFor, setRecordingFor] = useState(null);
   const [payForm, setPayForm] = useState({ amount: "", method: "cash", date: new Date().toISOString().split("T")[0], note: "" });
   const [saving, setSaving] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
 
   if (!invoices || invoices.length === 0) {
-    return <Card className="border-0 shadow-sm"><CardContent><p className="text-sm text-slate-400 py-8 text-center">No invoices linked to this job yet.</p></CardContent></Card>;
+    return (
+      <>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-slate-400 mb-3">No invoices linked to this job yet.</p>
+            <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+              <Link2 className="w-4 h-4 mr-1" /> Link Invoice
+            </Button>
+          </CardContent>
+        </Card>
+        <LinkInvoiceDialog open={linkOpen} onClose={() => setLinkOpen(false)} job={job} />
+      </>
+    );
   }
 
   const recordPayment = async (inv) => {
@@ -168,6 +182,12 @@ export default function JobInvoiceTab({ job, invoices }) {
           </Card>
         );
       })}
+      <div>
+        <Button size="sm" variant="ghost" className="text-slate-500" onClick={() => setLinkOpen(true)}>
+          <Link2 className="w-3.5 h-3.5 mr-1" /> Link Another Invoice
+        </Button>
+      </div>
+      <LinkInvoiceDialog open={linkOpen} onClose={() => setLinkOpen(false)} job={job} />
     </div>
   );
 }
