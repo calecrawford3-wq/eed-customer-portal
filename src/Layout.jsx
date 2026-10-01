@@ -35,6 +35,8 @@ import {
   Boxes,
   Briefcase,
   ShieldCheck,
+  ChevronDown,
+  Monitor,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -49,6 +51,16 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('nav-collapsed-groups') || '{}'); } catch { return {}; }
+  });
+  const toggleGroup = (label) => {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [label]: !prev[label] };
+      try { localStorage.setItem('nav-collapsed-groups', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   // Register push notification service worker globally on all admin pages
   usePushNotifications();
@@ -77,40 +89,37 @@ export default function Layout({ children, currentPageName }) {
 
   const navGroups = [
     {
-      label: "Overview",
+      label: "Today",
       items: [
-        { name: "Dashboard", page: "Dashboard", icon: Gauge },
-        { name: "Jobs", page: "Jobs", icon: Briefcase },
+        { name: "Work Queue", page: "Dashboard", icon: Gauge },
         { name: "Exceptions", page: "ExceptionDashboard", icon: ShieldCheck },
+        { name: "Calendar", page: "Calendar", icon: Calendar },
+        { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
       ],
     },
     {
-      label: "Sales & Billing",
+      label: "Jobs",
       items: [
-        { name: "Customers", page: "Customers", icon: Users },
+        { name: "All Jobs", page: "Jobs", icon: Briefcase },
         { name: "Estimates", page: "Estimates", icon: ClipboardList },
-        { name: "Invoices", page: "Invoices", icon: Receipt },
         { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
-        { name: "Payments", page: "Payments", icon: DollarSign },
-      ],
-    },
-    {
-      label: "Engine Shop",
-      items: [
         { name: "Build Workflow", page: "BuildWorkflow", icon: ListChecks },
-        { name: "Platforms", page: "Platforms", icon: Layers },
-        { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-        { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
-        { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
-        { name: "Addons", page: "Addons", icon: Sparkles },
+        { name: "Invoices", page: "Invoices", icon: Receipt },
         { name: "Documents", page: "Documents", icon: FolderOpen },
       ],
     },
     {
-      label: "Inventory & Procurement",
+      label: "Customers & Engines",
+      items: [
+        { name: "Customers", page: "Customers", icon: Users },
+        { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
+        { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
+      ],
+    },
+    {
+      label: "Inventory & Purchasing",
       items: [
         { name: "Inventory", page: "Inventory", icon: Package },
-        { name: "Barcode Scan", page: "BarcodeScan", icon: ScanLine },
         { name: "Suppliers", page: "Suppliers", icon: Truck },
         { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
       ],
@@ -118,6 +127,7 @@ export default function Layout({ children, currentPageName }) {
     {
       label: "Finance",
       items: [
+        { name: "Payments", page: "Payments", icon: DollarSign },
         { name: "Expenses", page: "Expenses", icon: TrendingDown },
         { name: "Credits", page: "Credits", icon: Award },
         { name: "Reports", page: "Reports", icon: BarChart2 },
@@ -126,23 +136,25 @@ export default function Layout({ children, currentPageName }) {
     {
       label: "Communications",
       items: [
-        { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
-        { name: "Calendar", page: "Calendar", icon: Calendar },
         { name: "Messages", page: "Messaging", icon: MessageSquare, badge: true },
         { name: "Emails", page: "Emails", icon: Mail },
       ],
     },
     {
-      label: "R&D",
+      label: "Development",
       items: [
-        { name: "R&D Engine Developer", page: "RnDEngineDeveloper", icon: FlaskConical },
+        { name: "R&D Developer", page: "RnDEngineDeveloper", icon: FlaskConical },
       ],
     },
     {
-      label: "Admin",
+      label: "Settings",
       items: [
-        { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
         { name: "Settings", page: "Settings", icon: Settings2 },
+        { name: "Platforms", page: "Platforms", icon: Layers },
+        { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
+        { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
+        { name: "Addons", page: "Addons", icon: Sparkles },
+        { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
       ],
     },
   ];
@@ -194,13 +206,19 @@ export default function Layout({ children, currentPageName }) {
         <nav className="flex-1 py-3 px-3 overflow-y-auto">
           {navGroups.map((group, gIdx) => {
             const showHeader = !collapsed;
+            const isGroupCollapsed = !!collapsedGroups[group.label];
             return (
               <div key={gIdx} className="mb-1">
                 {showHeader && (
-                  <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    {group.label}
-                  </p>
+                  <button
+                    onClick={() => toggleGroup(group.label)}
+                    className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", isGroupCollapsed && "-rotate-90")} />
+                  </button>
                 )}
+                {(!isGroupCollapsed || !showHeader) && (
                 <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const isActive = currentPageName === item.page;
@@ -242,6 +260,7 @@ export default function Layout({ children, currentPageName }) {
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
@@ -292,15 +311,24 @@ export default function Layout({ children, currentPageName }) {
             ) : (
               <div />
             )}
-            <button
-              onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden lg:inline">Search</span>
-              <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
-            </button>
-            <NotificationBell />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate(createPageUrl("BarcodeScan"))}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-[#e20404] hover:border-slate-300 transition-colors text-sm"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span className="hidden lg:inline">Scan</span>
+              </button>
+              <button
+                onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden lg:inline">Search</span>
+                <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
+              </button>
+              <NotificationBell />
+            </div>
           </div>
         )}
         {children}
