@@ -33,6 +33,7 @@ import Addons from './pages/Addons';
 import VoipPhonebookSettings from './pages/VoipPhonebookSettings';
 import VoipPhonebookSyncHistory from './pages/VoipPhonebookSyncHistory';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import OAuthConsent from './pages/OAuthConsent';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -134,6 +135,7 @@ function App() {
           <NavigationTracker />
           <Routes>
             <Route path="/debug-sw" element={<DebugServiceWorker />} />
+            <Route path="/oauth/consent" element={<OAuthConsent />} />
             <Route path="*" element={<AuthenticatedApp />} />
           </Routes>
         </AuthProvider>
