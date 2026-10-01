@@ -151,6 +151,14 @@ export default function Jobs() {
       return res.items || res || [];
     },
   });
+  const { data: estimates = [] } = useQuery({
+    queryKey: ["estimates-for-jobs"],
+    queryFn: async () => {
+      const res = await base44.entities.Estimate.filter({ status: { $in: ["expired", "declined"] }, archived: true }, "-created_date", 500);
+      return res.items || res || [];
+    },
+  });
+  const expiredEstimateIds = useMemo(() => new Set(estimates.map(e => e.id)), [estimates]);
 
   const customerName = (id) => {
     const c = customers.find(c => c.id === id);
@@ -166,12 +174,14 @@ export default function Jobs() {
 
   const filtered = useMemo(() => {
     return jobs.filter(j => {
+      // Hide jobs whose linked estimate is expired/archived — isolated to the Estimates page
+      if (j.estimate_id && expiredEstimateIds.has(j.estimate_id)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       const cn = customerName(j.customer_id).toLowerCase();
       return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q);
     });
-  }, [jobs, search, customers]);
+  }, [jobs, search, customers, expiredEstimateIds]);
 
   const viewConfig = VIEWS[activeView];
   const columns = useMemo(() => {
