@@ -234,6 +234,28 @@
           "engine_section": {
             "type": "string",
             "description": "Engine label this machining item belongs to on a combined invoice."
+          },
+          "cost_type": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "in_house",
+              "outsourced"
+            ],
+            "default": "unspecified",
+            "description": "How this machining operation's actual cost is tracked. in_house = covered by logged labor hours (no separate vendor cost); outsourced = performed by an external vendor with an actual cost; unspecified = not yet classified (flagged in profitability)."
+          },
+          "actual_cost": {
+            "type": "number",
+            "description": "Actual vendor cost for outsourced machining. Null/absent = cost not yet recorded (flagged as missing in profitability). Explicitly 0 = vendor did the work at no charge (not flagged). Never use the customer price as the actual cost."
+          },
+          "vendor": {
+            "type": "string",
+            "description": "Vendor name for outsourced machining (optional)"
+          },
+          "expense_id": {
+            "type": "string",
+            "description": "Optional link to an Expense record for the vendor bill, when the cost was recorded as a job expense"
           }
         }
       }

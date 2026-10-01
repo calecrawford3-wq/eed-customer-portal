@@ -33,7 +33,7 @@ import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
-const emptyMachining = { name: "", description: "", price: 0 };
+const emptyMachining = { name: "", description: "", price: 0, cost_type: "unspecified", actual_cost: null, vendor: "" };
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const STATUS_STYLES = {
@@ -539,7 +539,7 @@ export default function InvoiceDetail() {
 
   const selectMachiningFromCatalog = (item) => {
     const items = [...(form.machining_items || [])];
-    items[machiningPickingIdx] = { name: item.name, description: item.description || "", price: item.price || 0 };
+    items[machiningPickingIdx] = { ...items[machiningPickingIdx], name: item.name, description: item.description || "", price: item.price || 0 };
     const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };
@@ -1228,33 +1228,62 @@ export default function InvoiceDetail() {
           {(form.machining_items || []).length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-4">No machining items added.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
-                  {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-40">Engine</th>}
-                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(form.machining_items || []).map((item, idx) => (
-                  <tr key={idx} className="border-b border-slate-100">
-                    <td className="py-2 pr-2">
-                      <div className="flex gap-1">
-                        <Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </td>
-                    {form.is_combined && <td className="py-2 pr-2"><Input value={item.engine_section || ""} onChange={e => updateMachining(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" /></td>}
-                    <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
-                    <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
-                    <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
+                    {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-32">Engine</th>}
+                    <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-24">Price</th>
+                    <th className="text-left py-2 font-medium text-slate-600 w-36">Cost Type</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-28">Actual Cost</th>
+                    <th className="w-10"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(form.machining_items || []).map((item, idx) => {
+                    const ct = item.cost_type || "unspecified";
+                    return (
+                      <tr key={idx} className="border-b border-slate-100">
+                        <td className="py-2 pr-2">
+                          <div className="flex gap-1">
+                            <Input value={item.name} onChange={e => updateMachining(idx, "name", e.target.value)} placeholder="Machining name..." className="border-slate-200" />
+                            <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" title="Pick from catalog" onClick={() => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}><Search className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </td>
+                        {form.is_combined && <td className="py-2 pr-2"><Input value={item.engine_section || ""} onChange={e => updateMachining(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" /></td>}
+                        <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
+                        <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
+                        <td className="py-2 px-1">
+                          <Select value={ct} onValueChange={v => updateMachining(idx, "cost_type", v)}>
+                            <SelectTrigger className="h-8 text-xs border-slate-200"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unspecified">Unspecified</SelectItem>
+                              <SelectItem value="in_house">In-house</SelectItem>
+                              <SelectItem value="outsourced">Outsourced</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="py-2 px-1">
+                          {ct === "outsourced" ? (
+                            <div className="space-y-1">
+                              <Input type="number" value={item.actual_cost ?? ""} onChange={e => updateMachining(idx, "actual_cost", e.target.value === "" ? null : Number(e.target.value))} placeholder="Vendor cost" className="text-right border-slate-200 h-8" min="0" step="0.01" />
+                              <Input value={item.vendor || ""} onChange={e => updateMachining(idx, "vendor", e.target.value)} placeholder="Vendor name" className="border-slate-200 h-7 text-xs" />
+                            </div>
+                          ) : ct === "in_house" ? (
+                            <span className="text-xs text-blue-600 italic">Covered by labor</span>
+                          ) : (
+                            <span className="text-xs text-amber-600">—</span>
+                          )}
+                        </td>
+                        <td className="py-2"><Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeMachining(idx)}><Trash2 className="w-3.5 h-3.5" /></Button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

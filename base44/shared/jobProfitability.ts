@@ -2,7 +2,8 @@
 //
 // Quoted figures come from the approved estimate (what was promised to the customer).
 // Actual figures come from consumed reservations (parts), logged task time (labor),
-// invoice totals (revenue/discount/tax), and the build's warranty cost.
+// invoice totals (revenue/discount/tax), machining cost tracking, and the build's
+// warranty cost.
 //
 // Principles:
 //   - Revenue is BEFORE tax. Tax collected is tracked separately (not revenue).
@@ -11,6 +12,15 @@
 //   - Cost snapshots on consumed reservations preserve historical parts cost
 //     so later catalog price changes do not rewrite history.
 //   - Missing costs are flagged, NOT treated as zero — unknown != free.
+//   - An explicit $0 is valid (e.g. $0 internal labor rate for owner draws) and
+//     is NOT flagged as missing.
+//   - Machining cost is tracked per-item as in_house or outsourced:
+//       in_house   → cost is covered by logged labor hours (no separate vendor cost)
+//       outsourced → actual vendor cost is recorded (null = missing, 0 = explicit $0)
+//       unspecified → flagged as missing (must be classified)
+//   - The customer's machining charge (price) is NEVER used as the actual cost.
+//   - Overhead burden is always applied to logged hours, even when the internal
+//     labor rate is $0.
 //   - Estimated and actual margin are shown separately.
 
 export { computeJobProfitability, roundMoney };
@@ -61,7 +71,7 @@ async function computeJobProfitability(base44, { job_id, settings }) {
     build = (bRes.items || bRes || [])[0];
   }
 
-  // Load invoices (actual revenue)
+  // Load invoices (actual revenue + machining cost tracking)
   let invoices = [];
   if (job.invoice_ids?.length) {
     const iRes = await base44.entities.Invoice.filter({ id: { $in: job.invoice_ids } });
@@ -86,9 +96,8 @@ async function computeJobProfitability(base44, { job_id, settings }) {
   }
 
   // Load additional work (approved, applied to invoice)
-  let additionalWorks = [];
   const awRes = await base44.entities.AdditionalWork.filter({ job_id });
-  additionalWorks = awRes.items || awRes || [];
+  const additionalWorks = awRes.items || awRes || [];
 
   // --- QUOTED (from estimate) ---
   const quoted = computeQuoted(estimate, additionalWorks);
@@ -116,7 +125,7 @@ async function computeJobProfitability(base44, { job_id, settings }) {
     estimated_margin_pct: estimatedMargin,
     actual_margin_pct: actualMargin,
     missing_costs: actual.missingCosts,
-    warnings: buildWarnings(actual.missingCosts, laborRate),
+    warnings: buildWarnings(actual.missingCosts),
   };
 }
 
@@ -217,6 +226,9 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
   let creditsApplied = 0;
   let paymentsReceived = 0;
 
+  // Collect machining items across all invoices for cost-type analysis
+  const machiningItems = [];
+
   for (const inv of invoices) {
     if (inv.status === "void") continue;
     for (const li of (inv.line_items || [])) {
@@ -228,6 +240,7 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
     }
     for (const m of (inv.machining_items || [])) {
       machiningRevenue += Number(m.price) || 0;
+      machiningItems.push(m);
     }
     discount += Number(inv.discount_amount) || 0;
     taxCollected += Number(inv.tax_amount) || 0;
@@ -261,29 +274,54 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
   }
   partsCost = roundMoney(partsCost);
 
-  // Actual labor hours from tasks
+  // Actual labor hours from tasks (all tasks — in-house machining hours are
+  // included here because in-house machining is done by shop labor; the cost
+  // is the labor rate + overhead, not a separate vendor cost)
   let laborMinutes = 0;
-  let tasksWithTime = 0;
   for (const t of tasks) {
     const mins = Number(t.time_logged_minutes) || 0;
-    if (mins > 0) {
-      laborMinutes += mins;
-      tasksWithTime++;
-    }
+    if (mins > 0) laborMinutes += mins;
   }
   const laborHours = roundMoney(laborMinutes / 60);
 
-  // Internal labor cost = hours * (rate + overhead)
-  // Flag if rate is 0 (not configured) and hours > 0
-  let laborCost = 0;
-  if (laborHours > 0 && laborRate > 0) {
-    laborCost = roundMoney(laborHours * (laborRate + overheadRate));
-  } else if (laborHours > 0 && laborRate === 0) {
-    missingCosts.push({
-      type: "labor_rate",
-      message: `${laborHours} labor hours logged but internal labor rate is not configured — internal labor cost is unknown.`,
-    });
+  // Internal labor cost = hours * laborRate.
+  // An intentional $0 rate is valid (owner draws) — labor cost is $0, not missing.
+  const internalLaborCost = roundMoney(laborHours * laborRate);
+
+  // Overhead cost = hours * overheadRate.
+  // Always applied, even when laborRate is $0 — the burden applies to all logged hours.
+  const overheadCost = roundMoney(laborHours * overheadRate);
+
+  // Machining cost tracking by cost_type per invoice machining item.
+  let outsourcedMachiningCost = 0;
+  let inHouseMachiningCount = 0;
+  let outsourcedMachiningCount = 0;
+
+  for (const m of machiningItems) {
+    const costType = m.cost_type || "unspecified";
+    if (costType === "in_house") {
+      // Cost is covered by logged labor hours — no separate vendor cost, no warning.
+      inHouseMachiningCount++;
+    } else if (costType === "outsourced") {
+      outsourcedMachiningCount++;
+      // actual_cost: null/undefined = missing (flagged); 0 = explicit $0 (valid, not flagged)
+      if (m.actual_cost == null) {
+        missingCosts.push({
+          type: "machining_cost",
+          message: `Outsourced machining "${m.name || "(unnamed)"}" has no recorded vendor cost — actual machining cost is unknown. Enter the vendor cost on the invoice.`,
+        });
+      } else {
+        outsourcedMachiningCost += Number(m.actual_cost) || 0;
+      }
+    } else {
+      // unspecified — must be classified before cost can be determined
+      missingCosts.push({
+        type: "machining_cost",
+        message: `Machining "${m.name || "(unnamed)"}" is not marked as in-house or outsourced — actual cost cannot be determined. Mark it on the invoice.`,
+      });
+    }
   }
+  outsourcedMachiningCost = roundMoney(outsourcedMachiningCost);
 
   // Warranty cost from build
   let warrantyCost = 0;
@@ -291,16 +329,9 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
     warrantyCost = roundMoney(Number(build.warranty_repair_cost) || 0);
   }
 
-  // Machining/outsourced actual cost: not tracked from POs in current system
-  // Flag as missing if machining revenue exists but no cost tracking
-  if (machiningRevenue > 0) {
-    missingCosts.push({
-      type: "machining_cost",
-      message: `${machiningRevenue.toFixed(2)} in machining/outsourced revenue has no tracked actual cost — machining cost is unknown.`,
-    });
-  }
-
-  const totalCost = roundMoney(partsCost + laborCost + warrantyCost);
+  const totalCost = roundMoney(
+    partsCost + internalLaborCost + overheadCost + outsourcedMachiningCost + warrantyCost
+  );
 
   return {
     revenueBeforeTax,
@@ -310,8 +341,13 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
     machiningRevenue,
     discount,
     laborHours,
-    laborCost,
+    internalLaborCost,
+    overheadCost,
     laborRate,
+    overheadRate,
+    outsourcedMachiningCost,
+    inHouseMachiningCount,
+    outsourcedMachiningCount,
     warrantyCost,
     totalCost,
     taxCollected: roundMoney(taxCollected),
@@ -321,13 +357,10 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
   };
 }
 
-function buildWarnings(missingCosts, laborRate) {
+function buildWarnings(missingCosts) {
   const warnings = [];
   if (missingCosts.length > 0) {
     warnings.push(`${missingCosts.length} missing cost(s) flagged — actual margin may be understated.`);
-  }
-  if (laborRate === 0) {
-    warnings.push("Internal labor rate is not configured — set it in Settings to track actual labor cost.");
   }
   return warnings;
 }

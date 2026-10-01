@@ -237,6 +237,28 @@
           },
           "price": {
             "type": "number"
+          },
+          "cost_type": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "in_house",
+              "outsourced"
+            ],
+            "default": "unspecified",
+            "description": "How this machining operation's actual cost is tracked. in_house = covered by logged labor hours; outsourced = external vendor with an actual cost; unspecified = not yet classified. Carried to the invoice on conversion."
+          },
+          "actual_cost": {
+            "type": "number",
+            "description": "Actual vendor cost for outsourced machining (planned/estimated). Null = not yet recorded; 0 = explicit $0."
+          },
+          "vendor": {
+            "type": "string",
+            "description": "Vendor name for outsourced machining (optional)"
+          },
+          "expense_id": {
+            "type": "string",
+            "description": "Optional link to an Expense record for the vendor bill"
           }
         }
       }

@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, AlertTriangle, RefreshCw, DollarSign, Package, Wrench, Hammer, ShieldAlert, Clock, Percent } from "lucide-react";
+import { TrendingUp, AlertTriangle, RefreshCw, DollarSign, Package, Wrench, Hammer, ShieldAlert, Clock, Percent, Building2, Truck } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 export default function JobProfitabilityTab({ job }) {
@@ -95,7 +95,9 @@ function ProfitabilityReport({ report }) {
             <ProfitRow icon={Wrench} label="Labor revenue" quoted={quoted.laborRevenue} actual={actual.laborRevenue} />
             <ProfitRow icon={Hammer} label="Machining revenue" quoted={quoted.machiningRevenue} actual={actual.machiningRevenue} />
             <ProfitRow icon={Percent} label="Discount" quoted={quoted.discount} actual={actual.discount} cost />
-            <ProfitRow icon={Clock} label={`Labor cost (${actual.laborHours}h @ $${actual.laborRate}/hr)`} quoted={null} actual={actual.laborCost} cost />
+            <ProfitRow icon={Clock} label={`Internal labor (${actual.laborHours}h @ $${actual.laborRate}/hr)`} quoted={null} actual={actual.internalLaborCost} cost />
+            <ProfitRow icon={Building2} label={`Overhead burden (${actual.laborHours}h @ $${actual.overheadRate}/hr)`} quoted={null} actual={actual.overheadCost} cost />
+            <ProfitRow icon={Truck} label="Outsourced machining cost" quoted={null} actual={actual.outsourcedMachiningCost} cost />
             <ProfitRow icon={ShieldAlert} label="Warranty cost" quoted={null} actual={actual.warrantyCost} cost />
             <tr className="border-t-2 border-slate-300 font-bold">
               <td className="py-2 pr-4 text-slate-900">Total Cost</td>
@@ -106,6 +108,27 @@ function ProfitabilityReport({ report }) {
           </tbody>
         </table>
       </div>
+
+      {/* Machining classification summary */}
+      {(actual.inHouseMachiningCount > 0 || actual.outsourcedMachiningCount > 0 || actual.machiningRevenue > 0) && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {actual.inHouseMachiningCount > 0 && (
+            <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+              {actual.inHouseMachiningCount} in-house machining (cost covered by labor)
+            </Badge>
+          )}
+          {actual.outsourcedMachiningCount > 0 && (
+            <Badge className="bg-purple-50 text-purple-700 border-purple-200">
+              {actual.outsourcedMachiningCount} outsourced machining ({formatMoney(actual.outsourcedMachiningCost)})
+            </Badge>
+          )}
+          {actual.machiningRevenue > 0 && actual.inHouseMachiningCount === 0 && actual.outsourcedMachiningCount === 0 && (
+            <Badge className="bg-amber-50 text-amber-700 border-amber-200">
+              All machining unclassified — mark in-house or outsourced on the invoice
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Separately tracked (not revenue or operating cost) */}
       <div className="grid grid-cols-3 gap-3">
