@@ -49,7 +49,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, bu
             </Badge>
           )}
           {job.is_warranty && <Badge variant="outline" className="text-xs text-purple-700 border-purple-300">Warranty</Badge>}
-          {job.is_active && <JobStageMover job={job} build={build} />}
+          {job.stage !== "picked_up" && <JobStageMover job={job} build={build} />}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-sm">
