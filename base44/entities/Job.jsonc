@@ -88,6 +88,20 @@
       "default": "awaiting_approval",
       "description": "Separate from stage \u2014 a job can be in machining while also waiting_on_parts"
     },
+    "secondary_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "waiting_on_parts",
+          "waiting_on_approval",
+          "awaiting_deposit",
+          "on_hold"
+        ]
+      },
+      "default": [],
+      "description": "Independent secondary tags that supplement the primary stage. Multiple can be active simultaneously (e.g. Machining + Waiting on Parts + Waiting on Approval). Moving a card preserves these tags."
+    },
     "is_active": {
       "type": "boolean",
       "default": false,
