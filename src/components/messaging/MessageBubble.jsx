@@ -13,7 +13,7 @@ export default function MessageBubble({
   const hasBody = Boolean(String(message.body || "").trim());
 
   return (
-    <div className="flex items-end gap-1.5">
+    <>
       {message._pending && message.status === "failed" && (
         <button
           type="button"
@@ -109,6 +109,6 @@ export default function MessageBubble({
           {!message._pending && message.direction === "outbound" && message.status === "unknown" && " · Unconfirmed"}
         </div>
       </div>
-    </div>
+    </>
   );
 }
