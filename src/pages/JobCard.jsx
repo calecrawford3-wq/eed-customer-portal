@@ -16,10 +16,13 @@ import JobWorkflowTab from "@/components/jobs/JobWorkflowTab";
 import JobCommsTab from "@/components/jobs/JobCommsTab";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
+import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
+import { BookOpen } from "lucide-react";
 
 export default function JobCard() {
   const [jobId, setJobId] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [printBuildBook, setPrintBuildBook] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -55,6 +58,44 @@ export default function JobCard() {
   const invoiceList = (invoices.data?.items || invoices.data || []);
   const primaryInvoice = invoiceList[0];
 
+  // Build Book data (loaded on demand)
+  const { data: bookTasksData } = useQuery({
+    queryKey: ["book-tasks", build?.id],
+    queryFn: () => base44.entities.BuildTask.filter({ build_id: build.id }, { sort: "sort_order", limit: 500 }),
+    enabled: !!build?.id && printBuildBook,
+  });
+  const { data: bookFindingsData } = useQuery({
+    queryKey: ["book-findings", job?.id],
+    queryFn: () => base44.entities.TeardownFinding.filter({ job_id: job.id }, { limit: 200 }),
+    enabled: !!job?.id && printBuildBook,
+  });
+  const { data: bookReplacementsData } = useQuery({
+    queryKey: ["book-replacements", build?.id],
+    queryFn: () => base44.entities.ComponentReplacement.filter({ build_id: build.id }, { limit: 100 }),
+    enabled: !!build?.id && printBuildBook,
+  });
+  const { data: bookSpecSheet } = useQuery({
+    queryKey: ["book-specsheet", build?.spec_sheet_id],
+    queryFn: async () => {
+      const res = await base44.entities.SpecSheet.filter({ id: build.spec_sheet_id });
+      return res?.[0] || null;
+    },
+    enabled: !!build?.spec_sheet_id && printBuildBook,
+  });
+
+  const handlePrintBuildBook = () => {
+    setPrintBuildBook(true);
+    setTimeout(() => window.print(), 500);
+  };
+
+  const bookTasks = bookTasksData?.items || bookTasksData || [];
+  const bookFindings = (bookFindingsData?.items || bookFindingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled");
+  const bookReplacements = bookReplacementsData?.items || bookReplacementsData || [];
+  let profitabilityData = null;
+  try {
+    profitabilityData = job?.profitability_snapshot ? JSON.parse(job.profitability_snapshot) : null;
+  } catch (e) { /* ignore parse errors */ }
+
   if (isLoading || !jobId) {
     return <div className="p-8"><Skeleton className="h-10 w-64 mb-8" /><Skeleton className="h-96" /></div>;
   }
@@ -70,8 +111,30 @@ export default function JobCard() {
 
   return (
     <div className="pb-8">
-      <div className="px-4 md:px-8 pt-4 print:hidden">
+      {/* Print-only Build Book */}
+      {printBuildBook && build && (
+        <div className="hidden print:block">
+          <PrintableBuildBook
+            build={build}
+            platform={platform}
+            specSheet={bookSpecSheet}
+            customer={customer}
+            job={job}
+            tasks={bookTasks}
+            findings={bookFindings}
+            replacements={bookReplacements}
+            profitability={profitabilityData}
+            invoice={primaryInvoice}
+          />
+        </div>
+      )}
+      <div className="px-4 md:px-8 pt-4 print:hidden flex items-center justify-between">
         <Link to="/Jobs"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> All Jobs</Button></Link>
+        {build && (
+          <Button variant="outline" size="sm" onClick={handlePrintBuildBook}>
+            <BookOpen className="w-4 h-4 mr-1" /> Build Book
+          </Button>
+        )}
       </div>
       <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} build={build} />
 

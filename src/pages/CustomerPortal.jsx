@@ -12,11 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   Receipt, ClipboardList, Wrench, DollarSign, Download, RefreshCw,
   User, LogOut, CheckCircle, Clock, ChevronRight, FileText, AlertTriangle, Cpu,
-  Award, TrendingUp, TrendingDown
+  Award, TrendingUp, TrendingDown, BookOpen
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintableBuildSheet from "@/components/PrintableBuildSheet";
 import PrintableInvoice from "@/components/PrintableInvoice";
+import BuildProgressModal from "@/components/portal/BuildProgressModal";
+import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
 
@@ -62,6 +64,8 @@ export default function CustomerPortal() {
   const [printBuild, setPrintBuild] = useState(null);
   const [detailInvoice, setDetailInvoice] = useState(null);
   const [printInvoice, setPrintInvoice] = useState(false);
+  const [progressBuild, setProgressBuild] = useState(null);
+  const [printBookBuild, setPrintBookBuild] = useState(null);
   const invoicePdfRef = useRef(null);
   const qc = useQueryClient();
 
@@ -174,6 +178,34 @@ export default function CustomerPortal() {
     queryFn: () => base44.entities.DynoSheet.filter({ customer_id: customer.id, is_current: true }, "-created_date", 200),
     enabled: !!customer,
   });
+
+  // Build Book data (loaded on demand when printing)
+  const { data: bookTasksData } = useQuery({
+    queryKey: ["book-tasks", printBookBuild?.id],
+    queryFn: () => base44.entities.BuildTask.filter({ build_id: printBookBuild.id }, { sort: "sort_order", limit: 500 }),
+    enabled: !!printBookBuild?.id,
+  });
+  const { data: bookJobsData } = useQuery({
+    queryKey: ["book-jobs", printBookBuild?.id],
+    queryFn: () => base44.entities.Job.filter({ build_id: printBookBuild.id }, { limit: 5 }),
+    enabled: !!printBookBuild?.id,
+  });
+  const bookJob = (bookJobsData?.items || bookJobsData || [])[0];
+  const { data: bookFindingsData } = useQuery({
+    queryKey: ["book-findings", bookJob?.id],
+    queryFn: () => base44.entities.TeardownFinding.filter({ job_id: bookJob.id }, { limit: 200 }),
+    enabled: !!bookJob?.id,
+  });
+  const { data: bookReplacementsData } = useQuery({
+    queryKey: ["book-replacements", printBookBuild?.id],
+    queryFn: () => base44.entities.ComponentReplacement.filter({ build_id: printBookBuild.id }, { limit: 100 }),
+    enabled: !!printBookBuild?.id,
+  });
+
+  const handlePrintBuildBook = (b) => {
+    setPrintBookBuild(b);
+    setTimeout(() => window.print(), 600);
+  };
 
   const profileMutation = useMutation({
     mutationFn: (data) => base44.entities.Customer.update(customer.id, data),
@@ -394,6 +426,22 @@ export default function CustomerPortal() {
             settings={settingsData?.[0]}
             customerEngine={customerEngines.find(e => e.id === detailInvoice.customer_engine_id)}
             platform={platforms.find(p => p.id === customerEngines.find(e => e.id === detailInvoice.customer_engine_id)?.platform_id)}
+          />
+        </div>
+      )}
+
+      {/* Print-only Build Book */}
+      {printBookBuild && (
+        <div className="hidden print:block">
+          <PrintableBuildBook
+            build={printBookBuild}
+            platform={platforms.find(p => p.id === printBookBuild.platform_id)}
+            specSheet={specSheets.find(s => s.id === printBookBuild.spec_sheet_id)}
+            customer={customer}
+            job={bookJob}
+            tasks={bookTasksData?.items || bookTasksData || []}
+            findings={(bookFindingsData?.items || bookFindingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled")}
+            replacements={bookReplacementsData?.items || bookReplacementsData || []}
           />
         </div>
       )}
@@ -633,7 +681,14 @@ export default function CustomerPortal() {
                               {b.build_number ? ` · Jobcard: ${b.build_number}` : ""}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setProgressBuild(b)}
+                            >
+                              <ClipboardList className="w-3.5 h-3.5 mr-1" /> View Progress
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -641,6 +696,15 @@ export default function CustomerPortal() {
                             >
                               <Download className="w-3.5 h-3.5 mr-1" /> Build Sheet
                             </Button>
+                            {(b.status === "complete" || b.status === "shipped") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePrintBuildBook(b)}
+                              >
+                                <BookOpen className="w-3.5 h-3.5 mr-1" /> Build Book
+                              </Button>
+                            )}
                             {(b.status === "complete" || b.status === "shipped") && (
                               existingRequest ? (
                                 <Button size="sm" variant="outline" disabled className="text-amber-600 border-amber-200">
@@ -1093,6 +1157,15 @@ export default function CustomerPortal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Build Progress Modal */}
+      {progressBuild && (
+        <BuildProgressModal
+          build={progressBuild}
+          platform={platforms.find(p => p.id === progressBuild.platform_id)}
+          onClose={() => setProgressBuild(null)}
+        />
+      )}
     </div>
   );
 }
