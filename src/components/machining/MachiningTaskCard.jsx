@@ -12,6 +12,13 @@ import {
 import { toast } from "sonner";
 import { TYPE_LABELS, TaskFields, formatInch } from "@/components/machining/MachiningTaskFields";
 
+const BILLING_BADGE = {
+  pending_invoice: { label: "Pending Invoice", cls: "bg-amber-100 text-amber-700" },
+  billed: { label: "Billed", cls: "bg-emerald-100 text-emerald-700" },
+  nonbillable: { label: "Non-billable", cls: "bg-slate-100 text-slate-500" },
+  linked: { label: "Linked", cls: "bg-blue-100 text-blue-700" },
+};
+
 // Task card with operational controls: start, block, record measurements,
 // complete, reopen. Used by both the Job Card Machining tab and the Machining
 // Station. The `large` prop increases text/button sizes for the station screen.
@@ -111,6 +118,11 @@ export default function MachiningTaskCard({ task, large }) {
               <Badge variant="outline" className="text-xs text-red-600 border-red-200">Required</Badge>
             ) : (
               <Badge variant="outline" className="text-xs text-slate-400">Optional</Badge>
+            )}
+            {task.billing_status && BILLING_BADGE[task.billing_status] && (
+              <Badge className={`text-xs border-0 ${BILLING_BADGE[task.billing_status].cls}`}>
+                {BILLING_BADGE[task.billing_status].label}
+              </Badge>
             )}
           </div>
           <p className={`font-medium text-slate-900 mt-1 ${large ? "text-lg" : "text-sm"}`}>

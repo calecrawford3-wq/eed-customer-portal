@@ -120,6 +120,90 @@
     "history_entry_id": {
       "type": "string",
       "description": "ID of the ServiceHistoryEntry created on completion. Used for idempotent updates \u2014 prevents duplicate history entries when completion is retried or the screen refreshes."
+    },
+    "billable": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, this task charges the customer and is synced to the job's invoice as a machining line item. When false, the task is operational only (warranty, rework, or included work) with a recorded reason."
+    },
+    "nonbillable_reason": {
+      "type": "string",
+      "description": "Required when billable is false. Records why this task is not charged: warranty, rework, included in package, or other explanation."
+    },
+    "customer_description": {
+      "type": "string",
+      "description": "Customer-facing description shown on the invoice and portal. Separate from the private internal instructions. Falls back to task_label when empty."
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1,
+      "description": "Quantity billed to the customer. Defaults to 1. Multiple operational tasks can share a single charge via charge_key, so the charge is not multiplied per task."
+    },
+    "customer_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-unit customer price for this machining operation. Pulled from the MachiningItem catalog when selected, or entered manually."
+    },
+    "cost_type": {
+      "type": "string",
+      "enum": [
+        "unspecified",
+        "in_house",
+        "outsourced"
+      ],
+      "default": "unspecified",
+      "description": "How this operation's actual cost is tracked. in_house = covered by logged labor hours; outsourced = external vendor with an actual cost; unspecified = not yet classified. Carried to the invoice machining item."
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor name for outsourced machining (optional). Pre-filled from the MachiningItem catalog default_vendor when available."
+    },
+    "actual_cost": {
+      "type": "number",
+      "description": "Actual vendor cost for outsourced machining. Null = not yet recorded; 0 = explicit $0. Used for profitability, not billing."
+    },
+    "billing_status": {
+      "type": "string",
+      "enum": [
+        "pending_invoice",
+        "billed",
+        "nonbillable",
+        "linked"
+      ],
+      "default": "pending_invoice",
+      "description": "billing_status: pending_invoice = billable but no invoice exists yet (included automatically when an invoice is created); billed = added to the job's invoice as a machining line item; nonbillable = not charged (warranty/rework/included); linked = the charge already exists on an estimate or invoice (this task was created from that charge, so it is not re-charged)."
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "The invoice this task's charge was added to (when billing_status is billed) or linked to (when linked). Empty when pending_invoice or nonbillable."
+    },
+    "charge_key": {
+      "type": "string",
+      "description": "Stable key identifying the billable charge this task belongs to. Multiple operational tasks can share one charge_key so they are covered by a single invoice line item without multiplying the charge. Defaults to the task id when not set. Matches the uid on the invoice machining item for stable linking."
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "estimate",
+        "invoice",
+        "additional_work",
+        "teardown_finding"
+      ],
+      "default": "manual",
+      "description": "Where this task originated. manual = added directly in the plan; estimate = pre-populated from an estimate machining item (already charged, not re-charged); invoice = pre-populated from an invoice machining item (already charged, linked); additional_work = created from an approved AdditionalWork document; teardown_finding = created from a teardown finding (pending until the finding is approved via additional work)."
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Stable ID of the source record. For estimate/invoice: '<doc_id>:machining:<index>'. For additional_work: the AdditionalWork id. For teardown_finding: the TeardownFinding id. Used with source_type to prevent duplicate tasks and to link approvals to existing tasks."
+    },
+    "finding_id": {
+      "type": "string",
+      "description": "Linked TeardownFinding when this task was created from a finding. Used to link the finding's approval to the task and to prevent creating a duplicate task when the finding is approved."
+    },
+    "additional_work_id": {
+      "type": "string",
+      "description": "Linked AdditionalWork document when this task was created from an approved additional-work request. Used to preserve history if the approval is later canceled."
     }
   },
   "required": [

@@ -222,6 +222,18 @@
       "items": {
         "type": "object",
         "properties": {
+          "uid": {
+            "type": "string",
+            "description": "Stable link key matching a MachiningTask.charge_key. Items with a uid are managed by the machining-billing sync (added, updated, or removed with the task). Items without a uid are estimate or additional-work sourced and are never touched by the sync."
+          },
+          "task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "Machining tasks covered by this single charge. Supports one billable item covering several operational tasks without multiplying the charge."
+          },
           "name": {
             "type": "string"
           },
