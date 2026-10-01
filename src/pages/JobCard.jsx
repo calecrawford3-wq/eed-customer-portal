@@ -139,7 +139,12 @@ export default function JobCard() {
       <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} build={build} />
 
       <div className="px-4 md:px-8 mt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v);
+          const params = new URLSearchParams(window.location.search);
+          params.set("tab", v);
+          window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+        }}>
           <TabsList className="flex flex-wrap h-auto overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="estimate">Estimate & Approvals</TabsTrigger>

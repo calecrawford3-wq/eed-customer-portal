@@ -49,6 +49,11 @@ export default function JobHeader({ job, customer, engine, platform, invoice, bu
             </Badge>
           )}
           {job.is_warranty && <Badge variant="outline" className="text-xs text-purple-700 border-purple-300">Warranty</Badge>}
+          {(job.secondary_tags || []).map(tag => (
+            <Badge key={tag} variant="outline" className="text-xs text-amber-700 border-amber-300 capitalize">
+              {tag.replace(/_/g, " ")}
+            </Badge>
+          ))}
           {job.stage !== "picked_up" && <JobStageMover job={job} build={build} />}
         </div>
 

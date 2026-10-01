@@ -83,7 +83,8 @@ export default function ExceptionDashboard() {
 
   const handleOpen = (alert) => {
     if (alert.job_id) {
-      navigate(`${createPageUrl("JobCard")}?id=${alert.job_id}`);
+      const tabParam = alert.job_card_section && alert.job_card_section !== "overview" ? `&tab=${alert.job_card_section}` : "";
+      navigate(`${createPageUrl("JobCard")}?id=${alert.job_id}${tabParam}`);
     }
   };
 

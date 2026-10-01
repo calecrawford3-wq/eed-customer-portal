@@ -13,6 +13,8 @@ import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import RevenueInsights from "@/components/dashboard/RevenueInsights";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 import PageHeader from "@/components/PageHeader";
+import TodayAlertsBar from "@/components/dashboard/TodayAlertsBar";
+import { formatMoney } from "@/lib/money";
 
 export default function Dashboard() {
   const qc = useQueryClient();
@@ -104,7 +106,7 @@ export default function Dashboard() {
     { label: "Customers", value: customers.length, icon: Users, color: "bg-blue-500", page: "Customers" },
     {
       label: "Outstanding",
-      value: `$${outstandingBalance.toLocaleString("en-US", { minimumFractionDigits: 0 })}`,
+      value: formatMoney(outstandingBalance),
       icon: Receipt,
       color: "bg-amber-500",
       page: "Invoices",
@@ -134,6 +136,9 @@ export default function Dashboard() {
           Shop Display
         </a>
       </PageHeader>
+
+      {/* Today action items — exceptions, approvals, overdue, follow-ups */}
+      <TodayAlertsBar />
 
       {/* Today's Work — guided lifecycle action list */}
       <TodayWorkPanel builds={builds} invoices={invoices} customers={customers} platforms={platforms} />

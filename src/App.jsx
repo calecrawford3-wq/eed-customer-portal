@@ -17,6 +17,7 @@ import CalendarPage from './pages/CalendarPage';
 import BarcodeScan from './pages/BarcodeScan';
 import Messaging from './pages/Messaging';
 import Emails from './pages/Emails';
+import Communications from './pages/Communications';
 import Approvals from './pages/Approvals';
 import Simulator from './pages/Simulator';
 import DynoImport from './pages/DynoImport';
@@ -107,6 +108,7 @@ const AuthenticatedApp = () => {
       <Route path="/BarcodeScan" element={<LayoutWrapper currentPageName="BarcodeScan"><BarcodeScan /></LayoutWrapper>} />
       <Route path="/Messaging" element={<LayoutWrapper currentPageName="Messaging"><Messaging /></LayoutWrapper>} />
       <Route path="/Emails" element={<LayoutWrapper currentPageName="Emails"><Emails /></LayoutWrapper>} />
+      <Route path="/Communications" element={<LayoutWrapper currentPageName="Communications"><Communications /></LayoutWrapper>} />
       <Route path="/Approvals" element={<LayoutWrapper currentPageName="Approvals"><Approvals /></LayoutWrapper>} />
       <Route path="/Simulator" element={<LayoutWrapper currentPageName="Simulator"><Simulator /></LayoutWrapper>} />
       <Route path="/DynoImport" element={<LayoutWrapper currentPageName="DynoImport"><DynoImport /></LayoutWrapper>} />

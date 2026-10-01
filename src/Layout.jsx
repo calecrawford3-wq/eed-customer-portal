@@ -136,8 +136,7 @@ export default function Layout({ children, currentPageName }) {
     {
       label: "Communications",
       items: [
-        { name: "Messages", page: "Messaging", icon: MessageSquare, badge: true },
-        { name: "Emails", page: "Emails", icon: Mail },
+        { name: "Inbox", page: "Communications", icon: MessageSquare, badge: true },
       ],
     },
     {
@@ -246,12 +245,12 @@ export default function Layout({ children, currentPageName }) {
                             {pendingRefreshCount}
                           </span>
                         )}
-                        {!collapsed && item.badge && item.page === "Messaging" && unreadMessageCount > 0 && (
+                        {!collapsed && item.badge && item.page === "Communications" && unreadMessageCount > 0 && (
                           <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                             {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                           </span>
                         )}
-                        {collapsed && item.badge && item.page === "Messaging" && unreadMessageCount > 0 && (
+                        {collapsed && item.badge && item.page === "Communications" && unreadMessageCount > 0 && (
                           <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                             {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                           </span>
