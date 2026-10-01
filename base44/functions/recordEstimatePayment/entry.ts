@@ -202,6 +202,16 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error(`[recordEstimatePayment] Outer error: ${error.message}`);
+    // Alert admins so invoice-creation failures don't go silent (customer already paid)
+    try {
+      await base44.asServiceRole.entities.Notification.create({
+        title: "Invoice Creation Failed",
+        message: `Payment of $${Number(amount || 0).toFixed(2)} was received for estimate ${estimate?.estimate_number || publicAccessToken || "unknown"} but invoice creation failed: ${error.message}. The customer may have been charged without an invoice being created — manual review needed.`,
+        type: "other",
+        link_url: estimate ? `/EstimateDetail?id=${estimate.id}` : "/Invoices",
+        is_read: false,
+      });
+    } catch (_) {}
     return Response.json({ 
       error: error.message 
     }, { status: 500 });

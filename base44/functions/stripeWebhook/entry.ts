@@ -139,6 +139,16 @@ Deno.serve(async (req) => {
         return Response.json({ success: true });
       } catch (error) {
         console.error(`Error processing ${documentType} payment:`, error.message);
+        // Alert admins so payment-processing failures don't go silent (customer already charged)
+        try {
+          await base44.asServiceRole.entities.Notification.create({
+            title: "Stripe Payment Processing Failed",
+            message: `A Stripe payment of $${amountPaid.toFixed(2)} was received for ${documentType} ${documentId} but post-payment processing failed: ${error.message}. The customer was charged — manual review and invoice creation may be needed.`,
+            type: "payment_received",
+            link_url: documentType === "estimate" ? `/EstimateDetail?id=${documentId}` : `/InvoiceDetail?id=${documentId}`,
+            is_read: false,
+          });
+        } catch (_) {}
         return Response.json({ success: false, error: error.message }, { status: 500 });
       }
     }
