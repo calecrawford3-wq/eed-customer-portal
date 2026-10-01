@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { nameToTaskType } from '../../shared/machiningTask.ts';
 
 // Applies an approved AdditionalWork document to the job's reservations, draft
 // invoice, and workflow tasks EXACTLY ONCE. Idempotent via processed_at.
@@ -174,6 +175,92 @@ export default async function(req) {
       }
     }
 
+    // 3b. Create machining tasks for each machining item on the approved work
+    // and for each finding's recommended machining items. These are
+    // "linked" (billing_status=linked) because the charge was already added to
+    // the invoice above — the sync will NOT re-charge them. source_type=
+    // additional_work + source_id=aw.id prevents duplicate tasks if the work
+    // is re-processed. finding_id links a task back to its teardown finding.
+    const machiningTaskIds = [];
+    const existingMachRes = await base44.asServiceRole.entities.MachiningTask.filter(
+      { job_id: job.id, source_type: 'additional_work', source_id: aw.id },
+      { limit: 500 }
+    );
+    const existingMach = existingMachRes.items || existingMachRes || [];
+    if (existingMach.length === 0) {
+      const nextMachSort = 10000; // additional-work tasks sort after planned tasks
+      const machRecords = [];
+
+      // Direct machining items on the additional work
+      for (let i = 0; i < (aw.machining_items || []).length; i++) {
+        const m = aw.machining_items[i];
+        const taskType = nameToTaskType(m.name);
+        machRecords.push({
+          job_id: job.id,
+          build_id: buildId,
+          customer_engine_id: job.customer_engine_id || '',
+          customer_id: job.customer_id || '',
+          task_type: taskType,
+          task_label: m.name,
+          affected_component: '',
+          instructions: m.description || '',
+          is_required: true,
+          sort_order: nextMachSort + i,
+          status: 'pending',
+          billable: true,
+          customer_description: m.name,
+          quantity: 1,
+          customer_price: Number(m.price) || 0,
+          cost_type: m.cost_type || 'unspecified',
+          vendor: m.vendor || '',
+          billing_status: 'linked',
+          invoice_id: invoiceId,
+          source_type: 'additional_work',
+          source_id: aw.id,
+        });
+      }
+
+      // Machining items recommended by each included finding
+      for (const fid of (aw.finding_ids || [])) {
+        const fRes = await base44.asServiceRole.entities.TeardownFinding.filter({ id: fid });
+        const f = (fRes.items || fRes || [])[0];
+        if (!f) continue;
+        for (const m of (f.machining_items || [])) {
+          const taskType = nameToTaskType(m.name);
+          machRecords.push({
+            job_id: job.id,
+            build_id: buildId,
+            customer_engine_id: job.customer_engine_id || '',
+            customer_id: job.customer_id || '',
+            task_type: taskType,
+            task_label: m.name,
+            affected_component: f.component || '',
+            instructions: m.description || '',
+            is_required: true,
+            sort_order: nextMachSort + machRecords.length,
+            status: 'pending',
+            billable: true,
+            customer_description: m.name,
+            quantity: 1,
+            customer_price: Number(m.price) || 0,
+            cost_type: m.cost_type || 'unspecified',
+            vendor: m.vendor || '',
+            billing_status: 'linked',
+            invoice_id: invoiceId,
+            source_type: 'additional_work',
+            source_id: aw.id,
+            finding_id: fid,
+          });
+        }
+      }
+
+      if (machRecords.length > 0) {
+        const created = await base44.asServiceRole.entities.MachiningTask.bulkCreate(machRecords);
+        const createdTasks = created.records || created || [];
+        for (const t of createdTasks) machiningTaskIds.push(t.id);
+      }
+    }
+
     // Mark findings approved
     for (const fid of (aw.finding_ids || [])) {
       await base44.asServiceRole.entities.TeardownFinding.update(fid, { status: 'approved', additional_work_id: aw.id });
@@ -194,9 +281,16 @@ export default async function(req) {
       version_history: appendVersion(aw, 'approved & processed', actor, aw.total),
     });
 
+    // Sync machining billing so the invoice reflects all task charges. This
+    // also picks up any pending_invoice tasks that predated the invoice.
+    try {
+      await base44.asServiceRole.functions.invoke('syncMachiningTaskBilling', { job_id: job.id });
+    } catch (e) { /* best-effort — tasks and invoice are already updated */ }
+
     return Response.json({
       ok: true, status: 'approved', invoice_id: invoiceId,
-      reservations: reservationIds.length, tasks: taskIds.length, added_subtotal: addedSubtotal,
+      reservations: reservationIds.length, tasks: taskIds.length,
+      machining_tasks: machiningTaskIds.length, added_subtotal: addedSubtotal,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

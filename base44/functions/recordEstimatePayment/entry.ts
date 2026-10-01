@@ -147,6 +147,21 @@ Deno.serve(async (req) => {
       invoiceId = newInvoice.id;
       console.log(`[recordEstimatePayment] New invoice created: ${invoiceNumber} (${invoiceId})`);
 
+      // Sync machining billing: pick up any pending_invoice machining tasks for
+      // this job and add them to the new invoice. Estimate-sourced machining
+      // items are already on the invoice (unmanaged), so the sync only adds
+      // task-linked charges that were waiting for an invoice.
+      try {
+        const jobs = await base44.asServiceRole.entities.Job.filter({ estimate_id: estimate.id });
+        const job = jobs && jobs[0];
+        if (job) {
+          await base44.asServiceRole.functions.invoke('syncMachiningTaskBilling', { job_id: job.id });
+          console.log(`[recordEstimatePayment] Machining billing synced for job ${job.id}`);
+        }
+      } catch (e) {
+        console.warn(`[recordEstimatePayment] Machining billing sync failed: ${e.message}`);
+      }
+
       // Link legal documents from the estimate to the new invoice + engine
       if (estimate.contains_illegal_parts) {
         try {

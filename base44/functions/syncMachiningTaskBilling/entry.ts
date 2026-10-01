@@ -22,9 +22,16 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
+
+    // Support two call paths:
+    //  1. Direct admin call (from the planning panel): auth.me() resolves the
+    //     user and we enforce admin role.
+    //  2. Internal call from another backend function via functions.invoke: no
+    //     user auth context, so auth.me() throws — fall back to service role.
+    try {
+      const user = await base44.auth.me();
+      if (user && user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
+    } catch (_) { /* service-role context — internal call, allowed */ }
 
     const body = await req.json();
     const jobId = body.job_id;

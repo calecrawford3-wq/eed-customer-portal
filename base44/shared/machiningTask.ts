@@ -34,7 +34,19 @@ const FIELD_LABELS = {
   optional_measurements: "Optional measurements",
 };
 
-export { validateMeasurements, buildHistoryTitle, buildHistoryDescription, buildHistoryMeasurements, diffMeasurements, FIELD_LABELS };
+export { validateMeasurements, buildHistoryTitle, buildHistoryDescription, buildHistoryMeasurements, diffMeasurements, nameToTaskType, FIELD_LABELS };
+
+// Map a machining item name (from an estimate/invoice/additional-work) to a
+// MachiningTask type. Used by the planning panel and by backend functions that
+// auto-create tasks from approved additional work.
+function nameToTaskType(name) {
+  const n = (name || "").toLowerCase();
+  if (n.includes("shave") || n.includes("surfacing") || n.includes("surface head") || n.includes("mill head")) return "shave_head";
+  if (n.includes("deck")) return "deck_case";
+  if (n.includes("valve")) return "valve_work";
+  if (n.includes("polish")) return "polishing";
+  return "other";
+}
 
 function validateMeasurements(taskType, measurements) {
   const required = REQUIRED_FIELDS[taskType] || [];
