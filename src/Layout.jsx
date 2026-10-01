@@ -79,7 +79,7 @@ export default function Layout({ children, currentPageName }) {
   const unreadMessageCount = messages.filter(m => !m.is_read && m.direction === "inbound").length;
 
   // On the Build Workflow page the nav sidebar is hidden on desktop and revealed on hover.
-  const isWorkflow = currentPageName === "BuildWorkflow";
+  const isWorkflow = currentPageName === "BuildWorkflow" || currentPageName === "MachiningStation";
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const hoverTimerRef = useRef(null);
   const enterSidebar = () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); setSidebarHovered(true); };
@@ -104,6 +104,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Estimates", page: "Estimates", icon: ClipboardList },
         { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
         { name: "Build Workflow", page: "BuildWorkflow", icon: ListChecks },
+        { name: "Machining Station", page: "MachiningStation", icon: Wrench },
         { name: "Invoices", page: "Invoices", icon: Receipt },
         { name: "Documents", page: "Documents", icon: FolderOpen },
       ],

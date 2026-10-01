@@ -1,0 +1,129 @@
+{
+  "name": "MachiningTask",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Linked Job this machining task belongs to"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked EngineBuild (set when the job has an active build)"
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Linked CustomerEngine \u2014 used to write permanent service history on completion"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Denormalized from the job for cross-customer queries"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "shave_head",
+        "deck_case",
+        "valve_work",
+        "polishing",
+        "other"
+      ],
+      "description": "Type of machining operation. Determines which measurement fields are required and how the task is displayed."
+    },
+    "task_label": {
+      "type": "string",
+      "description": "Display label for this task. Auto-generated from type + affected component, or custom for 'other' tasks."
+    },
+    "affected_component": {
+      "type": "string",
+      "description": "Component affected (e.g. 'Cylinder Head #1', 'Engine Case', 'Intake Valves'). Allows multiple tasks of the same type to track separate components."
+    },
+    "instructions": {
+      "type": "string",
+      "description": "Internal machining instructions. Private \u2014 never shown on the customer portal or customer-facing documents unless include_in_customer_docs is true."
+    },
+    "include_in_customer_docs": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, a sanitized description of this task may be included in customer-facing documents. Internal instructions and measurements remain private regardless."
+    },
+    "is_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "Required tasks must be complete before machining can be finished. An admin may override with a recorded reason."
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Sort position within the job's machining task list"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "blocked",
+        "complete"
+      ],
+      "default": "pending",
+      "description": "pending = not started, in_progress = being worked, blocked = held with a reason, complete = finished and logged to service history"
+    },
+    "blocked_reason": {
+      "type": "string",
+      "description": "Why the task is blocked (required when status is blocked)"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_by": {
+      "type": "string",
+      "description": "Name of the user who started the task"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_by": {
+      "type": "string",
+      "description": "Name of the user who marked the task complete"
+    },
+    "measurements": {
+      "type": "object",
+      "description": "Type-specific requested and actual measurement fields (inches, 4 decimal places). Shave head: requested_material_removal, target_final_head_height, starting_head_height, actual_material_removed, final_head_height. Deck case: requested_material_removal, target_final_deck_measurement, measurement_reference, starting_measurement, actual_material_removed, final_measurement. Valve work: operations[], side, affected_positions, lash_measurements{}, completion_notes. Polishing: parts_surfaces, untouched_areas, completion_notes, optional_measurements. Other: optional_measurements, completion_notes."
+    },
+    "corrections": {
+      "type": "array",
+      "default": [],
+      "description": "Audit trail of measurement corrections made after completion. Each entry records the field, previous value, revised value, who changed it, and when.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "previous_value": {
+            "type": "string"
+          },
+          "revised_value": {
+            "type": "string"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "history_entry_id": {
+      "type": "string",
+      "description": "ID of the ServiceHistoryEntry created on completion. Used for idempotent updates \u2014 prevents duplicate history entries when completion is retried or the screen refreshes."
+    }
+  },
+  "required": [
+    "job_id",
+    "task_type"
+  ]
+}

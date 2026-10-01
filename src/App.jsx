@@ -39,6 +39,7 @@ import Jobs from './pages/Jobs';
 import JobCard from './pages/JobCard';
 import ReplacementRules from './pages/ReplacementRules';
 import ExceptionDashboard from './pages/ExceptionDashboard';
+import MachiningStation from './pages/MachiningStation';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -128,6 +129,7 @@ const AuthenticatedApp = () => {
       <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCard /></LayoutWrapper>} />
       <Route path="/ReplacementRules" element={<LayoutWrapper currentPageName="ReplacementRules"><ReplacementRules /></LayoutWrapper>} />
       <Route path="/ExceptionDashboard" element={<LayoutWrapper currentPageName="ExceptionDashboard"><ExceptionDashboard /></LayoutWrapper>} />
+      <Route path="/MachiningStation" element={<LayoutWrapper currentPageName="MachiningStation"><MachiningStation /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

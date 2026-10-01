@@ -1,0 +1,95 @@
+{
+  "name": "ServiceHistoryEntry",
+  "type": "object",
+  "properties": {
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Engine this history entry belongs to (required). Permanent record that survives across builds."
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Denormalized from the engine for filtering"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Job during which the work was performed"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Build during which the work was performed (when applicable)"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "machining_task",
+        "component_replacement",
+        "teardown_finding",
+        "build_completion",
+        "measurement",
+        "other"
+      ],
+      "default": "other",
+      "description": "Category of this history entry"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID of the source record (e.g. MachiningTask id). Used for dedup \u2014 only one entry per source_id, so retried completions and screen refreshes do not create duplicates."
+    },
+    "component": {
+      "type": "string",
+      "description": "Component affected (e.g. Cylinder Head, Engine Case, Valves)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short title for this entry"
+    },
+    "description": {
+      "type": "string",
+      "description": "Summary of work performed"
+    },
+    "measurements": {
+      "type": "object",
+      "description": "Structured measurements (final head height, deck measurement, valve lash per position, etc.) stored as JSON. Each measurement includes a value, unit (inches), and measurement reference where applicable."
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Person who completed the work"
+    },
+    "performed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the work was completed"
+    },
+    "corrections": {
+      "type": "array",
+      "default": [],
+      "description": "Audit trail of corrections to this entry's measurements after it was recorded.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "previous_value": {
+            "type": "string"
+          },
+          "revised_value": {
+            "type": "string"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "customer_engine_id",
+    "entry_type",
+    "title"
+  ]
+}

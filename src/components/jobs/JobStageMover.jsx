@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ const STAGE_TO_BUILD_STATUS = {
 
 export default function JobStageMover({ job, build }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [moving, setMoving] = useState(false);
   const [showPickupDialog, setShowPickupDialog] = useState(false);
 
@@ -163,6 +165,12 @@ export default function JobStageMover({ job, build }) {
       await reconcile();
       await invalidateAll();
       toast.success(`Moved to ${ACTIVE_STAGES.find(s => s.key === newStage)?.label}`);
+      if (newStage === "machining") {
+        const params = new URLSearchParams(window.location.search);
+        params.set("tab", "machining");
+        params.set("plan", "1");
+        navigate({ search: params.toString() }, { replace: true });
+      }
     } catch (e) {
       toast.error("Failed to move job: " + (e.message || "Unknown error"));
     } finally {

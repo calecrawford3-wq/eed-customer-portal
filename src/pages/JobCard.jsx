@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import JobInvoiceTab from "@/components/jobs/JobInvoiceTab";
 import JobEstimateTab from "@/components/jobs/JobEstimateTab";
 import JobBuildTab from "@/components/jobs/JobBuildTab";
 import JobWorkflowTab from "@/components/jobs/JobWorkflowTab";
+import JobMachiningTab from "@/components/jobs/JobMachiningTab";
 import JobCommsTab from "@/components/jobs/JobCommsTab";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
@@ -25,18 +26,16 @@ export default function JobCard() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [jobId, setJobId] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
   const [printBuildBook, setPrintBuildBook] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  const planMachining = searchParams.get("plan") === "1";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setJobId(params.get("id"));
-    const tab = params.get("tab");
-    // Old tab compatibility: profitability is now a section under overview
-    if (tab === "profitability") { setActiveTab("overview"); return; }
-    if (tab) setActiveTab(tab);
   }, []);
 
   const { data: jobData, isLoading } = useQuery({
@@ -180,9 +179,9 @@ export default function JobCard() {
 
       <div className="px-4 md:px-8 mt-4">
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v);
           const params = new URLSearchParams(window.location.search);
           params.set("tab", v);
+          params.delete("plan");
           window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
         }}>
           <TabsList className="flex flex-wrap h-auto overflow-x-auto">
@@ -192,6 +191,7 @@ export default function JobCard() {
             <TabsTrigger value="parts">Parts & Purchasing</TabsTrigger>
             <TabsTrigger value="build">Build Sheet</TabsTrigger>
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
+            <TabsTrigger value="machining">Machining</TabsTrigger>
             <TabsTrigger value="invoice">Invoice & Payments</TabsTrigger>
             <TabsTrigger value="comms">Comms & Docs</TabsTrigger>
           </TabsList>
@@ -216,6 +216,9 @@ export default function JobCard() {
           </TabsContent>
           <TabsContent value="workflow" className="mt-4">
             <JobWorkflowTab job={job} build={build} />
+          </TabsContent>
+          <TabsContent value="machining" className="mt-4">
+            <JobMachiningTab job={job} build={build} engine={engine} autoOpenPlan={planMachining} />
           </TabsContent>
           <TabsContent value="invoice" className="mt-4">
             <JobInvoiceTab job={job} invoices={invoiceList} />

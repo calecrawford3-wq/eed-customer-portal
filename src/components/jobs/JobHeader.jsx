@@ -136,6 +136,7 @@ function deriveNextAction(job, invoice, build) {
   if (job.blocking_condition === "waiting_on_parts") return "Order or receive outstanding parts";
   if (job.blocking_condition === "waiting_on_approval") return "Send additional-work approval to customer";
   if (job.blocking_condition === "waiting_on_customer") return "Follow up with customer";
+  if (job.stage === "machining") return "Plan and complete machining tasks";
   if (job.stage === "teardown") return "Record teardown findings and measurements";
   if (job.stage === "assembly") return "Continue assembly — check off workflow tasks";
   if (job.stage === "testing") return "Complete testing and QC checks";

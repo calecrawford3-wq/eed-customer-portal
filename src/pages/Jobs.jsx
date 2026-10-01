@@ -256,10 +256,13 @@ export default function Jobs() {
         setPickupDialog(job);
       }
       await invalidateAll();
+      if (targetStage === "machining" && res?.ok && !res?.noop) {
+        toast("Plan machining tasks?", { action: { label: "Plan", onClick: () => navigate(`/JobCard?id=${job.id}&tab=machining&plan=1`) } });
+      }
     } finally {
       setMovingId(null);
     }
-  }, [jobs, builds, customers, qc, invalidateAll]);
+  }, [jobs, builds, customers, qc, invalidateAll, navigate]);
 
   // Move dropdown (mobile/keyboard equivalent of drag-and-drop)
   const handleMoveFromDropdown = useCallback(async (job, newStage) => {
@@ -285,10 +288,13 @@ export default function Jobs() {
         setPickupDialog(job);
       }
       await invalidateAll();
+      if (newStage === "machining" && res?.ok && !res?.noop) {
+        toast("Plan machining tasks?", { action: { label: "Plan", onClick: () => navigate(`/JobCard?id=${job.id}&tab=machining&plan=1`) } });
+      }
     } finally {
       setMovingId(null);
     }
-  }, [jobs, builds, customers, qc, invalidateAll]);
+  }, [jobs, builds, customers, qc, invalidateAll, navigate]);
 
   // Relocate a job's physical storage location (location board only — does not
   // change the workflow stage). Appends to location_history for traceability.
