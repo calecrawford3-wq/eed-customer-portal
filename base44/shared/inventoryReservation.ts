@@ -18,6 +18,7 @@
 
 export { aggregateDemand, reservePartsForEstimate, releaseReservations,
          consumeReservationsForBuild, linkReservationsToBuild,
+         allocateReceiptToShortages, recomputeJobPartsReadiness,
          getPartAvailability, chicagoTodayDate, roundQty };
 
 // --- Helpers ---
@@ -323,6 +324,89 @@ async function consumeReservationsForBuild(base44, { build_id, operation_id, all
   }
 
   return { deducted, shortages, already_consumed: false, operation_id };
+}
+
+// --- Allocate receipt to shortages ---
+
+/**
+ * When parts are received into inventory (PO receipt), allocate the received
+ * quantity to outstanding shortages on existing reservations, oldest-first
+ * (queue order). Moves units from quantity_short → quantity_reserved so the
+ * job that was waiting on those parts can now proceed.
+ *
+ * Any received quantity beyond all outstanding shortages stays in inventory
+ * (unallocated surplus) — that's normal stock.
+ *
+ * @param {object} base44 - service-role client
+ * @param {{part_id: string, received_qty: number, operation_id: string}} args
+ * @returns {Promise<{allocated: Array, unallocated: number}>}
+ */
+async function allocateReceiptToShortages(base44, { part_id, received_qty, operation_id }) {
+  const qty = roundQty(received_qty);
+  if (qty <= 0) return { allocated: [], unallocated: 0 };
+
+  const res = await base44.entities.PartReservation.filter({
+    part_id,
+    quantity_short: { $gt: 0 },
+    status: { $in: ["reserved", "partially_consumed"] },
+  }, "created_date", 500);
+  const reservations = res.items || res || [];
+
+  let remaining = qty;
+  const allocated = [];
+
+  for (const r of reservations) {
+    if (remaining <= 0) break;
+    const canAllocate = roundQty(Math.min(remaining, r.quantity_short));
+    const newShort = roundQty(r.quantity_short - canAllocate);
+    const newReserved = roundQty(r.quantity_reserved + canAllocate);
+    await base44.entities.PartReservation.update(r.id, {
+      quantity_short: newShort,
+      quantity_reserved: newReserved,
+      operation_id,
+    });
+    remaining = roundQty(remaining - canAllocate);
+    allocated.push({
+      reservation_id: r.id,
+      estimate_id: r.estimate_id,
+      build_id: r.build_id,
+      part_id,
+      allocated: canAllocate,
+      remaining_short: newShort,
+    });
+  }
+
+  return { allocated, unallocated: remaining };
+}
+
+// --- Recompute job parts readiness ---
+
+/**
+ * Recompute the parts_readiness field on a Job from its reservations.
+ * ready = no shortages on any active reservation
+ * partially_supplied = some shortages resolved but others remain
+ * waiting_on_parts = outstanding shortages exist
+ * unknown = no reservations yet
+ *
+ * @param {object} base44 - service-role client
+ * @param {string} jobId
+ * @param {string} estimateId
+ */
+async function recomputeJobPartsReadiness(base44, jobId, estimateId) {
+  if (!jobId || !estimateId) return null;
+  const res = await base44.entities.PartReservation.filter({
+    estimate_id: estimateId,
+    status: { $in: ["reserved", "partially_consumed"] },
+  });
+  const reservations = res.items || res || [];
+  if (reservations.length === 0) {
+    await base44.entities.Job.update(jobId, { parts_readiness: "unknown" });
+    return "unknown";
+  }
+  const hasShort = reservations.some(r => (Number(r.quantity_short) || 0) > 0);
+  const readiness = hasShort ? "waiting_on_parts" : "ready";
+  await base44.entities.Job.update(jobId, { parts_readiness: readiness });
+  return readiness;
 }
 
 // --- Availability ---
