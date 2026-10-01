@@ -1,0 +1,77 @@
+{
+  "name": "PartReservation",
+  "type": "object",
+  "properties": {
+    "estimate_id": {
+      "type": "string",
+      "description": "Originating estimate that triggered the reservation"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Linked engine build, set once the build is created from the approved estimate"
+    },
+    "part_id": {
+      "type": "string",
+      "description": "Reserved Part"
+    },
+    "part_number": {
+      "type": "string",
+      "description": "Snapshot of the part number for display"
+    },
+    "part_name": {
+      "type": "string",
+      "description": "Snapshot of the part name for display"
+    },
+    "quantity_required": {
+      "type": "number",
+      "description": "Total units demanded by the job for this part (after aggregating repeated lines, kit components, and selected addons)"
+    },
+    "quantity_reserved": {
+      "type": "number",
+      "default": 0,
+      "description": "Units actually reserved against physical stock (does not reduce quantity_on_hand). On completion, this is the amount deducted from inventory."
+    },
+    "quantity_short": {
+      "type": "number",
+      "default": 0,
+      "description": "Units that could not be reserved because physical stock was insufficient. Must be resolved (received or overridden) before completion."
+    },
+    "quantity_consumed": {
+      "type": "number",
+      "default": 0,
+      "description": "Units actually deducted from quantity_on_hand at build completion. Equals quantity_reserved once consumed."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "reserved",
+        "partially_consumed",
+        "consumed",
+        "released"
+      ],
+      "default": "reserved",
+      "description": "reserved = held against stock, not yet deducted; partially_consumed = some units deducted (partial receipt allocation); consumed = fully deducted at completion; released = reservation cancelled (approval withdrawn or job canceled) without deduction"
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Idempotency key for the operation that created/last updated this reservation (e.g. 'reserve:<estimate_id>' or 'complete:<build_id>')"
+    },
+    "consumed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "released_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "released_reason": {
+      "type": "string",
+      "description": "Why the reservation was released (approval withdrawn, job canceled, estimate edited)"
+    }
+  },
+  "required": [
+    "estimate_id",
+    "part_id",
+    "quantity_required"
+  ]
+}

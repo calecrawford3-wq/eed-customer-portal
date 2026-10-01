@@ -27,6 +27,11 @@
       "type": "string",
       "description": "Pre-generated Stripe checkout URL for public payments"
     },
+    "due_on_completion": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for engine-build invoices whose remaining balance is not due until the linked build completes. Before completion, display 'Due on build completion' and leave due_date empty. At completion, due_date is set to the completion date (America/Chicago) and this flag is cleared. Standalone parts/service invoices never set this flag."
+    },
     "contains_illegal_parts": {
       "type": "boolean",
       "default": false
