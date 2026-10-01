@@ -109,6 +109,11 @@ export function MessagingProvider({ children }) {
       } catch (error) {
         console.error("Send failed", error);
 
+        // The backend may have succeeded even if the client-side invoke
+        // threw (timeout, network blip). Refresh from the DB so the real
+        // status shows instead of a stale "failed" pending message.
+        await queryClient.invalidateQueries({ queryKey: ["messages"] });
+
         setPendingMessages((prev) =>
           prev.map((m) =>
             m.tempId === tempId

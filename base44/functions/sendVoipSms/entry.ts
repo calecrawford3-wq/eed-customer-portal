@@ -420,8 +420,14 @@ Deno.serve(async (req) => {
         data = await voipMsCall(method, voipParams);
 
         if (data && data.status === "success") {
+          // VoIP.ms sendSMS returns the ID in the "sms" field;
+          // sendMMS may use "sms_id" or "message_id". Check all.
           confirmationId = String(
-            data.sms_id || data.message_id || data.id || ""
+            data.sms || data.sms_id || data.message_id || data.id || ""
+          );
+          console.log(
+            `[sendVoipSms] VoIP.ms success response:`,
+            JSON.stringify({ status: data.status, sms: data.sms, sms_id: data.sms_id, message: data.message })
           );
           finalStatus = "sent";
           break;
@@ -430,6 +436,10 @@ Deno.serve(async (req) => {
         /*
          * VoIP.ms returned a non-success response — definitive failure, no retry.
          */
+        console.error(
+          `[sendVoipSms] VoIP.ms non-success response:`,
+          JSON.stringify(data)
+        );
         finalStatus = "failed";
         failReason =
           data?.message ||
