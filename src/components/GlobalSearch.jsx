@@ -19,6 +19,7 @@ import {
   Package,
   Cpu,
   FileText,
+  Briefcase,
 } from "lucide-react";
 
 export default function GlobalSearch() {
@@ -109,8 +110,8 @@ export default function GlobalSearch() {
             <CommandItem onSelect={() => go("/Customers")}>
               <Users className="w-4 h-4" /> Customers
             </CommandItem>
-            <CommandItem onSelect={() => go("/Builds")}>
-              <Wrench className="w-4 h-4" /> Builds
+            <CommandItem onSelect={() => go("/Jobs")}>
+              <Briefcase className="w-4 h-4" /> Jobs
             </CommandItem>
             <CommandItem onSelect={() => go("/Inventory")}>
               <Package className="w-4 h-4" /> Inventory

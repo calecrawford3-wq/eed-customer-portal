@@ -135,6 +135,33 @@
     "storage_location": {
       "type": "string"
     },
+    "location_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Previous storage location (empty if this is the initial check-in)"
+          },
+          "to": {
+            "type": "string",
+            "description": "New storage location"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the relocation occurred"
+          },
+          "actor": {
+            "type": "string",
+            "description": "Who performed the relocation (admin name or System)"
+          }
+        }
+      },
+      "default": [],
+      "description": "Chronological log of physical storage location changes for this job's engine, supporting traceability without searching by serial number"
+    },
     "parts_readiness": {
       "type": "string",
       "enum": [

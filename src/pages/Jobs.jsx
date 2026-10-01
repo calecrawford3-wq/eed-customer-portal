@@ -15,6 +15,7 @@ import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
 import IntakeEngineDialog from "@/components/jobs/IntakeEngineDialog";
 import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDialog";
 import { moveJobStage, getIntakeAction } from "@/lib/jobMoveHelpers";
+import LocationBoard from "@/components/jobs/LocationBoard";
 
 // --- View definitions ---
 // Views change which columns are shown. Jobs can appear in multiple views.
@@ -170,6 +171,7 @@ export default function Jobs() {
 
   const viewConfig = VIEWS[activeView];
   const columns = useMemo(() => {
+    if (!viewConfig) return {};
     const map = {};
     for (const col of viewConfig.columns) {
       map[col.key] = filtered.filter(col.filter);
@@ -268,6 +270,26 @@ export default function Jobs() {
     }
   }, [jobs, builds, customers, qc, invalidateAll]);
 
+  // Relocate a job's physical storage location (location board only — does not
+  // change the workflow stage). Appends to location_history for traceability.
+  const handleRelocate = useCallback(async (job, newLocation) => {
+    const oldLocation = job.storage_location || "";
+    try {
+      const history = job.location_history || [];
+      await base44.entities.Job.update(job.id, {
+        storage_location: newLocation,
+        location_history: [
+          ...history,
+          { from: oldLocation, to: newLocation, date: new Date().toISOString(), actor: "Admin" },
+        ],
+      });
+      await invalidateAll();
+      toast.success(`Moved to ${newLocation}`);
+    } catch (e) {
+      toast.error("Failed to relocate: " + (e.message || e));
+    }
+  }, [invalidateAll]);
+
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -316,12 +338,32 @@ export default function Jobs() {
             {v.label}
           </button>
         ))}
+        <button
+          onClick={() => setActiveView("locations")}
+          className={cn(
+            "px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+            activeView === "locations"
+              ? "border-[#e20404] text-[#e20404]"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          )}
+        >
+          Locations
+        </button>
       </div>
 
       {isLoading ? (
         <div className="grid md:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40" />)}
         </div>
+      ) : activeView === "locations" ? (
+        <LocationBoard
+          jobs={filtered}
+          customerName={customerName}
+          platformLabel={platformLabel}
+          engineObj={engineObj}
+          onNavigate={(id) => navigate(`/JobCard?id=${id}`)}
+          onRelocate={handleRelocate}
+        />
       ) : view === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">

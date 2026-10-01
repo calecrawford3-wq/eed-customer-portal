@@ -26,7 +26,7 @@ export default function BuildPipeline({ builds, isLoading }) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">Build Pipeline</CardTitle>
-          <Link to="/Builds" className="text-sm text-[#e20404] hover:text-[#c00303] flex items-center gap-1">
+          <Link to="/Jobs" className="text-sm text-[#e20404] hover:text-[#c00303] flex items-center gap-1">
             View all <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

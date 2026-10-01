@@ -152,7 +152,7 @@ export default function BuildDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Build deleted");
-      navigate(createPageUrl("Builds"));
+      navigate("/Jobs");
     },
     onError: (err) => toast.error(err.message || "Failed to delete build"),
   });
@@ -321,7 +321,7 @@ export default function BuildDetail() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <Link to={createPageUrl("Builds")}>
+          <Link to="/Jobs">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="w-5 h-5" />
             </Button>
