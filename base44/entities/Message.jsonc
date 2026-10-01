@@ -60,7 +60,12 @@
         "failed"
       ],
       "default": "sent",
-      "description": "Delivery status: sent = VoIP.ms confirmed, unknown = bridge timed out (may have delivered), failed = hard error or VoIP.ms rejection"
+      "description": "Delivery status: sent = VoIP.ms confirmed, delivered = carrier confirmed delivery to handset, unknown = bridge timed out (may have delivered), failed = hard error or VoIP.ms rejection"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When delivery to the recipient's handset was confirmed via VoIP.ms carrier_status"
     },
     "is_read": {
       "type": "boolean",

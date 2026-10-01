@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { formatDayLabel, normalizePhone } from "@/lib/messagingUtils";
 import MessageBubble from "./MessageBubble";
 
@@ -11,12 +13,47 @@ export default function MessageThread({
   resendIsPending,
 }) {
   const scrollRef = useRef(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [selectedConversation?.messages.length, selectedPhone]);
+
+  // Poll VoIP.ms for delivery confirmation on recent outbound messages
+  useEffect(() => {
+    if (!selectedPhone || !selectedConversation) return;
+
+    const checkDelivery = async () => {
+      const undelivered = (selectedConversation?.messages || [])
+        .filter(
+          (m) =>
+            m.direction === "outbound" &&
+            m.message_id &&
+            m.status !== "delivered" &&
+            !m.delivered_at
+        )
+        .map((m) => ({ id: m.id, voip_id: m.message_id }));
+
+      if (undelivered.length === 0) return;
+
+      try {
+        const result = await base44.functions.invoke("checkSmsDelivery", {
+          messages: undelivered,
+        });
+        if (result?.updated?.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ["messages"] });
+        }
+      } catch (e) {
+        // Silent — will retry on next poll
+      }
+    };
+
+    checkDelivery();
+    const interval = setInterval(checkDelivery, 30000);
+    return () => clearInterval(interval);
+  }, [selectedPhone, selectedConversation?.messages?.length]);
 
   const pendingForConv = pendingMessages.filter(
     (m) => normalizePhone(m.phone_number) === selectedPhone

@@ -107,6 +107,7 @@ export default function MessageBubble({
           {message._pending && message.status === "failed" && " · Not Delivered"}
           {!message._pending && message.direction === "outbound" && message.status === "failed" && " · Not delivered"}
           {!message._pending && message.direction === "outbound" && message.status === "unknown" && " · Unconfirmed"}
+          {!message._pending && message.direction === "outbound" && message.status === "delivered" && " · Delivered"}
         </div>
       </div>
     </>
