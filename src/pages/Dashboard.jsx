@@ -7,6 +7,7 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import ActionItemsRow from "@/components/dashboard/ActionItemsRow";
 import RecentBuilds from "@/components/dashboard/RecentBuilds";
 import QuickActions from "@/components/dashboard/QuickActions";
+import TodayWorkPanel from "@/components/dashboard/TodayWorkPanel";
 import BuildPipeline from "@/components/dashboard/BuildPipeline";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import RevenueInsights from "@/components/dashboard/RevenueInsights";
@@ -133,6 +134,9 @@ export default function Dashboard() {
           Shop Display
         </a>
       </PageHeader>
+
+      {/* Today's Work — guided lifecycle action list */}
+      <TodayWorkPanel builds={builds} invoices={invoices} customers={customers} platforms={platforms} />
 
       {/* Quick Actions */}
       <QuickActions onCheckIn={() => setCheckInOpen(true)} />

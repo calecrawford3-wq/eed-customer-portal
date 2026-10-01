@@ -37,6 +37,7 @@ import BuildCamTab from "@/components/builds/BuildCamTab";
 import BuildValveLashTab from "@/components/builds/BuildValveLashTab";
 import BuildInternalTab from "@/components/builds/BuildInternalTab";
 import BuildSpecsTab from "@/components/builds/BuildSpecsTab";
+import NextStepBanner from "@/components/NextStepBanner";
 
 const STATUS_OPTIONS = [
   { value: "queued", label: "Queued" },
@@ -96,6 +97,13 @@ export default function BuildDetail() {
   const { data: specSheets = [] } = useQuery({
     queryKey: ["specSheets"],
     queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
+  });
+
+  // Fetch this build's workflow tasks to determine the next lifecycle step
+  const { data: buildTasks = [] } = useQuery({
+    queryKey: ["build-tasks-detail", buildId],
+    queryFn: () => base44.entities.BuildTask.filter({ build_id: buildId }, "sort_order", 200),
+    enabled: !!buildId,
   });
 
   const { data: customers = [] } = useQuery({
@@ -372,6 +380,32 @@ export default function BuildDetail() {
           )}
         </div>
       </div>
+
+      {/* Next Step guidance banner */}
+      {build.status !== "complete" && build.status !== "shipped" && buildTasks.length === 0 && (
+        <NextStepBanner
+          icon={ListChecks}
+          message="No workflow assigned yet — open the workflow page to assign a template and start tracking tasks."
+          actionLabel="Assign Workflow"
+          to={`/BuildWorkflow?build=${buildId}`}
+        />
+      )}
+      {build.status !== "complete" && build.status !== "shipped" && buildTasks.length > 0 && (
+        <NextStepBanner
+          icon={ListChecks}
+          message="Open the workflow to check off tasks as you complete them."
+          actionLabel="Open Workflow"
+          to={`/BuildWorkflow?build=${buildId}`}
+        />
+      )}
+      {build.status === "complete" && !build.picked_up && (
+        <NextStepBanner
+          icon={PackageCheck}
+          message="Build is complete — scan the engine label to confirm customer pickup."
+          actionLabel="Confirm Pickup"
+          onAction={() => setShowPickupScan(true)}
+        />
+      )}
 
       <Tabs defaultValue="details">
         <TabsList className="flex flex-wrap h-auto">

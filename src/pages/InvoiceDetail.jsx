@@ -28,6 +28,7 @@ import HistoryModal from "@/components/HistoryModal";
 import EmailsSection from "@/components/emails/EmailsSection";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
+import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
@@ -895,6 +896,25 @@ export default function InvoiceDetail() {
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
+
+      {/* Next Step guidance banner */}
+      {id && form.status === "draft" && (
+        <NextStepBanner
+          icon={Send}
+          message="This invoice is ready to be sent to the customer."
+          actionLabel="Send Invoice"
+          onAction={sendInvoice}
+          disabled={sending || !form.customer_id}
+        />
+      )}
+      {id && ["sent", "partial", "overdue"].includes(form.status) && (form.balance_due || 0) > 0 && (
+        <NextStepBanner
+          icon={DollarSign}
+          message={`Outstanding balance of $${(form.balance_due || 0).toLocaleString("en-US", { minimumFractionDigits: 0 })} — record a payment to reduce the balance.`}
+          actionLabel="Record Payment"
+          onAction={() => setPaymentModalOpen(true)}
+        />
+      )}
 
       {/* Combined invoice banner */}
       {form.is_combined && (

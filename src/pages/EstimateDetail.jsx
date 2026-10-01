@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare, Sparkles
+  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare, Sparkles, Clock
 } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
@@ -45,6 +45,7 @@ import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import StageComparisonSection from "@/components/estimates/StageComparisonSection";
 import AddonPickerModal from "@/components/addons/AddonPickerModal";
 import EstimateAddonsSection from "@/components/estimates/EstimateAddonsSection";
+import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
 
@@ -1519,6 +1520,60 @@ export default function EstimateDetail() {
         setPrintMode={setPrintMode}
         setHistoryOpen={setHistoryOpen}
       />
+
+      {/* Next Step guidance banner */}
+      {id && form.status === "draft" && (
+        <NextStepBanner
+          icon={Send}
+          message="This estimate is ready to be sent to the customer for approval."
+          actionLabel="Send Estimate"
+          onAction={sendEstimate}
+          disabled={sending || !form.customer_id}
+        />
+      )}
+      {id && form.status === "sent" && (
+        <NextStepBanner
+          icon={Clock}
+          message="Waiting for the customer to approve this estimate. You can also approve on their behalf."
+          actionLabel="Approve Now"
+          onAction={handleApprove}
+          disabled={form.deposit_required && !depositMet}
+          disabledReason={form.deposit_required && !depositMet ? "Deposit must be received first" : ""}
+        />
+      )}
+      {id && form.status === "approved" && form.is_engine_build && !form.build_id && (
+        <NextStepBanner
+          icon={Wrench}
+          message="This estimate is approved — convert it to a build to start the engine workflow."
+          actionLabel={convertingToBuild ? "Creating..." : "Convert to Build"}
+          onAction={handleConvertToBuild}
+          disabled={convertingToBuild}
+        />
+      )}
+      {id && form.status === "approved" && form.is_engine_build && form.build_id && (
+        <NextStepBanner
+          icon={Wrench}
+          message="Build created — open it to assign a workflow and start tracking tasks."
+          actionLabel="Go to Build"
+          to={`/BuildDetail?id=${form.build_id}`}
+        />
+      )}
+      {id && form.status === "approved" && !form.is_engine_build && !form.invoice_id && (
+        <NextStepBanner
+          icon={Receipt}
+          message="This estimate is approved — convert it to an invoice."
+          actionLabel="Convert to Invoice"
+          onAction={handleApprove}
+        />
+      )}
+      {id && form.status === "approved" && !form.is_engine_build && form.invoice_id && (
+        <NextStepBanner
+          icon={Receipt}
+          message="Invoice created — record payment when received."
+          actionLabel="Go to Invoice"
+          to={`/InvoiceDetail?id=${form.invoice_id}`}
+        />
+      )}
 
       {/* Details + Bill To */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
