@@ -49,6 +49,8 @@ const VIEWS = {
   all: {
     label: "All Stages",
     columns: [
+      { key: "needs_estimate", label: "Checked In — Needs Estimate", filter: j => j.customer_engine_id && (!j.estimate_id || j.stage === "awaiting_approval") && !j.archived },
+      { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j.estimate_id && !j.customer_engine_id && !j.archived && j.stage !== "awaiting_approval" },
       { key: "awaiting_approval", label: "Awaiting Approval", filter: j => j.stage === "awaiting_approval" && !j.archived },
       { key: "awaiting_deposit", label: "Awaiting Deposit", filter: j => j.stage === "awaiting_deposit" && !j.archived },
       { key: "queued", label: "Queued", filter: j => j.stage === "queued" && !j.archived },
