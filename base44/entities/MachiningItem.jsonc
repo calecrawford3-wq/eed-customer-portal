@@ -27,6 +27,20 @@
       "default": "other",
       "description": "Machining category"
     },
+    "cost_type": {
+      "type": "string",
+      "enum": [
+        "unspecified",
+        "in_house",
+        "outsourced"
+      ],
+      "default": "unspecified",
+      "description": "Default cost tracking for this operation. in_house = performed in-shop (cost covered by logged labor hours); outsourced = sent to an external vendor (actual vendor cost recorded per job); unspecified = not yet classified. Carried to estimates/invoices as the default so it doesn't need to be set each time."
+    },
+    "default_vendor": {
+      "type": "string",
+      "description": "Default vendor name for outsourced operations (optional). Pre-fills the vendor field when this item is added to an estimate/invoice."
+    },
     "notes": {
       "type": "string"
     },

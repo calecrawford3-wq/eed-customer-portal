@@ -61,6 +61,7 @@ export default function MachiningTable({
                         <th className="text-left px-4 py-2.5 font-medium text-slate-600">Name</th>
                         <th className="text-left px-4 py-2.5 font-medium text-slate-600">Description</th>
                         <th className="text-right px-4 py-2.5 font-medium text-slate-600">Price</th>
+                        <th className="text-center px-4 py-2.5 font-medium text-slate-600">Cost Type</th>
                         <th className="text-center px-4 py-2.5 font-medium text-slate-600">Status</th>
                         <th className="px-4 py-2.5"></th>
                       </tr>
@@ -71,6 +72,17 @@ export default function MachiningTable({
                           <td className="px-4 py-2.5 font-medium text-slate-900">{m.name}</td>
                           <td className="px-4 py-2.5 text-slate-500">{m.description || "—"}</td>
                           <td className="px-4 py-2.5 text-right font-semibold text-slate-900">${Number(m.price || 0).toFixed(2)}</td>
+                          <td className="px-4 py-2.5 text-center">
+                            {m.cost_type === "in_house" ? (
+                              <Badge className="bg-blue-100 text-blue-700 border-0">In-house</Badge>
+                            ) : m.cost_type === "outsourced" ? (
+                              <Badge className="bg-orange-100 text-orange-700 border-0" title={m.default_vendor ? `Vendor: ${m.default_vendor}` : ""}>
+                                Outsourced{m.default_vendor ? ` · ${m.default_vendor}` : ""}
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-slate-100 text-slate-400 border-0">Unspecified</Badge>
+                            )}
+                          </td>
                           <td className="px-4 py-2.5 text-center">
                             <Badge className={m.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
                               {m.status}

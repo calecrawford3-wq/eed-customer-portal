@@ -539,7 +539,14 @@ export default function InvoiceDetail() {
 
   const selectMachiningFromCatalog = (item) => {
     const items = [...(form.machining_items || [])];
-    items[machiningPickingIdx] = { ...items[machiningPickingIdx], name: item.name, description: item.description || "", price: item.price || 0 };
+    items[machiningPickingIdx] = {
+      ...items[machiningPickingIdx],
+      name: item.name,
+      description: item.description || "",
+      price: item.price || 0,
+      cost_type: item.cost_type || "unspecified",
+      vendor: item.cost_type === "outsourced" ? (item.default_vendor || items[machiningPickingIdx].vendor || "") : (items[machiningPickingIdx].vendor || ""),
+    };
     const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
   };

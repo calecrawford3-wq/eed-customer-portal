@@ -522,7 +522,14 @@ export default function EstimateDetail() {
 
   const selectMachiningFromCatalog = (item) => {
     const items = [...(form.machining_items || [])];
-    items[machiningPickingIdx] = { ...items[machiningPickingIdx], name: item.name, description: item.description || "", price: item.price || 0 };
+    items[machiningPickingIdx] = {
+      ...items[machiningPickingIdx],
+      name: item.name,
+      description: item.description || "",
+      price: item.price || 0,
+      cost_type: item.cost_type || "unspecified",
+      vendor: item.cost_type === "outsourced" ? (item.default_vendor || items[machiningPickingIdx].vendor || "") : (items[machiningPickingIdx].vendor || ""),
+    };
     const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
     setForm({ ...form, machining_items: items, ...totals });
   };
@@ -654,6 +661,8 @@ export default function EstimateDetail() {
             name: item.name || "",
             description: item.description || "",
             price: inventoryMachining ? (Number(inventoryMachining.price) || 0) : 0,
+            cost_type: inventoryMachining ? (inventoryMachining.cost_type || "unspecified") : "unspecified",
+            vendor: inventoryMachining && inventoryMachining.cost_type === "outsourced" ? (inventoryMachining.default_vendor || "") : "",
           };
         })
       : [];

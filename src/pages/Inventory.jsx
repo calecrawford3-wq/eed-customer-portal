@@ -42,7 +42,7 @@ const calcSellPrice = (cost, markup) => {
 };
 
 const emptyLabor = { name: "", description: "", price: 0, category: "misc", notes: "", status: "active" };
-const emptyMachining = { name: "", description: "", price: 0, category: "other", notes: "", status: "active" };
+const emptyMachining = { name: "", description: "", price: 0, category: "other", cost_type: "unspecified", default_vendor: "", notes: "", status: "active" };
 
 export default function Inventory() {
   const [search, setSearch] = useState("");
@@ -351,6 +351,17 @@ export default function Inventory() {
             </div>
             <div><Label>Price ($) *</Label><Input type="number" value={machiningForm.price} onChange={e => setMachiningForm({...machiningForm, price: Number(e.target.value)})} min="0" step="0.01" /></div>
             <div>
+              <Label>Cost Type</Label>
+              <Select value={machiningForm.cost_type || "unspecified"} onValueChange={v => setMachiningForm({...machiningForm, cost_type: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unspecified">Unspecified</SelectItem>
+                  <SelectItem value="in_house">In-house</SelectItem>
+                  <SelectItem value="outsourced">Outsourced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Status</Label>
               <Select value={machiningForm.status} onValueChange={v => setMachiningForm({...machiningForm, status: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -360,6 +371,9 @@ export default function Inventory() {
                 </SelectContent>
               </Select>
             </div>
+            {machiningForm.cost_type === "outsourced" && (
+              <div className="col-span-2"><Label>Default Vendor</Label><Input value={machiningForm.default_vendor || ""} onChange={e => setMachiningForm({...machiningForm, default_vendor: e.target.value})} placeholder="e.g. A1 Machine Shop" /></div>
+            )}
             <div className="col-span-2"><Label>Description</Label><Textarea value={machiningForm.description} onChange={e => setMachiningForm({...machiningForm, description: e.target.value})} rows={2} placeholder="Describe what this machining operation covers..." /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={machiningForm.notes} onChange={e => setMachiningForm({...machiningForm, notes: e.target.value})} rows={2} /></div>
           </div>
