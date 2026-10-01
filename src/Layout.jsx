@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import GlobalSearch from "@/components/GlobalSearch";
+import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
 import { Search } from "lucide-react";
 
 export default function Layout({ children, currentPageName }) {
@@ -146,6 +147,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
+      <GlobalBarcodeListener />
       <GlobalSearch />
       {/* Mobile backdrop */}
       {mobileOpen && (

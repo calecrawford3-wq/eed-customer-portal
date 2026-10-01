@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,14 @@ export default function BarcodeScan() {
     setResults([]);
     setQtyInputs({});
   };
+
+  // Auto-lookup when navigated here with ?code= (from the global scanner toast)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) lookup(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
