@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ScanLine } from "lucide-react";
+import { ScanLine, Wrench, Briefcase, Package, Recycle, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 // Max ms between keystrokes to be considered a barcode scanner (humans are 100ms+)
@@ -9,9 +9,9 @@ const INTER_KEY_THRESHOLD = 30;
 const MIN_SCAN_LENGTH = 3;
 const DEDUP_WINDOW = 1200;
 
-// Detects USB barcode scanner input globally (rapid keystrokes + Enter) and
-// looks up the scanned part/core, showing a toast with the result. Works on
-// every admin page without navigating to the Barcode Scan page.
+// Detects USB barcode scanner input globally (rapid keystrokes + Enter) on
+// every admin page. Supports parts, cores, engines, jobs, and storage
+// locations. Preserves the full barcode value — no truncation.
 export default function GlobalBarcodeListener() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,11 +25,6 @@ export default function GlobalBarcodeListener() {
   const lookingUpRef = useRef(false);
 
   useEffect(() => {
-    const normalizeBarcode = (val) => {
-      const trimmed = val.trim();
-      return trimmed.length > 11 ? trimmed.slice(0, 11) : trimmed;
-    };
-
     const lookup = async (code) => {
       const now = Date.now();
       if (code === lastScanRef.current.code && now - lastScanRef.current.time < DEDUP_WINDOW) return;
@@ -39,31 +34,65 @@ export default function GlobalBarcodeListener() {
       lookingUpRef.current = true;
 
       try {
-        const [partsRes, coresRes] = await Promise.all([
+        // Search all entity types in parallel using the full barcode value
+        const [partsRes, coresRes, buildsRes, jobsRes] = await Promise.all([
           base44.entities.Part.filter({ part_number: code }),
           base44.entities.EngineCore.filter({ core_number: code }),
+          base44.entities.EngineBuild.filter({ engine_serial_number: code }),
+          base44.entities.Job.filter({ job_number: code }),
         ]);
         const parts = partsRes.items || partsRes || [];
         const cores = coresRes.items || coresRes || [];
+        const builds = buildsRes.items || buildsRes || [];
+        const jobs = jobsRes.items || jobsRes || [];
 
-        if (parts.length === 0 && cores.length === 0) {
-          toast.error(`No item found for "${code}"`, {
-            icon: <ScanLine className="w-4 h-4 text-slate-400" />,
-            action: { label: "Scan Page", onClick: () => navigate(`/BarcodeScan?code=${encodeURIComponent(code)}`) },
-          });
+        const found = parts.length + cores.length + builds.length + jobs.length;
+
+        if (found === 0) {
+          // Fallback: try storage location lookup (engines at this location)
+          const locRes = await base44.entities.EngineBuild.filter({ storage_location: code });
+          const locBuilds = locRes.items || locRes || [];
+          if (locBuilds.length > 0) {
+            locBuilds.forEach(b => {
+              toast.success(`${b.engine_serial_number} — ${b.eed_id || "No EED ID"}`, {
+                icon: <MapPin className="w-4 h-4 text-amber-600" />,
+                description: `Engine at location: ${code}`,
+                action: { label: "View", onClick: () => navigate(`/BuildDetail?id=${b.id}`) },
+              });
+            });
+          } else {
+            toast.error(`No item found for "${code}"`, {
+              icon: <ScanLine className="w-4 h-4 text-slate-400" />,
+              action: { label: "Scan Page", onClick: () => navigate(`/BarcodeScan?code=${encodeURIComponent(code)}`) },
+            });
+          }
         } else {
-          parts.forEach((p) => {
+          parts.forEach(p => {
             toast.success(p.name, {
-              icon: <ScanLine className="w-4 h-4 text-[#e20404]" />,
-              description: `Part • Qty on hand: ${p.quantity_on_hand ?? 0}`,
+              icon: <Package className="w-4 h-4 text-blue-600" />,
+              description: `Part • Qty: ${p.quantity_on_hand ?? 0} • ${p.location || "No location"}`,
               action: { label: "View", onClick: () => navigate(`/BarcodeScan?code=${encodeURIComponent(p.part_number)}`) },
             });
           });
-          cores.forEach((c) => {
+          cores.forEach(c => {
             toast.success(c.name, {
-              icon: <ScanLine className="w-4 h-4 text-emerald-600" />,
-              description: `Core • Qty on hand: ${c.quantity_on_hand ?? 0}`,
+              icon: <Recycle className="w-4 h-4 text-emerald-600" />,
+              description: `Core • Qty: ${c.quantity_on_hand ?? 0} • ${c.condition || ""}`,
               action: { label: "View", onClick: () => navigate(`/BarcodeScan?code=${encodeURIComponent(c.core_number)}`) },
+            });
+          });
+          builds.forEach(b => {
+            toast.success(`${b.engine_serial_number} — ${b.eed_id || "No EED ID"}`, {
+              icon: <Wrench className="w-4 h-4 text-[#e20404]" />,
+              description: `Build • Status: ${(b.status || "").replace("_", " ")}`,
+              action: { label: "View", onClick: () => navigate(`/BuildDetail?id=${b.id}`) },
+            });
+          });
+          jobs.forEach(j => {
+            toast.success(`${j.job_number}`, {
+              icon: <Briefcase className="w-4 h-4 text-slate-700" />,
+              description: `Job • Stage: ${(j.stage || "").replace("_", " ")}`,
+              action: { label: "View", onClick: () => navigate(`/JobCard?id=${j.id}`) },
             });
           });
         }
@@ -74,27 +103,35 @@ export default function GlobalBarcodeListener() {
       }
     };
 
+    const removeLeakedChar = (el, firstChar) => {
+      if (!el || !firstChar) return;
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        if (!el.readOnly && el.value && el.value.endsWith(firstChar)) {
+          el.value = el.value.slice(0, -1);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      } else if (el.isContentEditable) {
+        // For Quill / contenteditable — delete the character before the cursor
+        document.execCommand("delete", false, null);
+      }
+    };
+
     const onKeyDown = (e) => {
       // Ignore modifier-key combos (shortcuts)
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       // Let the Barcode Scan page handle its own input
       if (pathnameRef.current === "/BarcodeScan") return;
+      // Don't interfere with inputs inside open dialogs (BarcodeVerifyModal, etc.)
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.closest && activeEl.closest("[role='dialog']")) return;
 
       const now = performance.now();
 
       if (e.key === "Enter") {
         if (capturingRef.current && bufferRef.current.length >= MIN_SCAN_LENGTH) {
           e.preventDefault();
-          const code = normalizeBarcode(bufferRef.current);
-          // Remove the leaked first character from a focused text input
-          const activeEl = document.activeElement;
-          if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && !activeEl.readOnly) {
-            const firstChar = bufferRef.current[0];
-            if (firstChar && activeEl.value && activeEl.value.endsWith(firstChar)) {
-              activeEl.value = activeEl.value.slice(0, -1);
-              activeEl.dispatchEvent(new Event("input", { bubbles: true }));
-            }
-          }
+          const code = bufferRef.current; // full barcode value — no truncation
+          removeLeakedChar(activeEl, bufferRef.current[0]);
           lookup(code);
         }
         bufferRef.current = "";

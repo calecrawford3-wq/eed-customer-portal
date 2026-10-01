@@ -58,9 +58,16 @@ function deriveStageAndBlocking(estimate, build, override) {
     return { stage: "awaiting_deposit", blocking: "awaiting_deposit", is_active: false };
   }
 
-  // Manual override takes precedence for activated jobs
+  // Manual override takes precedence for activated jobs. Preserve blocking
+  // conditions (e.g. waiting_on_parts) from the build's work_tag so a stage
+  // change doesn't clear a valid hold. Terminal stages clear blocking.
   if (override && override !== "awaiting_approval" && override !== "awaiting_deposit") {
-    return { stage: override, blocking: "none", is_active: true };
+    let blocking = "none";
+    if (build && override !== "ready_for_pickup" && override !== "picked_up") {
+      if (build.work_tag === "waiting_on_parts") blocking = "waiting_on_parts";
+      else if (build.work_tag === "on_hold") blocking = "waiting_on_customer";
+    }
+    return { stage: override, blocking, is_active: true };
   }
 
   // Activated — derive active stage from build status
