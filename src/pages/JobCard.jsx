@@ -29,7 +29,7 @@ export default function JobCard() {
   const [printBuildBook, setPrintBuildBook] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
   const planMachining = searchParams.get("plan") === "1";
 
@@ -179,10 +179,10 @@ export default function JobCard() {
 
       <div className="px-4 md:px-8 mt-4">
         <Tabs value={activeTab} onValueChange={(v) => {
-          const params = new URLSearchParams(window.location.search);
-          params.set("tab", v);
-          params.delete("plan");
-          window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+          const next = new URLSearchParams(searchParams);
+          next.set("tab", v);
+          next.delete("plan");
+          setSearchParams(next, { replace: true });
         }}>
           <TabsList className="flex flex-wrap h-auto overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>

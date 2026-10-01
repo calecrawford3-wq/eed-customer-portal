@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +18,18 @@ import MachiningTaskCard from "@/components/machining/MachiningTaskCard";
 export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
   const qc = useQueryClient();
   const [planOpen, setPlanOpen] = useState(false);
+  const [, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    if (autoOpenPlan) setPlanOpen(true);
-  }, [autoOpenPlan]);
+    if (autoOpenPlan) {
+      setPlanOpen(true);
+      // Clear the plan param so the dialog doesn't re-open on re-render,
+      // which would block tab switching after the user closes it.
+      const next = new URLSearchParams(window.location.search);
+      next.delete("plan");
+      setSearchParams(next, { replace: true });
+    }
+  }, [autoOpenPlan]); // eslint-disable-line
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
   const [showHistory, setShowHistory] = useState(false);
