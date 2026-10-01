@@ -84,17 +84,43 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Sync storage_location from builds to jobs that have a build but no location.
+    // Also initializes location_history with the initial location for traceability.
+    const locationSynced = [];
+    if (!dryRun) {
+      const jobsWithBuilds = existingJobs.filter(j => j.build_id && !j.storage_location);
+      for (const job of jobsWithBuilds) {
+        const b = allBuilds.find(b => b.id === job.build_id);
+        if (b?.storage_location) {
+          try {
+            await base44.asServiceRole.entities.Job.update(job.id, {
+              storage_location: b.storage_location,
+              location_history: [
+                ...(job.location_history || []),
+                { from: "", to: b.storage_location, date: new Date().toISOString(), actor: "System (backfill)" },
+              ],
+            });
+            locationSynced.push({ job_id: job.id, job_number: job.job_number, location: b.storage_location });
+          } catch (e) {
+            // best-effort — don't fail the whole backfill
+          }
+        }
+      }
+    }
+
     return Response.json({
       success: true,
       dry_run: dryRun,
       created,
       reconciled,
       ambiguous,
+      location_synced: locationSynced,
       summary: {
         total_estimates: allEstimates.length,
         jobs_created: created.length,
         already_had_jobs: reconciled.length,
         ambiguous: ambiguous.length,
+        locations_synced: locationSynced.length,
       },
     });
   } catch (error) {

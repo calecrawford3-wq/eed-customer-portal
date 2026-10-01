@@ -93,7 +93,7 @@ export default function JobCard() {
             <JobPartsTab job={job} />
           </TabsContent>
           <TabsContent value="build" className="mt-4">
-            <JobBuildTab job={job} build={build} platform={platform} />
+            <JobBuildTab job={job} build={build} platform={platform} customer={customer} customers={customers} platforms={platforms} />
           </TabsContent>
           <TabsContent value="workflow" className="mt-4">
             <JobWorkflowTab job={job} build={build} />
