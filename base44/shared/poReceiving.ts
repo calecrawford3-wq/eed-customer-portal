@@ -2,7 +2,10 @@
 // receiveByPackingSlip so the shortage allocation happens atomically with
 // the inventory increment, regardless of the receiving entry point.
 //
-// receivePOItems(base44, poId, receivedItems, operationId):
+// receivePOItems(base44, poId, receivedItems, operationId, receiptId?):
+//   - Idempotent: if receiptId is provided and already in po.receipt_log, the
+//     receipt is skipped (returns { duplicate: true }) — prevents double
+//     inventory increments on retry or repeated submission.
 //   - Updates PO line item received_qty + PO status
 //   - Increments inventory quantity_on_hand
 //   - Allocates received parts to outstanding shortages (queue order, oldest first)
@@ -14,22 +17,26 @@ import { allocateReceiptToShortages, recomputeJobPartsReadiness, roundQty } from
 
 export { receivePOItems };
 
-/**
- * Receive items on a purchase order: updates PO line item received_qty + PO
- * status, increments inventory quantity_on_hand, and allocates received parts
- * to outstanding shortages on PartReservations (queue order, oldest first).
- *
- * @param {object} base44 - service-role client
- * @param {string} poId
- * @param {Array<{ line_idx: number, qty: number, unit_cost?: number }>} receivedItems
- * @param {string} operationId
- * @returns {Promise<{ po_status, inventory_updates, shortage_allocations, jobs_updated }>}
- */
-async function receivePOItems(base44, poId, receivedItems, operationId) {
+async function receivePOItems(base44, poId, receivedItems, operationId, receiptId) {
   // Load the PO
   const poRes = await base44.entities.PurchaseOrder.filter({ id: poId });
   const po = (poRes.items || poRes || [])[0];
   if (!po) throw new Error("PO not found");
+
+  // Idempotency: check if this receipt was already processed
+  if (receiptId) {
+    const receiptLog = po.receipt_log || [];
+    if (receiptLog.includes(receiptId)) {
+      return {
+        duplicate: true,
+        receipt_id: receiptId,
+        po_status: po.status,
+        inventory_updates: [],
+        shortage_allocations: [],
+        jobs_updated: [],
+      };
+    }
+  }
 
   const lines = [...(po.line_items || [])];
   const inventoryUpdates = [];
@@ -67,7 +74,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId) {
         await base44.entities.Part.update(line.part_id, partUpdates);
         inventoryUpdates.push({ part_id: line.part_id, added: qty, new_on_hand: newQty });
 
-        // Allocate received qty to outstanding shortages
+        // Allocate received qty to outstanding shortages (locked per-part)
         const alloc = await allocateReceiptToShortages(base44, {
           part_id: line.part_id,
           received_qty: qty,
@@ -84,22 +91,29 @@ async function receivePOItems(base44, poId, receivedItems, operationId) {
   }
 
   // Determine new PO status
-  const allReceived = lines.every(l => (l.received_qty || 0) >= (l.quantity || 0));
-  const anyReceived = lines.some(l => (l.received_qty || 0) > 0);
+  const allReceived = lines.every((l) => (l.received_qty || 0) >= (l.quantity || 0));
+  const anyReceived = lines.some((l) => (l.received_qty || 0) > 0);
   const newStatus = allReceived ? "received" : anyReceived ? "partial" : po.status;
 
   const subtotal = lines.reduce((s, l) => s + (l.total || 0), 0);
   const total = subtotal + (Number(po.shipping_cost) || 0) + (Number(po.tax_amount) || 0);
 
-  await base44.entities.PurchaseOrder.update(poId, {
+  // Update PO with line items, status, and receipt_log (idempotency tracking)
+  const poUpdates = {
     line_items: lines,
     subtotal,
     total,
     status: newStatus,
-    received_date: allReceived ? new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date()) : po.received_date,
-  });
+    received_date: allReceived
+      ? new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
+        }).format(new Date())
+      : po.received_date,
+  };
+  if (receiptId) {
+    poUpdates.receipt_log = [...(po.receipt_log || []), receiptId];
+  }
+  await base44.entities.PurchaseOrder.update(poId, poUpdates);
 
   // Recompute parts_readiness on affected jobs
   const jobsUpdated = [];

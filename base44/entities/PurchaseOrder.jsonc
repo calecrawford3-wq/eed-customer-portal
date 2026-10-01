@@ -87,6 +87,14 @@
     },
     "notes": {
       "type": "string"
+    },
+    "receipt_log": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "IDs of receipts that have been processed against this PO, for idempotent receiving. Prevents duplicate inventory increments on retry or repeated submission."
     }
   },
   "required": [

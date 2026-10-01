@@ -54,8 +54,11 @@ export default async function(req) {
       return Response.json({ error: "No items with quantity > 0 to receive" }, { status: 400 });
     }
 
-    const operationId = `receive-slip:${packing_slip_id}:${Date.now()}`;
-    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId);
+    // Use the packing slip ID as the stable receipt ID — the slip's own
+    // confirmed-status check plus the PO receipt_log makes this fully idempotent.
+    const receiptId = `slip:${packing_slip_id}`;
+    const operationId = `receive-slip:${packing_slip_id}`;
+    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId, receiptId);
 
     // Mark the packing slip as confirmed
     await base44.asServiceRole.entities.PackingSlip.update(packing_slip_id, {

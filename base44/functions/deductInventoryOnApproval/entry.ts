@@ -5,15 +5,21 @@ import {
 } from "../../shared/inventoryReservation.ts";
 
 // Triggered by the "Reserve Inventory on Estimate Approval" workflow when an
-// estimate's status changes to "approved".
+// estimate is updated and is (or was) in "approved" status.
 //
-// NEW BEHAVIOR (engine builds): reserve available parts WITHOUT reducing
-// quantity_on_hand. Shortages are flagged on the PartReservation records.
+// Three cases:
+//   1. Status changed TO "approved" → reserve available parts (without reducing
+//      quantity_on_hand). Shortages are flagged on PartReservation records.
+//   2. Status changed AWAY FROM "approved" (withdrawal) → release all active
+//      reservations so the stock is available for other jobs.
+//   3. Already approved, line_items/addons changed → reconcile demand (adjust
+//      reserved/short, release removed parts, reserve new parts).
+//
 // Non-engine-build estimates (parts/service) are skipped — their stock is
 // deducted at invoice completion, not at approval.
 //
-// Idempotent: operation_id = "reserve:<estimate_id>". Re-running (repeated
-// workflow event, retry) reconciles demand instead of double-reserving.
+// Idempotent: operation_id = "reserve:<estimate_id>" (or "release:<estimate_id>").
+// Re-running reconciles demand instead of double-reserving.
 
 Deno.serve(async (req) => {
   try {
@@ -21,22 +27,19 @@ Deno.serve(async (req) => {
     const payload = await req.json();
 
     const { data, old_data, changed_fields } = payload;
-
-    // Only act on status changes to "approved"
-    if (!changed_fields?.includes("status")) return Response.json({ skipped: true });
-    if (data?.status !== "approved") return Response.json({ skipped: true });
-
     const estimate = data;
-    const estimateId = estimate.id;
-    const operationId = `reserve:${estimateId}`;
+    const estimateId = estimate?.id;
 
-    // Non-engine-build estimates: do not reserve (parts/service invoices)
-    if (!estimate.is_engine_build) {
-      return Response.json({ skipped: true, reason: "not an engine build" });
-    }
+    if (!estimateId) return Response.json({ skipped: true, reason: "no estimate id" });
 
-    // If approval was withdrawn (status changed away from approved), release reservations
-    if (old_data?.status === "approved" && data.status !== "approved") {
+    // Only act on relevant field changes
+    const isStatusChange = changed_fields?.includes("status");
+    const isDemandChange = changed_fields?.includes("line_items") || changed_fields?.includes("addons");
+    if (!isStatusChange && !isDemandChange) return Response.json({ skipped: true });
+
+    // Case 1: Approval withdrawn (status changed from "approved" to something else)
+    // This must be checked BEFORE the "status !== approved" early return below.
+    if (isStatusChange && old_data?.status === "approved" && data?.status !== "approved") {
       const released = await releaseReservations(base44.asServiceRole, {
         estimate_id: estimateId,
         reason: "Approval withdrawn",
@@ -45,7 +48,16 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, action: "released", released });
     }
 
+    // Case 2: Not currently approved — skip (nothing to reserve or reconcile)
+    if (data?.status !== "approved") return Response.json({ skipped: true, reason: "not approved" });
+
+    // Case 3: Non-engine-build estimates: do not reserve (parts/service invoices)
+    if (!estimate.is_engine_build) {
+      return Response.json({ skipped: true, reason: "not an engine build" });
+    }
+
     // Reserve (or reconcile) parts for this engine-build estimate
+    const operationId = `reserve:${estimateId}`;
     const result = await reservePartsForEstimate(base44.asServiceRole, { estimate, operation_id: operationId });
 
     // Notify admin of any shortages
@@ -53,7 +65,7 @@ Deno.serve(async (req) => {
       try {
         await base44.asServiceRole.functions.invoke("sendAdminNotification", {
           title: "Parts Shortage on Approved Build",
-          message: `Estimate ${estimate.estimate_number || estimateId} was approved but ${result.shortages.length} part(s) could not be fully reserved: ${result.shortages.map(s => `${s.name} (short ${s.short})`).join(", ")}.`,
+          message: `Estimate ${estimate.estimate_number || estimateId} was approved but ${result.shortages.length} part(s) could not be fully reserved: ${result.shortages.map((s) => `${s.name} (short ${s.short})`).join(", ")}.`,
           type: "low_stock",
           link_url: `/EstimateDetail?id=${estimateId}`,
         });

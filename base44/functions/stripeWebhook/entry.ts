@@ -91,6 +91,9 @@ Deno.serve(async (req) => {
               build_id: currentDoc.build_id || "",
               status: totalPaid >= (currentDoc.total || 0) ? "paid" : "partial",
               issue_date: new Date().toISOString().split("T")[0],
+              // Engine-build invoices: balance is due on build completion, not 30 days
+              due_on_completion: !!currentDoc.is_engine_build,
+              due_date: currentDoc.is_engine_build ? "" : undefined,
               line_items: currentDoc.line_items || [],
               labor_items: currentDoc.labor_items || [],
               machining_items: currentDoc.machining_items || [],

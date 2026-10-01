@@ -59,6 +59,11 @@
       "type": "number",
       "default": 0
     },
+    "reservation_lock": {
+      "type": "string",
+      "default": "",
+      "description": "Mutex lock for serializing concurrent reservation operations on this part. Stores a timestamp-based value when locked, empty when free. Stale locks (>30s) are automatically reclaimed."
+    },
     "reorder_point": {
       "type": "number",
       "default": 0

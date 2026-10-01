@@ -125,7 +125,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
-      <PageHeader title="Dashboard" subtitle="Engine specification vault overview">
+      <PageHeader title="Today" subtitle="Your shop's work queue and next actions">
         <a
           href={createPageUrl("ShopDisplay")}
           target="_blank"

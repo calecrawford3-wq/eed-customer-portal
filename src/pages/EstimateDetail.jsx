@@ -750,10 +750,6 @@ export default function EstimateDetail() {
              const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
              if (lastBuild) {
                prevBuildData = {
-                 valve_lash_intake: lastBuild.valve_lash_intake,
-                 valve_lash_exhaust: lastBuild.valve_lash_exhaust,
-                 internal_measurements: lastBuild.internal_measurements,
-                 cam_info: lastBuild.cam_info,
                  max_rpm: lastBuild.max_rpm,
                  oil_recommendation: lastBuild.oil_recommendation,
                  oil_change_interval: lastBuild.oil_change_interval,
@@ -858,10 +854,6 @@ export default function EstimateDetail() {
             const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
             if (lastBuild) {
               prevBuildData = {
-                valve_lash_intake: lastBuild.valve_lash_intake,
-                valve_lash_exhaust: lastBuild.valve_lash_exhaust,
-                internal_measurements: lastBuild.internal_measurements,
-                cam_info: lastBuild.cam_info,
                 max_rpm: lastBuild.max_rpm,
                 oil_recommendation: lastBuild.oil_recommendation,
                 oil_change_interval: lastBuild.oil_change_interval,
@@ -1064,10 +1056,6 @@ export default function EstimateDetail() {
             const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
             if (lastBuild) {
               prevBuildData = {
-                valve_lash_intake: lastBuild.valve_lash_intake,
-                valve_lash_exhaust: lastBuild.valve_lash_exhaust,
-                internal_measurements: lastBuild.internal_measurements,
-                cam_info: lastBuild.cam_info,
                 max_rpm: lastBuild.max_rpm,
                 oil_recommendation: lastBuild.oil_recommendation,
                 oil_change_interval: lastBuild.oil_change_interval,

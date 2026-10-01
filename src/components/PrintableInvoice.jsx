@@ -89,7 +89,11 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
   if (!invoice || !customer) return null;
 
   const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";
-  const dueDate = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "N/A";
+  const dueDate = invoice.due_date
+    ? new Date(invoice.due_date).toLocaleDateString()
+    : invoice.due_on_completion
+      ? "Due on build completion"
+      : "N/A";
 
   const customerAddress = [customer.address_line1, customer.address_line2, customer.city ? `${customer.city}, ${customer.state} ${customer.zip}` : null, customer.country ? getCountryName(customer.country) : null, customer.phone, customer.email].filter(Boolean).join(" | ");
 

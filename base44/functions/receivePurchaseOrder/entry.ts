@@ -23,14 +23,17 @@ export default async function(req) {
     const body = await req.json();
     const poId = body.po_id;
     const receivedItems = body.received_items || [];
+    // Stable receipt ID for idempotent receiving — the UI should pass the same
+    // receipt_id on retry so a repeated submission doesn't double-increment stock.
+    const receiptId = body.receipt_id || `manual:${poId}:${Date.now()}`;
 
     if (!poId) return Response.json({ error: "po_id required" }, { status: 400 });
     if (!Array.isArray(receivedItems) || receivedItems.length === 0) {
       return Response.json({ error: "received_items required" }, { status: 400 });
     }
 
-    const operationId = `receive-po:${poId}:${Date.now()}`;
-    const result = await receivePOItems(base44.asServiceRole, poId, receivedItems, operationId);
+    const operationId = `receive-po:${poId}:${receiptId}`;
+    const result = await receivePOItems(base44.asServiceRole, poId, receivedItems, operationId, receiptId);
 
     return Response.json({ success: true, po_id: poId, ...result });
   } catch (error) {

@@ -28,6 +28,8 @@ export default function JobCard() {
     const params = new URLSearchParams(window.location.search);
     setJobId(params.get("id"));
     const tab = params.get("tab");
+    // Old tab compatibility: profitability is now a section under overview
+    if (tab === "profitability") { setActiveTab("overview"); return; }
     if (tab) setActiveTab(tab);
   }, []);
 
@@ -148,17 +150,19 @@ export default function JobCard() {
           <TabsList className="flex flex-wrap h-auto overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="estimate">Estimate & Approvals</TabsTrigger>
-            <TabsTrigger value="findings">Findings</TabsTrigger>
+            <TabsTrigger value="findings">Findings & Approvals</TabsTrigger>
             <TabsTrigger value="parts">Parts & Purchasing</TabsTrigger>
             <TabsTrigger value="build">Build Sheet</TabsTrigger>
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
             <TabsTrigger value="invoice">Invoice & Payments</TabsTrigger>
-            <TabsTrigger value="profitability">Profitability</TabsTrigger>
             <TabsTrigger value="comms">Comms & Docs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
             <JobOverviewTab job={job} customer={customer} engine={engine} platform={platform} estimate={estimate} build={build} invoices={invoiceList} />
+            <div className="mt-6">
+              <JobProfitabilityTab job={job} />
+            </div>
           </TabsContent>
           <TabsContent value="estimate" className="mt-4">
             <JobEstimateTab job={job} estimate={estimate} />
@@ -177,9 +181,6 @@ export default function JobCard() {
           </TabsContent>
           <TabsContent value="invoice" className="mt-4">
             <JobInvoiceTab job={job} invoices={invoiceList} />
-          </TabsContent>
-          <TabsContent value="profitability" className="mt-4">
-            <JobProfitabilityTab job={job} />
           </TabsContent>
           <TabsContent value="comms" className="mt-4">
             <JobCommsTab job={job} customer={customer} />

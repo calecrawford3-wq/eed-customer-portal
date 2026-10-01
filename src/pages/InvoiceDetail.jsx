@@ -645,7 +645,11 @@ export default function InvoiceDetail() {
     const settings = settingsData?.[0] || {};
     const subject = `Invoice ${form.invoice_number} — Payment Due`;
     const viewUrl = `https://elite-viewer.base44.app/invoice/${accessToken}`;
-    const dueDate = form.due_date ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "30 days from invoice date";
+    const dueDate = form.due_date
+      ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : form.due_on_completion
+        ? "Due on build completion"
+        : "30 days from invoice date";
     const html = `
       <!DOCTYPE html>
       <html>
