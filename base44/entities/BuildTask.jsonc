@@ -59,7 +59,16 @@
     "time_logged_minutes": {
       "type": "number",
       "default": 0,
-      "description": "Time logged against this task in minutes"
+      "description": "Committed time logged against this task in minutes. Accumulated from timer stops and manual entries. Displayed total = time_logged_minutes + elapsed running timer."
+    },
+    "timer_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When a running timer was started on this task (null/empty = timer not running). Only one timer runs per task at a time to prevent overlapping time entries."
+    },
+    "timer_user": {
+      "type": "string",
+      "description": "Name of the user who started the currently running timer"
     },
     "measurements": {
       "type": "string",

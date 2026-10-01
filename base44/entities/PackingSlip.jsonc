@@ -1,0 +1,60 @@
+{
+  "name": "PackingSlip",
+  "type": "object",
+  "properties": {
+    "po_id": {
+      "type": "string",
+      "description": "Linked Purchase Order this packing slip was received against"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Supplier identified from the packing slip or the linked PO"
+    },
+    "file_uri": {
+      "type": "string",
+      "description": "Private storage URI of the original uploaded packing slip or supplier invoice. Preserved as proof of shipment contents (not proof of payment)."
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original filename of the uploaded document"
+    },
+    "file_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the file content, used to detect and prevent duplicate receiving of the same document."
+    },
+    "extracted_data": {
+      "type": "string",
+      "description": "JSON of the raw extraction result (supplier name, PO reference, line items with part numbers, quantities, unit costs, backordered quantities)."
+    },
+    "match_results": {
+      "type": "string",
+      "description": "JSON of the matching results: which extracted items matched PO lines and catalog records, which were unmatched, ambiguous, or had discrepancies."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "confirmed",
+        "skipped"
+      ],
+      "default": "pending_review",
+      "description": "pending_review = extracted, awaiting admin confirmation; confirmed = admin reviewed and posted the receipt; skipped = duplicate or rejected, no receipt posted."
+    },
+    "confirmed_items": {
+      "type": "string",
+      "description": "JSON of the admin-confirmed receipt items that were actually posted to inventory and the PO."
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the admin confirmed the receipt and the items were posted."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "file_uri",
+    "file_hash"
+  ]
+}

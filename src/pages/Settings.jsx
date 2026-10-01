@@ -195,6 +195,22 @@ export default function Settings() {
                   <Input value={form.default_payment_terms} onChange={e => set("default_payment_terms", e.target.value)} placeholder="Net 30" />
                 </div>
               </div>
+              <div className="pt-4 border-t border-slate-100">
+                <h4 className="text-sm font-medium text-slate-700 mb-3">Internal Labor Cost (Profitability)</h4>
+                <p className="text-xs text-slate-400 mb-3">Used to compute actual job profitability. Distinct from customer billing rates — applied to logged task hours to determine internal labor cost.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Internal Labor Rate ($/hour)</Label>
+                    <Input type="number" value={form.internal_labor_rate ?? 0} onChange={e => set("internal_labor_rate", Number(e.target.value))} min={0} step={1} placeholder="0" />
+                    <p className="text-xs text-slate-400 mt-1">0 = labor cost not tracked (flagged as missing in profitability)</p>
+                  </div>
+                  <div>
+                    <Label>Overhead Burden Rate ($/hour)</Label>
+                    <Input type="number" value={form.labor_overhead_rate ?? 0} onChange={e => set("labor_overhead_rate", Number(e.target.value))} min={0} step={1} placeholder="0" />
+                    <p className="text-xs text-slate-400 mt-1">Added to labor rate for fully-loaded labor cost</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

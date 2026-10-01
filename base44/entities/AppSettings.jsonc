@@ -292,6 +292,21 @@
       "type": "string",
       "description": "Current sync status text shown on the settings page (e.g. 'Syncing 45 customers\u2026', 'Idle', 'Last sync failed')"
     },
+    "internal_labor_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Internal labor cost rate ($/hour) used for actual job profitability \u2014 distinct from customer billing rates. Applied to logged task hours to compute internal labor cost. 0 = labor cost not tracked (flagged as missing)."
+    },
+    "labor_overhead_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Optional overhead burden rate ($/hour) added to internal labor cost for fully-loaded labor cost in profitability. 0 = no overhead applied."
+    },
+    "stalled_job_threshold_days": {
+      "type": "number",
+      "default": 14,
+      "description": "Number of days an active job can sit without a stage change before it's flagged as stalled on the Exception Dashboard."
+    },
     "storage_locations": {
       "type": "string",
       "description": "JSON object mapping category keys (engines, carts, stands, parts) to arrays of storage location names (e.g. {\"engines\":[\"ES1\",\"ES2\"],\"carts\":[\"Cart 1\",\"Cart 2\"]}). Used to populate location pickers and print location labels."

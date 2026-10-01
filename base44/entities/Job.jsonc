@@ -193,6 +193,10 @@
     "is_warranty": {
       "type": "boolean",
       "default": false
+    },
+    "profitability_snapshot": {
+      "type": "string",
+      "description": "JSON snapshot of the full quoted-vs-actual profitability breakdown captured at build completion, so later catalog price changes do not rewrite historical profitability. Includes revenue, parts cost, labor hours/cost, machining, discounts, warranty costs, margins, and missing-cost flags."
     }
   },
   "required": [

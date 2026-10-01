@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
 import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
 import PoKitPickerModal from "@/components/estimates/PoKitPickerModal";
 import EmailsSection from "@/components/emails/EmailsSection";
+import PackingSlipReceiveModal from "@/components/inventory/PackingSlipReceiveModal";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
@@ -50,6 +51,7 @@ export default function PurchaseOrderDetail() {
   const [receiveCosts, setReceiveCosts] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [kitPickerOpen, setKitPickerOpen] = useState(false);
+  const [slipModalOpen, setSlipModalOpen] = useState(false);
 
   const { data: settingsList = [] } = useQuery({
     queryKey: ["appSettings"],
@@ -453,6 +455,11 @@ export default function PurchaseOrderDetail() {
             <PackageCheck className="w-4 h-4 mr-1" /> Receive Items
           </Button>
         )}
+        {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
+          <Button variant="outline" className="border-blue-400 text-blue-700 hover:bg-blue-50" onClick={() => setSlipModalOpen(true)}>
+            <FileText className="w-4 h-4 mr-1" /> Receive by Packing Slip
+          </Button>
+        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
@@ -674,6 +681,12 @@ export default function PurchaseOrderDetail() {
         suppliers={suppliers}
         currentSupplierId={form.supplier_id}
         onAdd={addKitFromPicker}
+      />
+
+      <PackingSlipReceiveModal
+        open={slipModalOpen}
+        onClose={() => setSlipModalOpen(false)}
+        po={form}
       />
     </div>
   );

@@ -314,13 +314,19 @@ async function consumeReservationsForBuild(base44, { build_id, operation_id, all
     const current = roundQty(part.quantity_on_hand);
     const newQty = roundQty(Math.max(0, current - consumeQty));
     await base44.entities.Part.update(part.id, { quantity_on_hand: newQty });
+    // Capture cost snapshot at consumption time so later catalog price changes
+    // do not rewrite historical parts cost in profitability reporting.
+    const unitCostSnapshot = part.unit_cost != null ? Number(part.unit_cost) : null;
+    const shippingCostSnapshot = Number(part.shipping_cost) || 0;
     await base44.entities.PartReservation.update(r.id, {
       quantity_consumed: consumeQty,
       status: "consumed",
       consumed_at: new Date().toISOString(),
+      unit_cost_snapshot: unitCostSnapshot,
+      shipping_cost_snapshot: shippingCostSnapshot,
       operation_id,
     });
-    deducted.push({ part_id: part.id, name: r.part_name, from: current, to: newQty, deducted: consumeQty });
+    deducted.push({ part_id: part.id, name: r.part_name, from: current, to: newQty, deducted: consumeQty, unit_cost_snapshot: unitCostSnapshot });
   }
 
   return { deducted, shortages, already_consumed: false, operation_id };

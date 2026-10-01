@@ -11,6 +11,16 @@ import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check, Sh
 import { toast } from "sonner";
 
 const NEXT_STATUS = { pending: "in_progress", in_progress: "complete", complete: "skipped", skipped: "pending" };
+
+// Format elapsed time since a timer start timestamp as "Xm" or "Xh Ym"
+function formatElapsed(startedAt) {
+  const ms = Date.now() - new Date(startedAt).getTime();
+  const totalMin = Math.max(0, Math.floor(ms / 60000));
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${m}m`;
+}
 const STATUS_ICON = {
   pending: <Circle className="w-4 h-4 text-slate-300" />,
   in_progress: <Clock className="w-4 h-4 text-blue-500" />,
@@ -95,6 +105,36 @@ export default function JobWorkflowTab({ job, build }) {
     }
   };
 
+  const toggleTimer = async (task) => {
+    try {
+      const me = await base44.auth.me();
+      const userName = me?.full_name || "Admin";
+      if (task.timer_started_at) {
+        // Stop timer: commit elapsed minutes to time_logged_minutes
+        const elapsedMs = Date.now() - new Date(task.timer_started_at).getTime();
+        const elapsedMin = Math.max(0, Math.round(elapsedMs / 60000));
+        const newTotal = (Number(task.time_logged_minutes) || 0) + elapsedMin;
+        await base44.entities.BuildTask.update(task.id, {
+          time_logged_minutes: newTotal,
+          timer_started_at: "",
+          timer_user: "",
+        });
+        toast.success(`Timer stopped — ${elapsedMin}m added (${newTotal}m total)`);
+      } else {
+        // Start timer
+        await base44.entities.BuildTask.update(task.id, {
+          timer_started_at: new Date().toISOString(),
+          timer_user: userName,
+          status: task.status === "pending" ? "in_progress" : task.status,
+        });
+        toast.success("Timer started");
+      }
+      qc.invalidateQueries({ queryKey: ["job-workflow-tasks", job.build_id] });
+    } catch (e) {
+      toast.error("Failed to toggle timer: " + e.message);
+    }
+  };
+
   const uploadPhoto = async (taskId, file) => {
     if (!file) return;
     try {
@@ -146,6 +186,10 @@ export default function JobWorkflowTab({ job, build }) {
                     {t.status === "skipped" && <Badge variant="outline" className="text-xs">Skipped</Badge>}
                     {t.override_authorized_by && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Override: {t.override_authorized_by}</Badge>}
                     {t.time_logged_minutes > 0 && <span className="text-xs text-slate-400 flex items-center gap-0.5"><Timer className="w-3 h-3" />{t.time_logged_minutes}m</span>}
+                    {t.timer_started_at && <span className="text-xs text-blue-600 flex items-center gap-0.5 animate-pulse"><Timer className="w-3 h-3" />{formatElapsed(t.timer_started_at)}</span>}
+                    <button onClick={() => toggleTimer(t)} className={`flex-shrink-0 p-0.5 rounded ${t.timer_started_at ? "text-blue-600 hover:bg-blue-50" : "text-slate-300 hover:text-slate-500"}`} title={t.timer_started_at ? "Stop timer" : "Start timer"}>
+                      {t.timer_started_at ? <span className="text-xs font-bold">■</span> : <Timer className="w-3.5 h-3.5" />}
+                    </button>
                     {t.completed_by && <span className="text-xs text-slate-400 ml-auto">by {t.completed_by}</span>}
                     <button onClick={() => { setEditingNote(editingNote === t.id ? null : t.id); setNoteDraft(t.notes || ""); }} className="ml-auto flex-shrink-0">
                       <Pencil className={`w-3.5 h-3.5 ${t.notes ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />

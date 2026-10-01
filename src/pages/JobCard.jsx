@@ -15,6 +15,7 @@ import JobBuildTab from "@/components/jobs/JobBuildTab";
 import JobWorkflowTab from "@/components/jobs/JobWorkflowTab";
 import JobCommsTab from "@/components/jobs/JobCommsTab";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
+import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
 
 export default function JobCard() {
   const [jobId, setJobId] = useState(null);
@@ -84,6 +85,7 @@ export default function JobCard() {
             <TabsTrigger value="build">Build Sheet</TabsTrigger>
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
             <TabsTrigger value="invoice">Invoice & Payments</TabsTrigger>
+            <TabsTrigger value="profitability">Profitability</TabsTrigger>
             <TabsTrigger value="comms">Comms & Docs</TabsTrigger>
           </TabsList>
 
@@ -107,6 +109,9 @@ export default function JobCard() {
           </TabsContent>
           <TabsContent value="invoice" className="mt-4">
             <JobInvoiceTab job={job} invoices={invoiceList} />
+          </TabsContent>
+          <TabsContent value="profitability" className="mt-4">
+            <JobProfitabilityTab job={job} />
           </TabsContent>
           <TabsContent value="comms" className="mt-4">
             <JobCommsTab job={job} customer={customer} />

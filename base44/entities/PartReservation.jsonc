@@ -67,6 +67,15 @@
     "released_reason": {
       "type": "string",
       "description": "Why the reservation was released (approval withdrawn, job canceled, estimate edited)"
+    },
+    "unit_cost_snapshot": {
+      "type": "number",
+      "description": "Unit cost captured at the time of consumption (build completion), so later catalog price changes do not rewrite historical parts cost. Null/absent = cost not captured (flagged as missing in profitability)."
+    },
+    "shipping_cost_snapshot": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-unit inbound shipping cost captured at consumption time, added to unit_cost_snapshot for the landed cost snapshot."
     }
   },
   "required": [
