@@ -90,7 +90,7 @@ export default function BuildTimeline({ buildId }) {
         date: c.start_date, type: "calendar",
         title: c.title, desc: [c.start_time, c.description].filter(Boolean).join(" · "),
       }));
-      (estimates || []).forEach((e) => ev.push({
+      (estimates || []).filter((e) => !e.archived && e.status !== "expired").forEach((e) => ev.push({
         date: e.issue_date || e.created_date, type: "estimate",
         title: `Estimate ${e.estimate_number || ""}`, desc: `Status: ${e.status}`,
       }));

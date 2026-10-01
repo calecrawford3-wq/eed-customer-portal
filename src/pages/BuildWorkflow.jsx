@@ -135,23 +135,57 @@ export default function BuildWorkflow() {
     }
   };
 
-  // Apply a template to the current build (shared by the dialog button and voice)
+  // Apply a template to the current build — preserves completed/skipped tasks and their history
   const applyTemplate = useCallback(
     async (template) => {
       if (!selectedBuildId || !template) throw new Error("Missing build or template");
-      await base44.entities.BuildTask.deleteMany({ build_id: selectedBuildId });
-      const newTasks = (template.items || []).map((item, idx) => ({
-        build_id: selectedBuildId,
-        template_id: template.id,
-        template_name: template.name,
-        name: item.name,
-        stage: item.stage || "Unstaged",
-        sort_order: idx,
-        status: "pending",
-      }));
-      if (newTasks.length > 0) {
-        await base44.entities.BuildTask.bulkCreate(newTasks);
+
+      // Load existing tasks to preserve completion history
+      const existingRes = await base44.entities.BuildTask.filter({ build_id: selectedBuildId }, "sort_order", 500);
+      const existingTasks = existingRes?.items || existingRes || [];
+      const existingByName = {};
+      existingTasks.forEach((t) => { existingByName[t.name] = t; });
+
+      const templateItemNames = new Set((template.items || []).map((i) => i.name));
+
+      // Delete tasks no longer in the template — but only if they haven't been completed/skipped (preserve history)
+      const toDelete = existingTasks.filter(
+        (t) => !templateItemNames.has(t.name) && !["complete", "skipped"].includes(t.status)
+      );
+      if (toDelete.length > 0) {
+        await base44.entities.BuildTask.deleteMany({ id: { $in: toDelete.map((t) => t.id) } });
       }
+
+      // Update matching tasks' sort_order/stage/template refs (preserve status, completed_by, completed_at)
+      const toUpdate = [];
+      const toCreate = [];
+      (template.items || []).forEach((item, idx) => {
+        const existing = existingByName[item.name];
+        if (existing) {
+          if (existing.sort_order !== idx || existing.stage !== (item.stage || "Unstaged") || existing.template_id !== template.id) {
+            toUpdate.push({
+              id: existing.id,
+              sort_order: idx,
+              stage: item.stage || "Unstaged",
+              template_id: template.id,
+              template_name: template.name,
+            });
+          }
+        } else {
+          toCreate.push({
+            build_id: selectedBuildId,
+            template_id: template.id,
+            template_name: template.name,
+            name: item.name,
+            stage: item.stage || "Unstaged",
+            sort_order: idx,
+            status: "pending",
+          });
+        }
+      });
+
+      if (toUpdate.length > 0) await base44.entities.BuildTask.bulkUpdate(toUpdate);
+      if (toCreate.length > 0) await base44.entities.BuildTask.bulkCreate(toCreate);
       return template;
     },
     [selectedBuildId]
@@ -356,7 +390,7 @@ export default function BuildWorkflow() {
             <div className="space-y-4 mt-2">
               {tasks.length > 0 && (
                 <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
-                  Applying a new template will reset all task progress for this build.
+                  Completed and skipped tasks are preserved. Only pending/in-progress tasks not in the new template will be removed.
                 </p>
               )}
               {templates.length === 0 ? (

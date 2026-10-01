@@ -67,7 +67,7 @@ export default function EngineCheckInModal({ open, onClose }) {
     queryFn: () => base44.entities.Estimate.list("-created_date", 500),
   });
   const openEstimates = allEstimates.filter(e =>
-    e.customer_id === form.customer_id && ["draft", "sent"].includes(e.status)
+    e.customer_id === form.customer_id && ["draft", "sent"].includes(e.status) && !e.archived
   );
 
   // Open invoices for the selected customer (not paid or void)

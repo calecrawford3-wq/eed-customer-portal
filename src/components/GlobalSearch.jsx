@@ -85,7 +85,7 @@ export default function GlobalSearch() {
       customers: customers.filter((c) => match(`${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""}`, q)).slice(0, 5),
       builds: builds.filter((b) => match(`${b.engine_serial_number} ${b.build_number} ${b.eed_id}`, q)).slice(0, 5),
       invoices: invoices.filter((i) => match(`${i.invoice_number}`, q)).slice(0, 5),
-      estimates: estimates.filter((e) => match(`${e.estimate_number}`, q)).slice(0, 5),
+      estimates: estimates.filter((e) => !e.archived && e.status !== "expired" && match(`${e.estimate_number}`, q)).slice(0, 5),
       pos: purchaseOrders.filter((p) => match(`${p.po_number}`, q)).slice(0, 5),
       parts: parts.filter((p) => match(`${p.name} ${p.part_number}`, q)).slice(0, 5),
       engines: engines.filter((e) => match(`${e.engine_serial_number} ${e.eed_id}`, q)).slice(0, 5),

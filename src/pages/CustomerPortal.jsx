@@ -111,7 +111,7 @@ export default function CustomerPortal() {
 
   const { data: estimates = [] } = useQuery({
     queryKey: ["portal-estimates", customer?.id],
-    queryFn: () => base44.entities.Estimate.filter({ customer_id: customer.id }),
+    queryFn: () => base44.entities.Estimate.filter({ customer_id: customer.id, archived: { $ne: true } }),
     enabled: !!customer,
   });
 

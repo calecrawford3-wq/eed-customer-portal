@@ -93,7 +93,7 @@ export default function JobOverviewTab({ job, customer, engine, platform, estima
       <Card className="border-0 shadow-sm md:col-span-2">
         <CardHeader className="pb-2"><CardTitle className="text-sm">Linked Records</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-          {estimate && <LinkTile label="Estimate" value={estimate.estimate_number} to={`/EstimateDetail?id=${estimate.id}`} />}
+          {estimate && !estimate.archived && estimate.status !== "expired" && <LinkTile label="Estimate" value={estimate.estimate_number} to={`/EstimateDetail?id=${estimate.id}`} />}
           {build && <LinkTile label="Build" value={build.engine_serial_number} to={`/BuildDetail?id=${build.id}`} />}
           {(invoices || []).map((inv, i) => <LinkTile key={inv.id} label={`Invoice ${i + 1}`} value={inv.invoice_number} to={`/InvoiceDetail?id=${inv.id}`} />)}
           {engine && <LinkTile label="Engine" value={engine.eed_id} to={`/CustomerDetail?id=${customer?.id}`} />}

@@ -67,7 +67,7 @@ export default function CustomerDetail() {
 
   const { data: customerEstimates = [] } = useQuery({
     queryKey: ["customer-estimates", id],
-    queryFn: () => base44.entities.Estimate.filter({ customer_id: id }, "-created_date", 200),
+    queryFn: () => base44.entities.Estimate.filter({ customer_id: id, archived: { $ne: true } }, "-created_date", 200),
     enabled: !!id,
   });
 
