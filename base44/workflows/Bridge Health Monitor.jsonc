@@ -1,0 +1,45 @@
+{
+  "name": "Bridge Health Monitor",
+  "description": "Pings the ElitePhoneBridge every 30 minutes and alerts admins (in-app + push) if it's unreachable, so VoIP.ms sync/SMS/call outages are caught in minutes instead of days.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/30 * * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "bridge_health_monitor",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "check_bridge": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "checkBridgeHealth",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Check bridge health",
+            "description": "Ping ElitePhoneBridge, alert if down"
+          }
+        }
+      }
+    ]
+  }
+}

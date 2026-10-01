@@ -182,6 +182,18 @@ export default async function(req: Request): Promise<Response> {
       await updatePbStatus(base44, {
         voipms_pb_current_sync_status: `Sync aborted: ${safeError}`,
       });
+
+      // Alert admins so bridge outages don't fail silently for days
+      try {
+        await base44.asServiceRole.entities.Notification.create({
+          title: "Phone Book Sync Failed",
+          message: `Nightly reconciliation aborted: ${safeError}. The ElitePhoneBridge may be offline.`,
+          type: "other",
+          link_url: "/VoipPhonebookSyncHistory",
+          is_read: false,
+        });
+      } catch (_) {}
+
       return Response.json({
         error: safeError,
         aborted: true,

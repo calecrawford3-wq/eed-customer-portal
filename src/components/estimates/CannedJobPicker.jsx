@@ -59,6 +59,9 @@ export default function CannedJobPicker({ open, onClose, onSelect }) {
                     <div className="flex gap-3 mt-2 text-xs text-slate-500">
                       <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {(job.line_items || []).length} part{(job.line_items || []).length === 1 ? "" : "s"}</span>
                       <span className="flex items-center gap-1"><Wrench className="w-3 h-3" /> {(job.labor_items || []).length} labor</span>
+                      {(job.machining_items || []).length > 0 && (
+                        <span className="flex items-center gap-1"><Wrench className="w-3 h-3" /> {(job.machining_items || []).length} machining</span>
+                      )}
                     </div>
                   </div>
                   <Button
