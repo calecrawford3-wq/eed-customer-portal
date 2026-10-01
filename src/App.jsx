@@ -36,6 +36,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import OAuthConsent from './pages/OAuthConsent';
 import Jobs from './pages/Jobs';
 import JobCard from './pages/JobCard';
+import ReplacementRules from './pages/ReplacementRules';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -122,6 +123,7 @@ const AuthenticatedApp = () => {
       <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
       <Route path="/Jobs" element={<LayoutWrapper currentPageName="Jobs"><Jobs /></LayoutWrapper>} />
       <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCard /></LayoutWrapper>} />
+      <Route path="/ReplacementRules" element={<LayoutWrapper currentPageName="ReplacementRules"><ReplacementRules /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

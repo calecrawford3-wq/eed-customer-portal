@@ -99,6 +99,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Platforms", page: "Platforms", icon: Layers },
         { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
         { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
+        { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
         { name: "Addons", page: "Addons", icon: Sparkles },
         { name: "Documents", page: "Documents", icon: FolderOpen },
       ],
