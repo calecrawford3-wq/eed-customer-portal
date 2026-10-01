@@ -42,8 +42,11 @@ function isDepositMet(estimate) {
   return req > 0 && paid >= req;
 }
 
-// Derive stage + blocking + is_active from estimate/build state
-function deriveStageAndBlocking(estimate, build) {
+// Derive stage + blocking + is_active from estimate/build state.
+// When a manual_stage_override is set on the job, it takes precedence over the
+// build-status derivation so admins can place a job in any active stage (e.g.
+// "machining", which has no 1:1 build status) and move it backward freely.
+function deriveStageAndBlocking(estimate, build, override) {
   const estStatus = estimate?.status || "draft";
   const depositMet = isDepositMet(estimate);
 
@@ -53,6 +56,11 @@ function deriveStageAndBlocking(estimate, build) {
   }
   if (estimate.deposit_required && !depositMet) {
     return { stage: "awaiting_deposit", blocking: "awaiting_deposit", is_active: false };
+  }
+
+  // Manual override takes precedence for activated jobs
+  if (override && override !== "awaiting_approval" && override !== "awaiting_deposit") {
+    return { stage: override, blocking: "none", is_active: true };
   }
 
   // Activated — derive active stage from build status
@@ -106,7 +114,7 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
   const existing = await base44.entities.Job.filter({ estimate_id: estimate.id });
   job = (existing.items || existing || [])[0] || null;
 
-  const { stage, blocking, is_active } = deriveStageAndBlocking(estimate, build);
+  const { stage, blocking, is_active } = deriveStageAndBlocking(estimate, build, job?.manual_stage_override);
   const depositMet = isDepositMet(estimate);
   const shouldActivate = is_active && (activate !== false);
 

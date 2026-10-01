@@ -60,6 +60,21 @@
       "default": "awaiting_approval",
       "description": "Lifecycle stage. awaiting_approval/awaiting_deposit are pre-activation. The rest are active-shop stages."
     },
+    "manual_stage_override": {
+      "type": "string",
+      "enum": [
+        "",
+        "queued",
+        "teardown",
+        "machining",
+        "assembly",
+        "testing",
+        "ready_for_pickup",
+        "picked_up"
+      ],
+      "default": "",
+      "description": "When set, the job stage is manually held at this value instead of being auto-derived from the linked build's status. Cleared to revert to automatic derivation."
+    },
     "blocking_condition": {
       "type": "string",
       "enum": [

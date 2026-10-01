@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MapPin, CheckCircle2, Clock, AlertTriangle, Package, DollarSign, ArrowRight } from "lucide-react";
+import JobStageMover from "@/components/jobs/JobStageMover";
 
 const STAGE_LABELS = {
   awaiting_approval: "Awaiting Approval",
@@ -48,6 +49,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, bu
             </Badge>
           )}
           {job.is_warranty && <Badge variant="outline" className="text-xs text-purple-700 border-purple-300">Warranty</Badge>}
+          {job.is_active && <JobStageMover job={job} build={build} />}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-sm">
