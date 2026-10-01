@@ -24,6 +24,18 @@
       "type": "string",
       "description": "Spec sheet used for this estimate (set when canned job is loaded)"
     },
+    "canned_job_id": {
+      "type": "string",
+      "description": "Linked CannedJob (the specific version) used to prefill this estimate"
+    },
+    "canned_job_version": {
+      "type": "number",
+      "description": "Snapshot of the canned job version number used, so later package updates do not silently change this estimate"
+    },
+    "canned_job_snapshot": {
+      "type": "string",
+      "description": "JSON snapshot of the canned job package (name, version, line_items, labor_items, machining_items) captured when the canned job was loaded. Preserves the exact scope and prices used for an approved estimate."
+    },
     "is_engine_build": {
       "type": "boolean",
       "default": false,

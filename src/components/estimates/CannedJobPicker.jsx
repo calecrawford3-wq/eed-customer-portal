@@ -20,7 +20,11 @@ export default function CannedJobPicker({ open, onClose, onSelect }) {
     enabled: open,
   });
 
-  const activeJobs = cannedJobs.filter(j => j.status === "active" || !j.status);
+  // Show only the latest version of each package (is_latest !== false covers legacy single-version jobs)
+  const activeJobs = cannedJobs.filter(j =>
+    (j.status === "active" || !j.status) &&
+    j.is_latest !== false
+  );
   const filtered = activeJobs.filter(j =>
     !search ||
     j.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,7 +58,12 @@ export default function CannedJobPicker({ open, onClose, onSelect }) {
               <div key={job.id} className="border border-slate-200 rounded-lg p-4 hover:border-purple-300 hover:bg-purple-50/30 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <p className="font-semibold text-slate-900">{job.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-900">{job.name}</p>
+                      {job.version && job.version > 1 && (
+                        <span className="text-[10px] font-mono bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">v{job.version}</span>
+                      )}
+                    </div>
                     {job.description && <p className="text-sm text-slate-500 mt-0.5">{job.description}</p>}
                     <div className="flex gap-3 mt-2 text-xs text-slate-500">
                       <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {(job.line_items || []).length} part{(job.line_items || []).length === 1 ? "" : "s"}</span>

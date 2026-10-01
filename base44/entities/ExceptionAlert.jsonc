@@ -1,0 +1,102 @@
+{
+  "name": "ExceptionAlert",
+  "type": "object",
+  "properties": {
+    "exception_type": {
+      "type": "string",
+      "enum": [
+        "engine_without_estimate",
+        "job_awaiting_engine",
+        "job_awaiting_deposit",
+        "additional_work_pending",
+        "parts_overdue",
+        "job_stalled",
+        "missing_measurements",
+        "missing_qc_tasks",
+        "approved_work_not_invoiced",
+        "completed_job_no_invoice",
+        "picked_up_unpaid",
+        "failed_operation"
+      ],
+      "description": "Category of exception. Each type has its own detection logic in the scanExceptions backend function."
+    },
+    "exception_key": {
+      "type": "string",
+      "description": "Deduplication key (e.g. 'job_awaiting_deposit:JOB-100001'). Prevents duplicate alerts for the same underlying issue."
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Linked Job (when applicable)"
+    },
+    "job_number": {
+      "type": "string",
+      "description": "Snapshot of job number for display"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer (when applicable)"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Snapshot of customer name for display"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short one-line description of the exception"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed explanation of the issue and what action is needed"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "default": "warning"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "snoozed",
+        "resolved"
+      ],
+      "default": "active",
+      "description": "active = currently open; snoozed = admin deferred with a reason and return date; resolved = underlying issue fixed (auto-set when scan no longer detects the exception)"
+    },
+    "snooze_reason": {
+      "type": "string",
+      "description": "Why the admin snoozed this alert"
+    },
+    "snooze_until": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when the snooze expires and the alert re-activates (if the issue persists)"
+    },
+    "snoozed_by": {
+      "type": "string",
+      "description": "Who snoozed the alert"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the alert was auto-resolved (the underlying issue was no longer detected)"
+    },
+    "metadata": {
+      "type": "string",
+      "description": "JSON of extra context (e.g. overdue PO number, missing task names, balance amount)"
+    },
+    "job_card_section": {
+      "type": "string",
+      "description": "Which Job Card tab/section to open when the admin clicks 'Open' (e.g. 'overview', 'findings', 'parts', 'workflow', 'invoices')"
+    }
+  },
+  "required": [
+    "exception_type",
+    "exception_key",
+    "title"
+  ]
+}

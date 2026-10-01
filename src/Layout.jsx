@@ -34,6 +34,7 @@ import {
   FlaskConical,
   Boxes,
   Briefcase,
+  ShieldCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -80,6 +81,7 @@ export default function Layout({ children, currentPageName }) {
       items: [
         { name: "Dashboard", page: "Dashboard", icon: Gauge },
         { name: "Jobs", page: "Jobs", icon: Briefcase },
+        { name: "Exceptions", page: "ExceptionDashboard", icon: ShieldCheck },
       ],
     },
     {

@@ -80,6 +80,28 @@
     "notes": {
       "type": "string",
       "description": "Internal notes about this canned job"
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number of this package. Increments each time a new version is created from a previous one."
+    },
+    "version_group_id": {
+      "type": "string",
+      "description": "Shared ID linking all versions of the same package. New estimates use the latest version (is_latest=true). Old versions are preserved so approved estimates keep their original scope and prices."
+    },
+    "is_latest": {
+      "type": "boolean",
+      "default": true,
+      "description": "True for the most recent version in a version group. Only one version per group should have this set. New estimates pick the latest version."
+    },
+    "version_notes": {
+      "type": "string",
+      "description": "Notes describing what changed in this version (shown in version history and diff viewer)"
+    },
+    "parent_version_id": {
+      "type": "string",
+      "description": "ID of the previous version this version was created from (for version history traversal)"
     }
   },
   "required": [

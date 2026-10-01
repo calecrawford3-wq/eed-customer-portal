@@ -662,9 +662,30 @@ export default function EstimateDetail() {
       `Canned Job: ${cannedJob.name}\n` +
       (cannedJob.description ? `Description: ${cannedJob.description}` : "");
 
+    // Snapshot the canned job version so later package updates do not silently change this estimate
+    const cannedJobSnapshot = JSON.stringify({
+      id: cannedJob.id,
+      name: cannedJob.name,
+      version: cannedJob.version || 1,
+      version_group_id: cannedJob.version_group_id || "",
+      line_items: cannedJob.line_items || [],
+      labor_items: cannedJob.labor_items || [],
+      machining_items: cannedJob.machining_items || [],
+    });
+
     const totals = recalc(cannedLineItems, cannedLaborItems, cannedMachiningItems, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
-    setForm(f => ({ ...f, line_items: cannedLineItems, labor_items: cannedLaborItems, machining_items: cannedMachiningItems, notes: updatedNotes, ...totals }));
-    toast.success("Canned job loaded with current inventory prices");
+    setForm(f => ({
+      ...f,
+      line_items: cannedLineItems,
+      labor_items: cannedLaborItems,
+      machining_items: cannedMachiningItems,
+      notes: updatedNotes,
+      canned_job_id: cannedJob.id,
+      canned_job_version: cannedJob.version || 1,
+      canned_job_snapshot: cannedJobSnapshot,
+      ...totals,
+    }));
+    toast.success(`Canned job loaded (v${cannedJob.version || 1}) with current inventory prices`);
   };
 
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);

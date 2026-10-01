@@ -37,6 +37,7 @@ import OAuthConsent from './pages/OAuthConsent';
 import Jobs from './pages/Jobs';
 import JobCard from './pages/JobCard';
 import ReplacementRules from './pages/ReplacementRules';
+import ExceptionDashboard from './pages/ExceptionDashboard';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -124,6 +125,7 @@ const AuthenticatedApp = () => {
       <Route path="/Jobs" element={<LayoutWrapper currentPageName="Jobs"><Jobs /></LayoutWrapper>} />
       <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCard /></LayoutWrapper>} />
       <Route path="/ReplacementRules" element={<LayoutWrapper currentPageName="ReplacementRules"><ReplacementRules /></LayoutWrapper>} />
+      <Route path="/ExceptionDashboard" element={<LayoutWrapper currentPageName="ExceptionDashboard"><ExceptionDashboard /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
