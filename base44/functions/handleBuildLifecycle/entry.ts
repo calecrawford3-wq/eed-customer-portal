@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.38";
+import { findTemplateForBuild, applyTemplateToBuild } from "../../shared/workflowAssignment.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -10,6 +11,30 @@ Deno.serve(async (req) => {
 
     const buildId = event && event.entity_id;
     if (!buildId) return Response.json({ skipped: true, reason: "no build id" });
+
+    // CREATE — auto-assign the matching workflow template (platform + service package → default)
+    if (event.type === "create") {
+      const platformId = data?.platform_id || "";
+      const servicePackage = data?.service_package || "";
+      try {
+        const template = await findTemplateForBuild(base44.asServiceRole, platformId, servicePackage);
+        if (template) {
+          // Only auto-assign if the build has no tasks yet (don't overwrite a manual assignment)
+          const existingRes = await base44.asServiceRole.entities.BuildTask.filter({ build_id: buildId }, "sort_order", 10);
+          const existing = existingRes?.items || existingRes || [];
+          if (existing.length === 0) {
+            await applyTemplateToBuild(base44.asServiceRole, buildId, template);
+            console.log(`[handleBuildLifecycle] Auto-assigned template "${template.name}" to build ${buildId}`);
+            return Response.json({ success: true, action: "auto_assigned", build_id: buildId, template_id: template.id, template_name: template.name });
+          }
+          return Response.json({ success: true, action: "skipped_has_tasks", build_id: buildId });
+        }
+        return Response.json({ success: true, action: "no_matching_template", build_id: buildId });
+      } catch (e) {
+        console.warn("[handleBuildLifecycle] auto-assign workflow failed:", e.message);
+        return Response.json({ success: true, action: "auto_assign_error", build_id: buildId, error: e.message });
+      }
+    }
 
     // DELETE — remove orphaned follow-up tasks + delivery calendar event
     if (event.type === "delete") {

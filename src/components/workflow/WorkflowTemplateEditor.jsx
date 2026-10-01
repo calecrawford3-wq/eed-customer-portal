@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,16 +47,27 @@ export default function WorkflowTemplateEditor({ open, onClose, template }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [platformId, setPlatformId] = useState("");
+  const [servicePackage, setServicePackage] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
   const [stages, setStages] = useState([]);
   const [items, setItems] = useState([]);
+
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200),
+  });
 
   useEffect(() => {
     if (open) {
       if (template) {
         setName(template.name || "");
         setDescription(template.description || "");
+        setPlatformId(template.platform_id || "");
+        setServicePackage(template.service_package || "");
+        setIsDefault(!!template.is_default);
         setStages([...(template.stages || [])]);
-        setItems([...(template.items || [])]);
+        setItems((template.items || []).map((i) => ({ ...i, is_required: !!i.is_required })));
       } else {
         setName("");
         setDescription("");
@@ -71,8 +82,11 @@ export default function WorkflowTemplateEditor({ open, onClose, template }) {
       const payload = {
         name,
         description,
+        platform_id: platformId,
+        service_package: servicePackage,
+        is_default: isDefault,
         stages: stages.map((s, i) => ({ name: s.name, sort_order: i })),
-        items: items.map((it, i) => ({ name: it.name, stage: it.stage, sort_order: i })),
+        items: items.map((it, i) => ({ name: it.name, stage: it.stage, sort_order: i, is_required: !!it.is_required, uid: it.uid || "" })),
         status: "active",
       };
       if (template) {
@@ -111,6 +125,7 @@ export default function WorkflowTemplateEditor({ open, onClose, template }) {
     setItems((it) => [...it, { name: "New Task", stage: stageName, sort_order: it.length }]);
   const updateItemName = (idx, val) => setItems((it) => it.map((i, n) => (n === idx ? { ...i, name: val } : i)));
   const updateItemStage = (idx, val) => setItems((it) => it.map((i, n) => (n === idx ? { ...i, stage: val } : i)));
+  const toggleItemRequired = (idx) => setItems((it) => it.map((i, n) => (n === idx ? { ...i, is_required: !i.is_required } : i)));
   const removeItem = (idx) => setItems((it) => it.filter((_, i) => i !== idx));
   const moveItem = (idx, dir) => {
     setItems((it) => {
@@ -147,6 +162,47 @@ export default function WorkflowTemplateEditor({ open, onClose, template }) {
               rows={2}
               placeholder="What this template is for..."
             />
+          </div>
+
+          {/* Auto-assignment matching */}
+          <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700 mb-1">Auto-Assignment Matching</p>
+              <p className="text-xs text-slate-500">When a build is created, the matching template is auto-applied. Leave both empty to use as the default fallback.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Engine Platform</Label>
+                <Select value={platformId} onValueChange={setPlatformId}>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="Any platform" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>Any platform</SelectItem>
+                    {platforms.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.manufacturer} {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Service Package</Label>
+                <Select value={servicePackage} onValueChange={setServicePackage}>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="Any package" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>Any package</SelectItem>
+                    <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="stage_1">Stage 1</SelectItem>
+                    <SelectItem value="stage_2">Stage 2</SelectItem>
+                    <SelectItem value="stage_3">Stage 3</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="rounded" />
+              Use as default fallback (applied when no platform+package match is found)
+            </label>
           </div>
 
           <div className="border-t pt-4">
@@ -196,6 +252,13 @@ export default function WorkflowTemplateEditor({ open, onClose, template }) {
                             ))}
                           </SelectContent>
                         </Select>
+                        <button
+                          onClick={() => toggleItemRequired(it._idx)}
+                          className={`px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${it.is_required ? "bg-red-100 text-red-700 border border-red-300" : "bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700"}`}
+                          title="Required tasks must be complete before the build can be marked complete"
+                        >
+                          {it.is_required ? "Required" : "Optional"}
+                        </button>
                         <Button size="icon" variant="ghost" onClick={() => moveItem(it._idx, -1)} disabled={it._idx === 0}>
                           <ChevronUp className="w-4 h-4" />
                         </Button>

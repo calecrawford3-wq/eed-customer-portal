@@ -18,6 +18,11 @@ export default function WorkflowTemplatesPanel() {
     queryFn: () => base44.entities.WorkflowTemplate.filter({ status: "active" }, "name", 100),
   });
 
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.WorkflowTemplate.delete(id),
     onSuccess: () => {
@@ -68,8 +73,13 @@ export default function WorkflowTemplatesPanel() {
                         <h4 className="font-semibold text-slate-800">{t.name}</h4>
                         <Badge variant="secondary">{stageCount} stages</Badge>
                         <Badge variant="secondary">{itemCount} tasks</Badge>
+                        {t.is_default && <Badge className="bg-blue-100 text-blue-700">Default</Badge>}
                       </div>
                       {t.description && <p className="text-sm text-slate-500">{t.description}</p>}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {t.platform_id && <Badge variant="outline" className="text-xs">Platform: {(platforms.find(p => p.id === t.platform_id) || {}).name || "—"}</Badge>}
+                        {t.service_package && <Badge variant="outline" className="text-xs">{t.service_package.replace("_", " ")}</Badge>}
+                      </div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {(t.stages || []).slice(0, 6).map((s, i) => (
                           <span key={i} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">

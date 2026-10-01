@@ -10,6 +10,29 @@
       "type": "string",
       "description": "Optional description shown in the picker"
     },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform this template is matched to (empty = matches any platform). Used with service_package for auto-assignment."
+    },
+    "service_package": {
+      "type": "string",
+      "enum": [
+        "",
+        "stock",
+        "stage_1",
+        "stage_2",
+        "stage_3",
+        "contract",
+        "custom"
+      ],
+      "default": "",
+      "description": "Service package this template is matched to (empty = matches any package). Combined with platform_id for auto-assignment."
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this template is the fallback used when no platform+package match is found. Only one default should be active at a time."
+    },
     "stages": {
       "type": "array",
       "description": "Ordered workflow stages (phases) that group action items",
@@ -42,6 +65,15 @@
           "sort_order": {
             "type": "number",
             "default": 0
+          },
+          "is_required": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, this task must be complete (or skipped) before the build can be marked complete. Incomplete required tasks block completion unless an override is recorded."
+          },
+          "uid": {
+            "type": "string",
+            "description": "Optional unique identifier within this template for intentionally repeated tasks with the same name but distinct purposes. When present, matching uses name+uid instead of name alone, allowing deliberate duplicates while still preventing accidental ones."
           }
         }
       }

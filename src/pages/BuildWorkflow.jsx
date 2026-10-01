@@ -32,6 +32,7 @@ export default function BuildWorkflow() {
   const [showScanner, setShowScanner] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
   const [assignTemplateId, setAssignTemplateId] = useState("");
+  const [preview, setPreview] = useState(null);
 
   // Read build id from URL on mount
   useEffect(() => {
@@ -190,6 +191,21 @@ export default function BuildWorkflow() {
     },
     [selectedBuildId]
   );
+
+  // Compute a preview diff whenever the selected template changes
+  useEffect(() => {
+    if (!showAssign || !assignTemplateId) { setPreview(null); return; }
+    const template = templates.find((t) => t.id === assignTemplateId);
+    if (!template) { setPreview(null); return; }
+    const taskKey = (n, u) => `${n || ""}|||${u || ""}`;
+    const existingByKey = {};
+    (tasks.items || tasks || []).forEach((t) => { existingByKey[taskKey(t.name, t.uid)] = t; });
+    const templateKeys = new Set((template.items || []).map((i) => taskKey(i.name, i.uid)));
+    const add = (template.items || []).filter((i) => !existingByKey[taskKey(i.name, i.uid)]);
+    const remove = (tasks.items || tasks || []).filter((t) => !templateKeys.has(taskKey(t.name, t.uid)) && !["complete", "skipped"].includes(t.status));
+    const preserved = (tasks.items || tasks || []).filter((t) => ["complete", "skipped"].includes(t.status));
+    setPreview({ add: add.map(i => i.name), remove: remove.map(t => t.name), preserved: preserved.length });
+  }, [showAssign, assignTemplateId, templates, tasks]);
 
   const assignMutation = useMutation({
     mutationFn: async () => {
@@ -410,6 +426,26 @@ export default function BuildWorkflow() {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {preview && (preview.add.length > 0 || preview.remove.length > 0) && (
+                <div className="text-xs space-y-2 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                  <p className="font-semibold text-slate-600">Preview of changes:</p>
+                  {preview.add.length > 0 && (
+                    <div>
+                      <p className="text-emerald-600 font-medium">+ {preview.add.length} new task(s):</p>
+                      <p className="text-slate-500">{preview.add.join(", ")}</p>
+                    </div>
+                  )}
+                  {preview.remove.length > 0 && (
+                    <div>
+                      <p className="text-red-600 font-medium">− {preview.remove.length} task(s) to be removed:</p>
+                      <p className="text-slate-500">{preview.remove.join(", ")}</p>
+                    </div>
+                  )}
+                  {preview.preserved > 0 && (
+                    <p className="text-slate-500">↩ {preview.preserved} completed/skipped task(s) preserved</p>
+                  )}
+                </div>
               )}
             </div>
             <DialogFooter>

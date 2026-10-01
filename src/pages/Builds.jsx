@@ -25,7 +25,8 @@ import {
   Pencil,
   FileText,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -260,20 +261,27 @@ export default function Builds() {
   };
 
   const [completeShortages, setCompleteShortages] = useState(null);
+  const [completeRequiredBlock, setCompleteRequiredBlock] = useState(null);
 
   const executeMarkComplete = async (build, storageLocation, opts = {}) => {
     // Route through the shared completion operation so inventory is deducted
     // exactly once and the linked invoice due_date is set to the completion date.
-    // Blocks on unresolved part shortages unless an override is recorded.
+    // Blocks on unresolved part shortages or incomplete required tasks unless an override is recorded.
     try {
       const res = await base44.functions.invoke("completeEngineBuild", {
         build_id: build.id,
         allow_shortage_override: !!opts.allowOverride,
         override_reason: opts.overrideReason || "",
+        allow_required_override: !!opts.allowRequiredOverride,
+        required_override_reason: opts.requiredOverrideReason || "",
       });
       const result = res?.data || res;
       if (result?.blocked) {
-        setCompleteShortages({ build, shortages: result.shortages || [], storageLocation });
+        if (result.reason === "incomplete_required_tasks") {
+          setCompleteRequiredBlock({ build, incomplete: result.incomplete_required || [], storageLocation });
+        } else {
+          setCompleteShortages({ build, shortages: result.shortages || [], storageLocation });
+        }
         return;
       }
       if (!result?.success && result?.error) {
@@ -283,7 +291,11 @@ export default function Builds() {
     } catch (e) {
       const data = e?.response?.data || {};
       if (data?.blocked) {
-        setCompleteShortages({ build, shortages: data.shortages || [], storageLocation });
+        if (data.reason === "incomplete_required_tasks") {
+          setCompleteRequiredBlock({ build, incomplete: data.incomplete_required || [], storageLocation });
+        } else {
+          setCompleteShortages({ build, shortages: data.shortages || [], storageLocation });
+        }
         return;
       }
       toast.error("Failed to complete build: " + (data?.error || e.message || e));
@@ -1095,6 +1107,55 @@ export default function Builds() {
                   const cs = completeShortages;
                   setCompleteShortages(null);
                   executeMarkComplete(cs.build, cs.storageLocation, { allowOverride: true, overrideReason: reason });
+                }}
+              >
+                Override & Complete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Required-Task Override — blocks build completion until required tasks are done or overridden */}
+      {completeRequiredBlock && (
+        <Dialog open={!!completeRequiredBlock} onOpenChange={(o) => { if (!o) setCompleteRequiredBlock(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-700">
+                <ShieldAlert className="w-5 h-5" /> Incomplete Required Tasks
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-slate-600">
+                The following required tasks are not complete. Complete or skip them in the workflow, or record an override explaining why completion is authorized despite the incomplete tasks.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1.5 max-h-48 overflow-y-auto">
+                {completeRequiredBlock.incomplete.map((t, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="font-medium text-slate-700">{t.name}</span>
+                    <span className="text-red-600 text-xs">{t.stage}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <Label>Override reason (required to override)</Label>
+                <Textarea
+                  id="required-override-reason"
+                  placeholder="e.g., QC inspection performed out-of-band, customer waived final check..."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <Button variant="outline" onClick={() => setCompleteRequiredBlock(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const reason = document.getElementById("required-override-reason")?.value?.trim() || "";
+                  if (!reason) { toast.error("Enter an override reason to proceed"); return; }
+                  const crb = completeRequiredBlock;
+                  setCompleteRequiredBlock(null);
+                  executeMarkComplete(crb.build, crb.storageLocation, { allowRequiredOverride: true, requiredOverrideReason: reason });
                 }}
               >
                 Override & Complete

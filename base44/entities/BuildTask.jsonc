@@ -18,6 +18,10 @@
       "type": "string",
       "description": "Action item name"
     },
+    "uid": {
+      "type": "string",
+      "description": "Unique identifier within the source template item, for intentionally repeated tasks with the same name. Copied from the template item when the task is created."
+    },
     "stage": {
       "type": "string",
       "description": "Stage name this task belongs to"
@@ -38,6 +42,11 @@
       "default": "pending",
       "description": "pending = not started, in_progress = being worked, complete = done, skipped = not applicable"
     },
+    "is_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this task must be complete or skipped before the build can be marked complete. Incomplete required tasks block completion unless an admin records an override with a reason."
+    },
     "completed_by": {
       "type": "string",
       "description": "Name of the user who marked this task complete"
@@ -46,6 +55,31 @@
       "type": "string",
       "format": "date-time",
       "description": "When this task was marked complete"
+    },
+    "time_logged_minutes": {
+      "type": "number",
+      "default": 0,
+      "description": "Time logged against this task in minutes"
+    },
+    "measurements": {
+      "type": "string",
+      "description": "Measurements recorded during this task (clearance, torque, runout, etc.)"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Photo URLs documenting this task"
+    },
+    "override_authorized_by": {
+      "type": "string",
+      "description": "Admin who authorized completing the build despite this required task being incomplete"
+    },
+    "override_reason": {
+      "type": "string",
+      "description": "Why the required-task block was overridden for this task"
     },
     "notes": {
       "type": "string",

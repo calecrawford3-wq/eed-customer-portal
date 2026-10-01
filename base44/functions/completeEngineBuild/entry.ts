@@ -3,6 +3,7 @@ import {
   consumeReservationsForBuild,
   chicagoTodayDate,
 } from "../../shared/inventoryReservation.ts";
+import { checkRequiredTasks } from "../../shared/workflowAssignment.ts";
 
 // Single shared engine-build completion operation. Called from the BuildDetail
 // "Mark Complete" action (and any other completion path) so all completion paths
@@ -38,6 +39,8 @@ Deno.serve(async (req) => {
     const buildId = body.build_id;
     const allowOverride = !!body.allow_shortage_override;
     const overrideReason = body.override_reason || "";
+    const allowRequiredOverride = !!body.allow_required_override;
+    const requiredOverrideReason = body.required_override_reason || "";
 
     if (!buildId) {
       return Response.json({ error: "build_id required" }, { status: 400 });
@@ -50,6 +53,31 @@ Deno.serve(async (req) => {
     const build = (builds.items || builds || [])[0];
     if (!build) {
       return Response.json({ error: "Build not found" }, { status: 404 });
+    }
+
+    // Required-task gate: block completion if any required task is incomplete
+    // (unless an override is recorded with who authorized it and why).
+    if (!allowRequiredOverride) {
+      const reqCheck = await checkRequiredTasks(base44.asServiceRole, buildId);
+      if (reqCheck.blocked) {
+        return Response.json({
+          success: false,
+          blocked: true,
+          reason: "incomplete_required_tasks",
+          incomplete_required: reqCheck.incomplete_required,
+          message: `Cannot complete: ${reqCheck.incomplete_required.length} required task(s) are incomplete. Complete or skip them, or record an override.`,
+          operation_id: operationId,
+        }, { status: 409 });
+      }
+    } else if (requiredOverrideReason) {
+      // Record the override on each incomplete required task
+      const reqCheck = await checkRequiredTasks(base44.asServiceRole, buildId);
+      for (const t of reqCheck.incomplete_required) {
+        await base44.asServiceRole.entities.BuildTask.update(t.id, {
+          override_authorized_by: user?.full_name || user?.email || "Admin",
+          override_reason: requiredOverrideReason,
+        });
+      }
     }
 
     // If already complete, this is a re-run / reopen-recomplete — do not deduct again

@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check, ShieldAlert, Camera, Timer } from "lucide-react";
 import { toast } from "sonner";
 
 const NEXT_STATUS = { pending: "in_progress", in_progress: "complete", complete: "skipped", skipped: "pending" };
@@ -21,6 +22,9 @@ export default function JobWorkflowTab({ job, build }) {
   const qc = useQueryClient();
   const [editingNote, setEditingNote] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [expandedTask, setExpandedTask] = useState(null);
+  const [measurements, setMeasurements] = useState("");
+  const [timeLogged, setTimeLogged] = useState("");
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["job-workflow-tasks", job.build_id],
@@ -70,6 +74,41 @@ export default function JobWorkflowTab({ job, build }) {
     }
   };
 
+  const saveMeasurements = async (taskId) => {
+    try {
+      await base44.entities.BuildTask.update(taskId, { measurements });
+      qc.invalidateQueries({ queryKey: ["job-workflow-tasks", job.build_id] });
+      toast.success("Measurements saved");
+    } catch (e) {
+      toast.error("Failed to save measurements");
+    }
+  };
+
+  const saveTimeLogged = async (taskId) => {
+    const mins = parseFloat(timeLogged) || 0;
+    try {
+      await base44.entities.BuildTask.update(taskId, { time_logged_minutes: mins });
+      qc.invalidateQueries({ queryKey: ["job-workflow-tasks", job.build_id] });
+      toast.success("Time logged");
+    } catch (e) {
+      toast.error("Failed to save time");
+    }
+  };
+
+  const uploadPhoto = async (taskId, file) => {
+    if (!file) return;
+    try {
+      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
+      const task = taskList.find(t => t.id === taskId);
+      const photos = [...(task.photos || []), file_uri];
+      await base44.entities.BuildTask.update(taskId, { photos });
+      qc.invalidateQueries({ queryKey: ["job-workflow-tasks", job.build_id] });
+      toast.success("Photo uploaded");
+    } catch (e) {
+      toast.error("Failed to upload photo");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="border-0 shadow-sm">
@@ -103,10 +142,16 @@ export default function JobWorkflowTab({ job, build }) {
                       {STATUS_ICON[t.status]}
                     </button>
                     <span className={t.status === "complete" ? "text-slate-400 line-through" : "text-slate-700"}>{t.name}</span>
+                    {t.is_required && <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Required task" />}
                     {t.status === "skipped" && <Badge variant="outline" className="text-xs">Skipped</Badge>}
+                    {t.override_authorized_by && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Override: {t.override_authorized_by}</Badge>}
+                    {t.time_logged_minutes > 0 && <span className="text-xs text-slate-400 flex items-center gap-0.5"><Timer className="w-3 h-3" />{t.time_logged_minutes}m</span>}
                     {t.completed_by && <span className="text-xs text-slate-400 ml-auto">by {t.completed_by}</span>}
                     <button onClick={() => { setEditingNote(editingNote === t.id ? null : t.id); setNoteDraft(t.notes || ""); }} className="ml-auto flex-shrink-0">
                       <Pencil className={`w-3.5 h-3.5 ${t.notes ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
+                    </button>
+                    <button onClick={() => { const exp = expandedTask === t.id ? null : t.id; setExpandedTask(exp); if (exp) { setMeasurements(t.measurements || ""); setTimeLogged(t.time_logged_minutes ? String(t.time_logged_minutes) : ""); } }} className="flex-shrink-0">
+                      <Camera className={`w-3.5 h-3.5 ${expandedTask === t.id || (t.photos && t.photos.length) || t.measurements ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
                     </button>
                   </div>
                   {editingNote === t.id && (
@@ -123,6 +168,32 @@ export default function JobWorkflowTab({ job, build }) {
                   )}
                   {t.notes && editingNote !== t.id && (
                     <p className="text-xs text-slate-400 ml-6 mt-0.5 italic">"{t.notes}"</p>
+                  )}
+                  {expandedTask === t.id && (
+                    <div className="ml-6 mt-2 space-y-2 p-2 bg-slate-50 rounded-lg">
+                      <div>
+                        <p className="text-xs font-medium text-slate-600 mb-1">Measurements</p>
+                        <Textarea value={measurements} onChange={e => setMeasurements(e.target.value)} rows={2} placeholder="Clearance, torque, runout..." className="text-xs" />
+                        <Button size="sm" variant="ghost" className="mt-1 h-7 text-xs" onClick={() => saveMeasurements(t.id)}><Check className="w-3 h-3 mr-1" />Save measurements</Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Timer className="w-3.5 h-3.5 text-slate-400" />
+                        <Input type="number" value={timeLogged} onChange={e => setTimeLogged(e.target.value)} placeholder="Minutes" className="h-7 text-xs w-24" />
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => saveTimeLogged(t.id)}>Log time</Button>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-slate-600 mb-1">Photos</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(t.photos || []).map((uri, i) => (
+                            <img key={i} src={uri} alt={`Task photo ${i+1}`} className="w-16 h-16 object-cover rounded border border-slate-200" />
+                          ))}
+                          <label className="w-16 h-16 flex items-center justify-center rounded border border-dashed border-slate-300 cursor-pointer hover:bg-slate-100">
+                            <Camera className="w-4 h-4 text-slate-400" />
+                            <input type="file" accept="image/*" className="hidden" onChange={e => uploadPhoto(t.id, e.target.files[0])} />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
