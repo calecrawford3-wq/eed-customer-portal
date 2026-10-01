@@ -767,9 +767,12 @@ export default function EstimateDetail() {
              } catch (e) { console.warn("Failed to update engine check-in status:", e); }
              await base44.entities.Estimate.update(id, { build_id: build.id, customer_engine_id: eng.id });
              setForm(f => ({ ...f, build_id: build.id, customer_engine_id: eng.id }));
-            qc.invalidateQueries({ queryKey: ["builds"] });
-            toast.success("Deposit received — engine build created and queued!");
-            buildCreated = true;
+             try {
+               await base44.functions.invoke("linkReservationsToBuild", { estimate_id: id, build_id: build.id });
+             } catch (e) { console.warn("Failed to link reservations to build:", e); }
+             qc.invalidateQueries({ queryKey: ["builds"] });
+             toast.success("Deposit received — engine build created and queued!");
+             buildCreated = true;
             }
             }
 
@@ -793,6 +796,9 @@ export default function EstimateDetail() {
             });
             await base44.entities.Estimate.update(id, { build_id: build.id, ...(form.customer_engine_id ? { customer_engine_id: form.customer_engine_id } : {}) });
             setForm(f => ({ ...f, build_id: build.id }));
+            try {
+              await base44.functions.invoke("linkReservationsToBuild", { estimate_id: id, build_id: build.id });
+            } catch (e) { console.warn("Failed to link reservations to build:", e); }
             qc.invalidateQueries({ queryKey: ["builds"] });
             toast.success("Deposit received — engine build created and queued!");
             }
@@ -929,6 +935,10 @@ export default function EstimateDetail() {
         });
         await base44.entities.EngineBuild.update(build.id, { invoice_number: invoice.invoice_number });
         await base44.entities.Estimate.update(id, { build_id: build.id, invoice_id: invoice.id, ...(form.customer_engine_id ? { customer_engine_id: form.customer_engine_id } : {}) });
+        // Link this estimate's part reservations to the new build
+        try {
+          await base44.functions.invoke("linkReservationsToBuild", { estimate_id: id, build_id: build.id });
+        } catch (e) { console.warn("Failed to link reservations to build:", e); }
         // Link the legal document (if any) to the new invoice and engine
         if (form.contains_illegal_parts) {
           try {
@@ -1011,11 +1021,54 @@ export default function EstimateDetail() {
     setConvertingToBuild(true);
     const customer = customers.find(c => c.id === form.customer_id);
     try {
+      // Use the real registered engine data when available — avoid placeholder serials
+      let eng = null;
+      let prevBuildData = {};
+      if (form.customer_engine_id) {
+        try {
+          const engineRec = await base44.entities.CustomerEngine.filter({ id: form.customer_engine_id });
+          eng = engineRec?.[0] || null;
+          if (eng) {
+            const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
+            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+            if (lastBuild) {
+              prevBuildData = {
+                valve_lash_intake: lastBuild.valve_lash_intake,
+                valve_lash_exhaust: lastBuild.valve_lash_exhaust,
+                internal_measurements: lastBuild.internal_measurements,
+                cam_info: lastBuild.cam_info,
+                max_rpm: lastBuild.max_rpm,
+                oil_recommendation: lastBuild.oil_recommendation,
+                oil_change_interval: lastBuild.oil_change_interval,
+                spark_plug_recommendation: lastBuild.spark_plug_recommendation,
+                refresh_interval: lastBuild.refresh_interval,
+                application: lastBuild.application,
+                transmission_type: lastBuild.transmission_type,
+                spec_sheet_id: lastBuild.spec_sheet_id,
+              };
+            }
+          }
+        } catch (e) { console.warn("Failed to prefill from previous build:", e); }
+      }
+
       const allBuilds = await base44.entities.EngineBuild.list("queue_position", 500);
       const queuedBuilds = allBuilds.filter(b => ["queued", "in_progress", "assembly", "testing"].includes(b.status));
       const maxPos = queuedBuilds.length > 0 ? Math.max(...queuedBuilds.map(b => b.queue_position || 0)) : 0;
 
-      const build = await base44.entities.EngineBuild.create({
+      const buildData = eng ? {
+        engine_serial_number: eng.engine_serial_number,
+        eed_id: eng.eed_id,
+        customer_engine_id: eng.id,
+        platform_id: eng.platform_id,
+        build_number: form.estimate_number,
+        customer_id: form.customer_id,
+        customer_name: customer ? `${customer.first_name} ${customer.last_name}` : "",
+        queue_position: maxPos + 1,
+        status: "queued",
+        work_tag: "none",
+        assembly_notes: form.notes || "",
+        ...prevBuildData,
+      } : {
         engine_serial_number: `ESN-${Date.now().toString().slice(-6)}`,
         eed_id: `EED-${Date.now().toString().slice(-6)}`,
         build_number: form.estimate_number,
@@ -1026,11 +1079,23 @@ export default function EstimateDetail() {
         status: "queued",
         work_tag: "none",
         assembly_notes: form.notes || "",
-      });
+      };
+
+      const build = await base44.entities.EngineBuild.create(buildData);
+      if (eng) {
+        try {
+          await base44.entities.CustomerEngine.update(eng.id, { check_in_status: "in_build" });
+          qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
+        } catch (e) { console.warn("Failed to update engine check-in status:", e); }
+      }
       // Link estimate to build
       const updated = { ...form, build_id: build.id };
       setForm(updated);
-      await base44.entities.Estimate.update(id, { build_id: build.id });
+      await base44.entities.Estimate.update(id, { build_id: build.id, ...(form.customer_engine_id ? { customer_engine_id: form.customer_engine_id } : {}) });
+      // Link this estimate's part reservations to the new build
+      try {
+        await base44.functions.invoke("linkReservationsToBuild", { estimate_id: id, build_id: build.id });
+      } catch (e) { console.warn("Failed to link reservations to build:", e); }
       qc.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Engine build created! Redirecting...");
       navigate(`/BuildDetail?id=${build.id}`);

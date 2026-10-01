@@ -24,7 +24,8 @@ import {
   Cpu,
   Pencil,
   FileText,
-  MapPin
+  MapPin,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,7 +259,37 @@ export default function Builds() {
     toast.success("Warranty repair recorded — build marked complete");
   };
 
-  const executeMarkComplete = async (build, storageLocation) => {
+  const [completeShortages, setCompleteShortages] = useState(null);
+
+  const executeMarkComplete = async (build, storageLocation, opts = {}) => {
+    // Route through the shared completion operation so inventory is deducted
+    // exactly once and the linked invoice due_date is set to the completion date.
+    // Blocks on unresolved part shortages unless an override is recorded.
+    try {
+      const res = await base44.functions.invoke("completeEngineBuild", {
+        build_id: build.id,
+        allow_shortage_override: !!opts.allowOverride,
+        override_reason: opts.overrideReason || "",
+      });
+      const result = res?.data || res;
+      if (result?.blocked) {
+        setCompleteShortages({ build, shortages: result.shortages || [], storageLocation });
+        return;
+      }
+      if (!result?.success && result?.error) {
+        toast.error(result.error);
+        return;
+      }
+    } catch (e) {
+      const data = e?.response?.data || {};
+      if (data?.blocked) {
+        setCompleteShortages({ build, shortages: data.shortages || [], storageLocation });
+        return;
+      }
+      toast.error("Failed to complete build: " + (data?.error || e.message || e));
+      return;
+    }
+
     await updateMutation.mutateAsync({
       id: build.id,
       data: { status: "complete", queue_position: null, completion_date: new Date().toISOString().split('T')[0], storage_location: storageLocation }
@@ -1023,6 +1054,55 @@ export default function Builds() {
         confirmLabel="Delete"
         variant="destructive"
       />
+
+      {/* Part Shortage Override — blocks build completion until resolved */}
+      {completeShortages && (
+        <Dialog open={!!completeShortages} onOpenChange={(o) => { if (!o) setCompleteShortages(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-700">
+                <AlertCircle className="w-5 h-5" /> Unresolved Part Shortages
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-slate-600">
+                This build cannot be completed until the following parts are received, or you record an explicit override. Overriding deducts only the reserved units and leaves the shortage unfulfilled.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5 max-h-48 overflow-y-auto">
+                {completeShortages.shortages.map((s, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="font-medium text-slate-700">{s.name || s.part_id}</span>
+                    <span className="text-amber-700 font-mono">short {s.short}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <Label>Override reason (required to override)</Label>
+                <Textarea
+                  id="shortage-override-reason"
+                  placeholder="e.g., Parts sourced from alternate vendor, customer supplied their own..."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <Button variant="outline" onClick={() => setCompleteShortages(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const reason = document.getElementById("shortage-override-reason")?.value?.trim() || "";
+                  if (!reason) { toast.error("Enter an override reason to proceed"); return; }
+                  const cs = completeShortages;
+                  setCompleteShortages(null);
+                  executeMarkComplete(cs.build, cs.storageLocation, { allowOverride: true, overrideReason: reason });
+                }}
+              >
+                Override & Complete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
