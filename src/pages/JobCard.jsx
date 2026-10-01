@@ -14,6 +14,7 @@ import JobEstimateTab from "@/components/jobs/JobEstimateTab";
 import JobBuildTab from "@/components/jobs/JobBuildTab";
 import JobWorkflowTab from "@/components/jobs/JobWorkflowTab";
 import JobCommsTab from "@/components/jobs/JobCommsTab";
+import JobFindingsTab from "@/components/jobs/JobFindingsTab";
 
 export default function JobCard() {
   const [jobId, setJobId] = useState(null);
@@ -78,6 +79,7 @@ export default function JobCard() {
           <TabsList className="flex flex-wrap h-auto overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="estimate">Estimate & Approvals</TabsTrigger>
+            <TabsTrigger value="findings">Findings</TabsTrigger>
             <TabsTrigger value="parts">Parts & Purchasing</TabsTrigger>
             <TabsTrigger value="build">Build Sheet</TabsTrigger>
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
@@ -90,6 +92,9 @@ export default function JobCard() {
           </TabsContent>
           <TabsContent value="estimate" className="mt-4">
             <JobEstimateTab job={job} estimate={estimate} />
+          </TabsContent>
+          <TabsContent value="findings" className="mt-4">
+            <JobFindingsTab job={job} estimate={estimate} build={build} invoices={invoiceList} />
           </TabsContent>
           <TabsContent value="parts" className="mt-4">
             <JobPartsTab job={job} />

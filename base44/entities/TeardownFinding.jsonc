@@ -1,0 +1,152 @@
+{
+  "name": "TeardownFinding",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Linked Job this finding belongs to"
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Denormalized from the job for cross-engine queries"
+    },
+    "component": {
+      "type": "string",
+      "description": "Component inspected (e.g. Crankshaft, Cylinder Head #2, Rod Bearings)"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "good",
+        "worn",
+        "damaged",
+        "failed",
+        "needs_inspection",
+        "unknown"
+      ],
+      "default": "needs_inspection",
+      "description": "Observed condition of the component"
+    },
+    "measurements": {
+      "type": "string",
+      "description": "Measured values and tolerances (clearance, runout, wear limits)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Inspector observations and notes"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Photo URLs of the component condition (visual damage reference)"
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "none",
+        "inspect",
+        "repair",
+        "replace"
+      ],
+      "default": "none",
+      "description": "Recommended resolution for this finding"
+    },
+    "recommended_part_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Catalog parts recommended to resolve this finding"
+    },
+    "labor_items": {
+      "type": "array",
+      "description": "Labor operations recommended for this finding",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "machining_items": {
+      "type": "array",
+      "description": "Machining operations recommended for this finding",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "outsourced_services": {
+      "type": "array",
+      "description": "Outsourced vendor services recommended (e.g. crack testing, welding)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "estimated_customer_charge": {
+      "type": "number",
+      "default": 0,
+      "description": "Computed estimated customer charge for the recommended work (parts + labor + machining + outsourced)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "selected",
+        "approved",
+        "declined",
+        "canceled"
+      ],
+      "default": "open",
+      "description": "open = logged, selected = included in a pending additional-work request, approved/declined/canceled = resolved"
+    },
+    "additional_work_id": {
+      "type": "string",
+      "description": "AdditionalWork document this finding was included in"
+    },
+    "inspected_by": {
+      "type": "string",
+      "description": "Who logged the finding"
+    }
+  },
+  "required": [
+    "job_id",
+    "component"
+  ]
+}
