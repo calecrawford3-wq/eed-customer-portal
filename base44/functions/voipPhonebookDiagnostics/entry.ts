@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { testBridgeConnection, isBridgeMode, getBridgeUrl } from '../../shared/voipPhonebook.ts';
+import { testVoipConnection, voipMsCall, isVoipSuccess, isVoipNoRecords } from '../../shared/voipMsApi.ts';
 
-// Diagnostic function — reports the server's outbound IP address and bridge
-// connection status so the admin can verify the ElitePhoneBridge is working.
+// Diagnostic function — reports the server's outbound IP address and direct
+// VoIP.ms API connection status so the admin can verify the integration is working.
 //
 // No payload required. Admin-only.
 
@@ -36,21 +36,32 @@ export default async function(req: Request): Promise<Response> {
       }
     }
 
-    // Test bridge connection via getIP
-    const connectionTest = await testBridgeConnection();
+    // Test direct VoIP.ms connection via getIP
+    const connectionTest = await testVoipConnection();
 
-    const bridgeMode = isBridgeMode();
-    const bridgeUrl = getBridgeUrl();
+    // Also verify an authenticated read (getPhonebook) succeeds
+    let phonebookTest: { ok: boolean; status: string; message: string } = { ok: false, status: "", message: "" };
+    try {
+      const data = await voipMsCall("getPhonebook", {});
+      const ok = isVoipSuccess(data) || isVoipNoRecords(data);
+      phonebookTest = {
+        ok,
+        status: data?.status || "",
+        message: ok ? "Authenticated read successful" : (data?.message || "Unexpected status"),
+      };
+    } catch (e: any) {
+      phonebookTest = { ok: false, status: e?.voipmsStatus || "", message: String(e?.message || e) };
+    }
 
     return Response.json({
       outbound_ip: outboundIp,
       ip_source: ipSource,
-      bridge_mode: bridgeMode,
-      bridge_url_configured: !!bridgeUrl,
-      bridge_connection: connectionTest,
-      recommendation: bridgeMode
-        ? "Bridge mode is active — VoIP.ms API calls are proxied through the ElitePhoneBridge. Ensure the bridge's VoIP.ms credentials and IP whitelist are correct."
-        : "VOIPMS_BRIDGE_URL is not set. Configure it to point to the ElitePhoneBridge proxy endpoint.",
+      direct_api_mode: true,
+      connection: connectionTest,
+      phonebook_read: phonebookTest,
+      recommendation: connectionTest.ok && phonebookTest.ok
+        ? "Direct VoIP.ms API access is working. Phone book sync and SMS sending operate without the bridge."
+        : "Direct VoIP.ms API access failed. Check VOIP_MS_API_USERNAME and VOIP_MS_API_PASSWORD secrets, and verify the outbound IP is authorized in VoIP.ms API restrictions.",
     });
   } catch (e) {
     console.error("voipPhonebookDiagnostics error:", e?.message || e);

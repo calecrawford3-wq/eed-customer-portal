@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
-import { bridgeCall, BridgeError } from "../../shared/voipPhonebook.ts";
+import { voipMsCall, VoipMsError } from "../../shared/voipMsApi.ts";
 import { sendPushToAllSubscriptions } from "../../shared/sendPush.ts";
 
 const MAX_MESSAGE_LENGTH = 2048;
@@ -417,7 +417,7 @@ Deno.serve(async (req) => {
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
-        data = await bridgeCall(method, voipParams);
+        data = await voipMsCall(method, voipParams);
 
         if (data && data.status === "success") {
           confirmationId = String(
@@ -437,26 +437,26 @@ Deno.serve(async (req) => {
         break;
       } catch (bridgeError) {
         console.error(
-          `${method} bridge call failed (attempt ${attempt + 1}/${MAX_ATTEMPTS})`,
-          JSON.stringify({
-            error: bridgeError?.message || String(bridgeError),
-            httpStatus: bridgeError?.httpStatus,
-            voipmsStatus: bridgeError?.voipmsStatus,
-            destination: apiTo,
-            characterCount: message.length,
-            mediaCount: mediaUrls.length,
-          })
+        `${method} API call failed (attempt ${attempt + 1}/${MAX_ATTEMPTS})`,
+        JSON.stringify({
+          error: bridgeError?.message || String(bridgeError),
+          httpStatus: bridgeError?.httpStatus,
+          voipmsStatus: bridgeError?.voipmsStatus,
+          destination: apiTo,
+          characterCount: message.length,
+          mediaCount: mediaUrls.length,
+        })
         );
 
         const isHardError =
-          bridgeError instanceof BridgeError &&
-          ([403, 401, 503].includes(bridgeError.httpStatus) ||
-            bridgeError.voipmsStatus === "invalid_phonebook");
+        bridgeError instanceof VoipMsError &&
+        (bridgeError.permanent ||
+          bridgeError.voipmsStatus === "invalid_phonebook");
 
         if (isHardError) {
           finalStatus = "failed";
           failReason =
-            bridgeError?.message || `Bridge ${method} call failed`;
+            bridgeError?.message || `VoIP.ms ${method} call failed`;
           break;
         }
 
@@ -473,7 +473,7 @@ Deno.serve(async (req) => {
 
         finalStatus = "unknown";
         failReason =
-          bridgeError?.message || "Bridge response timeout";
+          bridgeError?.message || "VoIP.ms API timeout";
       }
     }
 

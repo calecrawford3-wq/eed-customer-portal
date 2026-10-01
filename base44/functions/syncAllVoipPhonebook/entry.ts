@@ -7,11 +7,11 @@ import {
   setPhonebookEntry,
   updatePhonebookEntry,
   deletePhonebookEntry,
-  bridgeGetIP,
   getPhonebookDiagnostic,
   testBridgeConnection,
   getPbSettings,
 } from '../../shared/voipPhonebook.ts';
+import { voipGetIP } from '../../shared/voipMsApi.ts';
 
 // Bulk VoIP.ms Phone Book operations.
 //
@@ -54,7 +54,7 @@ export default async function(req: Request): Promise<Response> {
     // ── getIP — verify bridge + VoIP.ms credentials ───────────────────
     if (mode === "get_ip") {
       try {
-        const data = await bridgeGetIP();
+        const data = await voipGetIP();
         return Response.json(data);
       } catch (e: any) {
         return Response.json({ status: "error", message: String(e?.message || e) });
