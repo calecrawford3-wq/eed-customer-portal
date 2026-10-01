@@ -37,7 +37,9 @@ export default function JobCard() {
   const { data: platforms = [] } = useQuery({ queryKey: ["platforms"], queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100) });
   const { data: engines = [] } = useQuery({ queryKey: ["customer-engines"], queryFn: () => base44.entities.CustomerEngine.list("-created_date", 200) });
 
-  const estimate = useLinked("Estimate", "estimate_id", job);
+  const estimateRaw = useLinked("Estimate", "estimate_id", job);
+  // Hide expired/archived estimates from the Job Card — they're isolated to the Estimates page
+  const estimate = estimateRaw && estimateRaw.status !== "expired" && !estimateRaw.archived ? estimateRaw : null;
   const build = useLinked("EngineBuild", "build_id", job);
   const invoices = useQuery({
     queryKey: ["job-invoices", job?.invoice_ids],
