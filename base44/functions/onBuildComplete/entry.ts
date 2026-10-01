@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import { recordReplacementsForBuild } from "../../shared/replacementHistory.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -41,6 +42,15 @@ Deno.serve(async (req) => {
     });
 
     console.log(`[onBuildComplete] Updated CustomerEngine ${build.customer_engine_id} stage to: ${buildStage}`);
+
+    // Auto-record component replacements from consumed parts (idempotent)
+    try {
+      const rec = await recordReplacementsForBuild(base44.asServiceRole, build);
+      console.log(`[onBuildComplete] Recorded ${rec.recorded} component replacement(s) at rebuild #${rec.rebuildCount}`);
+    } catch (e) {
+      console.log(`[onBuildComplete] Replacement recording skipped: ${e.message}`);
+    }
+
     return Response.json({ success: true, stage_set: buildStage });
   } catch (error) {
     console.error("[onBuildComplete] Error:", error.message);

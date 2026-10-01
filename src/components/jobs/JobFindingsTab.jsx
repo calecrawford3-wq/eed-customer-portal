@@ -11,6 +11,7 @@ import FindingCard from "@/components/jobs/FindingCard";
 import FindingEditor from "@/components/jobs/FindingEditor";
 import AdditionalWorkCard from "@/components/jobs/AdditionalWorkCard";
 import AdditionalWorkDialog from "@/components/jobs/AdditionalWorkDialog";
+import ReplacementSuggestionsPanel from "@/components/jobs/ReplacementSuggestionsPanel";
 
 export default function JobFindingsTab({ job, estimate, build, invoices }) {
   const qc = useQueryClient();
@@ -76,6 +77,8 @@ export default function JobFindingsTab({ job, estimate, build, invoices }) {
           {workItems.map(w => <AdditionalWorkCard key={w.id} aw={w} job={job} findings={findings} />)}
         </div>
       )}
+
+      <ReplacementSuggestionsPanel job={job} />
 
       {editing && (
         <FindingEditor job={job} finding={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); qc.invalidateQueries({ queryKey: ["job-findings", job.id] }); }} />

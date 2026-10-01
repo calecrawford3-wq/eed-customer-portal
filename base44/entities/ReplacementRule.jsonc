@@ -1,0 +1,72 @@
+{
+  "name": "ReplacementRule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Rule name (e.g. 'Rod Bearings \u2014 every rebuild')"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform this rule applies to (empty = all platforms)"
+    },
+    "service_package": {
+      "type": "string",
+      "enum": [
+        "",
+        "stock",
+        "stage_1",
+        "stage_2",
+        "stage_3",
+        "contract",
+        "custom"
+      ],
+      "default": "",
+      "description": "Service package this rule applies to (empty = all packages)"
+    },
+    "component": {
+      "type": "string",
+      "description": "Component this rule applies to (e.g. Rod Bearings, Crankshaft, Timing Chain). Matched case-insensitively against recorded replacements."
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "every_rebuild",
+        "interval",
+        "inspection"
+      ],
+      "default": "every_rebuild",
+      "description": "every_rebuild = due each qualifying rebuild; interval = due every N rebuilds; inspection = flag for teardown inspection (condition-based)"
+    },
+    "interval_rebuilds": {
+      "type": "number",
+      "default": 1,
+      "description": "For interval trigger: replace every N qualifying rebuilds"
+    },
+    "recommended_part_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Catalog parts recommended when this component is due"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes about this rule"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "component",
+    "trigger_type"
+  ]
+}

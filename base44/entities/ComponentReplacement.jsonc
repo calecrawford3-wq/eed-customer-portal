@@ -1,0 +1,65 @@
+{
+  "name": "ComponentReplacement",
+  "type": "object",
+  "properties": {
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Engine this replacement was performed on"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Owning customer (denormalized)"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Job during which the replacement was confirmed"
+    },
+    "build_id": {
+      "type": "string",
+      "description": "Build during which the replacement was performed (auto-recorded on completion)"
+    },
+    "component": {
+      "type": "string",
+      "description": "Component replaced (matched against ReplacementRule.component, case-insensitive)"
+    },
+    "part_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Catalog parts used for this replacement"
+    },
+    "replaced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the replacement was performed"
+    },
+    "rebuild_count_at_time": {
+      "type": "number",
+      "default": 0,
+      "description": "The engine's qualifying rebuild count at the time of replacement (used to compute intervals)"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "completion",
+        "manual",
+        "override"
+      ],
+      "default": "manual",
+      "description": "completion = auto-recorded at build completion; manual = confirmed by admin; override = admin documented a non-replacement with a reason"
+    },
+    "override_reason": {
+      "type": "string",
+      "description": "When source=override: why the suggested replacement was skipped or done differently"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_engine_id",
+    "component"
+  ]
+}
