@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, RotateCcw, Tag, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,10 +107,16 @@ const ACTIVE_STAGES = [
 export default function Jobs() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [view, setView] = useState("board");
-  const [activeView, setActiveView] = useState("all");
-  const [showArchive, setShowArchive] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    next.set(key, String(value));
+    setSearchParams(next, { replace: true });
+  };
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [view, setView] = useState(searchParams.get("v") || "board");
+  const [activeView, setActiveView] = useState(searchParams.get("tab") || "all");
+  const [showArchive, setShowArchive] = useState(searchParams.get("arch") === "1");
   const [movingId, setMovingId] = useState(null);
   const [intakeDialog, setIntakeDialog] = useState(null); // { type: "estimate"|"engine", job, customer }
   const [pickupDialog, setPickupDialog] = useState(null); // job
@@ -316,23 +322,23 @@ export default function Jobs() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); updateParam("q", e.target.value); }}
               placeholder="Search jobs, customers..."
               className="pl-9 w-48 md:w-64"
             />
           </div>
           <div className="flex rounded-md border border-slate-200 overflow-hidden">
-            <button onClick={() => setView("board")} className={cn("p-2", view === "board" ? "bg-slate-900 text-white" : "text-slate-400")}>
+            <button onClick={() => { setView("board"); updateParam("v", "board"); }} className={cn("p-2", view === "board" ? "bg-slate-900 text-white" : "text-slate-400")}>
               <LayoutGrid className="w-4 h-4" />
             </button>
-            <button onClick={() => setView("list")} className={cn("p-2", view === "list" ? "bg-slate-900 text-white" : "text-slate-400")}>
+            <button onClick={() => { setView("list"); updateParam("v", "list"); }} className={cn("p-2", view === "list" ? "bg-slate-900 text-white" : "text-slate-400")}>
               <List className="w-4 h-4" />
             </button>
           </div>
           <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setCheckInOpen(true)}>
             <Cpu className="w-4 h-4 mr-1" /> Check In Engine
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowArchive(!showArchive)}>
+          <Button variant="outline" size="sm" onClick={() => { const next = !showArchive; setShowArchive(next); updateParam("arch", next ? "1" : "0"); }}>
             {showArchive ? <ArchiveRestore className="w-4 h-4 mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
             {showArchive ? "Active" : "Archive"}
           </Button>
@@ -344,7 +350,7 @@ export default function Jobs() {
         {Object.entries(VIEWS).map(([key, v]) => (
           <button
             key={key}
-            onClick={() => setActiveView(key)}
+            onClick={() => { setActiveView(key); updateParam("tab", key); }}
             className={cn(
               "px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
               activeView === key
@@ -356,7 +362,7 @@ export default function Jobs() {
           </button>
         ))}
         <button
-          onClick={() => setActiveView("locations")}
+          onClick={() => { setActiveView("locations"); updateParam("tab", "locations"); }}
           className={cn(
             "px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
             activeView === "locations"
