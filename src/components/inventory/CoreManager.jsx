@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Trash2, Edit, Recycle, Printer, Tag, Images, Globe, Loader2 } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Copy, Recycle, Printer, Tag, Images, Globe, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
@@ -110,6 +110,11 @@ export default function CoreManager() {
 
   const openNew = () => { setEditing(null); setForm(emptyCore); setDialogOpen(true); };
   const openEdit = (c) => { setEditing(c); setForm({ ...emptyCore, ...c }); setDialogOpen(true); };
+  const openDuplicate = (c) => {
+    setEditing(null);
+    setForm({ ...emptyCore, ...c, core_number: "", name: `${c.name || ""} (Copy)`.trim(), wix_listing_status: "not_listed", list_online: false });
+    setDialogOpen(true);
+  };
   const pickCoreFromCatalog = (part) => {
     setEditing(null);
     setForm(f => ({
@@ -234,6 +239,7 @@ export default function CoreManager() {
                           <Images className="w-3.5 h-3.5" />
                         </Button>
                       )}
+                      <Button size="sm" variant="ghost" title="Duplicate" onClick={() => openDuplicate(c)}><Copy className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>

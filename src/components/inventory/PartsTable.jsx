@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, Boxes, Tag, Edit, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import { Package, AlertTriangle, Boxes, Tag, Edit, Trash2, Copy, ChevronRight, ChevronDown } from "lucide-react";
 
 export default function PartsTable({
   isLoading,
@@ -13,6 +13,7 @@ export default function PartsTable({
   onEdit,
   onDelete,
   onPrintLabel,
+  onDuplicate,
 }) {
   if (isLoading) {
     return (
@@ -138,6 +139,7 @@ export default function PartsTable({
                             <td className="px-4 py-2.5">
                               <div className="flex gap-1 justify-end">
                                 <Button size="sm" variant="ghost" title="Print this label" onClick={() => onPrintLabel(p.id)}><Tag className="w-3.5 h-3.5" /></Button>
+                                <Button size="sm" variant="ghost" title="Duplicate" onClick={() => onDuplicate(p)}><Copy className="w-3.5 h-3.5" /></Button>
                                 <Button size="sm" variant="ghost" onClick={() => onEdit(p)}><Edit className="w-3.5 h-3.5" /></Button>
                                 <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => onDelete(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                               </div>

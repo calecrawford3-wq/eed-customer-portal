@@ -175,6 +175,11 @@ export default function Inventory() {
 
   const openNewPart = () => { setEditingPart(null); setPartForm(emptyPart); setPartDialogOpen(true); };
   const openEditPart = (p) => { setEditingPart(p); setPartForm({ ...p }); setPartDialogOpen(true); };
+  const openDuplicatePart = (p) => {
+    setEditingPart(null);
+    setPartForm({ ...p, part_number: "", name: `${p.name || ""} (Copy)`.trim() });
+    setPartDialogOpen(true);
+  };
   const pickPartFromCatalog = (part) => {
     setEditingPart(null);
     setPartForm(f => ({
@@ -278,6 +283,7 @@ export default function Inventory() {
             onEdit={openEditPart}
             onDelete={(id) => deletePartMutation.mutate(id)}
             onPrintLabel={(id) => { setLabelPreselectId(id); setPrintLabelsOpen(true); }}
+            onDuplicate={openDuplicatePart}
           />
         </TabsContent>
 
