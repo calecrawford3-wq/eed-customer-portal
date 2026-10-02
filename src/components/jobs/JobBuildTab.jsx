@@ -18,6 +18,8 @@ import BuildInternalTab from "@/components/builds/BuildInternalTab";
 import BuildSpecsTab from "@/components/builds/BuildSpecsTab";
 import BuildTimeline from "@/components/engines/BuildTimeline";
 import BuildDynoSheets from "@/components/engines/BuildDynoSheets";
+import LinkBuildDialog from "@/components/jobs/LinkBuildDialog";
+import { Link2 } from "lucide-react";
 
 const SPEC_TYPES = [
   { value: "stock", label: "Stock" },
@@ -37,6 +39,7 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [showLinkBuild, setShowLinkBuild] = useState(false);
   const printRef = useRef();
 
   const { data: specSheets = [] } = useQuery({
@@ -61,10 +64,16 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   if (!build) {
     return (
       <Card className="border-0 shadow-sm">
-        <CardContent>
-          <p className="text-sm text-slate-400 py-8 text-center">
-            No build linked yet. The build is created when the job is activated (estimate approved + deposit received).
+        <CardContent className="py-8 text-center space-y-3">
+          <p className="text-sm text-slate-400">
+            No build linked yet. The build is created automatically when the job is activated (estimate approved + deposit received), or you can link an existing build manually.
           </p>
+          <div>
+            <Button size="sm" variant="outline" onClick={() => setShowLinkBuild(true)}>
+              <Link2 className="w-3.5 h-3.5 mr-1" /> Link Existing Build
+            </Button>
+          </div>
+          <LinkBuildDialog open={showLinkBuild} onClose={() => setShowLinkBuild(false)} job={job} currentBuildId={null} />
         </CardContent>
       </Card>
     );
@@ -190,6 +199,9 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
                   <Save className="w-3.5 h-3.5 mr-1" /> Save Changes
                 </Button>
               )}
+              <Button size="sm" variant="outline" onClick={() => setShowLinkBuild(true)}>
+                <Link2 className="w-3.5 h-3.5 mr-1" /> Change Build
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setShowTagModal(true)}>
                 <Tag className="w-3.5 h-3.5 mr-1" /> Engine Tag
               </Button>
@@ -306,6 +318,9 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
         }}
         statusLabel={(build.status || "").replace("_", " ").toUpperCase()}
       />
+
+      {/* Link / change / unlink build */}
+      <LinkBuildDialog open={showLinkBuild} onClose={() => setShowLinkBuild(false)} job={job} currentBuildId={build.id} />
     </div>
   );
 }
