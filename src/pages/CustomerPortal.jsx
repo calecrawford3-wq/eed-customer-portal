@@ -410,7 +410,10 @@ export default function CustomerPortal() {
       {printBuild && (
         <div className="hidden print:block">
           <PrintableBuildSheet
-            build={printBuild}
+            build={{
+              ...printBuild,
+              customer_name: printBuild.customer_name || (customer ? `${customer.first_name} ${customer.last_name}`.trim() : ""),
+            }}
             platform={platforms.find(p => p.id === printBuild.platform_id)}
             specSheet={specSheets.find(s => s.id === printBuild.spec_sheet_id)}
           />

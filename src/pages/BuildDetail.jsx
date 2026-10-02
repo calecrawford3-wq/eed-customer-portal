@@ -532,7 +532,13 @@ export default function BuildDetail() {
           </DialogHeader>
           <div ref={printRef}>
             <PrintableBuildSheet
-              build={{ ...build, ...localChanges }}
+              build={{
+                ...build,
+                ...localChanges,
+                customer_name: linkedCustomer
+                  ? `${linkedCustomer.first_name} ${linkedCustomer.last_name}`.trim()
+                  : build.customer_name,
+              }}
               platform={platform}
               specSheet={specSheet}
             />

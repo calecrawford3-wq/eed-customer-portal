@@ -283,7 +283,15 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Print Build Sheet</DialogTitle></DialogHeader>
           <div ref={printRef}>
-            <PrintableBuildSheet build={{ ...build, ...localChanges }} platform={platform} specSheet={specSheet} />
+            <PrintableBuildSheet
+              build={{
+                ...build,
+                ...localChanges,
+                customer_name: customer ? `${customer.first_name} ${customer.last_name}`.trim() : build.customer_name,
+              }}
+              platform={platform}
+              specSheet={specSheet}
+            />
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setShowPrintDialog(false)}>Cancel</Button>
