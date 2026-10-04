@@ -166,7 +166,7 @@ export default function JobCard() {
           </Button>
         </div>
       </div>
-      <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} build={build} />
+      <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} invoices={invoiceList} estimate={estimate} build={build} />
 
       <ConfirmDialog
         open={deleteOpen}

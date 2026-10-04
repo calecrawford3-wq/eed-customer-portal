@@ -62,10 +62,10 @@ export default async function(req) {
     if (!invoice) {
       // No invoice yet: billable tasks stay pending_invoice; nonbillable/linked recorded.
       for (const t of tasks) {
-        if (t.billable === false) {
+        if (t.billable === false && t.source_type !== "additional_work") {
           counts.nonbillable++;
           if (t.billing_status !== "nonbillable") taskUpdates.push({ id: t.id, patch: { billing_status: "nonbillable", invoice_id: "" } });
-        } else if (t.source_type === "estimate" || t.source_type === "invoice") {
+        } else if (t.source_type === "estimate" || t.source_type === "invoice" || t.source_type === "additional_work") {
           counts.linked++;
           if (t.billing_status !== "linked") taskUpdates.push({ id: t.id, patch: { billing_status: "linked" } });
         } else {
@@ -83,6 +83,15 @@ export default async function(req) {
         const chargeKey = t.charge_key || t.id;
 
         if (t.billable === false) {
+          // additional_work charges are customer-approved and must never be
+          // removed by the billing sync — only by an explicit adjustment.
+          if (t.source_type === "additional_work") {
+            counts.linked++;
+            if (t.billing_status !== "linked" || t.invoice_id !== invoice.id) {
+              taskUpdates.push({ id: t.id, patch: { billing_status: "linked", invoice_id: invoice.id, charge_key: chargeKey } });
+            }
+            continue;
+          }
           // Remove any task-linked item for this charge.
           managed = managed.filter(m => m.uid !== chargeKey);
           counts.nonbillable++;
@@ -92,8 +101,12 @@ export default async function(req) {
           continue;
         }
 
-        if (t.source_type === "estimate" || t.source_type === "invoice") {
+        if (t.source_type === "estimate" || t.source_type === "invoice" || t.source_type === "additional_work") {
           // Charge already on a document — link, don't re-charge.
+          // additional_work: the charge was added to the invoice by
+          // processApprovedAdditionalWork (with a stable uid matching this
+          // task's charge_key) and customer-approved, so the sync must never
+          // duplicate, re-price, or remove it — even if billable is toggled.
           counts.linked++;
           if (t.billing_status !== "linked" || t.invoice_id !== invoice.id) {
             taskUpdates.push({ id: t.id, patch: { billing_status: "linked", invoice_id: invoice.id, charge_key: chargeKey } });

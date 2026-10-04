@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MapPin, CheckCircle2, Clock, AlertTriangle, Package, DollarSign, ArrowRight } from "lucide-react";
 import JobStageMover from "@/components/jobs/JobStageMover";
+import { billingSummary } from "@/lib/jobBillingStatus";
 
 const STAGE_LABELS = {
   awaiting_approval: "Awaiting Approval",
@@ -30,12 +31,12 @@ const PARTS_LABELS = {
   unknown: { label: "—", cls: "bg-slate-100 text-slate-400" },
 };
 
-export default function JobHeader({ job, customer, engine, platform, invoice, build }) {
+export default function JobHeader({ job, customer, engine, platform, invoice, invoices, estimate, build }) {
   const parts = PARTS_LABELS[job.parts_readiness] || PARTS_LABELS.unknown;
-  const balanceDue = invoice ? (Number(invoice.balance_due) || 0) : 0;
-  const amountDue = invoice && invoice.due_on_completion ? 0 : balanceDue;
+  const invList = invoices && invoices.length ? invoices : (invoice ? [invoice] : []);
+  const billing = billingSummary(job, estimate, invList);
 
-  const nextAction = deriveNextAction(job, invoice, build);
+  const nextAction = deriveNextAction(job, billing, build);
 
   return (
     <div className="bg-white border-b border-slate-200 sticky top-12 md:top-12 z-10 print:hidden">
@@ -76,17 +77,35 @@ export default function JobHeader({ job, customer, engine, platform, invoice, bu
           <HeaderCell label="Location" icon={MapPin}>
             <span className="text-slate-700">{job.storage_location || "—"}</span>
           </HeaderCell>
-          <HeaderCell label="Approval / Deposit" icon={job.deposit_met ? CheckCircle2 : Clock}>
-            <span className={cn("text-xs", job.stage === "awaiting_approval" ? "text-slate-500" : job.stage === "awaiting_deposit" ? "text-amber-600" : "text-emerald-600")}>
-              {job.stage === "awaiting_approval" ? "Awaiting approval" : job.stage === "awaiting_deposit" ? "Awaiting deposit" : job.deposit_required ? "Deposit received" : "No deposit req."}
+          <HeaderCell label="Approval / Deposit" icon={billing.deposit.state === "received" ? CheckCircle2 : Clock}>
+            <span className={cn("text-xs",
+              billing.approval.state === "approved" ? "text-emerald-600" :
+              billing.approval.state === "sent" ? "text-amber-600" :
+              billing.approval.state === "declined" || billing.approval.state === "expired" ? "text-red-600" :
+              "text-slate-500")}>
+              {billing.approval.label}
+            </span>
+            <span className={cn("block text-xs",
+              billing.deposit.state === "received" ? "text-emerald-600" :
+              billing.deposit.state === "outstanding" ? "text-amber-600" :
+              "text-slate-400")}>
+              {billing.deposit.label}
             </span>
           </HeaderCell>
           <HeaderCell label="Parts" icon={Package}>
             <Badge className={cn("text-xs", parts.cls)}>{parts.label}</Badge>
           </HeaderCell>
           <HeaderCell label="Balance" icon={DollarSign}>
-            <span className="font-semibold text-slate-900">${(balanceDue || 0).toFixed(2)}</span>
-            {invoice?.due_on_completion && <span className="block text-xs text-amber-600">Due on completion</span>}
+            <span className="font-semibold text-slate-900">${(billing.totalBalance || 0).toFixed(2)}</span>
+            {billing.depositRemaining > 0 && (
+              <span className="block text-xs text-amber-600">Deposit due ${billing.depositRemaining.toFixed(2)}</span>
+            )}
+            {billing.balanceDueOnCompletion > 0 && (
+              <span className="block text-xs text-slate-400">Due on completion ${billing.balanceDueOnCompletion.toFixed(2)}</span>
+            )}
+            {billing.amountDueNow > 0 && billing.balanceDueOnCompletion === 0 && billing.depositRemaining === 0 && (
+              <span className="block text-xs text-slate-400">Due now ${billing.amountDueNow.toFixed(2)}</span>
+            )}
           </HeaderCell>
         </div>
 
@@ -127,10 +146,13 @@ function stageColor(job) {
   return map[job.stage] || "bg-slate-100 text-slate-600";
 }
 
-function deriveNextAction(job, invoice, build) {
-  if (job.stage === "awaiting_approval") return "Send estimate to customer for approval";
-  if (job.stage === "awaiting_deposit") return `Collect deposit of $${(job.deposit_amount || 0).toFixed(2)} to activate the job`;
-  if (job.stage === "queued") return "Begin teardown / inspection";
+function deriveNextAction(job, billing, build) {
+  if (job.stage === "awaiting_approval") {
+    return billing.approval.state === "sent" ? "Follow up with customer on estimate approval" : "Send estimate to customer for approval";
+  }
+  if (job.stage === "awaiting_deposit") {
+    return `Collect deposit of $${(job.deposit_amount || 0).toFixed(2)} to activate the job`;
+  }
   if (job.stage === "ready_for_pickup") return "Confirm customer pickup (scan engine label)";
   if (job.stage === "picked_up") return null;
   if (job.blocking_condition === "waiting_on_parts") return "Order or receive outstanding parts";

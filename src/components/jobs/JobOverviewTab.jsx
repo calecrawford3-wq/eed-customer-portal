@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
 import { Package, Receipt, ListChecks, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import CompletionBillingAudit from "@/components/jobs/CompletionBillingAudit";
+import { billingSummary } from "@/lib/jobBillingStatus";
 
 export default function JobOverviewTab({ job, customer, engine, platform, estimate, build, invoices }) {
   const { data: reservations = [], isLoading: resLoading } = useQuery({
@@ -27,9 +28,10 @@ export default function JobOverviewTab({ job, customer, engine, platform, estima
   const totalTasks = tasks.length;
 
   const primaryInvoice = invoices?.[0];
-  const totalInvoiced = (invoices || []).reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
-  const totalPaid = (invoices || []).reduce((sum, inv) => sum + (Number(inv.amount_paid) || 0), 0);
-  const balanceDue = (invoices || []).reduce((sum, inv) => sum + (Number(inv.balance_due) || 0), 0);
+  const billing = billingSummary(job, estimate, invoices);
+  const totalInvoiced = billing.totalInvoiced;
+  const totalPaid = billing.totalPaid;
+  const balanceDue = billing.totalBalance;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -67,8 +69,14 @@ export default function JobOverviewTab({ job, customer, engine, platform, estima
         <CardContent className="space-y-2 text-sm">
           <Row label="Invoiced" value={formatMoney(totalInvoiced)} />
           <Row label="Paid" value={<span className="text-emerald-600">{formatMoney(totalPaid)}</span>} />
-          <Row label="Balance" value={<span className="font-semibold">{formatMoney(balanceDue)}</span>} />
-          {primaryInvoice?.due_on_completion && <Row label="Due" value={<Badge className="bg-amber-100 text-amber-700">On completion</Badge>} />}
+          <Row label="Total balance" value={<span className="font-semibold">{formatMoney(billing.totalBalance)}</span>} />
+          {billing.depositRemaining > 0 && <Row label="Deposit due" value={<span className="text-amber-600">{formatMoney(billing.depositRemaining)}</span>} />}
+          {billing.amountDueNow > 0 && <Row label="Due now" value={<span className="text-slate-700">{formatMoney(billing.amountDueNow)}</span>} />}
+          {billing.balanceDueOnCompletion > 0 && <Row label="Due on completion" value={<Badge className="bg-amber-100 text-amber-700">{formatMoney(billing.balanceDueOnCompletion)}</Badge>} />}
+          <div className="pt-1 border-t border-slate-100">
+            <Row label="Approval" value={<Badge className={billing.approval.state === "approved" ? "bg-emerald-100 text-emerald-700" : billing.approval.state === "sent" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}>{billing.approval.label}</Badge>} />
+            <Row label="Deposit" value={<Badge className={billing.deposit.state === "received" ? "bg-emerald-100 text-emerald-700" : billing.deposit.state === "outstanding" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"}>{billing.deposit.label}</Badge>} />
+          </div>
         </CardContent>
       </Card>
 

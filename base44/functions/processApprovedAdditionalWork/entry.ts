@@ -115,7 +115,15 @@ export default async function(req) {
         price: s.price, engine_section: 'Additional Work',
       })),
     ];
-    const newMachiningItems = (aw.machining_items || []).map(m => ({ ...m, engine_section: m.engine_section || 'Additional Work' }));
+    // Assign stable charge keys (uids) to each machining item so the billing
+    // sync can link the machining task to the existing invoice charge by ID
+    // rather than re-creating a duplicate line. The same uid is set as
+    // charge_key on the created machining task.
+    const newMachiningItems = (aw.machining_items || []).map((m, i) => ({
+      ...m,
+      uid: `aw:${aw.id}:mach:${i}`,
+      engine_section: m.engine_section || 'Additional Work',
+    }));
 
     const partsTotal = newLineItems.reduce((s, li) => s + (Number(li.total) || 0), 0);
     const laborTotal = newLaborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
@@ -191,7 +199,9 @@ export default async function(req) {
       const nextMachSort = 10000; // additional-work tasks sort after planned tasks
       const machRecords = [];
 
-      // Direct machining items on the additional work
+      // Direct machining items on the additional work — charge_key matches the
+      // uid assigned to the invoice machining item above, so the billing sync
+      // links (never duplicates) this task to the existing charge.
       for (let i = 0; i < (aw.machining_items || []).length; i++) {
         const m = aw.machining_items[i];
         const taskType = nameToTaskType(m.name);
@@ -215,6 +225,7 @@ export default async function(req) {
           vendor: m.vendor || '',
           billing_status: 'linked',
           invoice_id: invoiceId,
+          charge_key: `aw:${aw.id}:mach:${i}`,
           source_type: 'additional_work',
           source_id: aw.id,
         });
@@ -225,7 +236,8 @@ export default async function(req) {
         const fRes = await base44.asServiceRole.entities.TeardownFinding.filter({ id: fid });
         const f = (fRes.items || fRes || [])[0];
         if (!f) continue;
-        for (const m of (f.machining_items || [])) {
+        for (let j = 0; j < (f.machining_items || []).length; j++) {
+          const m = f.machining_items[j];
           const taskType = nameToTaskType(m.name);
           machRecords.push({
             job_id: job.id,
@@ -247,6 +259,7 @@ export default async function(req) {
             vendor: m.vendor || '',
             billing_status: 'linked',
             invoice_id: invoiceId,
+            charge_key: `aw:${aw.id}:find:${fid}:mach:${j}`,
             source_type: 'additional_work',
             source_id: aw.id,
             finding_id: fid,
