@@ -22,6 +22,7 @@ import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
 import PortalFindingsSection from "@/components/portal/PortalFindingsSection";
+import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -51,8 +52,7 @@ const BUILD_PROGRESS = {
 };
 
 export default function CustomerPortal() {
-  const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  const { user } = useAuth();
   const [customer, setCustomer] = useState(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordVerified, setPasswordVerified] = useState(false);
@@ -81,17 +81,6 @@ export default function CustomerPortal() {
     setPrintInvoice(true);
     setTimeout(() => window.print(), 300);
   };
-
-  // Auth check
-  useEffect(() => {
-    base44.auth.isAuthenticated().then(async (authed) => {
-      if (authed) {
-        const me = await base44.auth.me();
-        setUser(me);
-      }
-      setAuthChecked(true);
-    });
-  }, []);
 
   // Find customer record by email
   const { data: allCustomers = [], isLoading: customersLoading } = useQuery({
@@ -260,14 +249,6 @@ export default function CustomerPortal() {
   const yearPaid = yearlyInvoices.reduce((s, i) => s + (i.amount_paid || 0), 0);
 
   const totalBalance = invoices.reduce((s, i) => s + (i.balance_due || 0), 0);
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-[#e20404] rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   if (!user) {
     return (
