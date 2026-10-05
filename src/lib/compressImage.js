@@ -12,12 +12,20 @@ export async function compressImage(file, maxBytes = 1300 * 1024) {
   // Convert to JPEG first, then apply size compression if needed.
   if (isHeicFile(file)) {
     try {
-      const jpegBlob = await convertHeicBlob(file);
+      // Timeout safety: if heic2any hangs (large files, concurrent conversions),
+      // give up after 25s and upload the original — SmartImage handles display conversion.
+      const jpegBlob = await Promise.race([
+        convertHeicBlob(file),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("HEIC conversion timeout")), 25000)
+        ),
+      ]);
+      if (!jpegBlob) throw new Error("HEIC conversion returned empty result");
       const baseName = file.name.replace(/\.[^.]+$/, "");
       file = new File([jpegBlob], `${baseName}.jpg`, { type: "image/jpeg" });
     } catch (e) {
-      console.warn("HEIC conversion failed", e?.message);
-      // Fall through — the browser may still handle it (Safari)
+      console.warn("HEIC conversion failed, uploading original", e?.message);
+      // Fall through — upload the original; SmartImage handles display-time conversion
     }
   }
 

@@ -199,7 +199,7 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
                   </Button>
                 </div>
               )}
-              {(slot._localUrl || slot._signedUrl) && (
+              {slot._status !== "uploading" && (slot._localUrl || slot._signedUrl) && (
                 <SmartImage
                   src={slot._localUrl || signedUrlOverrides[slot._signedUrl] || slot._signedUrl}
                   alt={slot.caption || "Finding photo"}
