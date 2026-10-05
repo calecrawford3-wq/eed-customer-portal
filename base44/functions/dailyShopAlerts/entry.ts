@@ -4,8 +4,25 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 // Sends admin notifications for each, deduped against notifications from the last 24h.
 // Intended to be called by a scheduled automation (daily at 8am CT).
 Deno.serve(async (req) => {
+  const base44 = createClientFromRequest(req);
+  const startedAt = new Date().toISOString();
+  const logRun = async (status, summary, details) => {
+    try {
+      const completedAt = new Date().toISOString();
+      await base44.asServiceRole.entities.AutomationRun.create({
+        automation_name: "Daily Shop Alerts",
+        automation_key: "daily_shop_alerts",
+        target_function: "dailyShopAlerts",
+        status,
+        summary,
+        details: details || "",
+        started_at: startedAt,
+        completed_at: completedAt,
+        duration_ms: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
+      });
+    } catch (e) { console.warn("[dailyShopAlerts] logRun failed:", e.message); }
+  };
   try {
-    const base44 = createClientFromRequest(req);
     const now = Date.now();
     const yesterday = new Date(now - 24 * 60 * 60 * 1000).toISOString();
     const todayStr = new Date(now).toISOString().split("T")[0];
@@ -97,9 +114,11 @@ Deno.serve(async (req) => {
       overdue_alerts_sent: overdueSent,
     };
     console.log("[dailyShopAlerts] Summary:", JSON.stringify(summary));
+    await logRun("success", `Low stock: ${lowStockSent}/${lowStockParts.length} sent, Overdue: ${overdueSent}/${overdueInvoices.length} sent`);
     return Response.json(summary);
   } catch (error) {
     console.error("[dailyShopAlerts] Error:", error.message);
+    await logRun("failed", "Daily shop alerts failed", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

@@ -3,36 +3,13 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
-import {
-  AlertTriangle, Clock, Package, DollarSign, Wrench, FileText,
-  RefreshCw, Bell, BellOff, ChevronRight, Loader2
-} from "lucide-react";
+import { RefreshCw, BellOff, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import SnoozeExceptionDialog from "@/components/exceptions/SnoozeExceptionDialog";
-
-const TYPE_CONFIG = {
-  engine_without_estimate: { icon: Package, color: "text-blue-600 bg-blue-50", label: "Engine Without Estimate" },
-  job_awaiting_engine: { icon: Clock, color: "text-amber-600 bg-amber-50", label: "Awaiting Engine" },
-  job_awaiting_deposit: { icon: DollarSign, color: "text-amber-600 bg-amber-50", label: "Awaiting Deposit" },
-  additional_work_pending: { icon: FileText, color: "text-purple-600 bg-purple-50", label: "Additional Work Pending" },
-  parts_overdue: { icon: Clock, color: "text-red-600 bg-red-50", label: "Parts Overdue" },
-  job_stalled: { icon: AlertTriangle, color: "text-orange-600 bg-orange-50", label: "Job Stalled" },
-  missing_measurements: { icon: Wrench, color: "text-amber-600 bg-amber-50", label: "Missing Measurements" },
-  missing_qc_tasks: { icon: Wrench, color: "text-amber-600 bg-amber-50", label: "QC Task Incomplete" },
-  approved_work_not_invoiced: { icon: DollarSign, color: "text-red-600 bg-red-50", label: "Approved Work Not Invoiced" },
-  completed_job_no_invoice: { icon: FileText, color: "text-red-600 bg-red-50", label: "Missing Final Invoice" },
-  picked_up_unpaid: { icon: DollarSign, color: "text-red-600 bg-red-50", label: "Picked Up Unpaid" },
-  failed_operation: { icon: AlertTriangle, color: "text-slate-600 bg-slate-50", label: "Operation Needs Review" },
-};
-
-const SEVERITY_STYLES = {
-  info: "border-l-blue-400",
-  warning: "border-l-amber-400",
-  critical: "border-l-red-500",
-};
+import { EXCEPTION_TYPE_CONFIG as TYPE_CONFIG, EXCEPTION_SEVERITY_STYLES as SEVERITY_STYLES } from "@/lib/exceptionTypes";
 
 export default function ExceptionDashboard() {
   const navigate = useNavigate();

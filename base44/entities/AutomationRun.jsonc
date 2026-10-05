@@ -1,0 +1,65 @@
+{
+  "name": "AutomationRun",
+  "type": "object",
+  "properties": {
+    "automation_name": {
+      "type": "string",
+      "description": "Display name of the automation or scheduled workflow"
+    },
+    "automation_key": {
+      "type": "string",
+      "description": "Stable key for grouping runs of the same automation (e.g. 'daily_shop_alerts')"
+    },
+    "target_function": {
+      "type": "string",
+      "description": "Backend function name to invoke when retrying this run. Empty if the automation is not retryable."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "running"
+      ],
+      "default": "success",
+      "description": "Outcome of the run"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short human-readable result summary"
+    },
+    "details": {
+      "type": "string",
+      "description": "Error message or JSON details for the run"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "is_retry": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this run was triggered by a manual retry of a previous run"
+    },
+    "retry_of": {
+      "type": "string",
+      "description": "ID of the original run this retry was triggered from"
+    },
+    "retried_by": {
+      "type": "string",
+      "description": "Name of the user who triggered the retry"
+    }
+  },
+  "required": [
+    "automation_name",
+    "status"
+  ]
+}

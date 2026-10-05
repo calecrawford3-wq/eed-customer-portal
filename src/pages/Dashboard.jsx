@@ -14,6 +14,8 @@ import RevenueInsights from "@/components/dashboard/RevenueInsights";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
 import PageHeader from "@/components/PageHeader";
 import TodayAlertsBar from "@/components/dashboard/TodayAlertsBar";
+import OwnerExceptionQueue from "@/components/dashboard/OwnerExceptionQueue";
+import AutomationSummaryCard from "@/components/dashboard/AutomationSummaryCard";
 import { formatMoney } from "@/lib/money";
 
 export default function Dashboard() {
@@ -140,6 +142,9 @@ export default function Dashboard() {
       {/* Today action items — exceptions, approvals, overdue, follow-ups */}
       <TodayAlertsBar />
 
+      {/* Owner exception queue — triage inline without leaving Today */}
+      <OwnerExceptionQueue />
+
       {/* Today's Work — guided lifecycle action list */}
       <TodayWorkPanel builds={builds} invoices={invoices} customers={customers} platforms={platforms} />
 
@@ -178,6 +183,9 @@ export default function Dashboard() {
         />
         <RecentBuilds builds={builds} platforms={platforms} isLoading={loadingBuilds} />
       </div>
+
+      {/* Automation activity — recent run summaries with safe retry */}
+      <AutomationSummaryCard />
 
     </div>
   );
