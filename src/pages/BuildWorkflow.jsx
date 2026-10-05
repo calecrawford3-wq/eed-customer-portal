@@ -105,31 +105,19 @@ export default function BuildWorkflow() {
     return c ? `${c.first_name} ${c.last_name}` : "—";
   };
 
-  const toggleTask = async (task) => {
-    try {
-      const user = await base44.auth.me();
-      if (task.status === "complete") {
-        await base44.entities.BuildTask.update(task.id, {
-          status: "pending",
-          completed_by: null,
-          completed_at: null,
-        });
-      } else {
-        await base44.entities.BuildTask.update(task.id, {
-          status: "complete",
-          completed_by: user?.full_name || user?.email || "Unknown",
-          completed_at: new Date().toISOString(),
-        });
-      }
-      refetchTasks();
-    } catch (e) {
-      toast.error("Failed to update task");
-    }
-  };
-
   const setTaskStatus = async (task, status) => {
     try {
-      await base44.entities.BuildTask.update(task.id, { status });
+      const updates = { status };
+      if (status === "complete") {
+        const user = await base44.auth.me();
+        updates.completed_by = user?.full_name || user?.email || "Unknown";
+        updates.completed_at = new Date().toISOString();
+      } else if (status !== "complete") {
+        // Reopening or resetting — clear completion metadata
+        updates.completed_by = "";
+        updates.completed_at = "";
+      }
+      await base44.entities.BuildTask.update(task.id, updates);
       refetchTasks();
     } catch (e) {
       toast.error("Failed to update task");
@@ -224,7 +212,7 @@ export default function BuildWorkflow() {
 
   // Voice handlers
   const handleVoiceComplete = async (task) => {
-    await toggleTask(task);
+    await setTaskStatus(task, "complete");
   };
   const handleVoiceSwitch = async (build) => {
     selectBuild(build.id);
@@ -280,7 +268,7 @@ export default function BuildWorkflow() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-bold">Build Workflow</h1>
-              <p className="text-zinc-500 text-xs md:text-sm">Tap tasks to mark complete • auto-updates live</p>
+              <p className="text-zinc-500 text-xs md:text-sm">Use Start / Done / Skip on each task • auto-updates live</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -356,7 +344,6 @@ export default function BuildWorkflow() {
                 <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1">
                   <BuildTaskList
                     tasks={tasks}
-                    onToggle={toggleTask}
                     onSetStatus={setTaskStatus}
                     large
                   />

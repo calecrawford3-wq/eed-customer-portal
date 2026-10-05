@@ -121,7 +121,36 @@ export default function TodayWorkPanel({ builds, invoices, customers, platforms 
     });
   }
 
-  // 4. Builds where all tasks are done but status isn't complete yet
+  // 4. Builds with a next task to work on — the first pending or in-progress task
+  const nextTaskBuilds = activeBuilds.filter((b) => {
+    const tasks = tasksByBuild[b.id];
+    if (!tasks || tasks.length === 0) return false;
+    const hasPending = tasks.some((t) => t.status === "pending" || t.status === "in_progress");
+    const allDone = tasks.every((t) => t.status === "complete" || t.status === "skipped");
+    return hasPending && !allDone;
+  });
+  if (nextTaskBuilds.length) {
+    sections.push({
+      icon: Wrench,
+      color: "text-[#e20404]",
+      bg: "bg-red-50",
+      title: "Next Task to Work On",
+      count: nextTaskBuilds.length,
+      items: nextTaskBuilds.slice(0, 4).map((b) => {
+        const tasks = tasksByBuild[b.id];
+        const inProgress = tasks.find((t) => t.status === "in_progress");
+        const nextPending = tasks.find((t) => t.status === "pending");
+        const task = inProgress || nextPending;
+        return {
+          label: task ? task.name : "Continue work",
+          sub: `${b.eed_id ? `EED ${b.eed_id}` : b.engine_serial_number} • ${getPlatformName(b.platform_id)}`,
+          to: `/BuildWorkflow?build=${b.id}`,
+        };
+      }),
+    });
+  }
+
+  // 5. Builds where all tasks are done but status isn't complete yet
   const readyToComplete = activeBuilds.filter((b) => {
     const tasks = tasksByBuild[b.id];
     if (!tasks || tasks.length === 0) return false;
@@ -142,7 +171,7 @@ export default function TodayWorkPanel({ builds, invoices, customers, platforms 
     });
   }
 
-  // 5. Unpaid invoices
+  // 6. Unpaid invoices
   const unpaidInvoices = (invoices || []).filter((i) =>
     ["sent", "partial", "overdue"].includes(i.status)
   );

@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, Circle, Loader2, SkipForward, Clock } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, SkipForward, Clock, RotateCcw, Play, Check, SkipForward as SkipIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG = {
@@ -9,7 +9,7 @@ const STATUS_CONFIG = {
   skipped: { icon: SkipForward, color: "text-zinc-500", ring: "border-zinc-700 bg-zinc-800", label: "Skipped" },
 };
 
-export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = false }) {
+export default function BuildTaskList({ tasks, onSetStatus, large = false }) {
   if (!tasks || tasks.length === 0) {
     return (
       <div className="text-center py-12">
@@ -31,6 +31,49 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
 
   const stageNames = Object.keys(stages);
 
+  const ActionButton = ({ onClick, icon: Icon, label, tone }) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={cn(
+        "inline-flex items-center gap-1 rounded font-medium transition-colors flex-shrink-0",
+        large ? "text-[11px] px-2 py-1" : "text-xs px-2.5 py-1",
+        tone
+      )}
+    >
+      <Icon className={large ? "w-3.5 h-3.5" : "w-3.5 h-3.5"} />
+      {label}
+    </button>
+  );
+
+  const renderActions = (task) => {
+    switch (task.status) {
+      case "pending":
+        return (
+          <>
+            <ActionButton onClick={() => onSetStatus(task, "in_progress")} icon={Play} label="Start" tone="text-blue-400 hover:bg-blue-900" />
+            <ActionButton onClick={() => onSetStatus(task, "skipped")} icon={SkipIcon} label="Skip" tone="text-zinc-500 hover:bg-zinc-800" />
+          </>
+        );
+      case "in_progress":
+        return (
+          <>
+            <ActionButton onClick={() => onSetStatus(task, "complete")} icon={Check} label="Done" tone="text-emerald-400 hover:bg-emerald-900" />
+            <ActionButton onClick={() => onSetStatus(task, "pending")} icon={RotateCcw} label="Reset" tone="text-zinc-400 hover:bg-zinc-800" />
+          </>
+        );
+      case "complete":
+        return (
+          <ActionButton onClick={() => onSetStatus(task, "in_progress")} icon={RotateCcw} label="Reopen" tone="text-amber-400 hover:bg-amber-900" />
+        );
+      case "skipped":
+        return (
+          <ActionButton onClick={() => onSetStatus(task, "pending")} icon={RotateCcw} label="Reopen" tone="text-amber-400 hover:bg-amber-900" />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={large ? "min-h-full flex flex-col gap-3" : "space-y-6"}>
       {stageNames.map((stageName) => {
@@ -50,17 +93,17 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                 />
               </div>
             </div>
-            <div className={large ? "flex-1 min-h-0 grid gap-2 grid-cols-[repeat(auto-fill,minmax(220px,1fr))] grid-auto-rows-[minmax(48px,1fr)]" : "space-y-2"}>
+            <div className={large ? "flex-1 min-h-0 grid gap-2 grid-cols-[repeat(auto-fill,minmax(240px,1fr))] grid-auto-rows-[minmax(48px,1fr)]" : "space-y-2"}>
               {stageTasks.map((task) => {
                 const cfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
                 const Icon = cfg.icon;
                 const isComplete = task.status === "complete";
+                const isSkipped = task.status === "skipped";
                 return (
                   <div
                     key={task.id}
-                    onClick={() => onToggle(task)}
                     className={cn(
-                      "flex items-center gap-2 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.99] select-none",
+                      "flex items-center gap-2 rounded-xl border-2 transition-all select-none",
                       cfg.ring,
                       large ? "p-2.5 min-h-[48px]" : "p-4 min-h-[56px]"
                     )}
@@ -71,7 +114,7 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                         className={cn(
                           "font-medium text-white",
                           large ? "text-sm line-clamp-2 leading-tight" : "text-base",
-                          isComplete && "line-through text-zinc-600"
+                          (isComplete || isSkipped) && "line-through text-zinc-600"
                         )}
                       >
                         {task.name}
@@ -84,22 +127,9 @@ export default function BuildTaskList({ tasks, onToggle, onSetStatus, large = fa
                         </p>
                       )}
                     </div>
-                    {task.status === "in_progress" && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSetStatus(task, "pending"); }}
-                        className={cn("text-blue-400 font-medium rounded hover:bg-blue-900 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
-                      >
-                        Reset
-                      </button>
-                    )}
-                    {task.status === "pending" && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSetStatus(task, "in_progress"); }}
-                        className={cn("text-zinc-400 font-medium rounded hover:bg-zinc-800 flex-shrink-0", large ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
-                      >
-                        Start
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {renderActions(task)}
+                    </div>
                   </div>
                 );
               })}

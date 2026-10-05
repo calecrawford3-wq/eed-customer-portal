@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check, ShieldAlert, Camera, Timer } from "lucide-react";
+import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check, ShieldAlert, Camera, Timer, Play, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-
-const NEXT_STATUS = { pending: "in_progress", in_progress: "complete", complete: "skipped", skipped: "pending" };
 
 // Format elapsed time since a timer start timestamp as "Xm" or "Xh Ym"
 function formatElapsed(startedAt) {
@@ -55,13 +53,12 @@ export default function JobWorkflowTab({ job, build }) {
     return <Card className="border-0 shadow-sm"><CardContent><p className="text-sm text-slate-400 py-8 text-center">No build linked — workflow is assigned after activation.</p></CardContent></Card>;
   }
 
-  const cycleStatus = async (task) => {
-    const next = NEXT_STATUS[task.status] || "pending";
-    const updates = { status: next };
-    if (next === "complete") {
+  const setTaskStatus = async (task, status) => {
+    const updates = { status };
+    if (status === "complete") {
       updates.completed_at = new Date().toISOString();
       try { const me = await base44.auth.me(); updates.completed_by = me?.full_name || "Admin"; } catch {}
-    } else if (next !== "complete") {
+    } else if (status !== "complete") {
       updates.completed_at = "";
       updates.completed_by = "";
     }
@@ -178,25 +175,43 @@ export default function JobWorkflowTab({ job, build }) {
               {stageTasks.map(t => (
                 <div key={t.id} className="py-1">
                   <div className="flex items-center gap-2 text-sm">
-                    <button onClick={() => cycleStatus(t)} className="flex-shrink-0 hover:scale-110 transition-transform" title={`Click to mark ${NEXT_STATUS[t.status] || "pending"}`}>
-                      {STATUS_ICON[t.status]}
-                    </button>
-                    <span className={t.status === "complete" ? "text-slate-400 line-through" : "text-slate-700"}>{t.name}</span>
+                    <span className="flex-shrink-0">{STATUS_ICON[t.status]}</span>
+                    <span className={t.status === "complete" || t.status === "skipped" ? "text-slate-400 line-through" : "text-slate-700"}>{t.name}</span>
                     {t.is_required && <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Required task" />}
                     {t.status === "skipped" && <Badge variant="outline" className="text-xs">Skipped</Badge>}
                     {t.override_authorized_by && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Override: {t.override_authorized_by}</Badge>}
                     {t.time_logged_minutes > 0 && <span className="text-xs text-slate-400 flex items-center gap-0.5"><Timer className="w-3 h-3" />{t.time_logged_minutes}m</span>}
                     {t.timer_started_at && <span className="text-xs text-blue-600 flex items-center gap-0.5 animate-pulse"><Timer className="w-3 h-3" />{formatElapsed(t.timer_started_at)}</span>}
-                    <button onClick={() => toggleTimer(t)} className={`flex-shrink-0 p-0.5 rounded ${t.timer_started_at ? "text-blue-600 hover:bg-blue-50" : "text-slate-300 hover:text-slate-500"}`} title={t.timer_started_at ? "Stop timer" : "Start timer"}>
-                      {t.timer_started_at ? <span className="text-xs font-bold">■</span> : <Timer className="w-3.5 h-3.5" />}
-                    </button>
-                    {t.completed_by && <span className="text-xs text-slate-400 ml-auto">by {t.completed_by}</span>}
-                    <button onClick={() => { setEditingNote(editingNote === t.id ? null : t.id); setNoteDraft(t.notes || ""); }} className="ml-auto flex-shrink-0">
-                      <Pencil className={`w-3.5 h-3.5 ${t.notes ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
-                    </button>
-                    <button onClick={() => { const exp = expandedTask === t.id ? null : t.id; setExpandedTask(exp); if (exp) { setMeasurements(t.measurements || ""); setTimeLogged(t.time_logged_minutes ? String(t.time_logged_minutes) : ""); } }} className="flex-shrink-0">
-                      <Camera className={`w-3.5 h-3.5 ${expandedTask === t.id || (t.photos && t.photos.length) || t.measurements ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
-                    </button>
+                    <div className="flex items-center gap-1 ml-auto">
+                      {t.status === "pending" && (
+                        <>
+                          <button onClick={() => setTaskStatus(t, "in_progress")} className="text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-blue-50 font-medium" title="Start task"><Play className="w-3 h-3 inline" /> Start</button>
+                          <button onClick={() => setTaskStatus(t, "skipped")} className="text-xs px-1.5 py-0.5 rounded text-slate-400 hover:bg-slate-100 font-medium" title="Skip task">Skip</button>
+                        </>
+                      )}
+                      {t.status === "in_progress" && (
+                        <>
+                          <button onClick={() => setTaskStatus(t, "complete")} className="text-xs px-1.5 py-0.5 rounded text-emerald-600 hover:bg-emerald-50 font-medium" title="Mark complete"><Check className="w-3 h-3 inline" /> Done</button>
+                          <button onClick={() => setTaskStatus(t, "pending")} className="text-xs px-1.5 py-0.5 rounded text-slate-400 hover:bg-slate-100 font-medium" title="Reset to pending"><RotateCcw className="w-3 h-3 inline" /> Reset</button>
+                        </>
+                      )}
+                      {t.status === "complete" && (
+                        <button onClick={() => setTaskStatus(t, "in_progress")} className="text-xs px-1.5 py-0.5 rounded text-amber-600 hover:bg-amber-50 font-medium" title="Reopen task"><RotateCcw className="w-3 h-3 inline" /> Reopen</button>
+                      )}
+                      {t.status === "skipped" && (
+                        <button onClick={() => setTaskStatus(t, "pending")} className="text-xs px-1.5 py-0.5 rounded text-amber-600 hover:bg-amber-50 font-medium" title="Reopen task"><RotateCcw className="w-3 h-3 inline" /> Reopen</button>
+                      )}
+                      <button onClick={() => toggleTimer(t)} className={`flex-shrink-0 p-0.5 rounded ${t.timer_started_at ? "text-blue-600 hover:bg-blue-50" : "text-slate-300 hover:text-slate-500"}`} title={t.timer_started_at ? "Stop timer" : "Start timer"}>
+                        {t.timer_started_at ? <span className="text-xs font-bold">■</span> : <Timer className="w-3.5 h-3.5" />}
+                      </button>
+                      {t.completed_by && <span className="text-xs text-slate-400">by {t.completed_by}</span>}
+                      <button onClick={() => { setEditingNote(editingNote === t.id ? null : t.id); setNoteDraft(t.notes || ""); }} className="flex-shrink-0">
+                        <Pencil className={`w-3.5 h-3.5 ${t.notes ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
+                      </button>
+                      <button onClick={() => { const exp = expandedTask === t.id ? null : t.id; setExpandedTask(exp); if (exp) { setMeasurements(t.measurements || ""); setTimeLogged(t.time_logged_minutes ? String(t.time_logged_minutes) : ""); } }} className="flex-shrink-0">
+                        <Camera className={`w-3.5 h-3.5 ${expandedTask === t.id || (t.photos && t.photos.length) || t.measurements ? "text-[#e20404]" : "text-slate-300 hover:text-slate-500"}`} />
+                      </button>
+                    </div>
                   </div>
                   {editingNote === t.id && (
                     <div className="flex items-center gap-2 mt-1 ml-6">
