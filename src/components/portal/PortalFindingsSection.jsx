@@ -24,7 +24,7 @@ const CONDITION_CLS = {
 export default function PortalFindingsSection({ customer }) {
   const { data, isLoading } = useQuery({
     queryKey: ["portal-findings", customer?.id],
-    queryFn: () => base44.functions.invoke("getPortalFindings", {}).then((r) => r.data),
+    queryFn: () => base44.functions.invoke("getPortalFindings", { customer_id: customer?.id }).then((r) => r.data),
     enabled: !!customer,
   });
 
