@@ -10,6 +10,7 @@ import { AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { getCountryName } from "@/components/CountrySelect";
+import PublicAdditionalWorkSection from "@/components/public/PublicAdditionalWorkSection";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
@@ -289,6 +290,9 @@ export default function InvoiceViewer() {
             </table>
           </CardContent>
         </Card>
+
+        {/* Approved Additional Work + Inspection Photos */}
+        <PublicAdditionalWorkSection additionalWork={viewerData?.additional_work || []} />
 
         {/* Actions */}
         <Button variant="outline" onClick={() => setPrintMode(true)} className="w-full">Print Invoice</Button>

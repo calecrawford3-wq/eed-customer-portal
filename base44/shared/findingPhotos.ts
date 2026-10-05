@@ -72,6 +72,38 @@ export function publicFinding(f: any) {
   };
 }
 
+/**
+ * Serialize one AdditionalWork record with its customer-safe findings and
+ * SHARED photos (signed URLs). Reused by the public additional-work viewer
+ * and the public invoice viewer so both surface the same shared photos.
+ */
+export async function serializeAdditionalWorkWithPhotos(base44: any, aw: any) {
+  const findingIds = (aw.finding_ids || []).filter(Boolean);
+  let findings: any[] = [];
+  let photosByFinding: Record<string, any[]> = {};
+  if (findingIds.length > 0) {
+    const fRes = await base44.asServiceRole.entities.TeardownFinding.filter(
+      { id: { $in: findingIds } },
+      { limit: 200 }
+    );
+    findings = (fRes.items || fRes || []).map((f: any) => publicFinding(f));
+    const pRes = await base44.asServiceRole.entities.FindingPhoto.filter(
+      { finding_id: { $in: findingIds }, share_with_customer: true },
+      { limit: 1000 }
+    );
+    const photos = pRes.items || pRes || [];
+    const serialized = await serializePhotos(base44, photos, { shareOnly: true });
+    for (const p of serialized) {
+      (photosByFinding[p.finding_id] ||= []).push(p);
+    }
+  }
+  const findingsOut = findings.map((f: any) => ({
+    ...f,
+    photos: photosByFinding[f.id] || [],
+  }));
+  return { ...publicAdditionalWork(aw), findings: findingsOut };
+}
+
 /** Customer-safe additional-work fields (no part_numbers, no internal fields). */
 export function publicAdditionalWork(aw: any) {
   return {

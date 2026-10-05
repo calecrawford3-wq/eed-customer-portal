@@ -20,7 +20,7 @@ const valueStyle = { fontSize: "14px", fontWeight: "600" };
 
 export default function PrintableBuildBook({
   build, platform, specSheet, customer, job, tasks = [], findings = [],
-  replacements = [], profitability = null, invoice = null,
+  replacements = [], profitability = null, invoice = null, findingPhotos = {},
 }) {
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type || "N/A";
 
@@ -313,6 +313,44 @@ export default function PrintableBuildBook({
           </div>
         </>
       )}
+
+      {/* === FINDING PHOTOS === */}
+      {(() => {
+        const findingsWithPhotos = findings.filter(f => (findingPhotos[f.id] || []).length > 0);
+        if (findingsWithPhotos.length === 0) return null;
+        const totalPhotos = findingsWithPhotos.reduce((n, f) => n + (findingPhotos[f.id] || []).length, 0);
+        return (
+          <>
+            <h2 style={sectionTitle("Inspection Finding Photos")}>
+              Inspection Finding Photos ({totalPhotos})
+            </h2>
+            <div style={{ marginBottom: "16px" }}>
+              {findingsWithPhotos.map(f => {
+                const photos = findingPhotos[f.id] || [];
+                return (
+                  <div key={f.id} style={{ marginBottom: "14px", breakInside: "avoid" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "4px", borderBottom: "1px solid #eee", paddingBottom: "3px" }}>
+                      {f.component} · {photos.length} photo{photos.length === 1 ? "" : "s"}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+                      {photos.map((photo, idx) => (
+                        <div key={photo.id || idx} style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden", breakInside: "avoid" }}>
+                          <img src={photo.signed_url} alt={photo.caption || f.component} style={{ width: "100%", height: "120px", objectFit: "cover", display: "block" }} />
+                          {photo.caption && (
+                            <div style={{ padding: "3px 5px", fontSize: "9px", color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {photo.caption}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
 
       {/* === ASSEMBLY NOTES === */}
       {build.assembly_notes && (
