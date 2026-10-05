@@ -89,6 +89,19 @@ export default function JobCard() {
     },
     enabled: !!build?.spec_sheet_id && printBuildBook,
   });
+  const { data: bookFindingPhotosData } = useQuery({
+    queryKey: ["book-finding-photos", job?.id],
+    queryFn: async () => {
+      const findingIds = bookFindings.map(f => f.id).filter(Boolean);
+      if (findingIds.length === 0) return {};
+      const res = await base44.functions.invoke("getFindingPhotosAdmin", { finding_ids: findingIds });
+      const photos = res?.data?.photos || res?.photos || [];
+      const map = {};
+      for (const p of photos) { (map[p.finding_id] ||= []).push(p); }
+      return map;
+    },
+    enabled: !!job?.id && printBuildBook && bookFindings.length > 0,
+  });
 
   const handlePrintBuildBook = () => {
     setPrintBuildBook(true);
@@ -145,6 +158,7 @@ export default function JobCard() {
             replacements={bookReplacements}
             profitability={profitabilityData}
             invoice={primaryInvoice}
+            findingPhotos={bookFindingPhotosData || {}}
           />
         </div>
       )}

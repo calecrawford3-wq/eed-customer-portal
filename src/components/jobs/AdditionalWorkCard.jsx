@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, XCircle, Clock, Ban, Loader2, FileText, Link2, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Ban, Loader2, FileText, Link2, Eye, Mail, MessageSquare } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
 
@@ -23,13 +23,55 @@ export default function AdditionalWorkCard({ aw, job, findings }) {
   const [busy, setBusy] = useState(null);
   const [showDecline, setShowDecline] = useState(false);
   const [note, setNote] = useState("");
+  const [showSend, setShowSend] = useState(null); // "email" | "text" | null
+
+  const customerId = aw.customer_id || job?.customer_id;
+  const { data: customer } = useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: async () => {
+      const res = await base44.entities.Customer.filter({ id: customerId });
+      return res?.[0] || null;
+    },
+    enabled: !!customerId && !!showSend,
+  });
 
   const includedFindings = (findings || []).filter(f => (aw.finding_ids || []).includes(f.id));
+  const approvalUrl = aw.public_access_token
+    ? `${window.location.origin}/AdditionalWorkViewer/${aw.public_access_token}`
+    : "";
 
   const copyLink = async () => {
-    const url = `${window.location.origin}/AdditionalWorkViewer/${aw.public_access_token}`;
-    try { await navigator.clipboard.writeText(url); toast.success("Approval link copied — paste into an email or text to the customer"); }
+    try { await navigator.clipboard.writeText(approvalUrl); toast.success("Approval link copied — paste into an email or text to the customer"); }
     catch { toast.error("Copy failed"); }
+  };
+
+  const sendEmail = async () => {
+    if (!customer?.email) { toast.error("Customer has no email on file"); return; }
+    setBusy("email");
+    try {
+      const res = await base44.functions.invoke("sendAdditionalWorkApproval", {
+        additional_work_id: aw.id,
+        approval_url: approvalUrl,
+        message: note || undefined,
+      });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success(`Approval email sent to ${customer.email}`);
+      setShowSend(null); setNote("");
+    } catch (e) { toast.error(e.message || "Failed to send email"); }
+    setBusy(null);
+  };
+
+  const sendText = async () => {
+    if (!customer?.phone) { toast.error("Customer has no phone on file"); return; }
+    setBusy("text");
+    try {
+      const msg = `Hello ${customer.first_name || "there"}, we have additional findings for your engine that need approval: ${approvalUrl}`;
+      const res = await base44.functions.invoke("sendVoipSms", { to: customer.phone, message: msg });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success(`Approval text sent to ${customer.phone}`);
+      setShowSend(null); setNote("");
+    } catch (e) { toast.error(e.message || "Failed to send text"); }
+    setBusy(null);
   };
 
   const act = async (action) => {
@@ -80,11 +122,17 @@ export default function AdditionalWorkCard({ aw, job, findings }) {
           </div>
         )}
         {aw.public_access_token && (
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button size="sm" variant="outline" onClick={copyLink} disabled={!!busy}>
-              <Link2 className="w-3.5 h-3.5" /> Copy Approval Link
+              <Link2 className="w-3.5 h-3.5" /> Copy Link
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => window.open(`${window.location.origin}/AdditionalWorkViewer/${aw.public_access_token}`, "_blank")} disabled={!!busy}>
+            <Button size="sm" variant="outline" onClick={() => setShowSend("email")} disabled={!!busy}>
+              <Mail className="w-3.5 h-3.5" /> Email Link
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowSend("text")} disabled={!!busy}>
+              <MessageSquare className="w-3.5 h-3.5" /> Text Link
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => window.open(approvalUrl, "_blank")} disabled={!!busy}>
               <Eye className="w-3.5 h-3.5" /> Preview
             </Button>
           </div>
@@ -110,6 +158,27 @@ export default function AdditionalWorkCard({ aw, job, findings }) {
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => act("decline")} disabled={!!busy}>Confirm Decline</Button>
               <Button size="sm" variant="ghost" onClick={() => setShowDecline(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
+        {showSend && (
+          <div className="bg-slate-50 rounded p-3 space-y-2 border">
+            <p className="text-sm font-medium text-slate-700">
+              {showSend === "email" ? "Email approval link" : "Text approval link"}
+            </p>
+            <p className="text-xs text-slate-500">
+              {showSend === "email"
+                ? (customer?.email ? `Sending to ${customer.email}` : "No email on file for this customer")
+                : (customer?.phone ? `Sending to ${customer.phone}` : "No phone on file for this customer")}
+            </p>
+            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Optional personal note" rows={2} className="text-sm" />
+            <div className="flex gap-2">
+              <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303]" onClick={showSend === "email" ? sendEmail : sendText} disabled={!!busy || (showSend === "email" ? !customer?.email : !customer?.phone)}>
+                {busy === showSend ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : showSend === "email" ? <Mail className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                Send {showSend === "email" ? "Email" : "Text"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowSend(null); setNote(""); }} disabled={!!busy}>Cancel</Button>
             </div>
           </div>
         )}
