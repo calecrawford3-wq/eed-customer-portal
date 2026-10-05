@@ -24,10 +24,18 @@ Deno.serve(async (req) => {
             return Response.json({ error: "Only admins can send portal invites" }, { status: 403 });
         }
 
-        // Send a custom portal invite email linking to the custom domain.
-        // We do NOT use base44.users.inviteUser here because the platform's built-in
-        // invite email links to the default base44.app domain, not the custom domain.
-        // The customer self-registers at the portal login page (same flow as sendCustomerSignupEmail).
+        // Invite the user through the platform so they are pre-registered and do not
+        // require manual approval when they sign in. The platform's built-in invite
+        // email links to the default base44.app domain, so we ALSO send a custom
+        // email with the correct portal.eedpower.com link for the customer to use.
+        try {
+            await base44.users.inviteUser(customerEmail, "user");
+            console.log(`sendPortalInvite: invited user ${customerEmail} via platform`);
+        } catch (inviteError) {
+            // 409 / "already invited" is expected if the customer was invited before — not fatal.
+            console.log(`sendPortalInvite: inviteUser result for ${customerEmail}:`, inviteError?.message || inviteError);
+        }
+
         const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
         const settings = settingsList?.[0];
         const signature = settings?.email_signature || "Elite Engine Development\nYour High-Performance Engine Specialists";
