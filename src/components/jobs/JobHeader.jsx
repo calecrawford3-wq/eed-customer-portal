@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MapPin, CheckCircle2, Clock, AlertTriangle, Package, DollarSign, ArrowRight } from "lucide-react";
 import JobStageMover from "@/components/jobs/JobStageMover";
+import FinishStageButton from "@/components/jobs/FinishStageButton";
 import { billingSummary } from "@/lib/jobBillingStatus";
 
 const STAGE_LABELS = {
@@ -56,6 +57,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
             </Badge>
           ))}
           {job.stage !== "picked_up" && <JobStageMover job={job} build={build} />}
+          <FinishStageButton job={job} build={build} />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-sm">

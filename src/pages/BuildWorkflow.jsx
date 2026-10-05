@@ -24,6 +24,7 @@ import BuildTaskList from "@/components/workflow/BuildTaskList";
 import BuildSelectorList from "@/components/workflow/BuildSelectorList";
 import VoiceControl from "@/components/workflow/VoiceControl";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
+import FinishStageButton from "@/components/jobs/FinishStageButton";
 
 export default function BuildWorkflow() {
   const navigate = useNavigate();
@@ -95,6 +96,17 @@ export default function BuildWorkflow() {
     enabled: !!selectedBuildId,
     refetchInterval: 5000,
   });
+
+  // Load the job linked to this build so we can show the Finish-Stage button
+  const { data: jobData } = useQuery({
+    queryKey: ["build-job", selectedBuildId],
+    queryFn: async () => {
+      const res = await base44.entities.Job.filter({ build_id: selectedBuildId }, { limit: 1 });
+      return res?.[0] || null;
+    },
+    enabled: !!selectedBuildId,
+  });
+  const currentJob = jobData || null;
 
   const getPlatformName = (id) => {
     const p = platforms.find((p) => p.id === id);
@@ -333,10 +345,13 @@ export default function BuildWorkflow() {
                         ? "No workflow assigned"
                         : `${tasks.length - completedCount} remaining`}
                     </span>
-                    <Button size="sm" variant="outline" className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700" onClick={() => setShowAssign(true)}>
-                      <ClipboardList className="w-4 h-4 mr-1" />
-                      {tasks.length === 0 ? "Assign Workflow" : "Change Workflow"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {currentJob && <FinishStageButton job={currentJob} build={currentBuild} dark />}
+                      <Button size="sm" variant="outline" className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700" onClick={() => setShowAssign(true)}>
+                        <ClipboardList className="w-4 h-4 mr-1" />
+                        {tasks.length === 0 ? "Assign Workflow" : "Change Workflow"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
