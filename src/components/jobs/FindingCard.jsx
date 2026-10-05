@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Trash2, CheckSquare, Square, Eye, EyeOff, ImageIcon } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
+import SmartImage from "@/components/findings/SmartImage";
 
 const CONDITION_CLS = {
   good: "bg-emerald-100 text-emerald-700",
@@ -55,8 +56,8 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
               {selected ? <CheckSquare className="w-5 h-5 text-[#e20404]" /> : <Square className="w-5 h-5" />}
             </button>
           )}
-          {cover && coverUrl && (
-            <img src={coverUrl} alt={cover.caption || "Cover"} className="w-14 h-14 rounded object-cover border border-slate-200 flex-shrink-0" />
+          {cover && (
+            <SmartImage src={coverUrl || cover.signed_url} alt={cover.caption || "Cover"} className="w-14 h-14 rounded object-cover border border-slate-200 flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">

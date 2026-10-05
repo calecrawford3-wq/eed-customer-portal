@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
+import SmartImage from "@/components/findings/SmartImage";
 
 /**
  * Reusable photo gallery with a thumbnail strip and a fullscreen lightbox
@@ -62,7 +63,7 @@ export default function PhotoGallery({ photos = [], maxThumbs = 6 }) {
             onClick={() => setActive(i)}
             className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:border-[#e20404] transition-colors group"
           >
-            <img src={getDisplayUrl(p.signed_url)} alt={p.caption || ""} className="w-full h-full object-cover" />
+            <SmartImage src={getDisplayUrl(p.signed_url)} alt={p.caption || ""} className="w-full h-full object-cover" />
             {i === 0 && photos[0]?.is_cover && (
               <span className="absolute bottom-0 left-0 right-0 bg-amber-400/80 text-amber-900 text-[8px] font-bold text-center">COVER</span>
             )}
@@ -107,7 +108,7 @@ export default function PhotoGallery({ photos = [], maxThumbs = 6 }) {
             </>
           )}
           <div className="max-w-3xl max-h-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-            <img
+            <SmartImage
               src={getDisplayUrl(photos[active].signed_url)}
               alt={photos[active].caption || ""}
               className="max-w-full max-h-[75vh] object-contain rounded-lg"

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { compressImage } from "@/lib/compressImage";
 import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
+import SmartImage from "@/components/findings/SmartImage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2, RotateCw, Star, Eye, EyeOff, Camera, AlertCircle } from "lucide-react";
@@ -199,7 +200,7 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
                 </div>
               )}
               {(slot._localUrl || slot._signedUrl) && (
-                <img
+                <SmartImage
                   src={slot._localUrl || signedUrlOverrides[slot._signedUrl] || slot._signedUrl}
                   alt={slot.caption || "Finding photo"}
                   className="w-full h-full object-cover"

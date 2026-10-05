@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FileText, Camera, X } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
+import SmartImage from "@/components/findings/SmartImage";
 
 const CONDITION_LABEL = {
   good: "Good", worn: "Worn", damaged: "Damaged",
@@ -86,11 +87,10 @@ export default function PublicAdditionalWorkSection({ additionalWork = [] }) {
                         onClick={() => openLightbox(f.photos, idx)}
                         className="group relative aspect-square rounded-lg overflow-hidden border border-slate-200 hover:border-[#e20404] transition"
                       >
-                        <img
+                        <SmartImage
                           src={getDisplayUrl(photo.signed_url)}
                           alt={photo.caption || f.component}
                           className="w-full h-full object-cover"
-                          loading="lazy"
                         />
                         {photo.caption && (
                           <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 truncate text-left">
@@ -123,11 +123,10 @@ export default function PublicAdditionalWorkSection({ additionalWork = [] }) {
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 text-3xl"
             onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
           >‹</button>
-          <img
+          <SmartImage
             src={lightbox.urls[lightbox.index]}
             alt="Inspection photo"
             className="max-w-[90vw] max-h-[90vh] object-contain"
-            onClick={(e) => e.stopPropagation()}
           />
           <button
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-2 text-3xl"
