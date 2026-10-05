@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         const signature = settings?.email_signature || "Elite Engine Development\nYour High-Performance Engine Specialists";
         const companyName = settings?.company_name || "Elite Engine Development";
 
-        const signupUrl = `https://billing.eedpower.com/login`;
+        const signupUrl = `https://portal.eedpower.com/login`;
 
         const text = `Hello ${customerName},\n\nYou've been invited to access the ${companyName} customer portal. Visit the link below and sign up using this email address (${customerEmail}):\n\n${signupUrl}\n\nOnce you create your account, you'll automatically have access to your engine builds, invoices, estimates, and more.\n\nIf you have any questions, please let us know.\n\n${signature}`;
 
