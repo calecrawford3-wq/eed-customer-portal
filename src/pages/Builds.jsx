@@ -563,10 +563,18 @@ export default function Builds() {
               ["checked_in", "estimate_pending"].includes(e.check_in_status)
             );
             const filteredPreBuild = preBuild.filter(e => {
-              const matchesSearch =
-                e.engine_serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                e.eed_id?.toLowerCase().includes(searchTerm.toLowerCase());
-              return matchesSearch;
+              if (!searchTerm) return true;
+              const q = searchTerm.toLowerCase();
+              const cust = customers.find(c => c.id === e.customer_id);
+              const custName = cust ? `${cust.first_name} ${cust.last_name}`.toLowerCase() : "";
+              const plat = platforms.find(p => p.id === e.platform_id);
+              const platName = plat ? `${plat.manufacturer} ${plat.name}`.toLowerCase() : "";
+              return (
+                e.engine_serial_number?.toLowerCase().includes(q) ||
+                e.eed_id?.toLowerCase().includes(q) ||
+                custName.includes(q) ||
+                platName.includes(q)
+              );
             });
             if (filteredPreBuild.length === 0) return null;
             return (
