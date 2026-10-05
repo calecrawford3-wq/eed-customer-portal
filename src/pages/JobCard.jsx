@@ -114,7 +114,7 @@ export default function JobCard() {
 
   const handlePrintBuildBook = () => {
     setPrintBuildBook(true);
-    setTimeout(() => window.print(), 500);
+    setTimeout(() => window.print(), 1500);
   };
 
   const handleDelete = async () => {

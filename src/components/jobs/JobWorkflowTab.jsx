@@ -9,6 +9,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ListChecks, CheckCircle2, Circle, Clock, SkipForward, Pencil, Check, ShieldAlert, Camera, Timer, Play, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { compressImage } from "@/lib/compressImage";
+import { useDisplayImage } from "@/hooks/useDisplayImage";
+
+// Renders a single task photo from a private file URI, handling signed URL creation and HEIC conversion.
+function TaskPhoto({ uri, index }) {
+  const { url, loading } = useDisplayImage(uri);
+  return (
+    <div className="w-16 h-16 rounded border border-slate-200 overflow-hidden flex items-center justify-center bg-slate-50">
+      {loading ? (
+        <span className="text-[10px] text-slate-400">…</span>
+      ) : url ? (
+        <img src={url} alt={`Task photo ${index + 1}`} className="w-16 h-16 object-cover" />
+      ) : null}
+    </div>
+  );
+}
 
 // Format elapsed time since a timer start timestamp as "Xm" or "Xh Ym"
 function formatElapsed(startedAt) {
@@ -135,7 +151,8 @@ export default function JobWorkflowTab({ job, build }) {
   const uploadPhoto = async (taskId, file) => {
     if (!file) return;
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
+      const compressed = await compressImage(file);
+      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: compressed });
       const task = taskList.find(t => t.id === taskId);
       const photos = [...(task.photos || []), file_uri];
       await base44.entities.BuildTask.update(taskId, { photos });
@@ -244,7 +261,7 @@ export default function JobWorkflowTab({ job, build }) {
                         <p className="text-xs font-medium text-slate-600 mb-1">Photos</p>
                         <div className="flex flex-wrap gap-2">
                           {(t.photos || []).map((uri, i) => (
-                            <img key={i} src={uri} alt={`Task photo ${i+1}`} className="w-16 h-16 object-cover rounded border border-slate-200" />
+                            <TaskPhoto key={i} uri={uri} index={i} />
                           ))}
                           <label className="w-16 h-16 flex items-center justify-center rounded border border-dashed border-slate-300 cursor-pointer hover:bg-slate-100">
                             <Camera className="w-4 h-4 text-slate-400" />

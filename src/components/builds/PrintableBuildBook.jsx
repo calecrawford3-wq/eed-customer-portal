@@ -1,4 +1,11 @@
 import React from "react";
+import { useDisplayImage } from "@/hooks/useDisplayImage";
+
+// Renders a print-safe image from a private URI or signed URL, handling HEIC conversion.
+function PrintablePhoto({ src, alt, style }) {
+  const { url } = useDisplayImage(src);
+  return <img src={url || ""} alt={alt} style={style} />;
+}
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
@@ -304,7 +311,7 @@ export default function PrintableBuildBook({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "16px" }}>
             {allPhotos.map((photo, idx) => (
               <div key={idx} style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden" }}>
-                <img src={photo.url} alt={photo.taskName} style={{ width: "100%", height: "120px", objectFit: "cover", display: "block" }} />
+                <PrintablePhoto src={photo.url} alt={photo.taskName} style={{ width: "100%", height: "120px", objectFit: "cover", display: "block" }} />
                 <div style={{ padding: "3px 5px", fontSize: "9px", color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {photo.taskName}
                 </div>
@@ -335,7 +342,7 @@ export default function PrintableBuildBook({
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
                       {photos.map((photo, idx) => (
                         <div key={photo.id || idx} style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden", breakInside: "avoid" }}>
-                          <img src={photo.signed_url} alt={photo.caption || f.component} style={{ width: "100%", height: "120px", objectFit: "cover", display: "block" }} />
+                          <PrintablePhoto src={photo.signed_url} alt={photo.caption || f.component} style={{ width: "100%", height: "120px", objectFit: "cover", display: "block" }} />
                           {photo.caption && (
                             <div style={{ padding: "3px 5px", fontSize: "9px", color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {photo.caption}
