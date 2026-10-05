@@ -23,6 +23,7 @@
         "email_action_required",
         "invoice_overdue",
         "engine_pickup_ready",
+        "new_message",
         "other"
       ],
       "default": "other",

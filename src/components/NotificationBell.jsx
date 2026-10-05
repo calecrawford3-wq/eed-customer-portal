@@ -20,6 +20,7 @@ const TYPE_META = {
   email_action_required: { label: "Email Action", color: "bg-rose-100 text-rose-700" },
   invoice_overdue: { label: "Invoice Overdue", color: "bg-red-100 text-red-700" },
   engine_pickup_ready: { label: "Pickup Ready", color: "bg-cyan-100 text-cyan-700" },
+  new_message: { label: "New Message", color: "bg-green-100 text-green-700" },
   other: { label: "Notification", color: "bg-slate-100 text-slate-600" },
 };
 

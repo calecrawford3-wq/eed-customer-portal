@@ -271,7 +271,9 @@ Deno.serve(async (req) => {
     );
 
     /*
-     * Push notification.
+     * In-app notification + push notification.
+     * The Notification record guarantees a bell badge (and real-time chime /
+     * desktop alert) even when mobile web push delivery drops a real-time SMS.
      */
     try {
       const who = contactName
@@ -291,10 +293,29 @@ Deno.serve(async (req) => {
         pushBody = `📷 ${pushBody}`;
       }
 
+      const deepLink = `/Messaging?phone=${normalizedFrom}`;
+
+      // In-app notification — reliable fallback when push fails on mobile
+      try {
+        await base44.asServiceRole.entities.Notification.create({
+          title: pushTitle,
+          message: pushBody,
+          type: 'new_message',
+          link_url: deepLink,
+          is_read: false,
+        });
+      } catch (notifError) {
+        console.error(
+          'In-app notification create failed:',
+          notifError?.message || notifError
+        );
+      }
+
+      // Push notification — mobile
       await sendPushToAllSubscriptions(base44, {
         title: pushTitle,
         body: pushBody,
-        url: `/Messaging?phone=${normalizedFrom}`,
+        url: deepLink,
       });
     } catch (pushError) {
       console.error(
