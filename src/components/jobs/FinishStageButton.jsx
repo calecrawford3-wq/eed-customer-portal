@@ -27,7 +27,7 @@ export default function FinishStageButton({ job, build, dark = false }) {
   const [finishing, setFinishing] = useState(false);
 
   const stage = stageInfo(job.stage);
-  const shouldRender = stage && stage.next && job.stage !== "ready_for_pickup" && job.stage !== "picked_up";
+  const shouldRender = !!(stage && stage.next) && job.stage !== "ready_for_pickup" && job.stage !== "picked_up";
 
   const { data: buildTasksData } = useQuery({
     queryKey: ["finish-stage-tasks", job.build_id],
