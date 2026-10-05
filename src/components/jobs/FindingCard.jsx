@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Trash2, CheckSquare, Square, Eye, EyeOff, ImageIcon } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
 
 const CONDITION_CLS = {
   good: "bg-emerald-100 text-emerald-700",
@@ -35,6 +36,16 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
   const cover = photos.find((p) => p.is_cover) || photos[0];
   const sharedCount = photos.filter((p) => p.share_with_customer).length;
 
+  // Convert HEIC cover photo for browser display
+  const [coverUrl, setCoverUrl] = useState(null);
+  useEffect(() => {
+    if (!cover?.signed_url) { setCoverUrl(null); return; }
+    if (!isHeicUrl(cover.signed_url)) { setCoverUrl(cover.signed_url); return; }
+    let cancelled = false;
+    ensureDisplayableUrl(cover.signed_url).then((u) => { if (!cancelled) setCoverUrl(u); });
+    return () => { cancelled = true; };
+  }, [cover?.signed_url]);
+
   return (
     <Card className="border shadow-sm">
       <CardContent className="py-3">
@@ -44,8 +55,8 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
               {selected ? <CheckSquare className="w-5 h-5 text-[#e20404]" /> : <Square className="w-5 h-5" />}
             </button>
           )}
-          {cover && (
-            <img src={cover.signed_url} alt={cover.caption || "Cover"} className="w-14 h-14 rounded object-cover border border-slate-200 flex-shrink-0" />
+          {cover && coverUrl && (
+            <img src={coverUrl} alt={cover.caption || "Cover"} className="w-14 h-14 rounded object-cover border border-slate-200 flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">

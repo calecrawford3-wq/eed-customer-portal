@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FileText, Camera, X } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
 
 const CONDITION_LABEL = {
   good: "Good", worn: "Worn", damaged: "Damaged",
@@ -12,10 +13,32 @@ const ACTION_LABEL = {
 
 export default function PublicAdditionalWorkSection({ additionalWork = [] }) {
   const [lightbox, setLightbox] = useState(null); // { urls, index }
+  const [displayUrls, setDisplayUrls] = useState({}); // original -> converted for HEIC
+
+  // Collect all photo URLs from all additional work findings
+  const allPhotoUrls = (additionalWork || []).flatMap(aw =>
+    (aw.findings || []).flatMap(f => (f.photos || []).map(p => p.signed_url).filter(Boolean))
+  );
+
+  // Convert HEIC signed URLs for browser display
+  useEffect(() => {
+    let cancelled = false;
+    for (const url of allPhotoUrls) {
+      if (!url || !isHeicUrl(url) || displayUrls[url]) continue;
+      ensureDisplayableUrl(url).then((converted) => {
+        if (!cancelled && converted && converted !== url) {
+          setDisplayUrls((prev) => ({ ...prev, [url]: converted }));
+        }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [allPhotoUrls.join("|"), displayUrls]);
+
+  const getDisplayUrl = (url) => displayUrls[url] || url;
 
   if (!additionalWork || additionalWork.length === 0) return null;
 
-  const openLightbox = (photos, idx) => setLightbox({ urls: photos.map(p => p.signed_url), index: idx });
+  const openLightbox = (photos, idx) => setLightbox({ urls: photos.map(p => getDisplayUrl(p.signed_url)), index: idx });
   const closeLightbox = () => setLightbox(null);
   const nextPhoto = () => setLightbox(l => l ? { ...l, index: (l.index + 1) % l.urls.length } : l);
   const prevPhoto = () => setLightbox(l => l ? { ...l, index: (l.index - 1 + l.urls.length) % l.urls.length } : l);
@@ -64,7 +87,7 @@ export default function PublicAdditionalWorkSection({ additionalWork = [] }) {
                         className="group relative aspect-square rounded-lg overflow-hidden border border-slate-200 hover:border-[#e20404] transition"
                       >
                         <img
-                          src={photo.signed_url}
+                          src={getDisplayUrl(photo.signed_url)}
                           alt={photo.caption || f.component}
                           className="w-full h-full object-cover"
                           loading="lazy"

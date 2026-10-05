@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { compressImage } from "@/lib/compressImage";
+import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2, RotateCw, Star, Eye, EyeOff, Camera, AlertCircle } from "lucide-react";
@@ -36,9 +37,25 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
     }))
   );
   const [busyCount, setBusyCount] = useState(0);
+  const [signedUrlOverrides, setSignedUrlOverrides] = useState({}); // original -> converted for HEIC
   const fileInputRef = useRef(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  // Convert HEIC signed URLs for existing photos so they display in-browser
+  useEffect(() => {
+    let cancelled = false;
+    for (const s of slots) {
+      const url = s._signedUrl;
+      if (!url || !isHeicUrl(url) || signedUrlOverrides[url]) continue;
+      ensureDisplayableUrl(url).then((converted) => {
+        if (!cancelled && converted && converted !== url) {
+          setSignedUrlOverrides((prev) => ({ ...prev, [url]: converted }));
+        }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [slots, signedUrlOverrides]);
 
   // Sync initial slots to the parent on mount so the parent always knows the
   // current photo set (prevents accidental deletion of untouched existing photos on save).
@@ -183,7 +200,7 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
               )}
               {(slot._localUrl || slot._signedUrl) && (
                 <img
-                  src={slot._localUrl || slot._signedUrl}
+                  src={slot._localUrl || signedUrlOverrides[slot._signedUrl] || slot._signedUrl}
                   alt={slot.caption || "Finding photo"}
                   className="w-full h-full object-cover"
                 />

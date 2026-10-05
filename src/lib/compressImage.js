@@ -1,3 +1,5 @@
+import { isHeicFile, convertHeicBlob } from "./heicUtils";
+
 /**
  * Compresses an image File so its byte size fits under `maxBytes`.
  * Uses canvas to re-encode as JPEG with progressively lower quality
@@ -6,6 +8,19 @@
  * If the original file is already under the limit, it is returned unchanged.
  */
 export async function compressImage(file, maxBytes = 1300 * 1024) {
+  // HEIC files must always be converted — browsers can't render them.
+  // Convert to JPEG first, then apply size compression if needed.
+  if (isHeicFile(file)) {
+    try {
+      const jpegBlob = await convertHeicBlob(file);
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      file = new File([jpegBlob], `${baseName}.jpg`, { type: "image/jpeg" });
+    } catch (e) {
+      console.warn("HEIC conversion failed", e?.message);
+      // Fall through — the browser may still handle it (Safari)
+    }
+  }
+
   if (file.size <= maxBytes) return file;
 
   const image = await loadImage(file);
