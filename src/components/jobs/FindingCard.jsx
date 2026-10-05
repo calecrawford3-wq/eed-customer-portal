@@ -1,7 +1,9 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Pencil, Trash2, ImageIcon, CheckSquare, Square } from "lucide-react";
+import { Pencil, Trash2, CheckSquare, Square, Eye, EyeOff, ImageIcon } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 const CONDITION_CLS = {
@@ -23,6 +25,16 @@ const STATUS_CLS = {
 export default function FindingCard({ finding, selected, onToggleSelect, onEdit, onDelete }) {
   const f = finding;
   const selectable = f.status === "open" || f.status === "selected";
+
+  const { data: photoData } = useQuery({
+    queryKey: ["finding-photos-admin", f.id],
+    queryFn: () => base44.functions.invoke("getFindingPhotosAdmin", { finding_ids: [f.id] }).then((r) => r.data),
+    staleTime: 20000,
+  });
+  const photos = photoData?.photos || [];
+  const cover = photos.find((p) => p.is_cover) || photos[0];
+  const sharedCount = photos.filter((p) => p.share_with_customer).length;
+
   return (
     <Card className="border shadow-sm">
       <CardContent className="py-3">
@@ -31,6 +43,9 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
             <button onClick={onToggleSelect} className="mt-0.5 text-slate-400 hover:text-[#e20404]">
               {selected ? <CheckSquare className="w-5 h-5 text-[#e20404]" /> : <Square className="w-5 h-5" />}
             </button>
+          )}
+          {cover && (
+            <img src={cover.signed_url} alt={cover.caption || "Cover"} className="w-14 h-14 rounded object-cover border border-slate-200 flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -46,10 +61,14 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
             </div>
             {f.measurements && <p className="text-sm text-slate-600 mt-1"><span className="text-xs text-slate-400 uppercase font-semibold mr-1">Measurements:</span>{f.measurements}</p>}
             {f.notes && <p className="text-sm text-slate-600 mt-1">{f.notes}</p>}
-            {f.photos?.length > 0 && (
-              <div className="flex gap-1.5 mt-2">
-                {f.photos.slice(0, 4).map((url, i) => <img key={i} src={url} alt={`Finding ${i + 1}`} className="w-12 h-12 rounded object-cover border border-slate-200" />)}
-                {f.photos.length > 4 && <div className="w-12 h-12 rounded border border-slate-200 flex items-center justify-center text-xs text-slate-400">+{f.photos.length - 4}</div>}
+            {f.customer_description && <p className="text-sm text-emerald-700 mt-1"><span className="text-xs text-emerald-500 uppercase font-semibold mr-1">Customer:</span>{f.customer_description}</p>}
+            {photos.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" />{photos.length} photo{photos.length === 1 ? "" : "s"}</span>
+                <span className={`flex items-center gap-1 ${sharedCount > 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  {sharedCount > 0 ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  {sharedCount > 0 ? `${sharedCount} shared` : "all internal"}
+                </span>
               </div>
             )}
             <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 flex-wrap">

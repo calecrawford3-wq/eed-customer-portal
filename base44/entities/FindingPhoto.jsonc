@@ -1,0 +1,49 @@
+{
+  "name": "FindingPhoto",
+  "type": "object",
+  "properties": {
+    "finding_id": {
+      "type": "string",
+      "description": "Linked TeardownFinding this photo belongs to"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Denormalized from the finding's job for cross-job queries"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Denormalized customer who owns the job. Used for portal access checks."
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "Denormalized engine. Photos persist under the engine for service history even after the job is archived or completed."
+    },
+    "file_uri": {
+      "type": "string",
+      "description": "Private storage URI from UploadPrivateFile. Never public \u2014 access is gated by a signed URL issued only after share/authorization checks pass on the backend."
+    },
+    "caption": {
+      "type": "string",
+      "description": "Optional caption. Shown to customers only when share_with_customer is true."
+    },
+    "share_with_customer": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this photo is visible to the customer in the portal and public approval viewer. Defaults to internal-only until an admin explicitly shares it."
+    },
+    "is_cover": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this photo is the representative/cover image for the finding."
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order within the finding's photos. Cover photo is always shown first regardless of sort_order."
+    }
+  },
+  "required": [
+    "finding_id",
+    "file_uri"
+  ]
+}

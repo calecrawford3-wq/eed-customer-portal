@@ -33,6 +33,8 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
         title, description, finding_ids: findings.map(f => f.id),
         line_items: agg.lineItems, labor_items: agg.laborItems, machining_items: agg.machiningItems, outsourced_services: agg.outsourceItems,
         subtotal, tax_rate: Number(taxRate) || 0, tax_amount: taxAmount, total,
+        public_access_token: crypto.randomUUID(),
+        customer_response: "pending",
         status: "pending", version: 1, submitted_at: now,
         version_history: [{ version: 1, changed_at: now, changed_by: "admin", reason: "created", total }],
       });

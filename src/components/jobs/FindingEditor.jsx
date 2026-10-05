@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, X, Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { formatMoney, roundMoney } from "@/lib/money";
 import { toast } from "sonner";
+import FindingPhotoManager from "@/components/findings/FindingPhotoManager";
 
 const CONDITIONS = ["good", "worn", "damaged", "failed", "needs_inspection", "unknown"];
 const ACTIONS = ["none", "inspect", "repair", "replace"];
@@ -16,9 +17,12 @@ const ACTIONS = ["none", "inspect", "repair", "replace"];
 export default function FindingEditor({ job, finding, onClose, onSaved }) {
   const [form, setForm] = useState(emptyForm(job, finding));
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState([]);
+  // Existing photos (loaded from backend for edit mode). null = loading, [] = ready.
+  const [existingPhotos, setExistingPhotos] = useState(finding ? null : []);
+  const [photoSlots, setPhotoSlots] = useState([]);
+  const [originalPhotoIds, setOriginalPhotoIds] = useState([]);
 
   const charge = roundMoney(
     (form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0) +
@@ -28,6 +32,22 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
   );
 
   useEffect(() => { setForm(f => ({ ...f, estimated_customer_charge: charge })); }, [charge]);
+
+  // Load existing photos (with signed URLs) when editing
+  useEffect(() => {
+    if (!finding) { setExistingPhotos([]); return; }
+    (async () => {
+      try {
+        const res = await base44.functions.invoke("getFindingPhotosAdmin", { finding_ids: [finding.id] });
+        const photos = res?.data?.photos || [];
+        setExistingPhotos(photos);
+        setOriginalPhotoIds(photos.map((p) => p.id));
+      } catch (e) {
+        console.error("load photos failed", e);
+        setExistingPhotos([]);
+      }
+    })();
+  }, [finding]);
 
   const searchParts = async (q) => {
     setPartSearch(q);
@@ -43,36 +63,93 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
     setPartResults([]); setPartSearch("");
   };
 
-  const uploadPhotos = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      const urls = [];
-      for (const file of files) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        if (file_url) urls.push(file_url);
-      }
-      setForm(f => ({ ...f, photos: [...(f.photos || []), ...urls] }));
-    } catch { toast.error("Upload failed"); }
-    finally { setUploading(false); e.target.value = ""; }
-  };
-
   const save = async () => {
     if (!form.component.trim()) { toast.error("Component is required"); return; }
     setSaving(true);
     try {
-      const payload = { ...form, estimated_customer_charge: charge, customer_engine_id: job.customer_engine_id || "" };
+      const payload = {
+        job_id: job.id,
+        customer_engine_id: job.customer_engine_id || "",
+        component: form.component.trim(),
+        condition: form.condition,
+        measurements: form.measurements,
+        notes: form.notes,
+        customer_description: form.customer_description,
+        recommended_action: form.recommended_action,
+        recommended_part_ids: form.recommended_part_ids,
+        labor_items: form.labor_items,
+        machining_items: form.machining_items,
+        outsourced_services: form.outsourced_services,
+        estimated_customer_charge: charge,
+        status: form.status || "open",
+        inspected_by: form.inspected_by || "",
+      };
+
+      let findingId = finding?.id;
       if (finding) {
         await base44.entities.TeardownFinding.update(finding.id, payload);
         toast.success("Finding updated");
       } else {
-        await base44.entities.TeardownFinding.create(payload);
+        const created = await base44.entities.TeardownFinding.create(payload);
+        findingId = created.id;
         toast.success("Finding logged");
       }
+
+      // Persist photos (skip any still uploading or failed)
+      await persistPhotos(findingId);
+
       onSaved();
     } catch (e) { toast.error("Save failed: " + e.message); }
     setSaving(false);
+  };
+
+  const persistPhotos = async (findingId) => {
+    if (!findingId) return;
+    const customerId = job.customer_id || "";
+    const engineId = job.customer_engine_id || "";
+    const currentExisting = photoSlots.filter((s) => s.id);
+    const newSlots = photoSlots.filter((s) => !s.id && s.file_uri && s._status === "uploaded");
+
+    // Update existing (caption/share/cover/order)
+    if (currentExisting.length > 0) {
+      try {
+        await base44.entities.FindingPhoto.bulkUpdate(
+          currentExisting.map((s) => ({
+            id: s.id,
+            caption: s.caption || "",
+            share_with_customer: !!s.share_with_customer,
+            is_cover: !!s.is_cover,
+            sort_order: Number(s.sort_order) || 0,
+          }))
+        );
+      } catch (e) { console.error("photo update failed", e); }
+    }
+
+    // Create new
+    if (newSlots.length > 0) {
+      try {
+        await base44.entities.FindingPhoto.bulkCreate(
+          newSlots.map((s, i) => ({
+            finding_id: findingId,
+            job_id: job.id,
+            customer_id: customerId,
+            customer_engine_id: engineId,
+            file_uri: s.file_uri,
+            caption: s.caption || "",
+            share_with_customer: !!s.share_with_customer,
+            is_cover: !!s.is_cover,
+            sort_order: Number(s.sort_order) || i,
+          }))
+        );
+      } catch (e) { console.error("photo create failed", e); }
+    }
+
+    // Delete removed existing photos
+    const currentIds = new Set(currentExisting.map((s) => s.id));
+    const deletedIds = originalPhotoIds.filter((id) => !currentIds.has(id));
+    for (const id of deletedIds) {
+      try { await base44.entities.FindingPhoto.delete(id); } catch (e) { /* ignore */ }
+    }
   };
 
   return (
@@ -88,23 +165,23 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
               </Select>
             </div>
           </div>
-          <div><Label>Measurements</Label><Textarea value={form.measurements} onChange={e => setForm(f => ({ ...f, measurements: e.target.value }))} rows={2} placeholder="Clearance, runout, wear limits…" /></div>
-          <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+          <div><Label>Measurements <span className="text-xs text-slate-400 font-normal">(private)</span></Label><Textarea value={form.measurements} onChange={e => setForm(f => ({ ...f, measurements: e.target.value }))} rows={2} placeholder="Clearance, runout, wear limits…" /></div>
+          <div><Label>Notes <span className="text-xs text-slate-400 font-normal">(private)</span></Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+          <div><Label>Customer-facing explanation <span className="text-xs text-slate-400 font-normal">(shown in portal & approval)</span></Label><Textarea value={form.customer_description} onChange={e => setForm(f => ({ ...f, customer_description: e.target.value }))} rows={2} placeholder="Plain-language summary the customer will see beside the photos" /></div>
+
           <div>
             <Label>Photos</Label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {(form.photos || []).map((url, i) => (
-                <div key={i} className="relative w-16 h-16 rounded overflow-hidden border">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => setForm(f => ({ ...f, photos: f.photos.filter((_, x) => x !== i) }))} className="absolute top-0 right-0 bg-black/60 text-white rounded-full w-4 h-4 flex items-center justify-center"><X className="w-2.5 h-2.5" /></button>
-                </div>
-              ))}
-              <label className="w-16 h-16 rounded border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-[#e20404]">
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400" />}
-                <Input type="file" accept="image/*" multiple className="hidden" onChange={uploadPhotos} disabled={uploading} />
-              </label>
-            </div>
+            {existingPhotos === null ? (
+              <div className="h-20 flex items-center justify-center text-sm text-slate-400">Loading photos…</div>
+            ) : (
+              <FindingPhotoManager
+                key={finding?.id || "new"}
+                existingPhotos={existingPhotos}
+                onChange={setPhotoSlots}
+              />
+            )}
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Recommended Action</Label>
               <Select value={form.recommended_action} onValueChange={v => setForm(f => ({ ...f, recommended_action: v }))}>
@@ -165,6 +242,6 @@ function ItemGroup({ label, items, onChange, withVendor }) {
 }
 function updateAt(onChange, list, i, patch) { onChange(list.map((x, x_i) => x_i === i ? { ...x, ...patch } : x)); }
 function emptyForm(job, finding) {
-  if (finding) return { ...finding, photos: finding.photos || [], recommended_part_ids: finding.recommended_part_ids || [], labor_items: finding.labor_items || [], machining_items: finding.machining_items || [], outsourced_services: finding.outsourced_services || [] };
-  return { job_id: job.id, component: "", condition: "needs_inspection", measurements: "", notes: "", photos: [], recommended_action: "none", recommended_part_ids: [], labor_items: [], machining_items: [], outsourced_services: [], estimated_customer_charge: 0, status: "open", inspected_by: "" };
+  if (finding) return { ...finding, customer_description: finding.customer_description || "", recommended_part_ids: finding.recommended_part_ids || [], labor_items: finding.labor_items || [], machining_items: finding.machining_items || [], outsourced_services: finding.outsourced_services || [] };
+  return { job_id: job.id, component: "", condition: "needs_inspection", measurements: "", notes: "", customer_description: "", recommended_action: "none", recommended_part_ids: [], labor_items: [], machining_items: [], outsourced_services: [], estimated_customer_charge: 0, status: "open", inspected_by: "" };
 }

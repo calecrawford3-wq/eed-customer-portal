@@ -143,7 +143,26 @@
         "canceled"
       ],
       "default": "pending",
-      "description": "pending = awaiting approval, approved = approved & applied, declined = rejected, canceled = withdrawn"
+      "description": "Shop-side status. pending = awaiting shop processing, approved = approved & applied to invoice, declined = rejected, canceled = withdrawn."
+    },
+    "customer_response": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "declined"
+      ],
+      "default": "pending",
+      "description": "Customer's response collected via the portal or public approval link. pending = not yet responded, approved = customer consented, declined = customer declined. The shop still applies the work via the admin Approve & Apply action."
+    },
+    "customer_response_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer last responded via the portal or public link"
+    },
+    "customer_note": {
+      "type": "string",
+      "description": "Customer's response note (approval or decline reason)"
     },
     "version": {
       "type": "number",
@@ -153,7 +172,6 @@
     "version_history": {
       "type": "array",
       "default": [],
-      "description": "Snapshots of each version with timestamp and reason",
       "items": {
         "type": "object",
         "properties": {
@@ -195,10 +213,6 @@
     "approved_by": {
       "type": "string"
     },
-    "customer_note": {
-      "type": "string",
-      "description": "Customer's response note (approval or decline reason)"
-    },
     "processed_at": {
       "type": "string",
       "format": "date-time",
@@ -224,7 +238,7 @@
     },
     "public_access_token": {
       "type": "string",
-      "description": "Token for customer portal approval of additional work"
+      "description": "Token for customer portal / public-link approval of additional work. Required to view the approval and its shared finding photos without an account."
     }
   },
   "required": [

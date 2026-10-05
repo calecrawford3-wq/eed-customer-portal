@@ -21,6 +21,7 @@ import BuildProgressModal from "@/components/portal/BuildProgressModal";
 import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
+import PortalFindingsSection from "@/components/portal/PortalFindingsSection";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -526,6 +527,7 @@ export default function CustomerPortal() {
             <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
             <TabsTrigger value="estimates">Estimates ({estimates.length})</TabsTrigger>
+            <TabsTrigger value="findings">Findings</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="tax">Tax Statement</TabsTrigger>
           </TabsList>
@@ -874,6 +876,11 @@ export default function CustomerPortal() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* ─── Findings (inspection photos & approvals) ─── */}
+          <TabsContent value="findings">
+            <PortalFindingsSection customer={customer} />
           </TabsContent>
 
           {/* ─── Credits ─── */}

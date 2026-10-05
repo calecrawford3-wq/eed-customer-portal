@@ -29,11 +29,15 @@
     },
     "measurements": {
       "type": "string",
-      "description": "Measured values and tolerances (clearance, runout, wear limits)"
+      "description": "Measured values and tolerances (clearance, runout, wear limits). Private \u2014 never shown to the customer."
     },
     "notes": {
       "type": "string",
-      "description": "Inspector observations and notes"
+      "description": "Inspector observations and notes. Private \u2014 never shown to the customer automatically."
+    },
+    "customer_description": {
+      "type": "string",
+      "description": "Customer-facing explanation of the finding, shown in the portal and approval viewer alongside shared photos. Separate from private notes/measurements. Falls back to a generic summary when empty."
     },
     "photos": {
       "type": "array",
@@ -41,7 +45,7 @@
         "type": "string"
       },
       "default": [],
-      "description": "Photo URLs of the component condition (visual damage reference)"
+      "description": "Legacy public photo URLs (deprecated \u2014 new photos live in FindingPhoto records with private storage and per-photo share controls). Kept for backward compatibility with existing findings."
     },
     "recommended_action": {
       "type": "string",

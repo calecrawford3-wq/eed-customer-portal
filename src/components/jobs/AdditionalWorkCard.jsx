@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, XCircle, Clock, Ban, Loader2, FileText } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Ban, Loader2, FileText, Link2, Eye } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
 
@@ -25,6 +25,12 @@ export default function AdditionalWorkCard({ aw, job, findings }) {
   const [note, setNote] = useState("");
 
   const includedFindings = (findings || []).filter(f => (aw.finding_ids || []).includes(f.id));
+
+  const copyLink = async () => {
+    const url = `${window.location.origin}/AdditionalWorkViewer/${aw.public_access_token}`;
+    try { await navigator.clipboard.writeText(url); toast.success("Approval link copied — paste into an email or text to the customer"); }
+    catch { toast.error("Copy failed"); }
+  };
 
   const act = async (action) => {
     setBusy(action);
@@ -67,6 +73,22 @@ export default function AdditionalWorkCard({ aw, job, findings }) {
           <span className="font-semibold text-slate-900">Total: {formatMoney(aw.total)}</span>
           {aw.version > 1 && <span>v{aw.version}</span>}
         </div>
+        {aw.customer_response && aw.customer_response !== "pending" && (
+          <div className={`flex items-center gap-1.5 text-xs pt-1 ${aw.customer_response === "approved" ? "text-blue-600" : "text-red-600"}`}>
+            {aw.customer_response === "approved" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+            Customer {aw.customer_response} this request{aw.customer_response_at ? ` on ${new Date(aw.customer_response_at).toLocaleDateString()}` : ""}
+          </div>
+        )}
+        {aw.public_access_token && (
+          <div className="flex items-center gap-2 pt-1">
+            <Button size="sm" variant="outline" onClick={copyLink} disabled={!!busy}>
+              <Link2 className="w-3.5 h-3.5" /> Copy Approval Link
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => window.open(`${window.location.origin}/AdditionalWorkViewer/${aw.public_access_token}`, "_blank")} disabled={!!busy}>
+              <Eye className="w-3.5 h-3.5" /> Preview
+            </Button>
+          </div>
+        )}
         {aw.status === "pending" && (
           <div className="flex gap-2 pt-1">
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => act("approve")} disabled={!!busy}>
