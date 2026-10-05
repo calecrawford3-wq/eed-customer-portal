@@ -134,10 +134,24 @@ export default function EngineCheckInModal({ open, onClose }) {
       } else if (linkType === "invoice" && linkInvoiceId) {
         try {
           await base44.entities.Invoice.update(linkInvoiceId, { customer_engine_id: created.id });
+          // Create a job so the checked-in engine appears on the Jobs board
+          await base44.functions.invoke("ensureJobForEngine", { customer_engine_id: created.id, invoice_id: linkInvoiceId });
           qc.invalidateQueries({ queryKey: ["invoices"] });
+          qc.invalidateQueries({ queryKey: ["jobs"] });
         } catch (e) {
           console.warn("Failed to link invoice:", e);
           toast.error("Engine checked in, but failed to link invoice: " + (e.message || e));
+        }
+      } else if (!isWarranty) {
+        // No estimate or invoice linked (and not a warranty build) — create a
+        // bare job so the checked-in engine appears in "Checked In — Needs
+        // Estimate" on the Jobs board
+        try {
+          await base44.functions.invoke("ensureJobForEngine", { customer_engine_id: created.id });
+          qc.invalidateQueries({ queryKey: ["jobs"] });
+        } catch (e) {
+          console.warn("Failed to create job for checked-in engine:", e);
+          toast.error("Engine checked in, but failed to create job: " + (e.message || e));
         }
       }
 
