@@ -47,6 +47,13 @@ export default function JobCard() {
   });
   const job = jobData?.[0];
 
+  // Auto-open the estimate prompt when a checked-in engine job loads with no estimate
+  useEffect(() => {
+    if (job && job.customer_engine_id && !job.estimate_id) {
+      setIntakeOpen(true);
+    }
+  }, [job?.id]);
+
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: () => base44.entities.Customer.list("-created_date", 200) });
   const { data: platforms = [] } = useQuery({ queryKey: ["platforms"], queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100) });
   const { data: engines = [] } = useQuery({ queryKey: ["customer-engines"], queryFn: () => base44.entities.CustomerEngine.list("-created_date", 200) });
@@ -212,6 +219,16 @@ export default function JobCard() {
         message="This permanently removes the job card. Linked estimates, invoices, and builds will remain but will no longer be associated with a job."
         confirmLabel={deleting ? "Deleting..." : "Delete Job"}
       />
+
+      {needsEstimate && (
+        <IntakeLinkDialog
+          job={job}
+          customer={customer}
+          open={intakeOpen}
+          onClose={() => setIntakeOpen(false)}
+          onLinked={() => { setIntakeOpen(false); qc.invalidateQueries({ queryKey: ["job", jobId] }); qc.invalidateQueries({ queryKey: ["jobs"] }); }}
+        />
+      )}
 
       <div className="px-4 md:px-8 mt-4">
         <Tabs value={activeTab} onValueChange={(v) => {

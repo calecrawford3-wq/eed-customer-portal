@@ -71,6 +71,7 @@ export default function EstimateDetail() {
   const prefillCustomerId = params.get("customer_id");
   const prefillBuildId = params.get("build_id");
   const prefillEngineId = params.get("customer_engine_id");
+  const prefillJobId = params.get("job_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState({ open: false });
@@ -315,6 +316,15 @@ export default function EstimateDetail() {
           publicAccessToken: variables.public_access_token,
         }).then(() => toast.success("Customer view updated — no need to resend"))
           .catch((e) => console.warn("Auto-sync to viewer failed:", e));
+      }
+      // Link this estimate to the job it was created from (checked-in engine flow)
+      if (isNew && prefillJobId && result?.id) {
+        base44.entities.Job.update(prefillJobId, { estimate_id: result.id })
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ["jobs"] });
+            qc.invalidateQueries({ queryKey: ["job", prefillJobId] });
+          })
+          .catch((e) => console.warn("Failed to link estimate to job:", e));
       }
       if (isNew) navigate(`/EstimateDetail?id=${result.id}`);
     },
