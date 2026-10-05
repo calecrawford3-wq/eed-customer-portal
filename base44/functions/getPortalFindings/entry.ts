@@ -27,9 +27,54 @@ export default async function(req) {
     }
 
     // Customer's jobs (findings always carry job_id, so this is the most reliable link)
-    const customerJobRes = await base44.asServiceRole.entities.Job.filter({ customer_id: customerId }, { limit: 500, fields: ['id'] });
-    const customerJobIds = (customerJobRes.items || customerJobRes || []).map((j: any) => j.id);
-    if (customerJobIds.length === 0) return Response.json({ findings: [], approvals: [] });
+    const customerJobRes = await base44.asServiceRole.entities.Job.filter(
+      { customer_id: customerId },
+      { limit: 500, fields: ['id', 'customer_engine_id', 'estimate_id', 'invoice_ids'] }
+    );
+    const customerJobs = (customerJobRes.items || customerJobRes || []);
+    const customerJobIds = customerJobs.map((j: any) => j.id);
+    if (customerJobIds.length === 0) return Response.json({ findings: [], approvals: [], engines: [], estimates: [], invoices: [] });
+
+    // Build job lookup for engine/estimate/invoice context
+    const jobMap: Record<string, any> = {};
+    for (const j of customerJobs) jobMap[j.id] = j;
+
+    // Fetch engines, estimates, invoices for grouping context
+    const engineIds = [...new Set(customerJobs.map((j: any) => j.customer_engine_id).filter(Boolean))];
+    const estimateIds = [...new Set(customerJobs.map((j: any) => j.estimate_id).filter(Boolean))];
+    const invoiceIds = [...new Set(customerJobs.flatMap((j: any) => j.invoice_ids || []).filter(Boolean))];
+
+    let engines: any[] = [];
+    let estimates: any[] = [];
+    let invoices: any[] = [];
+
+    if (engineIds.length > 0) {
+      const eRes = await base44.asServiceRole.entities.CustomerEngine.filter(
+        { id: { $in: engineIds } },
+        { limit: 500, fields: ['id', 'eed_id', 'engine_serial_number', 'platform_id'] }
+      );
+      engines = (eRes.items || eRes || []).map((e: any) => ({
+        id: e.id, eed_id: e.eed_id || '', engine_serial_number: e.engine_serial_number || '', platform_id: e.platform_id || '',
+      }));
+    }
+    if (estimateIds.length > 0) {
+      const estRes = await base44.asServiceRole.entities.Estimate.filter(
+        { id: { $in: estimateIds } },
+        { limit: 500, fields: ['id', 'estimate_number', 'issue_date'] }
+      );
+      estimates = (estRes.items || estRes || []).map((e: any) => ({
+        id: e.id, estimate_number: e.estimate_number || '', issue_date: e.issue_date || '',
+      }));
+    }
+    if (invoiceIds.length > 0) {
+      const invRes = await base44.asServiceRole.entities.Invoice.filter(
+        { id: { $in: invoiceIds } },
+        { limit: 500, fields: ['id', 'invoice_number', 'issue_date'] }
+      );
+      invoices = (invRes.items || invRes || []).map((i: any) => ({
+        id: i.id, invoice_number: i.invoice_number || '', issue_date: i.issue_date || '',
+      }));
+    }
 
     // Findings for those jobs
     const fRes = await base44.asServiceRole.entities.TeardownFinding.filter(
@@ -70,7 +115,15 @@ export default async function(req) {
       photos: photosByFinding[f.id] || [],
     }));
 
-    return Response.json({ findings: findingsOut, approvals });
+    // Return job context so the portal can group findings by engine → estimate/invoice
+    const jobsOut = customerJobs.map((j: any) => ({
+      id: j.id,
+      customer_engine_id: j.customer_engine_id || '',
+      estimate_id: j.estimate_id || '',
+      invoice_ids: j.invoice_ids || [],
+    }));
+
+    return Response.json({ findings: findingsOut, approvals, engines, estimates, invoices, jobs: jobsOut });
   } catch (error) {
     console.error('[getPortalFindings] error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
