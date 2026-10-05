@@ -43,13 +43,19 @@ Deno.serve(async (req) => {
 
         const signupUrl = `https://portal.eedpower.com/login`;
 
-        const text = `Hello ${customerName},\n\nYou've been invited to access the ${companyName} customer portal. Visit the link below and sign up using this email address (${customerEmail}):\n\n${signupUrl}\n\nOnce you create your account, you'll automatically have access to your engine builds, invoices, estimates, and more.\n\nIf you have any questions, please let us know.\n\n${signature}`;
+        const text = `Hello ${customerName},\n\nYou've been invited to access the ${companyName} customer portal. Follow these steps to create your account and log in:\n\n1. Go to the login page: ${signupUrl}\n\n2. Click "Sign up" (or "Create account") — you don't have an account yet.\n\n3. Enter this email address (${customerEmail}) and choose a password.\n\n4. Check your inbox for a verification email and click the link inside to verify your address.\n\n5. Once verified, sign in at ${signupUrl} using your email and password.\n\nYou'll then see your engine builds, invoices, estimates, inspection findings, and documents — all tied to this email address automatically.\n\nIf you have any questions, please let us know.\n\n${signature}`;
 
         const html = `
           <p>Hello ${customerName},</p>
-          <p>You've been invited to access the ${companyName} customer portal. Visit the link below and sign up using this email address (<strong>${customerEmail}</strong>):</p>
-          <p><a href="${signupUrl}">${signupUrl}</a></p>
-          <p>Once you create your account, you'll automatically have access to your engine builds, invoices, estimates, and more.</p>
+          <p>You've been invited to access the ${companyName} customer portal. Follow these steps to create your account and log in:</p>
+          <ol style="margin:0 0 16px 0;padding-left:20px;line-height:1.7;">
+            <li>Go to the login page: <a href="${signupUrl}">${signupUrl}</a></li>
+            <li>Click <strong>"Sign up"</strong> (or "Create account") — you don't have an account yet.</li>
+            <li>Enter this email address (<strong>${customerEmail}</strong>) and choose a password.</li>
+            <li>Check your inbox for a verification email and click the link inside to verify your address.</li>
+            <li>Once verified, sign in at <a href="${signupUrl}">${signupUrl}</a> using your email and password.</li>
+          </ol>
+          <p>You'll then see your engine builds, invoices, estimates, inspection findings, and documents — all tied to this email address automatically.</p>
           <p>If you have any questions, please let us know.</p>
           <p>${signature.replace(/\n/g, "<br/>")}</p>
         `;
