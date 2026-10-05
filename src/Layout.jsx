@@ -1,82 +1,27 @@
 import React, { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import {
-  Gauge,
-  FileText,
-  Layers,
-  Wrench,
-  FolderOpen,
   ChevronLeft,
   ChevronRight,
-  Users,
-  Receipt,
-  ClipboardList,
-  Package,
-  Truck,
-  ShoppingCart,
   ScanLine,
-  ListChecks,
-  Settings2,
-  Sparkles,
-  DollarSign,
-  TrendingDown,
-  BarChart2,
-  RefreshCw,
-  Award,
-  LifeBuoy,
-  Calendar,
-  MessageSquare,
-  Mail,
   Menu,
   X,
-  ClipboardCheck,
-  FlaskConical,
-  Boxes,
-  Briefcase,
-  ShieldCheck,
-  ChevronDown,
-  Monitor,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import GlobalSearch from "@/components/GlobalSearch";
 import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
-import { Search } from "lucide-react";
+import NavSidebar from "@/components/NavSidebar";
 
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('nav-collapsed-groups') || '{}'); } catch { return {}; }
-  });
-  const toggleGroup = (label) => {
-    setCollapsedGroups(prev => {
-      const next = { ...prev, [label]: !prev[label] };
-      try { localStorage.setItem('nav-collapsed-groups', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-
   // Register push notification service worker globally on all admin pages
   usePushNotifications();
-
-  const { data: refreshRequests = [] } = useQuery({
-    queryKey: ["refreshRequests"],
-    queryFn: () => base44.entities.RefreshRequest.list("-created_date", 50),
-  });
-  const pendingRefreshCount = refreshRequests.filter(r => r.status === "pending").length;
-
-  const { data: messages = [] } = useQuery({
-    queryKey: ["messages-unread-count"],
-    queryFn: () => base44.entities.Message.list("-sent_at", 500),
-    refetchInterval: 30000,
-  });
-  const unreadMessageCount = messages.filter(m => !m.is_read && m.direction === "inbound").length;
 
   // On the Build Workflow page the nav sidebar is hidden on desktop and revealed on hover.
   const isWorkflow = currentPageName === "BuildWorkflow" || currentPageName === "MachiningStation";
@@ -86,78 +31,6 @@ export default function Layout({ children, currentPageName }) {
   const leaveSidebar = () => { hoverTimerRef.current = setTimeout(() => setSidebarHovered(false), 250); };
 
 
-
-  const navGroups = [
-    {
-      label: "Today",
-      items: [
-        { name: "Work Queue", page: "Dashboard", icon: Gauge },
-        { name: "Exceptions", page: "ExceptionDashboard", icon: ShieldCheck },
-        { name: "Calendar", page: "Calendar", icon: Calendar },
-        { name: "Shop Display", page: "ShopDisplay", icon: Monitor },
-      ],
-    },
-    {
-      label: "Jobs",
-      items: [
-        { name: "All Jobs", page: "Jobs", icon: Briefcase },
-        { name: "Estimates", page: "Estimates", icon: ClipboardList },
-        { name: "Approvals", page: "Approvals", icon: ClipboardCheck },
-        { name: "Build Workflow", page: "BuildWorkflow", icon: ListChecks },
-        { name: "Machining Station", page: "MachiningStation", icon: Wrench },
-        { name: "Invoices", page: "Invoices", icon: Receipt },
-        { name: "Documents", page: "Documents", icon: FolderOpen },
-      ],
-    },
-    {
-      label: "Customers & Engines",
-      items: [
-        { name: "Customers", page: "Customers", icon: Users },
-        { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
-        { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: true },
-      ],
-    },
-    {
-      label: "Inventory & Purchasing",
-      items: [
-        { name: "Inventory", page: "Inventory", icon: Package },
-        { name: "Suppliers", page: "Suppliers", icon: Truck },
-        { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
-      ],
-    },
-    {
-      label: "Finance",
-      items: [
-        { name: "Payments", page: "Payments", icon: DollarSign },
-        { name: "Expenses", page: "Expenses", icon: TrendingDown },
-        { name: "Credits", page: "Credits", icon: Award },
-        { name: "Reports", page: "Reports", icon: BarChart2 },
-      ],
-    },
-    {
-      label: "Communications",
-      items: [
-        { name: "Inbox", page: "Communications", icon: MessageSquare, badge: true },
-      ],
-    },
-    {
-      label: "Development",
-      items: [
-        { name: "R&D Developer", page: "RnDEngineDeveloper", icon: FlaskConical },
-      ],
-    },
-    {
-      label: "Settings",
-      items: [
-        { name: "Settings", page: "Settings", icon: Settings2 },
-        { name: "Platforms", page: "Platforms", icon: Layers },
-        { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-        { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
-        { name: "Addons", page: "Addons", icon: Sparkles },
-        { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
-      ],
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
@@ -203,68 +76,11 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-3 px-3 overflow-y-auto">
-          {navGroups.map((group, gIdx) => {
-            const showHeader = !collapsed;
-            const isGroupCollapsed = !!collapsedGroups[group.label];
-            return (
-              <div key={gIdx} className="mb-1">
-                {showHeader && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    <span>{group.label}</span>
-                    <ChevronDown className={cn("w-3 h-3 transition-transform", isGroupCollapsed && "-rotate-90")} />
-                  </button>
-                )}
-                {(!isGroupCollapsed || !showHeader) && (
-                <div className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const isActive = currentPageName === item.page;
-                    return (
-                      <Link
-                        key={item.page}
-                        to={createPageUrl(item.page)}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                          isActive
-                            ? "bg-[#e20404] text-white font-medium"
-                            : "text-slate-400 hover:text-white hover:bg-slate-800"
-                        )}
-                      >
-                        <item.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                        {!collapsed && <span className="text-sm flex-1">{item.name}</span>}
-                        {!collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                            {pendingRefreshCount}
-                          </span>
-                        )}
-                        {collapsed && item.badge && item.page === "RefreshRequests" && pendingRefreshCount > 0 && (
-                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                            {pendingRefreshCount}
-                          </span>
-                        )}
-                        {!collapsed && item.badge && item.page === "Communications" && unreadMessageCount > 0 && (
-                          <span className="bg-[#e20404] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                            {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
-                          </span>
-                        )}
-                        {collapsed && item.badge && item.page === "Communications" && unreadMessageCount > 0 && (
-                          <span className="absolute top-1 right-1 bg-[#e20404] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+        <NavSidebar
+          currentPageName={currentPageName}
+          collapsed={collapsed}
+          onNavigate={() => setMobileOpen(false)}
+        />
 
         {/* Collapse Button */}
         <div className="p-3 border-t border-slate-800 hidden md:block">
