@@ -20,7 +20,8 @@ import JobCommsTab from "@/components/jobs/JobCommsTab";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
 import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
-import { BookOpen } from "lucide-react";
+import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
+import { BookOpen, ClipboardList } from "lucide-react";
 
 export default function JobCard() {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export default function JobCard() {
   const [printBuildBook, setPrintBuildBook] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
   const planMachining = searchParams.get("plan") === "1";
@@ -139,8 +141,11 @@ export default function JobCard() {
         <h3 className="text-lg font-medium text-slate-900">Job not found</h3>
         <Link to="/Jobs"><Button variant="outline" className="mt-4">Back to Jobs</Button></Link>
       </div>
-    );
+  );
   }
+
+  // Checked-in engine with no estimate — prompt to create/link one
+  const needsEstimate = job.customer_engine_id && !job.estimate_id;
 
   return (
     <div className="pb-8">
@@ -180,6 +185,23 @@ export default function JobCard() {
           </Button>
         </div>
       </div>
+      {needsEstimate && (
+        <div className="mx-4 md:mx-8 mt-4 bg-gradient-to-r from-amber-50 to-red-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 print:hidden">
+          <div className="flex items-center gap-3 flex-1">
+            <ClipboardList className="w-8 h-8 text-[#e20404] flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-slate-900">No estimate linked to this engine</p>
+              <p className="text-sm text-slate-600">Create or link an estimate to start the workflow for this checked-in engine.</p>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setIntakeOpen(true)}>
+              <ClipboardList className="w-4 h-4 mr-1" /> Create Estimate
+            </Button>
+          </div>
+        </div>
+      )}
+
       <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} invoices={invoiceList} estimate={estimate} build={build} />
 
       <ConfirmDialog
