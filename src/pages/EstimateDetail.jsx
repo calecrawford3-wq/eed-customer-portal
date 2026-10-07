@@ -53,7 +53,7 @@ const COMPARISON_VIEWER_BASE = "https://billing.eedpower.com/comparison";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
-const emptyMachining = { name: "", description: "", price: 0, cost_type: "unspecified", actual_cost: null, vendor: "" };
+const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_type: "unspecified", actual_cost: null, vendor: "" };
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const STATUS_BADGE = {
@@ -333,7 +333,7 @@ export default function EstimateDetail() {
   const recalc = (lineItems, laborItems, machiningItems, taxRate, discountType = "none", discountValue = 0, shippingCost, addons = form.addons || []) => {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
-    const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
+    const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
     const selectedAddonTotal = (addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected').reduce((s, a) => s + (Number(a.price) || 0), 0);
     const subtotal = partTotal + laborTotal + machiningTotal + selectedAddonTotal;
     const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only

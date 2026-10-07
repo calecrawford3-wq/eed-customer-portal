@@ -10,7 +10,7 @@ export default function EstimateTotals({ form, customer, setForm, updateTaxRate,
       <div className="w-full sm:w-72 space-y-2 text-sm">
         <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
         <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
-        <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0).toFixed(2)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0).toFixed(2)}</span></div>
         {(() => {
           const selAddons = (form.addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected');
           if (selAddons.length === 0) return null;

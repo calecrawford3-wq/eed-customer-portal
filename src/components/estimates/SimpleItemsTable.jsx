@@ -35,7 +35,9 @@ export default function SimpleItemsTable({
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
                   <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                  {isMachining && <th className="text-right py-2 font-medium text-slate-600 w-20">Qty</th>}
                   <th className="text-right py-2 font-medium text-slate-600 w-28">Price</th>
+                  {isMachining && <th className="text-right py-2 font-medium text-slate-600 w-28">Total</th>}
                   {isMachining && <th className="text-left py-2 font-medium text-slate-600 w-36">Cost Type</th>}
                   {isMachining && <th className="text-right py-2 font-medium text-slate-600 w-28">Actual Cost</th>}
                   <th className="w-10"></th>
@@ -53,7 +55,13 @@ export default function SimpleItemsTable({
                         </div>
                       </td>
                       <td className="py-2 pr-2"><Input value={item.description} onChange={e => onUpdate(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
+                      {isMachining && (
+                        <td className="py-2 px-1"><Input type="number" value={item.quantity ?? 1} onChange={e => onUpdate(idx, "quantity", Number(e.target.value) || 1)} className="text-right border-slate-200" min="1" step="1" /></td>
+                      )}
                       <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => onUpdate(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
+                      {isMachining && (
+                        <td className="py-2 px-1 text-right text-sm font-medium text-slate-700">${((Number(item.price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}</td>
+                      )}
                       {isMachining && (
                         <td className="py-2 px-1">
                           <Select value={ct} onValueChange={v => onUpdate(idx, "cost_type", v)}>

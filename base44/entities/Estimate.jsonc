@@ -236,7 +236,13 @@
             "type": "string"
           },
           "price": {
-            "type": "number"
+            "type": "number",
+            "description": "Per-unit customer price for this machining operation"
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1,
+            "description": "Number of units of this machining operation. Line total = price x quantity."
           },
           "cost_type": {
             "type": "string",
