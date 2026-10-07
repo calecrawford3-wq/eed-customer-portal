@@ -38,7 +38,7 @@ function SectionedItems({ invoice }) {
         const sectionSubtotal =
           s.parts.reduce((sum, l) => sum + (Number(l.total) || 0), 0) +
           s.labor.reduce((sum, l) => sum + (Number(l.price) || 0), 0) +
-          s.machining.reduce((sum, m) => sum + (Number(m.price) || 0), 0);
+          s.machining.reduce((sum, m) => sum + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
         return (
           <React.Fragment key={key}>
             <tr className="inv-section-row">
@@ -66,14 +66,18 @@ function SectionedItems({ invoice }) {
             {s.machining.length > 0 && (
               <tr className="inv-section-row"><td colSpan={4} style={{ fontSize: "9px" }}>Machining</td></tr>
             )}
-            {s.machining.map((item, idx) => (
-              <tr key={`m-${key}-${idx}`}>
-                <td>{item.name} {item.description && `— ${item.description}`}</td>
-                <td className="inv-center">1</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-                <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-              </tr>
-            ))}
+            {s.machining.map((item, idx) => {
+              const qty = Number(item.quantity) || 1;
+              const lineTotal = (Number(item.price) || 0) * qty;
+              return (
+                <tr key={`m-${key}-${idx}`}>
+                  <td>{item.name} {item.description && `— ${item.description}`}</td>
+                  <td className="inv-center">{qty}</td>
+                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                  <td className="inv-right">${lineTotal.toFixed(2)}</td>
+                </tr>
+              );
+            })}
             <tr className="inv-section-subtotal">
               <td colSpan={3} style={{ textAlign: "right", fontWeight: "bold", fontSize: "10px", color: "#666", borderTop: "1px solid #eee", paddingTop: "2px" }}>{key} Subtotal</td>
               <td className="inv-right" style={{ fontWeight: "bold", fontSize: "10px", color: "#666", borderTop: "1px solid #eee", paddingTop: "2px" }}>${sectionSubtotal.toFixed(2)}</td>
@@ -183,14 +187,18 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
                   <td colSpan={4}>Machining</td>
                 </tr>
               )}
-              {(invoice.machining_items || []).map((item, idx) => (
-                <tr key={`machining-${idx}`}>
-                  <td>{item.name} {item.description && `— ${item.description}`}</td>
-                  <td className="inv-center">1</td>
-                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-                  <td className="inv-right">${Number(item.price).toFixed(2)}</td>
-                </tr>
-              ))}
+              {(invoice.machining_items || []).map((item, idx) => {
+                const qty = Number(item.quantity) || 1;
+                const lineTotal = (Number(item.price) || 0) * qty;
+                return (
+                  <tr key={`machining-${idx}`}>
+                    <td>{item.name} {item.description && `— ${item.description}`}</td>
+                    <td className="inv-center">{qty}</td>
+                    <td className="inv-right">${Number(item.price).toFixed(2)}</td>
+                    <td className="inv-right">${lineTotal.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
             </>
           )}
         </tbody>

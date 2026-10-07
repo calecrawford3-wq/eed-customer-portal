@@ -42,7 +42,7 @@ export default async function(req: Request): Promise<Response> {
     // Recalculate totals including selected addons
     const partTotal = (est.line_items || []).reduce((s: number, l: any) => s + (Number(l.total) || 0), 0);
     const laborTotal = (est.labor_items || []).reduce((s: number, l: any) => s + (Number(l.price) || 0), 0);
-    const machiningTotal = (est.machining_items || []).reduce((s: number, m: any) => s + (Number(m.price) || 0), 0);
+    const machiningTotal = (est.machining_items || []).reduce((s: number, m: any) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
     const addonTotal = addons
       .filter((a: any) => a.selection_state === 'preselected' || a.selection_state === 'customer_selected')
       .reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);

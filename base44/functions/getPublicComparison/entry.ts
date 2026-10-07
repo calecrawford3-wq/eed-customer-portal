@@ -64,6 +64,7 @@ export default async function(req: Request): Promise<Response> {
         name: mi.name,
         description: mi.description,
         price: mi.price,
+        quantity: mi.quantity || 1,
       })),
       subtotal: est.subtotal,
       tax_rate: est.tax_rate,

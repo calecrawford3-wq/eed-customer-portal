@@ -26,7 +26,7 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
 
   const charge = roundMoney(
     (form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0) +
-    (form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0), 0) +
+    (form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0) +
     (form.outsourced_services || []).reduce((s, o) => s + (Number(o.price) || 0), 0) +
     (form.recommended_part_ids || []).reduce((s, p) => s + (Number(p.unit_price || 0) * (Number(p.quantity) || 1), 0), 0)
   );

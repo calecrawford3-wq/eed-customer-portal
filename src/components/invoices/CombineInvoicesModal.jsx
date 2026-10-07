@@ -114,7 +114,7 @@ export default function CombineInvoicesModal({ open, onClose }) {
 
       const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
       const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
-      const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
+      const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
       const subtotal = partTotal + laborTotal + machiningTotal;
       const taxRate = customer?.tax_exempt ? 0 : (selectedInvoices[0].tax_rate || 0);
       const taxAmount = partTotal * (Number(taxRate) / 100);

@@ -155,7 +155,7 @@ function computeQuoted(estimate, additionalWorks) {
   // Machining revenue
   let machiningRevenue = 0;
   for (const m of (estimate.machining_items || [])) {
-    machiningRevenue += Number(m.price) || 0;
+    machiningRevenue += (Number(m.price) || 0) * (Number(m.quantity) || 1);
   }
 
   // Addons (selected)
@@ -168,7 +168,7 @@ function computeQuoted(estimate, additionalWorks) {
       laborRevenue += Number(lab.price) || 0;
     }
     for (const m of (addon.machining_items || [])) {
-      machiningRevenue += Number(m.price) || 0;
+      machiningRevenue += (Number(m.price) || 0) * (Number(m.quantity) || 1);
     }
   }
 
@@ -187,7 +187,7 @@ function computeQuoted(estimate, additionalWorks) {
       awLaborRevenue += Number(lab.price) || 0;
     }
     for (const m of (aw.machining_items || [])) {
-      awMachiningRevenue += Number(m.price) || 0;
+      awMachiningRevenue += (Number(m.price) || 0) * (Number(m.quantity) || 1);
     }
     for (const os of (aw.outsourced_services || [])) {
       awMachiningRevenue += Number(os.price) || 0;
@@ -239,7 +239,7 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
       laborRevenue += Number(lab.price) || 0;
     }
     for (const m of (inv.machining_items || [])) {
-      machiningRevenue += Number(m.price) || 0;
+      machiningRevenue += (Number(m.price) || 0) * (Number(m.quantity) || 1);
       machiningItems.push(m);
     }
     discount += Number(inv.discount_amount) || 0;

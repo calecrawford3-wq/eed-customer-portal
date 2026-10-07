@@ -127,7 +127,7 @@ export default async function(req) {
 
     const partsTotal = newLineItems.reduce((s, li) => s + (Number(li.total) || 0), 0);
     const laborTotal = newLaborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
-    const machTotal = newMachiningItems.reduce((s, m) => s + (Number(m.price) || 0), 0);
+    const machTotal = newMachiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
     const addedSubtotal = round2(partsTotal + laborTotal + machTotal);
 
     if (invoice) {
@@ -136,7 +136,7 @@ export default async function(req) {
       const machining_items = [...(invoice.machining_items || []), ...newMachiningItems];
       const allParts = line_items.reduce((s, li) => s + (Number(li.total) || 0), 0);
       const allLabor = labor_items.reduce((s, l) => s + (Number(l.price) || 0), 0);
-      const allMach = machining_items.reduce((s, m) => s + (Number(m.price) || 0), 0);
+      const allMach = machining_items.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
       const subtotal = round2(allParts + allLabor + allMach);
       const taxRate = Number(invoice.tax_rate) || 0;
       const taxAmount = round2(subtotal * taxRate / 100);
@@ -219,7 +219,7 @@ export default async function(req) {
           status: 'pending',
           billable: true,
           customer_description: m.name,
-          quantity: 1,
+          quantity: Number(m.quantity) || 1,
           customer_price: Number(m.price) || 0,
           cost_type: m.cost_type || 'unspecified',
           vendor: m.vendor || '',

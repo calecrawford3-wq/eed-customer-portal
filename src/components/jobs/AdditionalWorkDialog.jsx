@@ -98,13 +98,13 @@ function aggregate(findings) {
       else { partMap.set(key, { part_id: p.part_id || "", part_number: p.part_number || "", item_name: p.name || "", quantity: Number(p.quantity) || 1, unit_cost: 0, unit_price: Number(p.unit_price) || 0, total: roundMoney((Number(p.unit_price) || 0) * (Number(p.quantity) || 1)) }); }
     }
     for (const l of (f.labor_items || [])) laborItems.push({ name: l.name, description: `${f.component}: ${l.description || ""}`, price: Number(l.price) || 0 });
-    for (const m of (f.machining_items || [])) machiningItems.push({ name: m.name, description: `${f.component}: ${m.description || ""}`, price: Number(m.price) || 0 });
+    for (const m of (f.machining_items || [])) machiningItems.push({ name: m.name, description: `${f.component}: ${m.description || ""}`, price: Number(m.price) || 0, quantity: Number(m.quantity) || 1 });
     for (const o of (f.outsourced_services || [])) outsourceItems.push({ name: o.name, vendor: o.vendor || "", description: `${f.component}: ${o.description || ""}`, price: Number(o.price) || 0 });
   }
   const lineItems = [...partMap.values()];
   const partsTotal = lineItems.reduce((s, li) => s + li.total, 0);
   const laborTotal = laborItems.reduce((s, l) => s + l.price, 0);
-  const machTotal = machiningItems.reduce((s, m) => s + m.price, 0);
+  const machTotal = machiningItems.reduce((s, m) => s + m.price * (Number(m.quantity) || 1), 0);
   const outsourceTotal = outsourceItems.reduce((s, o) => s + o.price, 0);
   return { lineItems, laborItems, machiningItems, outsourceItems, partsTotal: roundMoney(partsTotal), laborTotal: roundMoney(laborTotal), machTotal: roundMoney(machTotal), outsourceTotal: roundMoney(outsourceTotal) };
 }

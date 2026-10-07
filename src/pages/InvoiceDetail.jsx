@@ -1242,7 +1242,9 @@ export default function InvoiceDetail() {
                     <th className="text-left py-2 font-medium text-slate-600 w-40">Name</th>
                     {form.is_combined && <th className="text-left py-2 font-medium text-slate-600 w-32">Engine</th>}
                     <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-20">Qty</th>
                     <th className="text-right py-2 font-medium text-slate-600 w-24">Price</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-28">Total</th>
                     <th className="text-left py-2 font-medium text-slate-600 w-36">Cost Type</th>
                     <th className="text-right py-2 font-medium text-slate-600 w-28">Actual Cost</th>
                     <th className="w-10"></th>
@@ -1261,7 +1263,9 @@ export default function InvoiceDetail() {
                         </td>
                         {form.is_combined && <td className="py-2 pr-2"><Input value={item.engine_section || ""} onChange={e => updateMachining(idx, "engine_section", e.target.value)} placeholder="e.g. EED 1040" className="border-slate-200 text-xs" /></td>}
                         <td className="py-2 pr-2"><Input value={item.description} onChange={e => updateMachining(idx, "description", e.target.value)} placeholder="Description..." className="border-slate-200" /></td>
+                        <td className="py-2 px-1"><Input type="number" value={item.quantity ?? 1} onChange={e => updateMachining(idx, "quantity", Number(e.target.value) || 1)} className="text-right border-slate-200" min="1" step="1" /></td>
                         <td className="py-2 px-1"><Input type="number" value={item.price} onChange={e => updateMachining(idx, "price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" /></td>
+                        <td className="py-2 px-1 text-right text-sm font-medium text-slate-700">${((Number(item.price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}</td>
                         <td className="py-2 px-1">
                           <Select value={ct} onValueChange={v => updateMachining(idx, "cost_type", v)}>
                             <SelectTrigger className="h-8 text-xs border-slate-200"><SelectValue /></SelectTrigger>

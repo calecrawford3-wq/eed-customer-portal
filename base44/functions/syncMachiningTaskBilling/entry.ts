@@ -134,7 +134,8 @@ export default async function(req) {
           uid: chargeKey,
           name: t.customer_description || t.task_label || t.affected_component || "Machining",
           description: t.customer_description || "",
-          price: round2(Number(t.customer_price) || 0) * (Number(t.quantity) || 1),
+          price: round2(Number(t.customer_price) || 0),
+          quantity: Number(t.quantity) || 1,
           cost_type: t.cost_type || "unspecified",
           vendor: t.vendor || "",
           actual_cost: t.actual_cost != null ? Number(t.actual_cost) : null,
@@ -159,7 +160,7 @@ export default async function(req) {
       const labor_items = invoice.labor_items || [];
       const allParts = line_items.reduce((s, li) => s + (Number(li.total) || 0), 0);
       const allLabor = labor_items.reduce((s, l) => s + (Number(l.price) || 0), 0);
-      const allMach = machining_items.reduce((s, m) => s + (Number(m.price) || 0), 0);
+      const allMach = machining_items.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
       const subtotal = round2(allParts + allLabor + allMach);
       const taxRate = Number(invoice.tax_rate) || 0;
       const taxAmount = round2(subtotal * taxRate / 100);

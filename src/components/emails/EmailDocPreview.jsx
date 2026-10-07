@@ -70,7 +70,7 @@ export default function EmailDocPreview({ open, onClose, doc, docType }) {
               <Row label="Balance due" value={money(doc.balance_due ?? doc.amount_due)} />
               <LineItems items={doc.line_items} />
               <LineItems items={(doc.labor_items || []).map((l) => ({ ...l, total: l.price }))} />
-              <LineItems items={(doc.machining_items || []).map((m) => ({ ...m, total: m.price }))} />
+              <LineItems items={(doc.machining_items || []).map((m) => ({ ...m, total: (Number(m.price) || 0) * (Number(m.quantity) || 1), quantity: m.quantity || 1 }))} />
             </>
           )}
           {docType === "estimate" && (
@@ -84,7 +84,7 @@ export default function EmailDocPreview({ open, onClose, doc, docType }) {
               <Row label="Amount due" value={money(doc.amount_due)} />
               <LineItems items={doc.line_items} />
               <LineItems items={(doc.labor_items || []).map((l) => ({ ...l, total: l.price }))} />
-              <LineItems items={(doc.machining_items || []).map((m) => ({ ...m, total: m.price }))} />
+              <LineItems items={(doc.machining_items || []).map((m) => ({ ...m, total: (Number(m.price) || 0) * (Number(m.quantity) || 1), quantity: m.quantity || 1 }))} />
             </>
           )}
           {docType === "purchase_order" && (

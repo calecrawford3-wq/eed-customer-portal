@@ -71,7 +71,7 @@ export default function AddonPickerModal({ open, onClose, onAdd }) {
       return { name: item.name || "", description: item.description || "", price: inv ? (Number(inv.price) || 0) : 0 };
     });
 
-    const sum = lineItems.reduce((s, l) => s + l.total, 0) + laborItems.reduce((s, l) => s + l.price, 0) + machiningItems.reduce((s, m) => s + m.price, 0);
+    const sum = lineItems.reduce((s, l) => s + l.total, 0) + laborItems.reduce((s, l) => s + l.price, 0) + machiningItems.reduce((s, m) => s + m.price * (Number(m.quantity) || 1), 0);
     const price = (addon.price_override != null && addon.price_override !== "" && !isNaN(Number(addon.price_override)))
       ? Number(addon.price_override)
       : sum;
