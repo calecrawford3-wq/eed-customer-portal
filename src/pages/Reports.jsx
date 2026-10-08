@@ -71,9 +71,7 @@ export default function Reports() {
   }, [year, invoices, expenses]);
 
   // --- Sales Tax Report ---
-  const taxCollected = yearInvoices.reduce((s, i) => s + (i.tax_amount || 0), 0);
   const taxPaid = yearExpenses.reduce((s, e) => s + (e.tax_amount || 0), 0);
-  const netTaxOwed = taxCollected - taxPaid;
 
   // An invoice is tax-exempt when its customer is flagged tax_exempt, or it has no tax
   // (tax_rate 0 AND tax_amount 0). Void invoices are excluded from sales totals.
@@ -83,7 +81,10 @@ export default function Reports() {
     if (cust?.tax_exempt) return true;
     return (!inv.tax_rate || inv.tax_rate === 0) && (!inv.tax_amount || inv.tax_amount === 0);
   };
+  // Only fully paid invoices count toward sales and tax collected.
   const salesInvoices = yearInvoices.filter(i => i.status === "paid");
+  const taxCollected = salesInvoices.reduce((s, i) => s + (i.tax_amount || 0), 0);
+  const netTaxOwed = taxCollected - taxPaid;
   const totalSales = salesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
   const taxableSalesInvoices = salesInvoices.filter(i => !isInvoiceTaxExempt(i));
   const exemptSalesInvoices = salesInvoices.filter(i => isInvoiceTaxExempt(i));
@@ -102,16 +103,13 @@ export default function Reports() {
       const k = getMonthKey(i.issue_date);
       if (k && map[k]) {
         map[k].sales += (i.subtotal || 0);
+        map[k].collected += (i.tax_amount || 0);
         if (isInvoiceTaxExempt(i)) map[k].exemptSales += (i.subtotal || 0);
       }
     });
     yearExpenses.forEach(e => {
       const k = getMonthKey(e.date);
       if (k && map[k]) map[k].paid += (e.tax_amount || 0);
-    });
-    yearInvoices.forEach(i => {
-      const k = getMonthKey(i.issue_date);
-      if (k && map[k]) map[k].collected += (i.tax_amount || 0);
     });
     return Object.values(map).map(d => ({ ...d, net: d.collected - d.paid, taxableSales: d.sales - d.exemptSales }));
   }, [year, invoices, expenses, customers]);
