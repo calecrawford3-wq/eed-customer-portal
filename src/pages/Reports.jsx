@@ -28,6 +28,7 @@ export default function Reports() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(String(currentYear));
   const [tab, setTab] = useState("pnl");
+  const [taxView, setTaxView] = useState("all"); // all | taxable | exempt
 
   const { data: invoices = [] } = useQuery({ queryKey: ["invoices"], queryFn: () => base44.entities.Invoice.list("-created_date", 1000) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => base44.entities.Expense.list("-date", 1000) });
@@ -71,22 +72,44 @@ export default function Reports() {
   const taxPaid = yearExpenses.reduce((s, e) => s + (e.tax_amount || 0), 0);
   const netTaxOwed = taxCollected - taxPaid;
 
+  // An invoice is tax-exempt when its customer is flagged tax_exempt, or it has no tax
+  // (tax_rate 0 AND tax_amount 0). Void invoices are excluded from sales totals.
+  const isInvoiceTaxExempt = (inv) => {
+    if (!inv) return false;
+    const cust = customers.find(c => c.id === inv.customer_id);
+    if (cust?.tax_exempt) return true;
+    return (!inv.tax_rate || inv.tax_rate === 0) && (!inv.tax_amount || inv.tax_amount === 0);
+  };
+  const salesInvoices = yearInvoices.filter(i => i.status !== "void");
+  const totalSales = salesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const taxableSalesInvoices = salesInvoices.filter(i => !isInvoiceTaxExempt(i));
+  const exemptSalesInvoices = salesInvoices.filter(i => isInvoiceTaxExempt(i));
+  const taxableSales = taxableSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const exemptSales = exemptSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+
   const monthlyTax = useMemo(() => {
     const map = {};
     for (let m = 1; m <= 12; m++) {
       const key = `${year}-${String(m).padStart(2, "0")}`;
-      map[key] = { month: MONTHS[m - 1], collected: 0, paid: 0 };
+      map[key] = { month: MONTHS[m - 1], collected: 0, paid: 0, sales: 0, exemptSales: 0 };
     }
-    yearInvoices.forEach(i => {
+    salesInvoices.forEach(i => {
       const k = getMonthKey(i.issue_date);
-      if (k && map[k]) map[k].collected += (i.tax_amount || 0);
+      if (k && map[k]) {
+        map[k].sales += (i.subtotal || 0);
+        if (isInvoiceTaxExempt(i)) map[k].exemptSales += (i.subtotal || 0);
+      }
     });
     yearExpenses.forEach(e => {
       const k = getMonthKey(e.date);
       if (k && map[k]) map[k].paid += (e.tax_amount || 0);
     });
-    return Object.values(map).map(d => ({ ...d, net: d.collected - d.paid }));
-  }, [year, invoices, expenses]);
+    yearInvoices.forEach(i => {
+      const k = getMonthKey(i.issue_date);
+      if (k && map[k]) map[k].collected += (i.tax_amount || 0);
+    });
+    return Object.values(map).map(d => ({ ...d, net: d.collected - d.paid, taxableSales: d.sales - d.exemptSales }));
+  }, [year, invoices, expenses, customers]);
 
   // --- Expense Breakdown ---
   const expenseByCategory = useMemo(() => {
@@ -268,13 +291,37 @@ export default function Reports() {
 
         {/* Sales Tax Tab */}
         <TabsContent value="salestax">
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <p className="text-xs text-slate-500">Tax Collected (from customers)</p>
+                <p className="text-xs text-slate-500">Total Sales</p>
+                <p className="text-2xl font-bold text-slate-900">${totalSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Taxable Sales</p>
+                <p className="text-2xl font-bold text-slate-700">${taxableSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">{taxableSalesInvoices.length} invoices</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Tax-Exempt Sales</p>
+                <p className="text-2xl font-bold text-emerald-600">${exemptSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">{exemptSalesInvoices.length} invoices</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Tax Collected</p>
                 <p className="text-2xl font-bold text-emerald-600">${taxCollected.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500">Tax Paid (on expenses)</p>
@@ -287,6 +334,34 @@ export default function Reports() {
                 <p className={`text-2xl font-bold ${netTaxOwed >= 0 ? "text-[#e20404]" : "text-emerald-600"}`}>${netTaxOwed.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
               </CardContent>
             </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Effective Tax Rate</p>
+                <p className="text-2xl font-bold text-slate-700">{taxableSales > 0 ? ((taxCollected / taxableSales) * 100).toFixed(2) : "0.00"}%</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* View toggle: All / Taxable / Tax-Exempt */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm text-slate-500">Showing:</span>
+            <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+              {[
+                { key: "all", label: "All Sales" },
+                { key: "taxable", label: "Taxable Only" },
+                { key: "exempt", label: "Tax-Exempt Only" },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setTaxView(opt.key)}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    taxView === opt.key ? "bg-[#e20404] text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Card className="border-0 shadow-sm mb-6">
@@ -312,32 +387,113 @@ export default function Reports() {
                 <thead className="border-b border-slate-200">
                   <tr>
                     <th className="text-left py-2 font-medium text-slate-600">Month</th>
-                    <th className="text-right py-2 font-medium text-slate-600">Tax Collected</th>
-                    <th className="text-right py-2 font-medium text-slate-600">Tax Paid</th>
-                    <th className="text-right py-2 font-medium text-slate-600">Net Owed</th>
+                    {taxView !== "exempt" && (
+                      <>
+                        <th className="text-right py-2 font-medium text-slate-600">Taxable Sales</th>
+                        <th className="text-right py-2 font-medium text-slate-600">Tax Collected</th>
+                      </>
+                    )}
+                    {taxView !== "taxable" && (
+                      <th className="text-right py-2 font-medium text-slate-600">Exempt Sales</th>
+                    )}
+                    {taxView === "all" && (
+                      <>
+                        <th className="text-right py-2 font-medium text-slate-600">Tax Paid</th>
+                        <th className="text-right py-2 font-medium text-slate-600">Net Owed</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {monthlyTax.map((row, i) => (
                     <tr key={i} className="border-b border-slate-100">
                       <td className="py-2">{row.month}</td>
-                      <td className="py-2 text-right text-emerald-600">${row.collected.toFixed(2)}</td>
-                      <td className="py-2 text-right text-slate-500">${row.paid.toFixed(2)}</td>
-                      <td className={`py-2 text-right font-semibold ${row.net >= 0 ? "text-[#e20404]" : "text-emerald-600"}`}>${row.net.toFixed(2)}</td>
+                      {taxView !== "exempt" && (
+                        <>
+                          <td className="py-2 text-right text-slate-700">${row.taxableSales.toFixed(2)}</td>
+                          <td className="py-2 text-right text-emerald-600">${row.collected.toFixed(2)}</td>
+                        </>
+                      )}
+                      {taxView !== "taxable" && (
+                        <td className="py-2 text-right text-slate-500">${row.exemptSales.toFixed(2)}</td>
+                      )}
+                      {taxView === "all" && (
+                        <>
+                          <td className="py-2 text-right text-slate-500">${row.paid.toFixed(2)}</td>
+                          <td className={`py-2 text-right font-semibold ${row.net >= 0 ? "text-[#e20404]" : "text-emerald-600"}`}>${row.net.toFixed(2)}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="border-t border-slate-200 bg-slate-50">
                   <tr>
                     <td className="py-2 font-bold">Total</td>
-                    <td className="py-2 text-right font-bold text-emerald-600">${taxCollected.toFixed(2)}</td>
-                    <td className="py-2 text-right font-bold text-slate-600">${taxPaid.toFixed(2)}</td>
-                    <td className={`py-2 text-right font-bold ${netTaxOwed >= 0 ? "text-[#e20404]" : "text-emerald-600"}`}>${netTaxOwed.toFixed(2)}</td>
+                    {taxView !== "exempt" && (
+                      <>
+                        <td className="py-2 text-right font-bold text-slate-700">${taxableSales.toFixed(2)}</td>
+                        <td className="py-2 text-right font-bold text-emerald-600">${taxCollected.toFixed(2)}</td>
+                      </>
+                    )}
+                    {taxView !== "taxable" && (
+                      <td className="py-2 text-right font-bold text-slate-500">${exemptSales.toFixed(2)}</td>
+                    )}
+                    {taxView === "all" && (
+                      <>
+                        <td className="py-2 text-right font-bold text-slate-600">${taxPaid.toFixed(2)}</td>
+                        <td className={`py-2 text-right font-bold ${netTaxOwed >= 0 ? "text-[#e20404]" : "text-emerald-600"}`}>${netTaxOwed.toFixed(2)}</td>
+                      </>
+                    )}
                   </tr>
                 </tfoot>
               </table>
             </CardContent>
           </Card>
+
+          {/* Tax-Exempt invoice list */}
+          {taxView === "exempt" && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Tax-Exempt Invoices — {year}</CardTitle></CardHeader>
+              <CardContent>
+                {exemptSalesInvoices.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-8">No tax-exempt sales for {year}</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-slate-200">
+                      <tr>
+                        <th className="text-left py-2 font-medium text-slate-600">Invoice</th>
+                        <th className="text-left py-2 font-medium text-slate-600">Customer</th>
+                        <th className="text-left py-2 font-medium text-slate-600">Issue Date</th>
+                        <th className="text-left py-2 font-medium text-slate-600">Reason</th>
+                        <th className="text-right py-2 font-medium text-slate-600">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exemptSalesInvoices.map(inv => {
+                        const c = customers.find(c => c.id === inv.customer_id);
+                        const reason = (c?.tax_exempt) ? "Customer tax-exempt" : "No tax applied";
+                        return (
+                          <tr key={inv.id} className="border-b border-slate-100">
+                            <td className="py-2 font-medium">{inv.invoice_number}</td>
+                            <td className="py-2 text-slate-600">{c ? `${c.first_name} ${c.last_name}` : "—"}</td>
+                            <td className="py-2 text-slate-500">{inv.issue_date || "—"}</td>
+                            <td className="py-2"><Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">{reason}</Badge></td>
+                            <td className="py-2 text-right font-medium">${(inv.subtotal || 0).toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="border-t border-slate-200 bg-slate-50">
+                      <tr>
+                        <td className="py-2 font-bold" colSpan={4}>Total Tax-Exempt Sales</td>
+                        <td className="py-2 text-right font-bold">${exemptSales.toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Expense Breakdown Tab */}
