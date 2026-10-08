@@ -63,8 +63,10 @@ export function machiningTotal(doc) {
  * goods, so they are excluded from sales-tax reporting along with labor/machining.
  */
 export function coreItemsTotal(doc) {
+  // Only cores sold from inventory (lines linked to an EngineCore). Core credit
+  // lines are negative adjustments already netted into the subtotal — leave them.
   return (doc?.line_items || [])
-    .filter((li) => li.is_core_credit)
+    .filter((li) => li.core_id && !li.is_core_credit)
     .reduce((s, li) => s + (Number(li.total) || 0), 0);
 }
 

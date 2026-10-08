@@ -301,7 +301,7 @@ export default function Reports() {
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500">Total Goods Sold (Gross)</p>
                 <p className="text-2xl font-bold text-slate-900">${totalSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
-                <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices · labor & machining excluded</p>
+                <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices · labor, machining & cores excluded</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-sm">
@@ -495,7 +495,7 @@ export default function Reports() {
                             <td className="py-2 text-slate-600">{c ? `${c.first_name} ${c.last_name}` : "—"}</td>
                             <td className="py-2 text-slate-500">{inv.issue_date || "—"}</td>
                             <td className="py-2"><Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">{reason}</Badge></td>
-                            <td className="py-2 text-right font-medium">${(inv.subtotal || 0).toFixed(2)}</td>
+                            <td className="py-2 text-right font-medium">${goodsSubtotal(inv).toFixed(2)}</td>
                           </tr>
                         );
                       })}
