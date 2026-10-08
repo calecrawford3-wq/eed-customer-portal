@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { goodsSubtotal } from "@/lib/money";
 
 const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -9,7 +10,7 @@ const MONTHS_FULL = ["January","February","March","April","May","June","July","A
  * Makes every monthly sales total fully auditable by listing the exact invoices
  * (with subtotal, discount, and net) that contribute to each month's figure.
  *
- * "Sales" = invoice subtotal (gross, before tax and shipping, after line-item totals).
+ * "Sales" = goods-only subtotal (parts only; labor and machining charges excluded).
  * "Discount" = discount_amount applied to the invoice.
  * "Net Sales" = subtotal - discount_amount (the actual amount subject to tax / reportable after discounts).
  */
@@ -44,7 +45,7 @@ export default function SalesTaxMonthDrilldown({ monthlyTax, salesInvoices, cust
       <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
         <h3 className="text-sm font-semibold text-slate-700">Monthly Sales Breakdown — {year}</h3>
         <p className="text-xs text-slate-500 mt-0.5">
-          Click a month to see the exact invoices behind its sales total. "Sales" is the invoice subtotal (gross, before discounts). "Net" is subtotal minus any discount applied.
+          Click a month to see the exact invoices behind its sales total. "Sales" is the goods-only subtotal (parts only; labor and machining excluded). "Net" is goods subtotal minus any discount applied.
         </p>
       </div>
 
@@ -94,7 +95,7 @@ export default function SalesTaxMonthDrilldown({ monthlyTax, salesInvoices, cust
                         <th className="text-left py-2 font-medium">Customer</th>
                         <th className="text-left py-2 font-medium">Issued</th>
                         <th className="text-left py-2 font-medium">Status</th>
-                        <th className="text-right py-2 font-medium">Subtotal</th>
+                        <th className="text-right py-2 font-medium">Goods</th>
                         <th className="text-right py-2 font-medium">Discount</th>
                         <th className="text-right py-2 font-medium">Net</th>
                         <th className="text-right py-2 font-medium">Tax</th>
@@ -102,14 +103,15 @@ export default function SalesTaxMonthDrilldown({ monthlyTax, salesInvoices, cust
                     </thead>
                     <tbody>
                       {monthInvoices.map(inv => {
-                        const net = (inv.subtotal || 0) - (inv.discount_amount || 0);
+                        const goods = goodsSubtotal(inv);
+                        const net = goods - (inv.discount_amount || 0);
                         return (
                           <tr key={inv.id} className="border-b border-slate-50">
                             <td className="py-2 font-medium text-slate-700">{inv.invoice_number}</td>
                             <td className="py-2 text-slate-600">{custName(inv.customer_id)}</td>
                             <td className="py-2 text-slate-500">{inv.issue_date || "—"}</td>
                             <td className="py-2"><Badge className={`text-xs ${statusColor(inv.status)}`}>{inv.status}</Badge></td>
-                            <td className="py-2 text-right text-slate-600">${(inv.subtotal || 0).toFixed(2)}</td>
+                            <td className="py-2 text-right text-slate-600">${goods.toFixed(2)}</td>
                             <td className="py-2 text-right text-red-500">{(inv.discount_amount || 0) > 0 ? `\u2212$${(inv.discount_amount || 0).toFixed(2)}` : "—"}</td>
                             <td className="py-2 text-right font-medium text-slate-700">${net.toFixed(2)}</td>
                             <td className="py-2 text-right text-emerald-600">${(inv.tax_amount || 0).toFixed(2)}</td>

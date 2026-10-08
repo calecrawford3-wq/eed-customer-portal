@@ -39,3 +39,30 @@ export function roundMoney(value) {
 export function sumMoney(values) {
   return roundMoney((values || []).reduce((s, v) => s + (Number(v) || 0), 0));
 }
+
+/**
+ * Total of all labor line items on an invoice/estimate.
+ */
+export function laborTotal(doc) {
+  return (doc?.labor_items || []).reduce((s, li) => s + (Number(li.price) || 0), 0);
+}
+
+/**
+ * Total of all machining line items on an invoice/estimate (price × quantity).
+ */
+export function machiningTotal(doc) {
+  return (doc?.machining_items || []).reduce(
+    (s, mi) => s + (Number(mi.price) || 0) * (Number(mi.quantity) || 1),
+    0
+  );
+}
+
+/**
+ * Goods-only subtotal: the invoice subtotal with labor and machining charges
+ * removed. Use this for sales-tax reporting where only tangible goods (parts)
+ * count toward taxable/exempt sales — services are not reportable goods.
+ */
+export function goodsSubtotal(doc) {
+  const sub = Number(doc?.subtotal) || 0;
+  return Math.max(0, sub - laborTotal(doc) - machiningTotal(doc));
+}

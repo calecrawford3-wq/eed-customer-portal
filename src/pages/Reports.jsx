@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
+import { goodsSubtotal } from "@/lib/money";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,11 +87,11 @@ export default function Reports() {
   const salesInvoices = yearInvoices.filter(i => i.status === "paid");
   const taxCollected = salesInvoices.reduce((s, i) => s + (i.tax_amount || 0), 0);
   const netTaxOwed = taxCollected - taxPaid;
-  const totalSales = salesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const totalSales = salesInvoices.reduce((s, i) => s + goodsSubtotal(i), 0);
   const taxableSalesInvoices = salesInvoices.filter(i => !isInvoiceTaxExempt(i));
   const exemptSalesInvoices = salesInvoices.filter(i => isInvoiceTaxExempt(i));
-  const taxableSales = taxableSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
-  const exemptSales = exemptSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const taxableSales = taxableSalesInvoices.reduce((s, i) => s + goodsSubtotal(i), 0);
+  const exemptSales = exemptSalesInvoices.reduce((s, i) => s + goodsSubtotal(i), 0);
   const totalDiscounts = salesInvoices.reduce((s, i) => s + (i.discount_amount || 0), 0);
   const netSales = totalSales - totalDiscounts;
 
@@ -103,9 +104,9 @@ export default function Reports() {
     salesInvoices.forEach(i => {
       const k = getMonthKey(i.issue_date);
       if (k && map[k]) {
-        map[k].sales += (i.subtotal || 0);
+        map[k].sales += goodsSubtotal(i);
         map[k].collected += (i.tax_amount || 0);
-        if (isInvoiceTaxExempt(i)) map[k].exemptSales += (i.subtotal || 0);
+        if (isInvoiceTaxExempt(i)) map[k].exemptSales += goodsSubtotal(i);
       }
     });
     yearExpenses.forEach(e => {
@@ -298,14 +299,14 @@ export default function Reports() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <p className="text-xs text-slate-500">Total Sales (Gross)</p>
+                <p className="text-xs text-slate-500">Total Goods Sold (Gross)</p>
                 <p className="text-2xl font-bold text-slate-900">${totalSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
-                <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices</p>
+                <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices · labor & machining excluded</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <p className="text-xs text-slate-500">Net Sales (after discounts)</p>
+                <p className="text-xs text-slate-500">Net Goods Sold (after discounts)</p>
                 <p className="text-2xl font-bold text-slate-700">${netSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
                 <p className="text-xs text-slate-400 mt-1">{totalDiscounts > 0 ? `−$${totalDiscounts.toLocaleString("en-US", {minimumFractionDigits:2})} discounts` : "No discounts applied"}</p>
               </CardContent>

@@ -83,7 +83,8 @@ export default function OktapReportDialog({ open, onOpenChange, year, monthlyTax
           </table>
 
           <div className="mt-4 text-xs text-slate-500 print:mt-6">
-            <p><strong>Tax-Exempt Sales</strong> = sales to tax-exempt customers or invoices with no tax applied.</p>
+            <p><strong>Total Sales</strong> = goods only (parts); labor and machining charges are excluded.</p>
+            <p><strong>Tax-Exempt Sales</strong> = goods sold to tax-exempt customers or invoices with no tax applied.</p>
             <p><strong>Taxable Sales</strong> = Total Sales minus Tax-Exempt Sales.</p>
             <p className="mt-2">Generated on {new Date().toLocaleDateString("en-US")} for filing year {year}.</p>
           </div>
