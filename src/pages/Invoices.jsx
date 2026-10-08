@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Receipt, Clock, CheckCircle, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import LegacyInvoiceImportModal from "@/components/invoices/LegacyInvoiceImportModal";
 import CombineInvoicesModal from "@/components/invoices/CombineInvoicesModal";
@@ -34,7 +34,7 @@ export default function Invoices() {
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
-    queryFn: () => base44.entities.Invoice.list("-created_date", 200),
+    queryFn: () => base44.entities.Invoice.list("-issue_date", 200),
   });
 
   const { data: customers = [] } = useQuery({
@@ -182,8 +182,8 @@ export default function Invoices() {
                     <td className="px-4 py-3 text-slate-900">
                       {customer ? `${customer.first_name} ${customer.last_name}` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{inv.issue_date ? format(new Date(inv.issue_date), "MMM d, yyyy") : "—"}</td>
-                    <td className="px-4 py-3 text-slate-500">{inv.due_date ? format(new Date(inv.due_date), "MMM d, yyyy") : "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{inv.issue_date ? format(parseISO(inv.issue_date), "MMM d, yyyy") : "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{inv.due_date ? format(parseISO(inv.due_date), "MMM d, yyyy") : "—"}</td>
                     <td className="px-4 py-3 text-right font-semibold">${(inv.total || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}</td>
                     <td className={`px-4 py-3 text-right font-semibold ${(inv.balance_due || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>
                       ${(inv.balance_due || 0).toLocaleString("en-US", {minimumFractionDigits: 2})}

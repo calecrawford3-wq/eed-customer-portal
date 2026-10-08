@@ -17,8 +17,9 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 function getMonthKey(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  // Read the month straight from the "YYYY-MM-DD" string so dates on the 1st
+  // aren't shifted into the previous month by timezone conversion.
+  return dateStr.slice(0, 7);
 }
 
 function getMonthLabel(key) {
