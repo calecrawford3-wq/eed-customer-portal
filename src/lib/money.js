@@ -58,11 +58,23 @@ export function machiningTotal(doc) {
 }
 
 /**
- * Goods-only subtotal: the invoice subtotal with labor and machining charges
- * removed. Use this for sales-tax reporting where only tangible goods (parts)
- * count toward taxable/exempt sales — services are not reportable goods.
+ * Total of all core credit / core sale line items on an invoice/estimate.
+ * Cores (starters, alternators, etc.) sold from inventory are not taxable
+ * goods, so they are excluded from sales-tax reporting along with labor/machining.
+ */
+export function coreItemsTotal(doc) {
+  return (doc?.line_items || [])
+    .filter((li) => li.is_core_credit)
+    .reduce((s, li) => s + (Number(li.total) || 0), 0);
+}
+
+/**
+ * Goods-only subtotal: the invoice subtotal with labor, machining, and core
+ * items removed. Use this for sales-tax reporting where only taxable tangible
+ * goods (parts) count toward taxable/exempt sales — services and cores are not
+ * reportable goods.
  */
 export function goodsSubtotal(doc) {
   const sub = Number(doc?.subtotal) || 0;
-  return Math.max(0, sub - laborTotal(doc) - machiningTotal(doc));
+  return Math.max(0, sub - laborTotal(doc) - machiningTotal(doc) - coreItemsTotal(doc));
 }
