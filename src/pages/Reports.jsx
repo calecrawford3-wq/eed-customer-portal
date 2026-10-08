@@ -377,7 +377,7 @@ export default function Reports() {
               </div>
             </div>
             <Button variant="outline" onClick={() => setOktapOpen(true)}>
-              <FileText className="w-4 h-4 mr-1" /> Generate OKTAP Log
+              <FileText className="w-4 h-4 mr-1" /> Generate Report
             </Button>
           </div>
 
@@ -524,6 +524,8 @@ export default function Reports() {
           onOpenChange={setOktapOpen}
           year={year}
           monthlyTax={monthlyTax}
+          salesInvoices={salesInvoices}
+          customers={customers}
           totals={{ totalSales, taxableSales, exemptSales, taxCollected }}
         />
 
