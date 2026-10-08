@@ -83,7 +83,7 @@ export default function Reports() {
     if (cust?.tax_exempt) return true;
     return (!inv.tax_rate || inv.tax_rate === 0) && (!inv.tax_amount || inv.tax_amount === 0);
   };
-  const salesInvoices = yearInvoices.filter(i => i.status !== "void");
+  const salesInvoices = yearInvoices.filter(i => i.status === "paid");
   const totalSales = salesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
   const taxableSalesInvoices = salesInvoices.filter(i => !isInvoiceTaxExempt(i));
   const exemptSalesInvoices = salesInvoices.filter(i => isInvoiceTaxExempt(i));
