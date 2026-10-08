@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer, Package } from "lucide-react";
 import OktapReportDialog from "@/components/reports/OktapReportDialog";
+import SalesTaxMonthDrilldown from "@/components/reports/SalesTaxMonthDrilldown";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -88,6 +89,8 @@ export default function Reports() {
   const exemptSalesInvoices = salesInvoices.filter(i => isInvoiceTaxExempt(i));
   const taxableSales = taxableSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
   const exemptSales = exemptSalesInvoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const totalDiscounts = salesInvoices.reduce((s, i) => s + (i.discount_amount || 0), 0);
+  const netSales = totalSales - totalDiscounts;
 
   const monthlyTax = useMemo(() => {
     const map = {};
@@ -293,12 +296,19 @@ export default function Reports() {
 
         {/* Sales Tax Tab */}
         <TabsContent value="salestax">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <p className="text-xs text-slate-500">Total Sales</p>
+                <p className="text-xs text-slate-500">Total Sales (Gross)</p>
                 <p className="text-2xl font-bold text-slate-900">${totalSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
                 <p className="text-xs text-slate-400 mt-1">{salesInvoices.length} invoices</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs text-slate-500">Net Sales (after discounts)</p>
+                <p className="text-2xl font-bold text-slate-700">${netSales.toLocaleString("en-US", {minimumFractionDigits:2})}</p>
+                <p className="text-xs text-slate-400 mt-1">{totalDiscounts > 0 ? `−$${totalDiscounts.toLocaleString("en-US", {minimumFractionDigits:2})} discounts` : "No discounts applied"}</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-sm">
@@ -501,6 +511,12 @@ export default function Reports() {
               </CardContent>
             </Card>
           )}
+          <SalesTaxMonthDrilldown
+            monthlyTax={monthlyTax}
+            salesInvoices={salesInvoices}
+            customers={customers}
+            year={year}
+          />
         </TabsContent>
 
         <OktapReportDialog
