@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer, Package } from "lucide-react";
+import OktapReportDialog from "@/components/reports/OktapReportDialog";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -29,6 +30,7 @@ export default function Reports() {
   const [year, setYear] = useState(String(currentYear));
   const [tab, setTab] = useState("pnl");
   const [taxView, setTaxView] = useState("all"); // all | taxable | exempt
+  const [oktapOpen, setOktapOpen] = useState(false);
 
   const { data: invoices = [] } = useQuery({ queryKey: ["invoices"], queryFn: () => base44.entities.Invoice.list("-created_date", 1000) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => base44.entities.Expense.list("-date", 1000) });
@@ -342,26 +344,31 @@ export default function Reports() {
             </Card>
           </div>
 
-          {/* View toggle: All / Taxable / Tax-Exempt */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-sm text-slate-500">Showing:</span>
-            <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
-              {[
-                { key: "all", label: "All Sales" },
-                { key: "taxable", label: "Taxable Only" },
-                { key: "exempt", label: "Tax-Exempt Only" },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => setTaxView(opt.key)}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    taxView === opt.key ? "bg-[#e20404] text-white" : "bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {/* View toggle: All / Taxable / Tax-Exempt + OKTAP generator */}
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Showing:</span>
+              <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                {[
+                  { key: "all", label: "All Sales" },
+                  { key: "taxable", label: "Taxable Only" },
+                  { key: "exempt", label: "Tax-Exempt Only" },
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setTaxView(opt.key)}
+                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                      taxView === opt.key ? "bg-[#e20404] text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            <Button variant="outline" onClick={() => setOktapOpen(true)}>
+              <FileText className="w-4 h-4 mr-1" /> Generate OKTAP Log
+            </Button>
           </div>
 
           <Card className="border-0 shadow-sm mb-6">
@@ -495,6 +502,14 @@ export default function Reports() {
             </Card>
           )}
         </TabsContent>
+
+        <OktapReportDialog
+          open={oktapOpen}
+          onOpenChange={setOktapOpen}
+          year={year}
+          monthlyTax={monthlyTax}
+          totals={{ totalSales, taxableSales, exemptSales, taxCollected }}
+        />
 
         {/* Expense Breakdown Tab */}
         <TabsContent value="expenses">
