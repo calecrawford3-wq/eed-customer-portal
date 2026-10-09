@@ -196,7 +196,8 @@ function computeQuoted(estimate, additionalWorks) {
 
   const grossRevenue = roundMoney(partsRevenue + laborRevenue + machiningRevenue + awPartsRevenue + awLaborRevenue + awMachiningRevenue);
   const discount = roundMoney(Number(estimate.discount_amount) || 0);
-  const revenueBeforeTax = roundMoney(grossRevenue - discount);
+  const creditsApplied = roundMoney(Number(estimate.applied_credits) || 0);
+  const revenueBeforeTax = roundMoney(grossRevenue - discount - creditsApplied);
 
   // Quoted cost = parts cost (estimate) + additional work parts cost
   // Labor and machining are 100% margin (per user preference) so quoted cost = parts only
@@ -209,6 +210,7 @@ function computeQuoted(estimate, additionalWorks) {
     laborRevenue: roundMoney(laborRevenue + awLaborRevenue),
     machiningRevenue: roundMoney(machiningRevenue + awMachiningRevenue),
     discount,
+    creditsApplied,
     totalCost,
     hasEstimate: true,
   };
@@ -249,7 +251,7 @@ function computeActual(invoices, reservations, tasks, build, laborRate, overhead
   }
 
   const grossRevenue = roundMoney(partsRevenue + laborRevenue + machiningRevenue);
-  const revenueBeforeTax = roundMoney(grossRevenue - discount);
+  const revenueBeforeTax = roundMoney(grossRevenue - discount - creditsApplied);
 
   // Actual parts cost from CONSUMED reservations (uses cost snapshot)
   let partsCost = 0;

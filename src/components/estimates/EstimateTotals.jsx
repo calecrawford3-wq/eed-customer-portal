@@ -18,7 +18,7 @@ export default function EstimateTotals({ form, customer, setForm, updateTaxRate,
         })()}
         <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
         {(() => {
-          const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0);
+          const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0) - Number(form.applied_credits || 0);
           const cost = (form.line_items || []).reduce((s, l) => s + (l.is_core_credit ? 0 : ((Number(l.unit_cost) || 0) + (Number(l.shipping_cost) || 0)) * (Number(l.quantity) || 0)), 0);
           const profit = revenue - cost;
           const margin = revenue > 0 ? (profit / revenue) * 100 : 0;

@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, AlertTriangle, RefreshCw, DollarSign, Package, Wrench, Hammer, ShieldAlert, Clock, Percent, Building2, Truck } from "lucide-react";
+import { TrendingUp, AlertTriangle, RefreshCw, DollarSign, Package, Wrench, Hammer, ShieldAlert, Clock, Percent, Building2, Truck, Gift } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 export default function JobProfitabilityTab({ job }) {
@@ -95,6 +95,7 @@ function ProfitabilityReport({ report }) {
             <ProfitRow icon={Wrench} label="Labor revenue" quoted={quoted.laborRevenue} actual={actual.laborRevenue} />
             <ProfitRow icon={Hammer} label="Machining revenue" quoted={quoted.machiningRevenue} actual={actual.machiningRevenue} />
             <ProfitRow icon={Percent} label="Discount" quoted={quoted.discount} actual={actual.discount} cost />
+            <ProfitRow icon={Gift} label="Credits applied" quoted={quoted.creditsApplied} actual={actual.creditsApplied} cost />
             <ProfitRow icon={Clock} label={`Internal labor (${actual.laborHours}h @ $${actual.laborRate}/hr)`} quoted={null} actual={actual.internalLaborCost} cost />
             <ProfitRow icon={Building2} label={`Overhead burden (${actual.laborHours}h @ $${actual.overheadRate}/hr)`} quoted={null} actual={actual.overheadCost} cost />
             <ProfitRow icon={Truck} label="Outsourced machining cost" quoted={null} actual={actual.outsourcedMachiningCost} cost />
@@ -133,7 +134,7 @@ function ProfitabilityReport({ report }) {
       {/* Separately tracked (not revenue or operating cost) */}
       <div className="grid grid-cols-3 gap-3">
         <InfoCard label="Tax Collected" value={formatMoney(tax_collected)} sub="Separate from revenue" />
-        <InfoCard label="Credits Applied" value={formatMoney(credits_applied)} sub="Separate from costs" />
+        <InfoCard label="Credits Applied" value={formatMoney(credits_applied)} sub="Reduces net revenue" />
         <InfoCard label="Payments Received" value={formatMoney(payments_received)} sub="Separate from costs" />
       </div>
 
