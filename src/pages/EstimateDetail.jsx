@@ -607,56 +607,54 @@ export default function EstimateDetail() {
     const laborMap = Object.fromEntries(allLaborItems.map(l => [l.id, l]));
     const machiningMap = Object.fromEntries(allMachiningItems.map(m => [m.id, m]));
 
-    // Build line items with current sell prices from inventory
-    const cannedLineItems = (cannedJob.line_items || []).length > 0
-      ? cannedJob.line_items.map(item => {
-          const inventoryPart = item.part_id ? partsMap[item.part_id] : null;
-          const unitPrice = inventoryPart ? (Number(inventoryPart.sell_price) || 0) : 0;
-          const unitCost = inventoryPart ? (Number(inventoryPart.unit_cost) || 0) : 0;
-          const qty = Number(item.quantity) || 1;
-          return {
-            part_id: item.part_id || "",
-            part_number: item.part_number || "",
-            item_name: item.item_name || "",
-            quantity: qty,
-            unit_cost: unitCost,
-            unit_price: unitPrice,
-            total: qty * unitPrice,
-          };
-        })
-      : [{ ...emptyPart }];
+    // Build line items with current sell prices from inventory (only actual canned items)
+    const cannedLineItems = (cannedJob.line_items || []).map(item => {
+         const inventoryPart = item.part_id ? partsMap[item.part_id] : null;
+         const unitPrice = inventoryPart ? (Number(inventoryPart.sell_price) || 0) : 0;
+         const unitCost = inventoryPart ? (Number(inventoryPart.unit_cost) || 0) : 0;
+         const qty = Number(item.quantity) || 1;
+         return {
+           part_id: item.part_id || "",
+           part_number: item.part_number || "",
+           item_name: item.item_name || "",
+           quantity: qty,
+           unit_cost: unitCost,
+           unit_price: unitPrice,
+           total: qty * unitPrice,
+         };
+    });
 
-    // Build labor items with current prices from labor catalog
-    const cannedLaborItems = (cannedJob.labor_items || []).length > 0
-      ? cannedJob.labor_items.map(item => {
-          let inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
-          if (!inventoryLabor && item.name) {
-            inventoryLabor = allLaborItems.find(l => l.name && l.name.toLowerCase() === item.name.toLowerCase());
-          }
-          return {
-            name: item.name || "",
-            description: item.description || "",
-            price: inventoryLabor ? (Number(inventoryLabor.price) || 0) : 0,
-          };
-        })
-      : [{ name: "Engine Assembly & Dyno", description: `${cannedJob.name} build`, price: 0 }];
+    // Build labor items with current prices from labor catalog (only actual canned items)
+    const cannedLaborItems = (cannedJob.labor_items || []).map(item => {
+         let inventoryLabor = item.labor_item_id ? laborMap[item.labor_item_id] : null;
+         if (!inventoryLabor && item.name) {
+           inventoryLabor = allLaborItems.find(l => l.name && l.name.toLowerCase() === item.name.toLowerCase());
+         }
+         return {
+           name: item.name || "",
+           description: item.description || "",
+           price: inventoryLabor ? (Number(inventoryLabor.price) || 0) : 0,
+         };
+    });
+    // If the canned job has no labor items, keep a default assembly line so the job is billable
+    if (cannedLaborItems.length === 0) {
+      cannedLaborItems.push({ name: "Engine Assembly & Dyno", description: `${cannedJob.name} build`, price: 0 });
+    }
 
-    // Build machining items with current prices from machining catalog
-    const cannedMachiningItems = (cannedJob.machining_items || []).length > 0
-      ? cannedJob.machining_items.map(item => {
-          let inventoryMachining = item.machining_item_id ? machiningMap[item.machining_item_id] : null;
-          if (!inventoryMachining && item.name) {
-            inventoryMachining = allMachiningItems.find(m => m.name && m.name.toLowerCase() === item.name.toLowerCase());
-          }
-          return {
-            name: item.name || "",
-            description: item.description || "",
-            price: inventoryMachining ? (Number(inventoryMachining.price) || 0) : 0,
-            cost_type: inventoryMachining ? (inventoryMachining.cost_type || "unspecified") : "unspecified",
-            vendor: inventoryMachining && inventoryMachining.cost_type === "outsourced" ? (inventoryMachining.default_vendor || "") : "",
-          };
-        })
-      : [];
+    // Build machining items with current prices from machining catalog (only actual canned items)
+    const cannedMachiningItems = (cannedJob.machining_items || []).map(item => {
+         let inventoryMachining = item.machining_item_id ? machiningMap[item.machining_item_id] : null;
+         if (!inventoryMachining && item.name) {
+           inventoryMachining = allMachiningItems.find(m => m.name && m.name.toLowerCase() === item.name.toLowerCase());
+         }
+         return {
+           name: item.name || "",
+           description: item.description || "",
+           price: inventoryMachining ? (Number(inventoryMachining.price) || 0) : 0,
+           cost_type: inventoryMachining ? (inventoryMachining.cost_type || "unspecified") : "unspecified",
+           vendor: inventoryMachining && inventoryMachining.cost_type === "outsourced" ? (inventoryMachining.default_vendor || "") : "",
+         };
+    });
 
     const updatedNotes = (form.notes ? form.notes + "\n\n" : "") +
       `Canned Job: ${cannedJob.name}\n` +
@@ -673,19 +671,26 @@ export default function EstimateDetail() {
       machining_items: cannedJob.machining_items || [],
     });
 
-    const totals = recalc(cannedLineItems, cannedLaborItems, cannedMachiningItems, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
+    // Append canned items to existing items instead of replacing them.
+    // Drop a lone empty placeholder part row so we don't leave a blank line above the canned items.
+    const existingLineItems = (form.line_items || []).filter(l => l.item_name || l.part_number || l.part_id);
+    const mergedLineItems = [...existingLineItems, ...cannedLineItems];
+    const mergedLaborItems = [...(form.labor_items || []), ...cannedLaborItems];
+    const mergedMachiningItems = [...(form.machining_items || []), ...cannedMachiningItems];
+
+    const totals = recalc(mergedLineItems, mergedLaborItems, mergedMachiningItems, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({
       ...f,
-      line_items: cannedLineItems,
-      labor_items: cannedLaborItems,
-      machining_items: cannedMachiningItems,
+      line_items: mergedLineItems,
+      labor_items: mergedLaborItems,
+      machining_items: mergedMachiningItems,
       notes: updatedNotes,
       canned_job_id: cannedJob.id,
       canned_job_version: cannedJob.version || 1,
       canned_job_snapshot: cannedJobSnapshot,
       ...totals,
     }));
-    toast.success(`Canned job loaded (v${cannedJob.version || 1}) with current inventory prices`);
+    toast.success(`Canned job added (v${cannedJob.version || 1}) with current inventory prices`);
   };
 
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
