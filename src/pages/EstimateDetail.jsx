@@ -255,27 +255,8 @@ export default function EstimateDetail() {
         ? await base44.entities.Estimate.update(id, data)
         : await base44.entities.Estimate.create(data);
       const estimateId = id || result.id;
-      const applied = Number(data.applied_credits) || 0;
-      const priorRedemption = customerCredits.find(c => c.linked_estimate_id === estimateId && c.type === "redemption");
-      if (applied > 0) {
-        const redemptionData = {
-          customer_id: data.customer_id,
-          amount: -applied,
-          type: "redemption",
-          subtype: "Estimate Credit Application",
-          description: `Credits applied to estimate ${data.estimate_number}`,
-          date: new Date().toISOString().split("T")[0],
-          linked_estimate_id: estimateId,
-          status: "active",
-        };
-        if (priorRedemption) {
-          await base44.entities.AccountCredit.update(priorRedemption.id, redemptionData);
-        } else {
-          await base44.entities.AccountCredit.create(redemptionData);
-        }
-      } else if (priorRedemption) {
-        await base44.entities.AccountCredit.delete(priorRedemption.id);
-      }
+      // Credits are redeemed only when the estimate is approved (see redeemCreditsOnApproval),
+      // so the same credits can be soft-held on multiple estimates without locking the balance.
       // If this estimate has already been sent and the deposit fields changed,
       // regenerate the Stripe checkout URL so the public viewer's payment link matches the new deposit.
       if (data.public_access_token && estimate?.[0]) {
@@ -710,11 +691,56 @@ export default function EstimateDetail() {
   const totalDeposit = (form.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const depositMet = !form.deposit_required || totalDeposit >= Number(form.deposit_amount || 0);
 
+  // Redeem account credits against this estimate at approval time.
+  // Credits are only deducted from the customer's balance once the estimate is approved,
+  // so multiple estimates can soft-hold the same credits and the first approval claims them.
+  // Returns the actual amount redeemed (capped to the real available balance).
+  const redeemCreditsOnApproval = async (estimateId, customerId, estimateNumber, requestedApplied) => {
+    const applied = Number(requestedApplied) || 0;
+    const freshCredits = await base44.entities.AccountCredit.filter({ customer_id: customerId });
+    const existing = (freshCredits || []).find(c => c.linked_estimate_id === estimateId && c.type === "redemption");
+    if (applied <= 0) {
+      if (existing) await base44.entities.AccountCredit.delete(existing.id);
+      return 0;
+    }
+    const realBalance = (freshCredits || []).reduce((s, c) => s + (Number(c.amount) || 0), 0)
+      - (existing ? Number(existing.amount) || 0 : 0);
+    const actualApplied = Math.min(applied, Math.max(0, realBalance));
+    if (actualApplied < applied) {
+      toast.warning(`Only $${actualApplied.toFixed(2)} in credits available — applied credits reduced (another approved estimate may have claimed them).`);
+    }
+    if (actualApplied > 0) {
+      const redemptionData = {
+        customer_id: customerId,
+        amount: -actualApplied,
+        type: "redemption",
+        subtype: "Estimate Credit Application",
+        description: `Credits applied to estimate ${estimateNumber}`,
+        date: new Date().toISOString().split("T")[0],
+        linked_estimate_id: estimateId,
+        status: "active",
+      };
+      if (existing) {
+        await base44.entities.AccountCredit.update(existing.id, redemptionData);
+      } else {
+        await base44.entities.AccountCredit.create(redemptionData);
+      }
+    } else if (existing) {
+      await base44.entities.AccountCredit.delete(existing.id);
+    }
+    return actualApplied;
+  };
+
   const handleRecordPayment = async (payment) => {
     const updatedPayments = [...(form.payments || []), payment];
     const newTotalDeposit = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const newDepositPaid = newTotalDeposit >= Number(form.deposit_amount || 0);
 
+    // Redeem credits at approval — recording a payment approves the estimate
+    let actualApplied = Number(form.applied_credits) || 0;
+    if (id) {
+      actualApplied = await redeemCreditsOnApproval(id, form.customer_id, form.estimate_number, form.applied_credits);
+    }
     // Always convert to invoice — payment goes on the invoice, not the estimate
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
     const invoice = await base44.entities.Invoice.create({
@@ -736,8 +762,9 @@ export default function EstimateDetail() {
       discount_value: form.discount_value || 0,
       discount_amount: form.discount_amount || 0,
       shipping_cost: Number(form.shipping_cost) || 0,
+      applied_credits: Number(actualApplied) || 0,
       amount_paid: newTotalDeposit,
-      balance_due: Math.max(0, (form.total || 0) - newTotalDeposit),
+      balance_due: Math.max(0, (form.total || 0) - (Number(actualApplied) || 0) - newTotalDeposit),
       public_access_token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
       contains_illegal_parts: form.contains_illegal_parts || false,
       notes: form.notes || "",
@@ -852,7 +879,12 @@ export default function EstimateDetail() {
       toast.error("Deposit must be received before approving this estimate");
       return;
     }
-    const updated = { ...form, status: "approved" };
+    // Redeem credits at approval — first approved estimate claims the available balance
+    let actualApplied = Number(form.applied_credits) || 0;
+    if (id) {
+      actualApplied = await redeemCreditsOnApproval(id, form.customer_id, form.estimate_number, form.applied_credits);
+    }
+    const updated = { ...form, status: "approved", applied_credits: actualApplied };
     setForm(updated);
     await saveMutation.mutateAsync(updated);
 
@@ -958,9 +990,9 @@ export default function EstimateDetail() {
           discount_value: form.discount_value || 0,
           discount_amount: form.discount_amount || 0,
           shipping_cost: Number(form.shipping_cost) || 0,
-          applied_credits: Number(form.applied_credits) || 0,
+          applied_credits: Number(actualApplied) || 0,
           amount_paid: totalDeposit > 0 ? totalDeposit : 0,
-          balance_due: Math.max(0, (form.total || 0) - (Number(form.applied_credits) || 0) - totalDeposit),
+          balance_due: Math.max(0, (form.total || 0) - (Number(actualApplied) || 0) - totalDeposit),
           contains_illegal_parts: form.contains_illegal_parts || false,
           notes: form.notes || "",
           payments: form.payments || [],
@@ -1023,8 +1055,9 @@ export default function EstimateDetail() {
         discount_value: form.discount_value || 0,
         discount_amount: form.discount_amount || 0,
         shipping_cost: Number(form.shipping_cost) || 0,
+        applied_credits: Number(actualApplied) || 0,
         amount_paid: totalDeposit > 0 ? totalDeposit : 0,
-        balance_due: Math.max(0, (form.total || 0) - totalDeposit),
+        balance_due: Math.max(0, (form.total || 0) - (Number(actualApplied) || 0) - totalDeposit),
         contains_illegal_parts: form.contains_illegal_parts || false,
         notes: form.notes || "",
         payments: form.payments || [],
