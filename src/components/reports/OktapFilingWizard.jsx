@@ -41,6 +41,19 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
     return c?.state || c?.shipping_state || "";
   }, [customers]);
 
+  const [classifyingId, setClassifyingId] = useState(null);
+  const handleReclassify = useCallback(async (inv, newClass) => {
+    setClassifyingId(inv.id);
+    try {
+      await base44.entities.Invoice.update(inv.id, { tax_classification: newClass });
+      if (onSaved) onSaved();
+    } catch (err) {
+      console.error("Failed to reclassify invoice:", err);
+    } finally {
+      setClassifyingId(null);
+    }
+  }, [onSaved]);
+
   // --- Period invoices (paid invoices in the selected month) ---
   const periodInvoices = useMemo(() => {
     if (selectedMonth === null) return [];
@@ -358,7 +371,24 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
                     <tr key={inv.id} className={`border-b border-slate-100 ${needsReview ? "bg-amber-50/50" : ""}`}>
                       <td className="py-1.5 px-2 font-medium text-slate-700">{inv.invoice_number}</td>
                       <td className="py-1.5 px-2 text-slate-600">{custName(inv.customer_id)}</td>
-                      <td className="py-1.5 px-2 text-slate-500 text-xs">{TAX_CLASSIFICATIONS.find((c) => c.value === classification)?.label || classification}</td>
+                      <td className="py-1.5 px-2">
+                        <Select
+                          value={classification}
+                          disabled={classifyingId === inv.id}
+                          onValueChange={(val) => val !== classification && handleReclassify(inv, val)}
+                        >
+                          <SelectTrigger className="h-7 text-xs px-2 py-0 min-w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TAX_CLASSIFICATIONS.map((c) => (
+                              <SelectItem key={c.value} value={c.value} className="text-xs">
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
                       <td className="py-1.5 px-1 text-right text-slate-500">${goods.toFixed(2)}</td>
                       <td className="py-1.5 px-1 text-right text-slate-400">{discount > 0 ? `−${discount.toFixed(2)}` : "—"}</td>
                       <td className="py-1.5 px-2 text-right font-semibold text-slate-800">${netGoods.toFixed(2)}</td>
