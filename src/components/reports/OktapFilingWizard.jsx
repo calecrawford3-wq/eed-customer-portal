@@ -42,12 +42,15 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
   }, [customers]);
 
   const [classifyingId, setClassifyingId] = useState(null);
+  const [classOverrides, setClassOverrides] = useState({});
   const handleReclassify = useCallback(async (inv, newClass) => {
+    setClassOverrides((m) => ({ ...m, [inv.id]: newClass }));
     setClassifyingId(inv.id);
     try {
       await base44.entities.Invoice.update(inv.id, { tax_classification: newClass });
       if (onSaved) onSaved();
     } catch (err) {
+      setClassOverrides((m) => { const c = { ...m }; delete c[inv.id]; return c; });
       console.error("Failed to reclassify invoice:", err);
     } finally {
       setClassifyingId(null);
@@ -65,13 +68,14 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
 
   // --- Auto-classify a transaction ---
   const classifyInvoice = useCallback((inv) => {
+    if (classOverrides[inv.id]) return classOverrides[inv.id];
     if (inv.tax_classification) return inv.tax_classification;
     const cust = customers?.find((c) => c.id === inv.customer_id);
     if (cust?.tax_exempt) return "nontaxable_service";
     const state = custState(inv.customer_id);
     if (state && state.toUpperCase() !== "OK" && (inv.shipping_cost || 0) > 0) return "out_of_state";
     return "oklahoma_pickup";
-  }, [customers, custState]);
+  }, [customers, custState, classOverrides]);
 
   const isInvoiceExempt = useCallback((inv) => {
     const cust = customers?.find((c) => c.id === inv.customer_id);
