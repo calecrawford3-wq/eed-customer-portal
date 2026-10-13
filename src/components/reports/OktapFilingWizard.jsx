@@ -77,11 +77,21 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
     return "oklahoma_pickup";
   }, [customers, custState, classOverrides]);
 
+  // Classification → Schedule J exemption code mapping
+  const CLASS_EXEMPTION_CODE = {
+    out_of_state: "3i",
+    resale: "3a",
+    manufacturing: "3g",
+    nontaxable_service: "3v",
+  };
+
   const isInvoiceExempt = useCallback((inv) => {
     const cust = customers?.find((c) => c.id === inv.customer_id);
     if (cust?.tax_exempt) return true;
+    const classification = classifyInvoice(inv);
+    if (CLASS_EXEMPTION_CODE[classification]) return true;
     return (!inv.tax_rate || inv.tax_rate === 0) && (!inv.tax_amount || inv.tax_amount === 0);
-  }, [customers]);
+  }, [customers, classifyInvoice]);
 
   // --- Build per-invoice tax detail ---
   const invoiceDetails = useMemo(() => {
@@ -89,11 +99,11 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
       const goods = goodsSubtotal(inv);
       const discount = inv.discount_amount || 0;
       const netGoods = subMoney(goods, discount);
-      const exempt = isInvoiceExempt(inv);
       const classification = classifyInvoice(inv);
-      const exemptionCode = inv.exemption_code || (exempt ? "3x" : null);
+      const exempt = isInvoiceExempt(inv);
+      const exemptionCode = inv.exemption_code || CLASS_EXEMPTION_CODE[classification] || (exempt ? "3x" : null);
       const taxCollected = inv.tax_amount || 0;
-      const needsReview = classification === "needs_review" || (exempt && !inv.exemption_code) || (!exempt && taxCollected === 0 && (inv.tax_rate || 0) === 0 && !customers?.find((c) => c.id === inv.customer_id)?.tax_exempt);
+      const needsReview = classification === "needs_review" || (exempt && !exemptionCode) || (!exempt && taxCollected === 0 && (inv.tax_rate || 0) === 0 && !customers?.find((c) => c.id === inv.customer_id)?.tax_exempt);
       return { inv, goods, discount, netGoods, exempt, classification, exemptionCode, taxCollected, needsReview };
     });
   }, [periodInvoices, isInvoiceExempt, classifyInvoice, customers]);
