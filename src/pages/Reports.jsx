@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer, Package } from "lucide-react";
-import OktapReportDialog from "@/components/reports/OktapReportDialog";
+import OktapFilingWizard from "@/components/reports/OktapFilingWizard";
 import SalesTaxMonthDrilldown from "@/components/reports/SalesTaxMonthDrilldown";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -34,8 +34,11 @@ export default function Reports() {
   const [tab, setTab] = useState("pnl");
   const [taxView, setTaxView] = useState("all"); // all | taxable | exempt
   const [oktapOpen, setOktapOpen] = useState(false);
+  const [taxFilingsTick, setTaxFilingsTick] = useState(0);
 
   const { data: invoices = [] } = useQuery({ queryKey: ["invoices"], queryFn: () => base44.entities.Invoice.list("-created_date", 1000) });
+  const { data: taxFilings = [] } = useQuery({ queryKey: ["taxFilings", taxFilingsTick], queryFn: () => base44.entities.TaxFiling.list("-created_date", 200) });
+  const { data: taxJurisdictions = [] } = useQuery({ queryKey: ["taxJurisdictions"], queryFn: () => base44.entities.TaxJurisdiction.list("-created_date", 100) });
   const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => base44.entities.Expense.list("-date", 1000) });
   const { data: estimates = [] } = useQuery({ queryKey: ["estimates"], queryFn: () => base44.entities.Estimate.list("-created_date", 500) });
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: () => base44.entities.Customer.list("-created_date", 200) });
@@ -376,8 +379,8 @@ export default function Reports() {
                 ))}
               </div>
             </div>
-            <Button variant="outline" onClick={() => setOktapOpen(true)}>
-              <FileText className="w-4 h-4 mr-1" /> Generate Report
+            <Button onClick={() => setOktapOpen(true)} className="bg-[#e20404] hover:bg-red-700">
+              <FileText className="w-4 h-4 mr-1" /> Generate OkTAP Report
             </Button>
           </div>
 
@@ -519,14 +522,16 @@ export default function Reports() {
           />
         </TabsContent>
 
-        <OktapReportDialog
+        <OktapFilingWizard
           open={oktapOpen}
           onOpenChange={setOktapOpen}
-          year={year}
-          monthlyTax={monthlyTax}
-          salesInvoices={salesInvoices}
+          year={Number(year)}
+          invoices={invoices}
           customers={customers}
-          totals={{ totalSales, taxableSales, exemptSales, taxCollected }}
+          expenses={expenses}
+          taxFilings={taxFilings}
+          jurisdictions={taxJurisdictions}
+          onSaved={() => setTaxFilingsTick((t) => t + 1)}
         />
 
         {/* Expense Breakdown Tab */}

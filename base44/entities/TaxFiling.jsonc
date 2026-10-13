@@ -1,0 +1,169 @@
+{
+  "name": "TaxFiling",
+  "type": "object",
+  "properties": {
+    "filing_period": {
+      "type": "string",
+      "description": "Filing period key: YYYY-MM for monthly, YYYY-Q# for quarterly, YYYY for annual"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "quarterly",
+        "annual",
+        "custom"
+      ],
+      "default": "monthly"
+    },
+    "year": {
+      "type": "string",
+      "description": "Tax year (YYYY)"
+    },
+    "month": {
+      "type": "number",
+      "description": "Month index 0-11 for monthly filings"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "needs_review",
+        "ready_to_file",
+        "filed",
+        "paid"
+      ],
+      "default": "not_started"
+    },
+    "gross_sales": {
+      "type": "number",
+      "default": 0,
+      "description": "Total gross sales for the period"
+    },
+    "inventory_consumed": {
+      "type": "number",
+      "default": 0,
+      "description": "Inventory consumed or purchases subject to direct payment (Form line 2)"
+    },
+    "total_exemptions": {
+      "type": "number",
+      "default": 0,
+      "description": "Total exemptions from Schedule J (Form line 3)"
+    },
+    "food_sales": {
+      "type": "number",
+      "default": 0,
+      "description": "Eligible food and food ingredient sales (Form line 4)"
+    },
+    "taxable_sales": {
+      "type": "number",
+      "default": 0,
+      "description": "Net taxable sales (Form line 5)"
+    },
+    "state_tax": {
+      "type": "number",
+      "default": 0,
+      "description": "Oklahoma state sales tax (Form line 6)"
+    },
+    "city_county_tax": {
+      "type": "number",
+      "default": 0,
+      "description": "Total city/county sales tax (Form line 7)"
+    },
+    "total_tax_due": {
+      "type": "number",
+      "default": 0,
+      "description": "Total tax due (Form line 8)"
+    },
+    "interest": {
+      "type": "number",
+      "default": 0,
+      "description": "Interest on late payment (Form line 9)"
+    },
+    "penalty": {
+      "type": "number",
+      "default": 0,
+      "description": "Penalty for late filing (Form line 10)"
+    },
+    "total_amount_due": {
+      "type": "number",
+      "default": 0,
+      "description": "Total amount due (Form line 11)"
+    },
+    "tax_collected": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual sales tax collected from invoices during the period"
+    },
+    "exempt_sales": {
+      "type": "number",
+      "default": 0,
+      "description": "Total exempt sales for the period"
+    },
+    "schedule_j": {
+      "type": "string",
+      "description": "JSON of Schedule J exemption breakdown by code (3a-3x) with amounts and invoice lists"
+    },
+    "jurisdiction_breakdown": {
+      "type": "string",
+      "description": "JSON of STS-20021 jurisdiction breakdown with state, county, city tax calculations"
+    },
+    "transaction_summary": {
+      "type": "string",
+      "description": "JSON summary of all transactions in the period with their tax classifications"
+    },
+    "transaction_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of invoices included in this filing"
+    },
+    "unclassified_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of transactions that need tax classification review"
+    },
+    "adjustments": {
+      "type": "string",
+      "description": "JSON array of manual adjustments with explanation, amount, field, and audit trail"
+    },
+    "filed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the return was submitted to OkTAP"
+    },
+    "confirmation_number": {
+      "type": "string",
+      "description": "OkTAP confirmation number received after filing"
+    },
+    "payment_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount paid to the Oklahoma Tax Commission"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date payment was made"
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this filing period is locked and records cannot be changed without an amendment"
+    },
+    "locked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "locked_by": {
+      "type": "string",
+      "description": "User who locked the filing period"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "filing_period",
+    "period_type"
+  ]
+}

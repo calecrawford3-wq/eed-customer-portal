@@ -1,0 +1,67 @@
+{
+  "name": "TaxJurisdiction",
+  "type": "object",
+  "properties": {
+    "jurisdiction_code": {
+      "type": "string",
+      "description": "Oklahoma Tax Commission jurisdiction code"
+    },
+    "jurisdiction_name": {
+      "type": "string",
+      "description": "Display name (e.g. 'Oklahoma State', 'Cleveland County', 'City of Norman')"
+    },
+    "jurisdiction_type": {
+      "type": "string",
+      "enum": [
+        "state",
+        "county",
+        "city"
+      ],
+      "description": "Type of tax jurisdiction"
+    },
+    "state_rate": {
+      "type": "number",
+      "default": 0.045,
+      "description": "Oklahoma state sales tax rate (effective-dated)"
+    },
+    "county_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "County sales tax rate for this jurisdiction"
+    },
+    "city_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "City/municipal sales tax rate for this jurisdiction"
+    },
+    "combined_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "Total combined state + county + city rate (computed for convenience)"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this rate becomes effective"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this rate expires (null/empty = current/active)"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this is the default jurisdiction used when an invoice has no specific jurisdiction code"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "jurisdiction_code",
+    "jurisdiction_name",
+    "jurisdiction_type"
+  ]
+}

@@ -191,6 +191,22 @@
                 }
               }
             }
+          },
+          "tax_class": {
+            "type": "string",
+            "enum": [
+              "",
+              "taxable_product",
+              "taxable_labor",
+              "nontaxable_service",
+              "out_of_state",
+              "resale",
+              "manufacturing",
+              "other_exemption",
+              "needs_review"
+            ],
+            "default": "",
+            "description": "Line-item tax classification for Oklahoma sales tax reporting"
           }
         }
       }
@@ -315,6 +331,35 @@
     },
     "tax_amount": {
       "type": "number"
+    },
+    "tax_classification": {
+      "type": "string",
+      "enum": [
+        "",
+        "oklahoma_pickup",
+        "out_of_state",
+        "customer_owned_rebuild",
+        "engine_sale",
+        "resale",
+        "manufacturing",
+        "nontaxable_service",
+        "needs_review"
+      ],
+      "default": "",
+      "description": "Overall transaction tax classification for Oklahoma sales tax reporting"
+    },
+    "exemption_code": {
+      "type": "string",
+      "description": "Schedule J exemption code (3a-3x) if this invoice is exempt from Oklahoma sales tax"
+    },
+    "exemption_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Dollar amount exempt from Oklahoma sales tax on this invoice"
+    },
+    "jurisdiction_code": {
+      "type": "string",
+      "description": "Oklahoma tax jurisdiction code for this transaction's sourcing location"
     },
     "total": {
       "type": "number"
