@@ -142,10 +142,21 @@ export default function Expenses() {
 
   const handleExpensePO = async (po) => {
     const supplier = suppliers.find(s => s.id === po.supplier_id);
-    const lineTotal = (po.line_items || []).reduce((s, l) => s + (l.total || 0), 0);
+    // Expense only what was actually received (partial POs), not the full ordered total.
+    // Falls back to line totals when received_qty isn't tracked.
+    const anyReceived = (po.line_items || []).some(l => (l.received_qty || 0) > 0);
+    const receivedSubtotal = (po.line_items || []).reduce((s, l) => {
+      const qty = anyReceived ? (l.received_qty || 0) : (l.quantity || 0);
+      return s + qty * (Number(l.unit_cost) || 0);
+    }, 0);
+    // Subtract any returns/credits recorded against this PO.
+    const creditAmount = (po.returns || []).reduce((s, r) => s + (Number(r.total) || 0), 0);
     const poTax = po.tax_amount || 0;
-    const totalCost = lineTotal + (po.shipping_cost || 0) + poTax;
+    const totalCost = Math.max(0, receivedSubtotal + (po.shipping_cost || 0) + poTax - creditAmount);
     const desc = (po.line_items || []).map(l => l.description || l.part_number).filter(Boolean).join(", ");
+    const noteParts = [`Auto-expensed from Purchase Order ${po.po_number}`];
+    if (anyReceived) noteParts.push(`Received subtotal: $${receivedSubtotal.toFixed(2)}`);
+    if (creditAmount > 0) noteParts.push(`Returns credit: -$${creditAmount.toFixed(2)}`);
     await saveMutation.mutateAsync({
       expense_number: `EXP-${po.po_number}`,
       category: "parts_cogs",
@@ -156,7 +167,7 @@ export default function Expenses() {
       date: po.received_date || new Date().toISOString().split("T")[0],
       payment_method: "other",
       is_deductible: true,
-      notes: `Auto-expensed from Purchase Order ${po.po_number}`,
+      notes: noteParts.join(" | "),
       source: "purchase_order",
       po_id: po.id,
     });

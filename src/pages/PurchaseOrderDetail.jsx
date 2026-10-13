@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes, FileText } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes, FileText, Undo2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
@@ -52,6 +52,7 @@ export default function PurchaseOrderDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [kitPickerOpen, setKitPickerOpen] = useState(false);
   const [slipModalOpen, setSlipModalOpen] = useState(false);
+  const [returnPickerOpen, setReturnPickerOpen] = useState(false);
 
   const { data: settingsList = [] } = useQuery({
     queryKey: ["appSettings"],
@@ -125,6 +126,32 @@ export default function PurchaseOrderDetail() {
     const lines = form.line_items.filter((_, i) => i !== idx);
     recalc(lines, form.shipping_cost, form.tax_amount);
   };
+
+  // --- Returns / Credits ---
+  const emptyReturn = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, date: "", note: "" };
+
+  const returnsTotal = (form.returns || []).reduce((s, r) => s + (Number(r.total) || 0), 0);
+
+  const updateReturn = (idx, field, value) => {
+    const returns = [...(form.returns || [])];
+    returns[idx] = { ...returns[idx], [field]: value };
+    if (field === "part_id") {
+      const part = parts.find(p => p.id === value);
+      if (part) {
+        returns[idx].part_number = part.part_number;
+        returns[idx].description = part.name;
+        returns[idx].unit_cost = part.unit_cost || 0;
+        returns[idx].total = (returns[idx].quantity || 1) * (part.unit_cost || 0);
+      }
+    }
+    if (field === "quantity" || field === "unit_cost") {
+      returns[idx].total = (Number(returns[idx].quantity) || 0) * (Number(returns[idx].unit_cost) || 0);
+    }
+    setForm(f => ({ ...f, returns }));
+  };
+
+  const addReturn = () => setForm(f => ({ ...f, returns: [...(f.returns || []), { ...emptyReturn, date: new Date().toISOString().split("T")[0] }] }));
+  const removeReturn = (idx) => setForm(f => ({ ...f, returns: (f.returns || []).filter((_, i) => i !== idx) }));
 
   const sendPO = async () => {
     const supplier = suppliers.find(s => s.id === form.supplier_id);
@@ -565,8 +592,79 @@ export default function PurchaseOrderDetail() {
                 <Input type="number" value={form.tax_amount} onChange={e => { const ta = Number(e.target.value); recalc(form.line_items, form.shipping_cost, ta); setForm(f => ({...f, tax_amount: ta})); }} className="w-24 text-right h-7" min="0" step="0.01" placeholder="0.00" />
               </div>
               <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Total</span><span className="text-[#e20404]">${Number(form.total || 0).toFixed(2)}</span></div>
+              {returnsTotal > 0 && (
+                <>
+                  <div className="flex justify-between text-emerald-700"><span>Returns / Credit</span><span>-${returnsTotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-base font-bold border-t border-slate-200 pt-2"><span>Net Cost</span><span>${(Number(form.total || 0) - returnsTotal).toFixed(2)}</span></div>
+                </>
+              )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Returns / Credits */}
+      <Card className="border-0 shadow-sm mb-6">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2 text-emerald-700"><Undo2 className="w-4 h-4" /> Returns / Credits</CardTitle>
+          <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-700" onClick={addReturn}><Plus className="w-4 h-4 mr-1" /> Add Return</Button>
+        </CardHeader>
+        <CardContent>
+          {(form.returns || []).length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No returns recorded. Add a return to credit the PO total when expensing.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 font-medium text-slate-600">Part</th>
+                    <th className="text-left py-2 font-medium text-slate-600">Description</th>
+                    <th className="text-center py-2 font-medium text-slate-600 w-20">Qty</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-28">Unit Cost</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-28">Credit</th>
+                    <th className="text-left py-2 font-medium text-slate-600 w-32">Date</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(form.returns || []).map((ret, idx) => (
+                    <tr key={idx} className="border-b border-slate-100">
+                      <td className="py-2 pr-2 w-44">
+                        <Select value={ret.part_id || ""} onValueChange={v => updateReturn(idx, "part_id", v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select part" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={null}>Custom</SelectItem>
+                            {parts.map(p => <SelectItem key={p.id} value={p.id}>{p.part_number} - {p.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Input value={ret.description} onChange={e => updateReturn(idx, "description", e.target.value)} className="border-0 shadow-none px-0" placeholder="Description..." />
+                      </td>
+                      <td className="py-2 px-2">
+                        <Input type="number" value={ret.quantity} onChange={e => updateReturn(idx, "quantity", Number(e.target.value))} className="text-center border-slate-200 h-8" min="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <Input type="number" value={ret.unit_cost} onChange={e => updateReturn(idx, "unit_cost", Number(e.target.value))} className="text-right border-slate-200 h-8" min="0" step="0.01" />
+                      </td>
+                      <td className="py-2 px-2 text-right font-medium text-emerald-700">-${Number(ret.total || 0).toFixed(2)}</td>
+                      <td className="py-2 px-2">
+                        <Input type="date" value={ret.date || ""} onChange={e => updateReturn(idx, "date", e.target.value)} className="border-slate-200 h-8" />
+                      </td>
+                      <td className="py-2">
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeReturn(idx)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex justify-end mt-4 pt-4 border-t border-slate-200">
+                <div className="w-64 space-y-2 text-sm">
+                  <div className="flex justify-between text-emerald-700"><span>Total Credit</span><span>-${returnsTotal.toFixed(2)}</span></div>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
