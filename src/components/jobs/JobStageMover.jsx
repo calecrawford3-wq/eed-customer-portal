@@ -11,6 +11,9 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDialog";
+import { useCustomerNotification } from "@/hooks/useCustomerNotification";
+
+const MEANINGFUL_STAGES = ["machining", "assembly", "testing"];
 
 const ACTIVE_STAGES = [
   { key: "queued", label: "Queued" },
@@ -38,6 +41,7 @@ export default function JobStageMover({ job, build }) {
   const navigate = useNavigate();
   const [moving, setMoving] = useState(false);
   const [showPickupDialog, setShowPickupDialog] = useState(false);
+  const { triggerNotify, notifyDialog } = useCustomerNotification();
 
   const invalidateAll = async () => {
     await Promise.all([
@@ -50,7 +54,7 @@ export default function JobStageMover({ job, build }) {
   const reconcile = async () => {
     try {
       await base44.functions.invoke("ensureJobForEstimate", { estimate_id: job.estimate_id, activate: true });
-    } catch (e) { /* best-effort */ }
+    } catch { /* best-effort */ }
   };
 
   const handleMove = async (newStage) => {
@@ -124,6 +128,25 @@ export default function JobStageMover({ job, build }) {
         await reconcile();
         await invalidateAll();
         toast.success("Build completed — parts validated, inventory consumed, invoice due date set.");
+        // Notify customer of completion based on per-event preference
+        triggerNotify({
+          eventType: "completion",
+          customerId: job.customer_id,
+          jobId: job.id,
+          entityId: job.id,
+          entityLabel: job.job_number,
+          prepare: ({ customer, settings }) => {
+            const firstName = customer?.first_name || "there";
+            const companyName = settings?.company_name || "Elite Engine Development";
+            const portalUrl = "https://portal.eedpower.com";
+            return {
+              subject: `${companyName} — Your Engine Build is Complete!`,
+              emailBody: `<p>Hi ${firstName},</p><p>Great news! Your engine build is complete and ready for pickup or shipping.</p><p>We'll be in touch with pickup details and your final invoice shortly.</p><p><a href="${portalUrl}" style="display:inline-block;background:#e20404;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">View Details in Portal</a></p>`,
+              smsBody: `Hi ${firstName}, your engine build at ${companyName} is complete and ready for pickup. We'll contact you with details.`,
+              linkUrl: portalUrl,
+            };
+          },
+        });
       } catch (e) {
         const data = e?.response?.data || {};
         if (data?.blocked) {
@@ -165,6 +188,28 @@ export default function JobStageMover({ job, build }) {
       await reconcile();
       await invalidateAll();
       toast.success(`Moved to ${ACTIVE_STAGES.find(s => s.key === newStage)?.label}`);
+      // Notify customer of meaningful stage changes based on per-event preference
+      if (MEANINGFUL_STAGES.includes(newStage)) {
+        const stageLabel = ACTIVE_STAGES.find(s => s.key === newStage)?.label || newStage;
+        triggerNotify({
+          eventType: "stage_change",
+          customerId: job.customer_id,
+          jobId: job.id,
+          entityId: job.id,
+          entityLabel: job.job_number,
+          prepare: ({ customer, settings }) => {
+            const firstName = customer?.first_name || "there";
+            const companyName = settings?.company_name || "Elite Engine Development";
+            const portalUrl = "https://portal.eedpower.com";
+            return {
+              subject: `${companyName} — Engine Build Update: ${stageLabel}`,
+              emailBody: `<p>Hi ${firstName},</p><p>Your engine build has progressed to the <strong>${stageLabel}</strong> stage.</p><p>You can track progress in your customer portal:</p><p><a href="${portalUrl}" style="display:inline-block;background:#e20404;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">View Progress</a></p>`,
+              smsBody: `Hi ${firstName}, your engine build at ${companyName} has moved to the ${stageLabel} stage. Track progress: ${portalUrl}`,
+              linkUrl: portalUrl,
+            };
+          },
+        });
+      }
       if (newStage === "machining") {
         const params = new URLSearchParams(window.location.search);
         params.set("tab", "machining");
@@ -186,7 +231,7 @@ export default function JobStageMover({ job, build }) {
       await reconcile();
       await invalidateAll();
       toast.success("Override cleared — stage auto-derived from build");
-    } catch (e) {
+    } catch {
       toast.error("Failed to clear override");
     } finally {
       setMoving(false);
@@ -195,6 +240,7 @@ export default function JobStageMover({ job, build }) {
 
   return (
     <>
+      {notifyDialog}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" disabled={moving} className="h-7 text-xs gap-1 ml-1">

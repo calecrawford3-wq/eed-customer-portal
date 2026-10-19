@@ -2,7 +2,7 @@ import React from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, ClipboardList, DollarSign, Package, Truck, RefreshCw, Wrench, AlertTriangle, Mail, FileWarning, Hand, Volume2 } from "lucide-react";
+import { Bell, ClipboardList, DollarSign, Package, Truck, RefreshCw, Wrench, AlertTriangle, Mail, FileWarning, Hand, Volume2, Send } from "lucide-react";
 
 const NOTIF_TYPES = [
   {
@@ -77,6 +77,39 @@ const NOTIF_TYPES = [
   },
 ];
 
+const CUSTOMER_NOTIF_EVENTS = [
+  {
+    key: "notif_customer_estimate_ready",
+    label: "Estimate Ready",
+    description: "An estimate is ready to send to the customer",
+    icon: ClipboardList,
+  },
+  {
+    key: "notif_customer_additional_work",
+    label: "Additional Work Ready",
+    description: "Additional work needs customer approval",
+    icon: Wrench,
+  },
+  {
+    key: "notif_customer_stage_change",
+    label: "Stage Change",
+    description: "Engine build progresses to a new work stage",
+    icon: RefreshCw,
+  },
+  {
+    key: "notif_customer_completion",
+    label: "Build Completion",
+    description: "Engine build is complete and ready for pickup",
+    icon: Package,
+  },
+];
+
+const CUSTOMER_NOTIF_OPTIONS = [
+  { value: "ask_me", label: "Ask Me", activeClass: "bg-blue-100 text-blue-700" },
+  { value: "automatic", label: "Automatic", activeClass: "bg-emerald-100 text-emerald-700" },
+  { value: "off", label: "Off", activeClass: "bg-slate-200 text-slate-500" },
+];
+
 export default function NotificationSettingsPanel({ form, set }) {
   const soundOn = form.notif_sound_enabled !== undefined ? form.notif_sound_enabled : true;
 
@@ -139,6 +172,54 @@ export default function NotificationSettingsPanel({ form, set }) {
             </div>
           </div>
           <Switch checked={soundOn} onCheckedChange={(v) => set("notif_sound_enabled", v)} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Send className="w-4 h-4" /> Customer Notifications
+          </CardTitle>
+          <p className="text-sm text-slate-500">
+            Control how customers are notified when key events happen. Each event can ask before sending (Ask Me), send both email and text automatically, or be turned off entirely.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {CUSTOMER_NOTIF_EVENTS.map((item) => {
+            const val = form[item.key] !== undefined ? form[item.key] : "ask_me";
+            return (
+              <div
+                key={item.key}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-b border-slate-50 last:border-0 px-3 rounded-lg hover:bg-slate-50/50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-slate-900">{item.label}</Label>
+                    <p className="text-xs text-slate-400">{item.description}</p>
+                  </div>
+                </div>
+                <div className="flex gap-1 ml-auto">
+                  {CUSTOMER_NOTIF_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => set(item.key, opt.value)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        val === opt.value
+                          ? opt.activeClass
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

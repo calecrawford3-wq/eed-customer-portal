@@ -8,12 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, roundMoney } from "@/lib/money";
 import { toast } from "sonner";
+import { useCustomerNotification } from "@/hooks/useCustomerNotification";
 
 export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }) {
   const [title, setTitle] = useState(`Additional Work — ${findings.length} finding(s)`);
   const [description, setDescription] = useState("");
   const [taxRate, setTaxRate] = useState(0);
   const [saving, setSaving] = useState(false);
+  const { triggerNotify, notifyDialog } = useCustomerNotification();
 
   // Aggregate parts, labor, machining, outsourced from selected findings
   const agg = useMemo(() => aggregate(findings), [findings]);
@@ -44,11 +46,32 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
       }
       toast.success(`${num} created — pending approval`);
       onSaved();
+      // Trigger customer notification based on per-event preference
+      const approvalUrl = `https://billing.eedpower.com/additional-work/${aw.public_access_token}`;
+      await triggerNotify({
+        eventType: "additional_work_ready",
+        customerId: job.customer_id,
+        jobId: job.id,
+        entityId: aw.id,
+        entityLabel: num,
+        prepare: ({ customer, settings }) => {
+          const firstName = customer?.first_name || "there";
+          const companyName = settings?.company_name || "Elite Engine Development";
+          const totalStr = Number(total).toFixed(2);
+          return {
+            subject: `${companyName} — Additional Work Approval Needed (${num})`,
+            emailBody: `<p>Hi ${firstName},</p><p>During your engine build, we found additional work that needs your approval.</p><p><strong>${title}</strong></p>${description ? `<p>${description}</p>` : ""}<p><strong>Additional Cost: $${totalStr}</strong></p><p>Please review and approve or decline online:</p><p><a href="${approvalUrl}" style="display:inline-block;background:#e20404;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Review Additional Work</a></p><p style="font-size:12px;color:#888;">Or copy this link: ${approvalUrl}</p>`,
+            smsBody: `Hi ${firstName}, ${companyName} found additional work needing your approval (${num}, $${totalStr}). Review here: ${approvalUrl}`,
+            linkUrl: approvalUrl,
+          };
+        },
+      });
     } catch (e) { toast.error("Failed: " + e.message); }
     setSaving(false);
   };
 
   return (
+    <>
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Generate Additional-Work Approval</DialogTitle></DialogHeader>
@@ -79,6 +102,8 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      {notifyDialog}
+    </>
   );
 }
 

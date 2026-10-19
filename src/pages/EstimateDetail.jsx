@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
 import { useNavigate } from "react-router-dom";
-import NotifyCustomerPanel from "@/components/notifications/NotifyCustomerPanel";
+import { useCustomerNotification } from "@/hooks/useCustomerNotification";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import CoreCreditModal from "@/components/estimates/CoreCreditModal";
@@ -1535,12 +1535,11 @@ export default function EstimateDetail() {
     }
   };
 
-  const [notifyPanelOpen, setNotifyPanelOpen] = useState(false);
-  const [notifyData, setNotifyData] = useState(null);
+  const { triggerNotify, notifyDialog } = useCustomerNotification();
 
   // Prepare a unified email + SMS notification for this estimate.
   // Ensures a public access token exists so the secure link works, then
-  // opens the NotifyCustomerPanel with pre-filled message bodies.
+  // triggers the notification via the shared hook (respects per-event preference).
   const handleNotifyCustomer = async () => {
     if (!form.customer_id) { toast.error("Select a customer first"); return; }
     if (!id) { toast.error("Save the estimate first"); return; }
@@ -1565,29 +1564,33 @@ export default function EstimateDetail() {
     } catch { /* link still usable */ }
 
     const viewUrl = `https://billing.eedpower.com/estimate/${publicAccessToken}`;
-    const total = Number(form.total || 0).toFixed(2);
-    const firstName = customer.first_name || "there";
-    const companyName = settingsData?.[0]?.company_name || "Elite Engine Development";
 
-    const emailBody = `<p>Hi ${firstName},</p><p>Your estimate <strong>${form.estimate_number}</strong> from ${companyName} is ready for review.</p><p><strong>Total: $${total}</strong></p><p>You can review and approve it online:</p><p><a href="${viewUrl}" style="display:inline-block;background:#e20404;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Review & Approve Estimate</a></p><p style="font-size:12px;color:#888;">Or copy this link: ${viewUrl}</p>`;
-    const smsBody = `Hi ${firstName}, your estimate ${form.estimate_number} from ${companyName} is ready. Total: $${total}. Review & approve here: ${viewUrl}`;
-
-    setNotifyData({
+    await triggerNotify({
       eventType: "estimate_ready",
       customerId: customer.id,
-      customerName: `${customer.first_name} ${customer.last_name}`,
-      customerEmail: customer.email,
-      customerPhone: customer.phone,
-      smsOptOut: customer.sms_opt_out,
-      idempotencyKey: `estimate_ready:${id}`,
-      subject: `${companyName} — Estimate ${form.estimate_number} Ready`,
-      emailBody,
-      smsBody,
-      linkUrl: viewUrl,
       entityId: id,
       entityLabel: form.estimate_number,
+      prepare: ({ customer: cust, settings }) => {
+        const total = Number(form.total || 0).toFixed(2);
+        const firstName = cust?.first_name || "there";
+        const companyName = settings?.company_name || "Elite Engine Development";
+        return {
+          subject: `${companyName} — Estimate ${form.estimate_number} Ready`,
+          emailBody: `<p>Hi ${firstName},</p><p>Your estimate <strong>${form.estimate_number}</strong> from ${companyName} is ready for review.</p><p><strong>Total: $${total}</strong></p><p>You can review and approve it online:</p><p><a href="${viewUrl}" style="display:inline-block;background:#e20404;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Review & Approve Estimate</a></p><p style="font-size:12px;color:#888;">Or copy this link: ${viewUrl}</p>`,
+          smsBody: `Hi ${firstName}, your estimate ${form.estimate_number} from ${companyName} is ready. Total: $${total}. Review & approve here: ${viewUrl}`,
+          linkUrl: viewUrl,
+        };
+      },
+      onSent: () => {
+        // Mark as sent if still draft
+        if (form.status === "draft") {
+          base44.entities.Estimate.update(id, { status: "sent" }).then(() => {
+            setForm(f => ({ ...f, status: "sent" }));
+            qc.invalidateQueries({ queryKey: ["estimate", id] });
+          }).catch(() => {});
+        }
+      },
     });
-    setNotifyPanelOpen(true);
   };
 
   const customer = customers.find(c => c.id === form.customer_id);
@@ -1808,34 +1811,7 @@ export default function EstimateDetail() {
         context={{ type: "estimate", id, number: form.estimate_number, buildId: form.build_id }}
       />
 
-      {notifyData && (
-        <NotifyCustomerPanel
-          open={notifyPanelOpen}
-          onClose={() => setNotifyPanelOpen(false)}
-          eventType={notifyData.eventType}
-          customerId={notifyData.customerId}
-          customerName={notifyData.customerName}
-          customerEmail={notifyData.customerEmail}
-          customerPhone={notifyData.customerPhone}
-          smsOptOut={notifyData.smsOptOut}
-          idempotencyKey={notifyData.idempotencyKey}
-          defaultSubject={notifyData.subject}
-          defaultEmailBody={notifyData.emailBody}
-          defaultSmsBody={notifyData.smsBody}
-          linkUrl={notifyData.linkUrl}
-          entityId={notifyData.entityId}
-          entityLabel={notifyData.entityLabel}
-          onSent={() => {
-            // Mark as sent if still draft
-            if (form.status === "draft") {
-              base44.entities.Estimate.update(id, { status: "sent" }).then(() => {
-                setForm(f => ({ ...f, status: "sent" }));
-                qc.invalidateQueries({ queryKey: ["estimate", id] });
-              }).catch(() => {});
-            }
-          }}
-        />
-      )}
+      {notifyDialog}
 
       <EstimateHeader
         form={form}
