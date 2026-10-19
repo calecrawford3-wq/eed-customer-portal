@@ -131,8 +131,8 @@ export default function InvoiceViewer() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between">
-          <img src={LOGO_URL} alt="Company Logo" className="h-10" />
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6 flex items-center justify-between gap-3">
+          <img src={LOGO_URL} alt="Company Logo" className="h-8 md:h-10" />
           <div className="text-right">
             <h1 className="text-2xl font-bold text-slate-900">{inv.invoice_number}</h1>
             <Badge className={`mt-2 border-0 capitalize ${inv.status === "paid" ? "bg-emerald-100 text-emerald-700" : inv.status === "overdue" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
@@ -142,10 +142,10 @@ export default function InvoiceViewer() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Customer Info */}
         <Card className="border-0 shadow-sm mb-6">
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <h2 className="text-sm font-bold text-slate-600 uppercase mb-4">Bill To</h2>
             <p className="font-semibold text-lg">{customer.first_name} {customer.last_name}</p>
             {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
@@ -184,22 +184,22 @@ export default function InvoiceViewer() {
         {/* Summary */}
         <Card className="border-0 shadow-sm mb-6">
           <CardContent className="p-6">
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total Due</p>
-                <p className="text-2xl font-bold text-slate-900">${Number(inv.total || 0).toFixed(2)}</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900">${Number(inv.total || 0).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500 mb-1">Credit Applied</p>
-                <p className="text-2xl font-bold text-violet-600">${Number(inv.applied_credits || 0).toFixed(2)}</p>
+                <p className="text-xl md:text-2xl font-bold text-violet-600">${Number(inv.applied_credits || 0).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500 mb-1">Paid</p>
-                <p className="text-2xl font-bold text-emerald-600">${Number(inv.amount_paid || 0).toFixed(2)}</p>
+                <p className="text-xl md:text-2xl font-bold text-emerald-600">${Number(inv.amount_paid || 0).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500 mb-1">Balance</p>
-                <p className={`text-2xl font-bold ${inv.balance_due <= 0 ? "text-emerald-600" : "text-[#e20404]"}`}>${Number(inv.balance_due || 0).toFixed(2)}</p>
+                <p className={`text-xl md:text-2xl font-bold ${inv.balance_due <= 0 ? "text-emerald-600" : "text-[#e20404]"}`}>${Number(inv.balance_due || 0).toFixed(2)}</p>
               </div>
             </div>
 
@@ -258,9 +258,10 @@ export default function InvoiceViewer() {
 
         {/* Line Items */}
         <Card className="border-0 shadow-sm mb-6">
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <h3 className="font-bold text-sm uppercase mb-4">Items & Services</h3>
-            <table className="w-full text-sm">
+            {/* Desktop table */}
+            <table className="hidden sm:table w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left py-2 font-medium text-slate-600">Description</th>
@@ -288,6 +289,26 @@ export default function InvoiceViewer() {
                 ))}
               </tbody>
             </table>
+            {/* Mobile stacked cards */}
+            <div className="sm:hidden space-y-3">
+              {(inv.line_items || []).map((item, idx) => (
+                <div key={idx} className="border border-slate-200 rounded-lg p-3">
+                  <p className="font-medium text-slate-900 text-sm">{item.item_name}</p>
+                  <div className="flex justify-between items-center mt-2 text-sm">
+                    <span className="text-slate-500">Qty {item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
+                    <span className="text-slate-900 font-semibold">${Number(item.total).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+              {(inv.labor_items || []).map((item, idx) => (
+                <div key={`labor-${idx}`} className="border border-slate-200 rounded-lg p-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-900">{item.name}</span>
+                    <span className="text-slate-900 font-semibold">${Number(item.price).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

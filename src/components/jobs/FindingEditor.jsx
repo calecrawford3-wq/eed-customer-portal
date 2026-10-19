@@ -231,10 +231,10 @@ function ItemGroup({ label, items, onChange, withVendor }) {
       </div>
       {list.map((it, i) => (
         <div key={i} className="grid grid-cols-12 gap-1 mt-1 items-center">
-          <Input className="col-span-4 h-8 text-sm" placeholder="Name" value={it.name} onChange={e => updateAt(onChange, list, i, { name: e.target.value })} />
-          {withVendor ? <Input className="col-span-3 h-8 text-sm" placeholder="Vendor" value={it.vendor || ""} onChange={e => updateAt(onChange, list, i, { vendor: e.target.value })} /> : <Input className="col-span-3 h-8 text-sm" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />}
-          <Input className="col-span-4 h-8 text-sm" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />
-          <Input type="number" className="col-span-1 h-8 text-sm" placeholder="$" value={it.price} onChange={e => updateAt(onChange, list, i, { price: Number(e.target.value) || 0 })} />
+          <Input className="col-span-12 md:col-span-4 h-9 md:h-8 text-sm" placeholder="Name" value={it.name} onChange={e => updateAt(onChange, list, i, { name: e.target.value })} />
+          {withVendor ? <Input className="col-span-7 md:col-span-3 h-9 md:h-8 text-sm" placeholder="Vendor" value={it.vendor || ""} onChange={e => updateAt(onChange, list, i, { vendor: e.target.value })} /> : <Input className="col-span-7 md:col-span-3 h-9 md:h-8 text-sm" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />}
+          <Input className="col-span-12 md:col-span-4 h-9 md:h-8 text-sm order-last md:order-none" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />
+          <Input type="number" className="col-span-5 md:col-span-1 h-9 md:h-8 text-sm" placeholder="$" value={it.price} onChange={e => updateAt(onChange, list, i, { price: Number(e.target.value) || 0 })} />
         </div>
       ))}
     </div>

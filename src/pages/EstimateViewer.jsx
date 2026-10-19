@@ -141,13 +141,13 @@ export default function EstimateViewer({ buildVersion }) {
       
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-6 py-6">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6">
           <h1 className="text-2xl font-bold text-slate-900">Estimate</h1>
-          <p className="text-sm text-slate-500 mt-1">Token: {token}</p>
+          <p className="text-sm text-slate-500 mt-1 break-all">Token: {token}</p>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {loading && (
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <div className="flex items-center gap-3">
@@ -195,9 +195,9 @@ export default function EstimateViewer({ buildVersion }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm border-t border-slate-200 pt-4">
-                <div>
-                  <p className="text-slate-500 font-semibold">Customer</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm border-t border-slate-200 pt-4">
+                  <div>
+                    <p className="text-slate-500 font-semibold">Customer</p>
                   <p className="text-slate-900">
                     {data.customer ? `${data.customer.first_name} ${data.customer.last_name}` : "N/A"}
                   </p>
@@ -241,7 +241,7 @@ export default function EstimateViewer({ buildVersion }) {
             </div>
 
             {/* Dates and Details */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {data.estimate?.issue_date && (
                 <div className="bg-white rounded-lg border border-slate-200 p-4">
                   <p className="text-xs text-slate-500 font-semibold">Issue Date</p>
@@ -258,9 +258,10 @@ export default function EstimateViewer({ buildVersion }) {
 
             {/* Line Items */}
             {data.estimate?.line_items && data.estimate.line_items.length > 0 && (
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="bg-white rounded-lg border border-slate-200 p-4 md:p-6">
                 <h3 className="font-semibold text-slate-900 mb-4">Items</h3>
-                <table className="w-full text-sm">
+                {/* Desktop table */}
+                <table className="hidden sm:table w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
                       <th className="text-left py-2 text-slate-600 font-semibold">Description</th>
@@ -280,14 +281,27 @@ export default function EstimateViewer({ buildVersion }) {
                     ))}
                   </tbody>
                 </table>
+                {/* Mobile stacked cards */}
+                <div className="sm:hidden space-y-3">
+                  {data.estimate.line_items.map((item, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg p-3">
+                      <p className="font-medium text-slate-900 text-sm">{item.item_name}</p>
+                      <div className="flex justify-between items-center mt-2 text-sm">
+                        <span className="text-slate-500">Qty {item.quantity} × {formatMoney(item.unit_price)}</span>
+                        <span className="text-slate-900 font-semibold">{formatMoney(item.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Labor Items */}
             {data.estimate?.labor_items && data.estimate.labor_items.length > 0 && (
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="bg-white rounded-lg border border-slate-200 p-4 md:p-6">
                 <h3 className="font-semibold text-slate-900 mb-4">Labor</h3>
-                <table className="w-full text-sm">
+                {/* Desktop table */}
+                <table className="hidden sm:table w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200">
                       <th className="text-left py-2 text-slate-600 font-semibold">Description</th>
@@ -303,6 +317,17 @@ export default function EstimateViewer({ buildVersion }) {
                     ))}
                   </tbody>
                 </table>
+                {/* Mobile stacked cards */}
+                <div className="sm:hidden space-y-3">
+                  {data.estimate.labor_items.map((item, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg p-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-900">{item.name}</span>
+                        <span className="text-slate-900 font-semibold">{formatMoney(item.price)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
