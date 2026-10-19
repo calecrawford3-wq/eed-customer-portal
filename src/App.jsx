@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -42,6 +43,7 @@ import ExceptionDashboard from './pages/ExceptionDashboard';
 import MachiningStation from './pages/MachiningStation';
 import AdditionalWorkViewer from './pages/AdditionalWorkViewer';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
+import SplashScreen from '@/components/SplashScreen';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -53,14 +55,20 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
+  const [splashGone, setSplashGone] = useState(false);
+  const loading = isLoadingPublicSettings || isLoadingAuth;
 
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
+  // Keep splash mounted briefly after loading clears so the fade-out plays
+  useEffect(() => {
+    if (!loading) {
+      const t = setTimeout(() => setSplashGone(true), 700);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  // Show branded splash screen while checking app public settings or auth
+  if (loading) {
+    return <SplashScreen ready={false} />;
   }
 
   // Handle authentication errors
@@ -76,64 +84,29 @@ const AuthenticatedApp = () => {
   // Role-based routing: non-admin users only see the customer portal
   const isAdmin = user?.role === 'admin';
 
+  // Splash overlay during fade-out transition (after loading clears)
+  const splashOverlay = !splashGone ? <SplashScreen ready={true} /> : null;
+
   if (!isAdmin) {
     return (
-      <Routes>
-        <Route path="*" element={<CustomerPortal />} />
-      </Routes>
+      <>
+        {splashOverlay}
+        <Routes>
+          <Route path="*" element={<CustomerPortal />} />
+        </Routes>
+      </>
     );
   }
 
   // Admin users see the full app
   return (
+    <>
+    {splashOverlay}
     <Routes>
-      <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
-        </LayoutWrapper>
-      } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route path="/Credits" element={<LayoutWrapper currentPageName="Credits"><Credits /></LayoutWrapper>} />
-      <Route path="/CustomerPortal" element={<CustomerPortal />} />
-      <Route path="/RefreshRequests" element={<LayoutWrapper currentPageName="RefreshRequests"><RefreshRequests /></LayoutWrapper>} />
-      <Route path="/CustomerSuccess" element={<LayoutWrapper currentPageName="CustomerSuccess"><CustomerSuccess /></LayoutWrapper>} />
-      <Route path="/Calendar" element={<LayoutWrapper currentPageName="Calendar"><CalendarPage /></LayoutWrapper>} />
-      <Route path="/BarcodeScan" element={<LayoutWrapper currentPageName="BarcodeScan"><BarcodeScan /></LayoutWrapper>} />
-      <Route path="/Messaging" element={<LayoutWrapper currentPageName="Messaging"><Messaging /></LayoutWrapper>} />
-      <Route path="/Emails" element={<LayoutWrapper currentPageName="Emails"><Emails /></LayoutWrapper>} />
-      <Route path="/Communications" element={<LayoutWrapper currentPageName="Communications"><Communications /></LayoutWrapper>} />
-      <Route path="/Approvals" element={<LayoutWrapper currentPageName="Approvals"><Approvals /></LayoutWrapper>} />
-      <Route path="/Simulator" element={<LayoutWrapper currentPageName="Simulator"><Simulator /></LayoutWrapper>} />
-      <Route path="/DynoImport" element={<LayoutWrapper currentPageName="DynoImport"><DynoImport /></LayoutWrapper>} />
-      <Route path="/DevelopmentData" element={<LayoutWrapper currentPageName="DevelopmentData"><DevelopmentData /></LayoutWrapper>} />
-      <Route path="/ModelAccuracy" element={<LayoutWrapper currentPageName="ModelAccuracy"><ModelAccuracy /></LayoutWrapper>} />
-      <Route path="/DynoComparison" element={<LayoutWrapper currentPageName="DynoComparison"><DynoComparison /></LayoutWrapper>} />
-      <Route path="/PredictionRules" element={<LayoutWrapper currentPageName="PredictionRules"><PredictionRules /></LayoutWrapper>} />
-      <Route path="/SimilarBuilds" element={<LayoutWrapper currentPageName="SimilarBuilds"><SimilarBuilds /></LayoutWrapper>} />
-      <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
-      <Route path="/RnDEngineDeveloper" element={<LayoutWrapper currentPageName="RnDEngineDeveloper"><RnDEngineDeveloper /></LayoutWrapper>} />
-      <Route path="/BuildWorkflow" element={<LayoutWrapper currentPageName="BuildWorkflow"><BuildWorkflow /></LayoutWrapper>} />
-      <Route path="/CannedJobs" element={<LayoutWrapper currentPageName="CannedJobs"><CannedJobs /></LayoutWrapper>} />
-      <Route path="/Addons" element={<LayoutWrapper currentPageName="Addons"><Addons /></LayoutWrapper>} />
-      <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
-      <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
-      <Route path="/Jobs" element={<LayoutWrapper currentPageName="Jobs"><Jobs /></LayoutWrapper>} />
-      <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCardErrorBoundary><JobCard /></JobCardErrorBoundary></LayoutWrapper>} />
-      <Route path="/ReplacementRules" element={<LayoutWrapper currentPageName="ReplacementRules"><ReplacementRules /></LayoutWrapper>} />
-      <Route path="/ExceptionDashboard" element={<LayoutWrapper currentPageName="ExceptionDashboard"><ExceptionDashboard /></LayoutWrapper>} />
-      <Route path="/MachiningStation" element={<LayoutWrapper currentPageName="MachiningStation"><MachiningStation /></LayoutWrapper>} />
+...
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </>
   );
 };
 
