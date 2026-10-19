@@ -395,11 +395,11 @@ export default function Jobs() {
         />
       ) : view === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex flex-col gap-4 md:flex-row md:overflow-x-auto pb-4">
             {viewConfig.columns.map(col => {
               const colJobs = columns[col.key] || [];
               return (
-                <div key={col.key} className="min-w-[260px] w-64 flex-shrink-0">
+                <div key={col.key} className="w-full md:min-w-[260px] md:w-64 md:flex-shrink-0">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{col.label}</span>
                     <Badge className={cn("text-xs", COLUMN_COLORS[col.key] || "bg-slate-100 text-slate-600")}>{colJobs.length}</Badge>
@@ -507,7 +507,7 @@ export default function Jobs() {
 function MoveDropdown({ job, onMove, disabled }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="absolute top-1 right-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       <div className="relative">
         <button
           onClick={(e) => { e.stopPropagation(); setOpen(!open); }}

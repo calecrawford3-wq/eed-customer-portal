@@ -237,7 +237,7 @@ export default function JobCard() {
           next.delete("plan");
           setSearchParams(next, { replace: true });
         }}>
-          <TabsList className="flex flex-wrap h-auto overflow-x-auto">
+          <TabsList className="flex flex-nowrap h-auto overflow-x-auto md:flex-wrap md:overflow-x-visible -mx-4 px-4 md:mx-0 md:px-0">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="estimate">Estimate & Approvals</TabsTrigger>
             <TabsTrigger value="findings">Findings & Approvals</TabsTrigger>

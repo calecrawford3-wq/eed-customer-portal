@@ -42,7 +42,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
   return (
     <div className="bg-white border-b border-slate-200 sticky top-12 md:top-12 z-10 print:hidden">
       <div className="px-4 md:px-8 py-3">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="font-mono text-sm text-[#e20404] font-bold">{job.job_number}</span>
           <Badge className={cn("text-xs", stageColor(job))}>{STAGE_LABELS[job.stage] || job.stage}</Badge>
           {job.blocking_condition && job.blocking_condition !== "none" && (

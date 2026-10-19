@@ -157,7 +157,7 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{finding ? "Edit Finding" : "Log Teardown Finding"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div><Label>Component *</Label><Input value={form.component} onChange={e => setForm(f => ({ ...f, component: e.target.value }))} placeholder="Crankshaft, Head #2…" /></div>
             <div><Label>Condition</Label>
               <Select value={form.condition} onValueChange={v => setForm(f => ({ ...f, condition: v }))}>
@@ -182,7 +182,7 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div><Label>Recommended Action</Label>
               <Select value={form.recommended_action} onValueChange={v => setForm(f => ({ ...f, recommended_action: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ACTIONS.map(a => <SelectItem key={a} value={a}>{a.replace(/_/g, " ")}</SelectItem>)}</SelectContent>

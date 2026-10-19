@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ScanLine,
-  Menu,
   X,
 } from "lucide-react";
 import { Search } from "lucide-react";
@@ -15,6 +14,7 @@ import NotificationBell from "@/components/NotificationBell";
 import GlobalSearch from "@/components/GlobalSearch";
 import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
 import NavSidebar from "@/components/NavSidebar";
+import MobileBottomNav from "@/components/mobile/MobileBottomNav";
 
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
@@ -101,17 +101,29 @@ export default function Layout({ children, currentPageName }) {
           isWorkflow ? "md:ml-0" : (collapsed ? "md:ml-16" : "md:ml-64")
         )}
       >
-        {/* Mobile top bar */}
-        <div className="md:hidden sticky top-0 z-30 bg-slate-900 text-white flex items-center justify-between px-4 h-14 border-b border-slate-800 print:hidden">
-          <button onClick={() => setMobileOpen(true)} className="text-white p-1">
-            <Menu className="w-6 h-6" />
-          </button>
-          <img 
-            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
-            alt="Elite Engine Development" 
+        {/* Mobile top bar — bottom nav replaces hamburger menu */}
+        <div className="md:hidden sticky top-0 z-30 bg-slate-900 text-white flex items-center justify-between px-4 h-14 border-b border-slate-800 print:hidden"
+             style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}>
+          <img
+            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+            alt="Elite Engine Development"
             className="h-7 object-contain"
           />
-          <NotificationBell />
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigate(createPageUrl("BarcodeScan"))}
+              className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
+            >
+              <ScanLine className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
+              className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <NotificationBell />
+          </div>
         </div>
         {/* Desktop sticky bar — hidden on Build Workflow (full-screen dark mode); Back button shown on non-Dashboard pages */}
         {!isWorkflow && (
@@ -147,8 +159,11 @@ export default function Layout({ children, currentPageName }) {
             </div>
           </div>
         )}
-        {children}
+        <div className="pb-16 md:pb-0">{children}</div>
       </main>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
     </div>
   );
 }
