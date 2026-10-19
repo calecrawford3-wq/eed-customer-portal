@@ -214,9 +214,9 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
               <button
                 type="button"
                 onClick={() => remove(idx)}
-                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-black/80"
+                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-black/80 touch-manipulation"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="p-1.5 space-y-1">
@@ -224,25 +224,25 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
                 value={slot.caption}
                 onChange={(e) => patch(idx, { caption: e.target.value })}
                 placeholder="Caption"
-                className="h-7 text-xs"
+                className="h-9 text-sm"
               />
               <div className="flex items-center justify-between gap-1">
                 <button
                   type="button"
                   onClick={() => patch(idx, { share_with_customer: !slot.share_with_customer })}
-                  className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${slot.share_with_customer ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md touch-manipulation ${slot.share_with_customer ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
                   title={slot.share_with_customer ? "Shared with customer" : "Internal only"}
                 >
-                  {slot.share_with_customer ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  {slot.share_with_customer ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   {slot.share_with_customer ? "Shared" : "Internal"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCover(idx)}
-                  className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded ${slot.is_cover ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
+                  className={`flex items-center gap-0.5 text-xs px-2 py-1 rounded-md touch-manipulation ${slot.is_cover ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
                   title="Set as cover photo"
                 >
-                  <Star className={`w-3 h-3 ${slot.is_cover ? "fill-current" : ""}`} />
+                  <Star className={`w-3.5 h-3.5 ${slot.is_cover ? "fill-current" : ""}`} />
                   Cover
                 </button>
               </div>

@@ -213,9 +213,9 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
           <ItemGroup label="Machining" items={form.machining_items} onChange={v => setForm(f => ({ ...f, machining_items: v }))} />
           <ItemGroup label="Outsourced Services" items={form.outsourced_services} onChange={v => setForm(f => ({ ...f, outsourced_services: v }))} withVendor />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-[#e20404] hover:bg-[#c00303]" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Finding"}</Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Cancel</Button>
+          <Button className="bg-[#e20404] hover:bg-[#c00303] w-full sm:w-auto" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Finding"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -230,11 +230,13 @@ function ItemGroup({ label, items, onChange, withVendor }) {
         <Button type="button" size="sm" variant="ghost" className="h-6 text-xs text-[#e20404]" onClick={() => onChange([...list, { name: "", description: "", price: 0, ...(withVendor ? { vendor: "" } : {}) }])}><Plus className="w-3 h-3 mr-0.5" /> Add</Button>
       </div>
       {list.map((it, i) => (
-        <div key={i} className="grid grid-cols-12 gap-1 mt-1 items-center">
-          <Input className="col-span-12 md:col-span-4 h-9 md:h-8 text-sm" placeholder="Name" value={it.name} onChange={e => updateAt(onChange, list, i, { name: e.target.value })} />
-          {withVendor ? <Input className="col-span-7 md:col-span-3 h-9 md:h-8 text-sm" placeholder="Vendor" value={it.vendor || ""} onChange={e => updateAt(onChange, list, i, { vendor: e.target.value })} /> : <Input className="col-span-7 md:col-span-3 h-9 md:h-8 text-sm" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />}
-          <Input className="col-span-12 md:col-span-4 h-9 md:h-8 text-sm order-last md:order-none" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />
-          <Input type="number" className="col-span-5 md:col-span-1 h-9 md:h-8 text-sm" placeholder="$" value={it.price} onChange={e => updateAt(onChange, list, i, { price: Number(e.target.value) || 0 })} />
+        <div key={i} className="grid grid-cols-2 md:grid-cols-12 gap-1 mt-1 items-center">
+          <Input className="col-span-2 md:col-span-4 h-10 md:h-8 text-sm" placeholder="Name" value={it.name} onChange={e => updateAt(onChange, list, i, { name: e.target.value })} />
+          {withVendor
+            ? <Input className="col-span-2 md:col-span-3 h-10 md:h-8 text-sm" placeholder="Vendor" value={it.vendor || ""} onChange={e => updateAt(onChange, list, i, { vendor: e.target.value })} />
+            : <Input className="col-span-2 md:col-span-3 h-10 md:h-8 text-sm" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />}
+          <Input className="col-span-2 md:col-span-4 h-10 md:h-8 text-sm md:order-none" placeholder="Description" value={it.description || ""} onChange={e => updateAt(onChange, list, i, { description: e.target.value })} />
+          <Input type="number" className="col-span-2 md:col-span-1 h-10 md:h-8 text-sm" placeholder="$" value={it.price} onChange={e => updateAt(onChange, list, i, { price: Number(e.target.value) || 0 })} />
         </div>
       ))}
     </div>

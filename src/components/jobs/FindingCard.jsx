@@ -67,8 +67,8 @@ export default function FindingCard({ finding, selected, onToggleSelect, onEdit,
                 <Badge className={STATUS_CLS[f.status] || "bg-slate-100"}>{f.status}</Badge>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={onEdit} className="text-slate-400 hover:text-slate-600 p-1"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={onDelete} className="text-slate-400 hover:text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={onEdit} className="text-slate-400 hover:text-slate-600 p-2 touch-manipulation"><Pencil className="w-4 h-4" /></button>
+                <button onClick={onDelete} className="text-slate-400 hover:text-red-600 p-2 touch-manipulation"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
             {f.measurements && <p className="text-sm text-slate-600 mt-1"><span className="text-xs text-slate-400 uppercase font-semibold mr-1">Measurements:</span>{f.measurements}</p>}

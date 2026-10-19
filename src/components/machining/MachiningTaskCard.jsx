@@ -204,9 +204,9 @@ export default function MachiningTaskCard({ task, large }) {
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowComplete(false)}>Cancel</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={completeTask}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowComplete(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto" onClick={completeTask}>
               <CheckCircle2 className="w-4 h-4 mr-1" /> {isComplete ? "Save Correction" : "Complete Task"}
             </Button>
           </DialogFooter>
@@ -222,9 +222,9 @@ export default function MachiningTaskCard({ task, large }) {
           <div>
             <Textarea value={blockReason} onChange={e => setBlockReason(e.target.value)} rows={3} placeholder="Why is this task blocked?" />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBlock(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={saveBlock}>Block Task</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowBlock(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button variant="destructive" onClick={saveBlock} className="w-full sm:w-auto">Block Task</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
