@@ -192,28 +192,16 @@ export default function CustomerPortal() {
     enabled: !!customer,
   });
 
-  // Build Book data (loaded on demand when printing)
-  const { data: bookTasksData } = useQuery({
-    queryKey: ["book-tasks", printBookBuild?.id],
-    queryFn: () => base44.entities.BuildTask.filter({ build_id: printBookBuild.id }, { sort: "sort_order", limit: 500 }),
+  // Build Book data (loaded on demand when printing) — fetched through the
+  // ownership-checked getPortalBuildBook backend so the admin-only entities
+  // (BuildTask, TeardownFinding, ComponentReplacement) are never read directly.
+  const { data: bookData } = useQuery({
+    queryKey: ["portal-build-book", printBookBuild?.id],
+    queryFn: () =>
+      base44.functions.invoke("getPortalBuildBook", { build_id: printBookBuild.id }).then((r) => r.data),
     enabled: !!printBookBuild?.id,
   });
-  const { data: bookJobsData } = useQuery({
-    queryKey: ["book-jobs", printBookBuild?.id],
-    queryFn: () => base44.entities.Job.filter({ build_id: printBookBuild.id }, { limit: 5 }),
-    enabled: !!printBookBuild?.id,
-  });
-  const bookJob = (bookJobsData?.items || bookJobsData || [])[0];
-  const { data: bookFindingsData } = useQuery({
-    queryKey: ["book-findings", bookJob?.id],
-    queryFn: () => base44.entities.TeardownFinding.filter({ job_id: bookJob.id }, { limit: 200 }),
-    enabled: !!bookJob?.id,
-  });
-  const { data: bookReplacementsData } = useQuery({
-    queryKey: ["book-replacements", printBookBuild?.id],
-    queryFn: () => base44.entities.ComponentReplacement.filter({ build_id: printBookBuild.id }, { limit: 100 }),
-    enabled: !!printBookBuild?.id,
-  });
+  const bookJob = bookData?.job || null;
 
   const handlePrintBuildBook = (b) => {
     setPrintBookBuild(b);
@@ -431,9 +419,9 @@ export default function CustomerPortal() {
             specSheet={specSheets.find(s => s.id === printBookBuild.spec_sheet_id)}
             customer={customer}
             job={bookJob}
-            tasks={bookTasksData?.items || bookTasksData || []}
-            findings={(bookFindingsData?.items || bookFindingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled")}
-            replacements={bookReplacementsData?.items || bookReplacementsData || []}
+            tasks={bookData?.tasks || []}
+            findings={(bookData?.findings || []).filter(f => f.status !== "declined" && f.status !== "canceled")}
+            replacements={bookData?.replacements || []}
           />
         </div>
       )}

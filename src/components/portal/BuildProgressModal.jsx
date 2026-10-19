@@ -34,36 +34,17 @@ const STAGE_LABELS = {
 export default function BuildProgressModal({ build, platform, onClose }) {
   const [expandedStage, setExpandedStage] = useState(null);
 
-  // Load build tasks
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
-    queryKey: ["portal-build-tasks", build?.id],
-    queryFn: () => base44.entities.BuildTask.filter({ build_id: build.id }, { sort: "sort_order", limit: 500 }),
+  // Load build-book data (tasks, findings, replacements) through the
+  // ownership-checked backend — BuildTask/TeardownFinding/ComponentReplacement
+  // are admin-only under RLS, so they cannot be read directly here.
+  const { data: bookData, isLoading: tasksLoading } = useQuery({
+    queryKey: ["portal-build-book", build?.id],
+    queryFn: () => base44.functions.invoke("getPortalBuildBook", { build_id: build.id }).then((r) => r.data),
     enabled: !!build?.id,
   });
-  const tasks = tasksData?.items || tasksData || [];
-
-  // Load teardown findings via the linked job
-  const { data: jobsData } = useQuery({
-    queryKey: ["portal-jobs-for-build", build?.id],
-    queryFn: () => base44.entities.Job.filter({ build_id: build.id }, { limit: 5 }),
-    enabled: !!build?.id,
-  });
-  const job = (jobsData?.items || jobsData || [])[0];
-
-  const { data: findingsData } = useQuery({
-    queryKey: ["portal-findings", job?.id],
-    queryFn: () => base44.entities.TeardownFinding.filter({ job_id: job.id }, { limit: 200 }),
-    enabled: !!job?.id,
-  });
-  const findings = (findingsData?.items || findingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled");
-
-  // Load component replacements
-  const { data: replacementsData } = useQuery({
-    queryKey: ["portal-replacements", build?.id],
-    queryFn: () => base44.entities.ComponentReplacement.filter({ build_id: build.id }, { limit: 100 }),
-    enabled: !!build?.id,
-  });
-  const replacements = replacementsData?.items || replacementsData || [];
+  const tasks = bookData?.tasks || [];
+  const findings = (bookData?.findings || []).filter(f => f.status !== "declined" && f.status !== "canceled");
+  const replacements = bookData?.replacements || [];
 
   if (!build) return null;
 
