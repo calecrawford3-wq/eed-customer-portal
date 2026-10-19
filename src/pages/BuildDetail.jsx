@@ -117,6 +117,8 @@ export default function BuildDetail() {
     enabled: !!buildId,
   });
 
+  const build = buildData?.[0];
+
   // Prior build of the same engine for historical measurement reference
   const { data: priorBuildData } = useQuery({
     queryKey: ["prior-build", build?.customer_engine_id, build?.engine_serial_number, buildId],
@@ -131,8 +133,6 @@ export default function BuildDetail() {
     enabled: !!buildId && (!!build?.customer_engine_id || !!build?.engine_serial_number),
   });
   const priorBuild = priorBuildData || null;
-
-  const build = buildData?.[0];
   const effectivePlatformId = localChanges.platform_id ?? build?.platform_id;
   const effectiveSpecSheetId = localChanges.spec_sheet_id ?? build?.spec_sheet_id;
   const platform = platforms.find(p => p.id === effectivePlatformId);
