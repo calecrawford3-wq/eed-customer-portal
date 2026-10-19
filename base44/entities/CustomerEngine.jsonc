@@ -41,11 +41,11 @@
         "picked_up"
       ],
       "default": "not_checked_in",
-      "description": "Pre-build and post-build lifecycle status tracking: checked_in = dropped off at shop; estimate_pending = estimate in progress; in_build = active build exists; build_complete = build finished, awaiting pickup; picked_up = customer picked up"
+      "description": "Pre-build and post-build lifecycle status tracking"
     },
     "storage_location": {
       "type": "string",
-      "description": "Physical storage location where this engine is kept in the shop (e.g., Cart 1, Tote 3, Rack A-3)"
+      "description": "Physical storage location where this engine is kept in the shop"
     },
     "check_in_date": {
       "type": "string",
@@ -69,16 +69,9 @@
   ],
   "rls": {
     "read": {
-      "$or": [
-        {
-          "data.customer_id": "{{user.data.customer_id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "create": {
       "user_condition": {
