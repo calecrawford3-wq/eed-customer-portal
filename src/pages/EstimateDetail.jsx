@@ -41,6 +41,9 @@ import EstimateTotals from "@/components/estimates/EstimateTotals";
 import EstimateDepositSection from "@/components/estimates/EstimateDepositSection";
 import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
+import MobilePartsSection from "@/components/mobile/MobilePartsSection";
+import MobileLaborMachiningSection from "@/components/mobile/MobileLaborMachiningSection";
+import { useIsMobile } from "@/hooks/use-mobile";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import StageComparisonSection from "@/components/estimates/StageComparisonSection";
 import AddonPickerModal from "@/components/addons/AddonPickerModal";
@@ -74,6 +77,7 @@ export default function EstimateDetail() {
   const prefillJobId = params.get("job_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [confirmState, setConfirmState] = useState({ open: false });
 
   const [form, setForm] = useState({
@@ -549,6 +553,32 @@ export default function EstimateDetail() {
     const items = (form.machining_items || []).filter((_, i) => i !== idx);
     const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.discount_type || "none", form.discount_value || 0);
     setForm({ ...form, machining_items: items, ...totals });
+  };
+
+  // Mobile: replace an entire item at once (single setForm, same recalc)
+  const replaceLine = (idx, newItem) => {
+    setForm(f => {
+      const lines = [...f.line_items];
+      lines[idx] = { ...newItem, total: (Number(newItem.quantity) || 0) * (Number(newItem.unit_price) || 0) };
+      const totals = recalc(lines, f.labor_items || [], f.machining_items || [], f.tax_rate, f.discount_type || "none", f.discount_value || 0);
+      return { ...f, line_items: lines, ...totals };
+    });
+  };
+  const replaceLabor = (idx, newItem) => {
+    setForm(f => {
+      const items = [...(f.labor_items || [])];
+      items[idx] = newItem;
+      const totals = recalc(f.line_items, items, f.machining_items || [], f.tax_rate, f.discount_type || "none", f.discount_value || 0);
+      return { ...f, labor_items: items, ...totals };
+    });
+  };
+  const replaceMachining = (idx, newItem) => {
+    setForm(f => {
+      const items = [...(f.machining_items || [])];
+      items[idx] = newItem;
+      const totals = recalc(f.line_items, f.labor_items || [], items, f.tax_rate, f.discount_type || "none", f.discount_value || 0);
+      return { ...f, machining_items: items, ...totals };
+    });
   };
 
   const addAddon = (addonEntry) => {
@@ -1923,92 +1953,131 @@ export default function EstimateDetail() {
       />
 
       {/* Parts */}
-      <Card className="border-0 shadow-sm mb-6">
-        <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
-            <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }} className="border-purple-300 text-purple-700 hover:bg-purple-50"><Recycle className="w-4 h-4 mr-1" /> Add Core</Button>
-            <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setMultiPartPickerOpen(true)}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600 w-28">Part #</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Item Name</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-16">Qty</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Cost</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Price</th>
-                  <th className="text-right py-2 font-medium text-slate-600 w-24">Total</th>
-                  <th className="w-16"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(form.line_items || []).map((line, idx) => (
-                  <tr key={idx} className="border-b border-slate-100 [&>td]:align-top">
-                    <td className="py-2 pr-2">
-                      <Input value={line.part_number} onChange={e => updateLine(idx, "part_number", e.target.value)} placeholder="Part #" className="border-slate-200 text-xs font-mono" />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <div className="flex gap-1">
-                        <Input value={line.item_name} onChange={e => updateLine(idx, "item_name", e.target.value)} placeholder="Item name..." className="border-slate-200" />
-                        <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" onClick={() => { setPickingIdx(idx); setPickerInitialTab("parts"); setPartPickerOpen(true); }}>
-                          <Search className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                      {line.is_kit && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">Kit</Badge>
-                          <span className="text-[10px] text-slate-400">{(line.kit_components || []).length} part{(line.kit_components || []).length === 1 ? "" : "s"} · PO expands</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 px-1">
-                      <Input type="number" value={line.quantity} onChange={e => updateLine(idx, "quantity", Number(e.target.value))} className="text-center border-slate-200" min="0" />
-                    </td>
-                    <td className="py-2 px-1">
-                      <Input type="number" value={line.unit_cost} onChange={e => updateLine(idx, "unit_cost", Number(e.target.value))} className="text-right border-slate-200 text-slate-400" min="0" step="0.01" />
-                      {Number(line.shipping_cost) > 0 && (
-                        <div className="text-[10px] text-slate-400 text-right mt-0.5">w/ ship ${((Number(line.unit_cost) || 0) + (Number(line.shipping_cost) || 0)).toFixed(2)}</div>
-                      )}
-                    </td>
-                    <td className="py-2 px-1">
-                      <Input type="number" value={line.unit_price} onChange={e => updateLine(idx, "unit_price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" />
-                    </td>
-                    <td className="py-2 px-1 text-right font-medium">${Number(line.total || 0).toFixed(2)}</td>
-                    <td className="py-2">
-                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLine(idx)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                    </td>
+      {isMobile ? (
+        <MobilePartsSection
+          items={form.line_items}
+          isCombined={false}
+          onReplaceItem={replaceLine}
+          onRemove={removeLine}
+          onAdd={addLine}
+          onPick={(idx) => { setPickingIdx(idx); setPickerInitialTab("parts"); setPartPickerOpen(true); }}
+          onAddCoreCredit={() => setCoreCreditOpen(true)}
+          onAddCore={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }}
+          onAddMultiPart={() => setMultiPartPickerOpen(true)}
+        />
+      ) : (
+        <Card className="border-0 shadow-sm mb-6">
+          <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Parts</CardTitle>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setCoreCreditOpen(true)} className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"><Recycle className="w-4 h-4 mr-1" /> Add Core Credit</Button>
+              <Button size="sm" variant="outline" onClick={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }} className="border-purple-300 text-purple-700 hover:bg-purple-50"><Recycle className="w-4 h-4 mr-1" /> Add Core</Button>
+              <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setMultiPartPickerOpen(true)}><Plus className="w-4 h-4 mr-1" /> Add Part</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 font-medium text-slate-600 w-28">Part #</th>
+                    <th className="text-left py-2 font-medium text-slate-600">Item Name</th>
+                    <th className="text-center py-2 font-medium text-slate-600 w-16">Qty</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Cost</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-24">Unit Price</th>
+                    <th className="text-right py-2 font-medium text-slate-600 w-24">Total</th>
+                    <th className="w-16"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#e20404] mt-2" onClick={addLine}>
-            <Plus className="w-4 h-4 mr-1" /> Add Manual Part
-          </Button>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {(form.line_items || []).map((line, idx) => (
+                    <tr key={idx} className="border-b border-slate-100 [&>td]:align-top">
+                      <td className="py-2 pr-2">
+                        <Input value={line.part_number} onChange={e => updateLine(idx, "part_number", e.target.value)} placeholder="Part #" className="border-slate-200 text-xs font-mono" />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <div className="flex gap-1">
+                          <Input value={line.item_name} onChange={e => updateLine(idx, "item_name", e.target.value)} placeholder="Item name..." className="border-slate-200" />
+                          <Button size="sm" variant="ghost" className="text-slate-400 hover:text-[#e20404] px-2 shrink-0" onClick={() => { setPickingIdx(idx); setPickerInitialTab("parts"); setPartPickerOpen(true); }}>
+                            <Search className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        {line.is_kit && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">Kit</Badge>
+                            <span className="text-[10px] text-slate-400">{(line.kit_components || []).length} part{(line.kit_components || []).length === 1 ? "" : "s"} · PO expands</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-1">
+                        <Input type="number" value={line.quantity} onChange={e => updateLine(idx, "quantity", Number(e.target.value))} className="text-center border-slate-200" min="0" />
+                      </td>
+                      <td className="py-2 px-1">
+                        <Input type="number" value={line.unit_cost} onChange={e => updateLine(idx, "unit_cost", Number(e.target.value))} className="text-right border-slate-200 text-slate-400" min="0" step="0.01" />
+                        {Number(line.shipping_cost) > 0 && (
+                          <div className="text-[10px] text-slate-400 text-right mt-0.5">w/ ship ${((Number(line.unit_cost) || 0) + (Number(line.shipping_cost) || 0)).toFixed(2)}</div>
+                        )}
+                      </td>
+                      <td className="py-2 px-1">
+                        <Input type="number" value={line.unit_price} onChange={e => updateLine(idx, "unit_price", Number(e.target.value))} className="text-right border-slate-200" min="0" step="0.01" />
+                      </td>
+                      <td className="py-2 px-1 text-right font-medium">${Number(line.total || 0).toFixed(2)}</td>
+                      <td className="py-2">
+                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => removeLine(idx)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#e20404] mt-2" onClick={addLine}>
+              <Plus className="w-4 h-4 mr-1" /> Add Manual Part
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      <SimpleItemsTable
-        type="labor"
-        items={form.labor_items}
-        onUpdate={updateLabor}
-        onRemove={removeLabor}
-        onAdd={addLabor}
-        onPick={(idx) => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}
-      />
-      <SimpleItemsTable
-        type="machining"
-        items={form.machining_items}
-        onUpdate={updateMachining}
-        onRemove={removeMachining}
-        onAdd={addMachining}
-        onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
-      />
+      {isMobile ? (
+        <>
+          <MobileLaborMachiningSection
+            type="labor"
+            items={form.labor_items}
+            isCombined={false}
+            onReplaceItem={replaceLabor}
+            onRemove={removeLabor}
+            onAdd={addLabor}
+            onPick={(idx) => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}
+          />
+          <MobileLaborMachiningSection
+            type="machining"
+            items={form.machining_items}
+            isCombined={false}
+            onReplaceItem={replaceMachining}
+            onRemove={removeMachining}
+            onAdd={addMachining}
+            onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
+          />
+        </>
+      ) : (
+        <>
+          <SimpleItemsTable
+            type="labor"
+            items={form.labor_items}
+            onUpdate={updateLabor}
+            onRemove={removeLabor}
+            onAdd={addLabor}
+            onPick={(idx) => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}
+          />
+          <SimpleItemsTable
+            type="machining"
+            items={form.machining_items}
+            onUpdate={updateMachining}
+            onRemove={removeMachining}
+            onAdd={addMachining}
+            onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
+          />
+        </>
+      )}
 
       <div className="mb-6">
         <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50 mb-3" onClick={() => setAddonPickerOpen(true)}>
