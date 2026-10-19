@@ -15,6 +15,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
 import NavSidebar from "@/components/NavSidebar";
 import MobileBottomNav from "@/components/mobile/MobileBottomNav";
+import NavigationGuardDialog from "@/components/NavigationGuardDialog";
 
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();

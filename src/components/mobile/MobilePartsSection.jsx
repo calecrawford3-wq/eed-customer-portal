@@ -10,13 +10,13 @@ const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, un
 /**
  * Mobile replacement for the desktop parts table.  Renders stacked cards
  * with a full-screen editor.  All mutations go through onReplaceItem /
- * onRemove / onAdd / onPick which call the parent's existing recalc logic.
+ * onRemove which call the parent's existing recalc logic.
  *
  * "Add" opens the editor with a local draft — no blank row is added to the
  * form until the user taps "Apply Changes".  Cancelling a new item leaves
- * the form untouched.
+ * the form untouched.  Catalog selection updates the editor's draft only.
  */
-export default function MobilePartsSection({ items, isCombined, onReplaceItem, onRemove, onAdd, onPick, onAddCoreCredit, onAddCore, onAddMultiPart }) {
+export default function MobilePartsSection({ items, isCombined, onReplaceItem, onRemove, onAddCoreCredit, onAddCore, parts = [], kits = [], cores = [], customer, onCommitKitSeparate, onNewCore, onEditCore }) {
   const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -24,19 +24,20 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
   const openNewEditor = () => { setEditingIdx(null); setEditorOpen(true); };
   const closeEditor = () => { setEditorOpen(false); setEditingIdx(null); };
 
-  // idx === null means new item: append via onAdd, then replace at the new index
+  // idx === null means new item: append directly at items.length (no placeholder
+  // row).  onReplaceItem(items.length, draft) appends because the array is
+  // exactly items.length long at that point.
   const handleApply = (idx, draft) => {
     const total = (Number(draft.quantity) || 0) * (Number(draft.unit_price) || 0);
     const itemWithTotal = { ...draft, total };
     if (idx === null || idx === undefined) {
-      onAdd();
       onReplaceItem(items.length, itemWithTotal);
     } else {
       onReplaceItem(idx, itemWithTotal);
     }
   };
 
-  // Apply current, then switch to a fresh draft (editor stays open)
+  // Apply current, then switch to a fresh-draft "new" session (editor stays open).
   const handleSaveAndAdd = (idx, draft) => {
     handleApply(idx, draft);
     setEditingIdx(null);
@@ -83,10 +84,16 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
         item={editingIdx !== null ? (items[editingIdx] || emptyPart) : emptyPart}
         idx={editingIdx}
         onApply={handleApply}
-        onPick={(idx) => onPick(idx === null ? items.length : idx)}
         isCombined={isCombined}
         canSaveAndAdd
         onSaveAndAdd={handleSaveAndAdd}
+        parts={parts}
+        kits={kits}
+        cores={cores}
+        customer={customer}
+        onCommitKitSeparate={onCommitKitSeparate}
+        onNewCore={onNewCore}
+        onEditCore={onEditCore}
       />
     </Card>
   );

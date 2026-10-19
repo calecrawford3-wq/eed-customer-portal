@@ -9,14 +9,14 @@ const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_
 
 /**
  * Mobile replacement for SimpleItemsTable.  Renders stacked cards with a
- * full-screen editor.  All mutations go through onReplaceItem / onRemove /
- * onAdd / onPick which call the parent's existing recalc logic.
+ * full-screen editor.  All mutations go through onReplaceItem / onRemove
+ * which call the parent's existing recalc logic.
  *
  * "Add" opens the editor with a local draft — no blank row is added to the
  * form until the user taps "Apply Changes".  Cancelling a new item leaves
- * the form untouched.
+ * the form untouched.  Catalog selection updates the editor's draft only.
  */
-export default function MobileLaborMachiningSection({ type, items, isCombined, onReplaceItem, onRemove, onAdd, onPick }) {
+export default function MobileLaborMachiningSection({ type, items, isCombined, onReplaceItem, onRemove, catalogItems }) {
   const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -30,17 +30,18 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
   const openNewEditor = () => { setEditingIdx(null); setEditorOpen(true); };
   const closeEditor = () => { setEditorOpen(false); setEditingIdx(null); };
 
-  // idx === null means new item: append via onAdd, then replace at the new index
+  // idx === null means new item: append directly at items.length (no placeholder
+  // row).  onReplaceItem(items.length, draft) appends because the array is
+  // exactly items.length long at that point.
   const handleApply = (idx, draft) => {
     if (idx === null || idx === undefined) {
-      onAdd();
       onReplaceItem(items.length, draft);
     } else {
       onReplaceItem(idx, draft);
     }
   };
 
-  // Apply current, then switch to a fresh draft (editor stays open)
+  // Apply current, then switch to a fresh-draft "new" session (editor stays open).
   const handleSaveAndAdd = (idx, draft) => {
     handleApply(idx, draft);
     setEditingIdx(null);
@@ -69,10 +70,10 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
         item={editingIdx !== null ? (items[editingIdx] || emptyItem) : emptyItem}
         idx={editingIdx}
         onApply={handleApply}
-        onPick={(idx) => onPick(idx === null ? items.length : idx)}
         isCombined={isCombined}
         canSaveAndAdd
         onSaveAndAdd={handleSaveAndAdd}
+        catalogItems={catalogItems}
       />
     </Card>
   );

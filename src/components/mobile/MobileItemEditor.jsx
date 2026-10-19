@@ -7,24 +7,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, ChevronDown, ChevronUp, Check, X, Plus, AlertTriangle } from "lucide-react";
+import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
+import PartPickerModal from "@/components/estimates/PartPickerModal";
 
 /**
  * Full-screen mobile item editor for parts, labor, and machining line items.
- * Maintains a local draft; calls onApply to push to the form (which runs the
- * same recalc as desktop), then onClose to dismiss.
  *
- * z-index is 45 — below dialog/select portals (z-50) so catalog pickers and
- * dropdowns render above the editor, but above the bottom nav (z-40).
+ * The editor OWNS its catalog picker: selecting from the catalog updates the
+ * local draft only — the parent document is never mutated until "Apply
+ * Changes" is pressed. Cancelling (with or without a catalog selection)
+ * leaves the document unchanged.
+ *
+ * "Apply & Add Another" commits the current draft exactly once, then resets
+ * to a fresh draft (preserving shared context like engine assignment) using
+ * a skip-sync flag so the prop-driven sync effect does not clobber the reset.
+ *
+ * z-index is 45 — below dialog/select portals (z-50) so the catalog picker
+ * and dropdowns render above the editor, but above the bottom nav (z-40).
  *
  * Labor is fixed-price: no quantity input, price labeled "Labor Charge".
  * Machining and parts support quantity.
  */
-export default function MobileItemEditor({ open, onClose, type, item, idx, onApply, onPick, isCombined, canSaveAndAdd, onSaveAndAdd }) {
-  const [draft, setDraft] = useState(item || {});
+
+const EMPTY_PART = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, shipping_cost: 0, unit_price: 0, total: 0 };
+const EMPTY_LABOR = { name: "", description: "", price: 0 };
+const EMPTY_MACHINING = { name: "", description: "", price: 0, quantity: 1, cost_type: "unspecified", actual_cost: null, vendor: "" };
+
+function freshDraft(type, preserve = {}) {
+  const base = type === "parts" ? { ...EMPTY_PART }
+    : type === "labor" ? { ...EMPTY_LABOR }
+    : { ...EMPTY_MACHINING };
+  if (preserve.engine_section) base.engine_section = preserve.engine_section;
+  return base;
+}
+
+export default function MobileItemEditor({
+  open, onClose, type, item, idx, onApply, isCombined, canSaveAndAdd, onSaveAndAdd,
+  // Catalog data (editor owns its picker):
+  catalogItems = [],   // labor/machining catalog
+  parts = [], kits = [], cores = [], customer,  // parts catalog
+  onCommitKitSeparate, onNewCore, onEditCore,
+}) {
+  const [draft, setDraft] = useState(item || freshDraft(type));
   const [showShop, setShowShop] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const applyingRef = useRef(false);
+  const skipSyncRef = useRef(false);
   const firstInputRef = useRef(null);
   const previousOverflow = useRef(null);
 
@@ -35,36 +65,45 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
   const isNew = idx === null || idx === undefined;
   const title = isNew ? `Add ${typeLabel}` : `Edit ${typeLabel}`;
 
-  // Sync draft from item prop when editor opens or item changes externally
+  // Sync draft from item prop when editor opens or item changes externally.
+  // skipSyncRef prevents the prop sync from clobbering a fresh draft that
+  // "Apply & Add Another" just created (where editingIdx→null can change the
+  // item prop even though we already reset the draft ourselves).
   useEffect(() => {
     if (open) {
-      setDraft(item || {});
-      setShowShop(false);
-      setDirty(false);
-      setShowDiscardConfirm(false);
+      if (skipSyncRef.current) {
+        skipSyncRef.current = false;
+      } else {
+        setDraft(item || freshDraft(type));
+        setShowShop(false);
+        setDirty(false);
+        setShowDiscardConfirm(false);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, open]);
 
-  // Lock body scroll while editor is open; restore on close
+  // Reset the skip flag whenever the editor closes so the next open syncs.
+  useEffect(() => {
+    if (!open) skipSyncRef.current = false;
+  }, [open]);
+
+  // Lock body scroll while editor is open; restore on close.
   useEffect(() => {
     if (!open) return;
     previousOverflow.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow.current || "";
-    };
+    return () => { document.body.style.overflow = previousOverflow.current || ""; };
   }, [open]);
 
-  // Focus the first input shortly after open (after portal renders)
+  // Focus the first input shortly after open (after portal renders).
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => {
-      firstInputRef.current?.focus();
-    }, 100);
+    const t = setTimeout(() => { firstInputRef.current?.focus(); }, 100);
     return () => clearTimeout(t);
   }, [open]);
 
-  // Escape handler — triggers discard check
+  // Escape handler — triggers discard check.
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (e.key === "Escape") requestClose(); };
@@ -78,17 +117,121 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
   }, []);
 
   const requestClose = useCallback(() => {
-    if (dirty) {
-      setShowDiscardConfirm(true);
-    } else {
-      onClose();
-    }
+    if (dirty) setShowDiscardConfirm(true);
+    else onClose();
   }, [dirty, onClose]);
 
-  const confirmDiscard = () => {
-    setShowDiscardConfirm(false);
-    onClose();
+  const confirmDiscard = () => { setShowDiscardConfirm(false); onClose(); };
+
+  // ---- Catalog selection → local draft (parent document untouched) ----
+
+  const applyPartToDraft = (part) => {
+    const override = customer?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
+    const price = useOverride ? (Number(part.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(part.sell_price) || 0);
+    setDraft(d => ({
+      ...d,
+      part_id: part.id || "",
+      part_number: part.part_number || "",
+      item_name: part.name || "",
+      quantity: Number(d.quantity) || 1,
+      unit_cost: Number(part.unit_cost) || 0,
+      shipping_cost: Number(part.shipping_cost) || 0,
+      unit_price: price,
+      total: (Number(d.quantity) || 1) * price,
+    }));
+    setDirty(true);
   };
+
+  const applyLaborToDraft = (catalogItem) => {
+    setDraft(d => ({
+      ...d,
+      name: catalogItem.name || "",
+      description: catalogItem.description || "",
+      price: Number(catalogItem.price) || 0,
+    }));
+    setDirty(true);
+  };
+
+  const applyMachiningToDraft = (catalogItem) => {
+    setDraft(d => ({
+      ...d,
+      name: catalogItem.name || "",
+      description: catalogItem.description || "",
+      price: Number(catalogItem.price) || 0,
+      quantity: Number(d.quantity) || 1,
+      cost_type: catalogItem.cost_type || "unspecified",
+      // Guard against missing vendor fields on the catalog row.
+      vendor: catalogItem.cost_type === "outsourced"
+        ? (catalogItem.default_vendor || d.vendor || "")
+        : (d.vendor || ""),
+    }));
+    setDirty(true);
+  };
+
+  const applyKitToDraft = (kit) => {
+    const partsCost = (kit.components || []).reduce((s, c) => s + (Number(c.unit_cost) || 0) * (Number(c.quantity) || 1), 0);
+    const partsPrice = (kit.components || []).reduce((s, c) => s + (Number(c.unit_price) || 0) * (Number(c.quantity) || 1), 0);
+    const laborPrice = (kit.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0);
+    const hasCostOv = kit.kit_cost_override != null && !isNaN(Number(kit.kit_cost_override));
+    const hasPriceOv = kit.kit_price_override != null && !isNaN(Number(kit.kit_price_override));
+    const kitCost = hasCostOv ? Number(kit.kit_cost_override) : partsCost;
+    const kitPrice = hasPriceOv ? Number(kit.kit_price_override) : (partsPrice + laborPrice);
+    setDraft(d => ({
+      ...d,
+      is_kit: true,
+      kit_id: kit.id || "",
+      part_number: kit.part_number || "",
+      item_name: kit.name || "",
+      quantity: 1,
+      unit_cost: kitCost,
+      unit_price: kitPrice,
+      total: kitPrice,
+      kit_components: (kit.components || []).map(c => ({
+        part_id: c.part_id || "",
+        part_number: c.part_number || "",
+        name: c.name || "",
+        quantity: Number(c.quantity) || 1,
+        unit_cost: Number(c.unit_cost) || 0,
+      })),
+    }));
+    setDirty(true);
+  };
+
+  const applyCoreToDraft = (core, mode) => {
+    if (mode === "credit") {
+      const credit = Number(core.core_credit) || 0;
+      setDraft(d => ({
+        ...d,
+        part_id: "",
+        part_number: core.core_number || "",
+        item_name: `Core Credit: ${core.name || ""}`,
+        quantity: 1,
+        unit_cost: 0,
+        unit_price: -credit,
+        total: -credit,
+        is_core_credit: true,
+        core_id: core.id || "",
+        core_details: { ...core },
+      }));
+    } else {
+      const price = Number(core.sell_price) || 0;
+      setDraft(d => ({
+        ...d,
+        part_id: "",
+        part_number: core.core_number || "",
+        core_id: core.id || "",
+        item_name: `${core.name || ""} (Core)`,
+        quantity: 1,
+        unit_cost: Number(core.unit_cost) || 0,
+        unit_price: price,
+        total: price,
+      }));
+    }
+    setDirty(true);
+  };
+
+  const handleSearchCatalog = () => setPickerOpen(true);
 
   if (!open) return null;
 
@@ -106,33 +249,33 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
   const nameField = isParts ? "item_name" : "name";
   const priceValue = isParts ? draft.unit_price : draft.price;
   const priceField = isParts ? "unit_price" : "price";
-  const priceLabel = isLabor ? "Labor Charge" : isParts ? "Unit Price" : "Unit Price";
+  const priceLabel = isLabor ? "Labor Charge" : "Unit Price";
 
+  // Apply Changes — commit the draft exactly once, then close.
   const handleApply = () => {
-    if (saving) return;
-    setSaving(true);
+    if (applyingRef.current) return;
+    applyingRef.current = true;
     onApply(idx, draft);
-    setSaving(false);
+    applyingRef.current = false;
     onClose();
   };
 
-  const handleSearchCatalog = () => {
-    // Do NOT commit the draft before opening the picker — the picker will
-    // update the form item, and the editor re-syncs. Cancel preserves draft.
-    onPick(idx);
-  };
-
+  // Apply & Add Another — commit the current draft exactly once, then reset to
+  // a fresh draft (preserving shared context like engine assignment). The
+  // editor stays open. skipSyncRef prevents the prop-sync effect from
+  // overwriting this fresh draft when the parent switches editingIdx→null.
   const handleApplyAndAdd = () => {
-    if (saving) return;
-    setSaving(true);
-    if (onSaveAndAdd) {
-      onSaveAndAdd(idx, draft);
-    } else {
-      onApply(idx, draft);
-    }
-    setSaving(false);
+    if (applyingRef.current) return;
+    applyingRef.current = true;
+    if (onSaveAndAdd) onSaveAndAdd(idx, draft);
+    else onApply(idx, draft);
+    applyingRef.current = false;
+    skipSyncRef.current = true;
+    setDraft(freshDraft(type, { engine_section: draft.engine_section }));
     setDirty(false);
-    // Editor stays open; section switches to a fresh draft
+    setShowShop(false);
+    setShowDiscardConfirm(false);
+    setTimeout(() => firstInputRef.current?.focus(), 50);
   };
 
   return createPortal(
@@ -153,7 +296,7 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ paddingBottom: "2rem" }}>
-        {/* Catalog search */}
+        {/* Catalog search — opens the editor's own picker (draft only) */}
         <Button variant="outline" className="w-full h-12 text-base" onClick={handleSearchCatalog}>
           <Search className="w-4 h-4 mr-2" /> Search Catalog
         </Button>
@@ -357,14 +500,49 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
            style={{ paddingTop: "0.75rem", paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
         <Button variant="outline" className="flex-1 h-12 text-base" onClick={requestClose}>Cancel</Button>
         {canSaveAndAdd && (
-          <Button variant="outline" className="flex-1 h-12 text-base border-[#e20404] text-[#e20404]" onClick={handleApplyAndAdd} disabled={saving}>
+          <Button variant="outline" className="flex-1 h-12 text-base border-[#e20404] text-[#e20404]" onClick={handleApplyAndAdd} disabled={applyingRef.current}>
             <Plus className="w-4 h-4 mr-1" /> Apply & Add
           </Button>
         )}
-        <Button className="flex-1 h-12 text-base bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleApply} disabled={saving}>
-          <Check className="w-4 h-4 mr-1" /> {saving ? "Saving..." : "Apply Changes"}
+        <Button className="flex-1 h-12 text-base bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleApply} disabled={applyingRef.current}>
+          <Check className="w-4 h-4 mr-1" /> Apply Changes
         </Button>
       </div>
+
+      {/* Catalog picker — editor-owned; selection updates the draft only */}
+      {isParts ? (
+        <PartPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          parts={parts}
+          kits={kits}
+          cores={cores}
+          onSelect={(part) => applyPartToDraft(part)}
+          onSelectKit={(kit, mode) => {
+            if (mode === "whole") {
+              applyKitToDraft(kit);
+              setPickerOpen(false);
+            } else if (onCommitKitSeparate) {
+              // Kit-separate expands into multiple lines and cannot fit a single
+              // draft; commit directly and close the editor.
+              setPickerOpen(false);
+              onClose();
+              onCommitKitSeparate(kit);
+            }
+          }}
+          onSelectCore={(core, mode) => { applyCoreToDraft(core, mode); setPickerOpen(false); }}
+          onNewCore={onNewCore}
+          onEditCore={onEditCore}
+        />
+      ) : (
+        <LaborMachiningPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          items={catalogItems}
+          type={type}
+          onSelect={(catalogItem) => isLabor ? applyLaborToDraft(catalogItem) : applyMachiningToDraft(catalogItem)}
+        />
+      )}
 
       {/* Discard confirmation */}
       {showDiscardConfirm && (
