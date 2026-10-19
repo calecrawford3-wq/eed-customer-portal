@@ -81,6 +81,7 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
         onPick={(idx) => onPick(idx)}
         isCombined={isCombined}
         canSaveAndAdd
+        onSaveAndAdd={handleSaveAndAdd}
       />
     </Card>
   );

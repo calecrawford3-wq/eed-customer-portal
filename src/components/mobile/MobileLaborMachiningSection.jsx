@@ -27,6 +27,13 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
 
   const handleApply = (idx, draft) => { onReplaceItem(idx, draft); };
 
+  const handleSaveAndAdd = (idx, draft) => {
+    handleApply(idx, draft);
+    onAdd();
+    setEditingIdx(items.length);
+    // editor stays open — item prop changes to the new blank item, useEffect resets draft
+  };
+
   const handleAdd = () => {
     onAdd();
     setEditingIdx(items.length);
@@ -59,6 +66,7 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
         onPick={(idx) => onPick(idx)}
         isCombined={isCombined}
         canSaveAndAdd
+        onSaveAndAdd={handleSaveAndAdd}
       />
     </Card>
   );
