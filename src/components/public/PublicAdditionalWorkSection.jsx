@@ -50,7 +50,7 @@ export default function PublicAdditionalWorkSection({ additionalWork = [] }) {
         const findingsWithPhotos = (aw.findings || []).filter(f => (f.photos || []).length > 0);
         if (findingsWithPhotos.length === 0) return null;
         return (
-          <div key={aw.id} className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+          <div key={aw.id} className="bg-white rounded-lg border border-slate-200 p-4 md:p-6 mb-6">
             <div className="flex items-center gap-2 mb-1">
               <FileText className="w-4 h-4 text-[#e20404]" />
               <h3 className="font-semibold text-slate-900">Inspection Findings — {aw.title || aw.work_number}</h3>

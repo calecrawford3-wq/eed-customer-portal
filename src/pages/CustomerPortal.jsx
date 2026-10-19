@@ -356,16 +356,16 @@ export default function CustomerPortal() {
     return (
       <div className="min-h-screen bg-slate-50">
         <header className="bg-white border-b border-slate-200">
-          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
               alt="Elite Engine Development"
-              className="h-10"
+              className="h-8 md:h-10"
             />
             <span className="text-sm text-slate-500">Admin — Customer Portal Preview</span>
           </div>
         </header>
-        <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
           <h2 className="text-xl font-bold text-slate-900 mb-2">Select a Customer to Preview</h2>
           <p className="text-slate-500 mb-6">As an admin, you can view the portal as any customer.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -433,11 +433,11 @@ export default function CustomerPortal() {
 
       {/* Header */}
       <header className="bg-white border-b border-slate-200 print:hidden">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2">
           <img
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
             alt="Elite Engine Development"
-            className="h-10"
+            className="h-8 md:h-10"
           />
           <div className="flex items-center gap-3">
             {user?.role !== "admin" && (
@@ -457,7 +457,7 @@ export default function CustomerPortal() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 print:hidden">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 print:hidden">
         {/* Welcome + Summary */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Welcome back, {customer.first_name}!</h1>
@@ -1047,13 +1047,13 @@ export default function CustomerPortal() {
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <div><Label>First Name</Label><Input value={profileForm.first_name || ""} onChange={e => setProfileForm({ ...profileForm, first_name: e.target.value })} /></div>
             <div><Label>Last Name</Label><Input value={profileForm.last_name || ""} onChange={e => setProfileForm({ ...profileForm, last_name: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Email Address</Label><Input type="email" value={profileForm.email || ""} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} /></div>
+            <div className="sm:col-span-2"><Label>Email Address</Label><Input type="email" value={profileForm.email || ""} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={profileForm.phone || ""} onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })} /></div>
             <div><Label>Company</Label><Input value={profileForm.company_name || ""} onChange={e => setProfileForm({ ...profileForm, company_name: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Address</Label><Input value={profileForm.address_line1 || ""} onChange={e => setProfileForm({ ...profileForm, address_line1: e.target.value })} /></div>
+            <div className="sm:col-span-2"><Label>Address</Label><Input value={profileForm.address_line1 || ""} onChange={e => setProfileForm({ ...profileForm, address_line1: e.target.value })} /></div>
             <div><Label>City</Label><Input value={profileForm.city || ""} onChange={e => setProfileForm({ ...profileForm, city: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>State</Label><Input value={profileForm.state || ""} onChange={e => setProfileForm({ ...profileForm, state: e.target.value })} /></div>

@@ -88,7 +88,7 @@ export default function AdditionalWorkViewer() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-6 py-5">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-5">
           <img
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
             alt="Elite Engine Development"
@@ -108,7 +108,7 @@ export default function AdditionalWorkViewer() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-4">
         {findings.map((f) => (
           <Card key={f.id} className="border shadow-sm">
             <CardContent className="p-5">
