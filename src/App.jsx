@@ -103,7 +103,51 @@ const AuthenticatedApp = () => {
     <>
     {splashOverlay}
     <Routes>
-...
+      <Route path="/" element={
+        <LayoutWrapper currentPageName={mainPageKey}>
+          <MainPage />
+        </LayoutWrapper>
+      } />
+      {Object.entries(Pages).map(([path, Page]) => (
+        <Route
+          key={path}
+          path={`/${path}`}
+          element={
+            <LayoutWrapper currentPageName={path}>
+              <Page />
+            </LayoutWrapper>
+          }
+        />
+      ))}
+      <Route path="/Credits" element={<LayoutWrapper currentPageName="Credits"><Credits /></LayoutWrapper>} />
+      <Route path="/CustomerPortal" element={<CustomerPortal />} />
+      <Route path="/RefreshRequests" element={<LayoutWrapper currentPageName="RefreshRequests"><RefreshRequests /></LayoutWrapper>} />
+      <Route path="/CustomerSuccess" element={<LayoutWrapper currentPageName="CustomerSuccess"><CustomerSuccess /></LayoutWrapper>} />
+      <Route path="/Calendar" element={<LayoutWrapper currentPageName="Calendar"><CalendarPage /></LayoutWrapper>} />
+      <Route path="/BarcodeScan" element={<LayoutWrapper currentPageName="BarcodeScan"><BarcodeScan /></LayoutWrapper>} />
+      <Route path="/Messaging" element={<LayoutWrapper currentPageName="Messaging"><Messaging /></LayoutWrapper>} />
+      <Route path="/Emails" element={<LayoutWrapper currentPageName="Emails"><Emails /></LayoutWrapper>} />
+      <Route path="/Communications" element={<LayoutWrapper currentPageName="Communications"><Communications /></LayoutWrapper>} />
+      <Route path="/Approvals" element={<LayoutWrapper currentPageName="Approvals"><Approvals /></LayoutWrapper>} />
+      <Route path="/Simulator" element={<LayoutWrapper currentPageName="Simulator"><Simulator /></LayoutWrapper>} />
+      <Route path="/DynoImport" element={<LayoutWrapper currentPageName="DynoImport"><DynoImport /></LayoutWrapper>} />
+      <Route path="/DevelopmentData" element={<LayoutWrapper currentPageName="DevelopmentData"><DevelopmentData /></LayoutWrapper>} />
+      <Route path="/ModelAccuracy" element={<LayoutWrapper currentPageName="ModelAccuracy"><ModelAccuracy /></LayoutWrapper>} />
+      <Route path="/DynoComparison" element={<LayoutWrapper currentPageName="DynoComparison"><DynoComparison /></LayoutWrapper>} />
+      <Route path="/PredictionRules" element={<LayoutWrapper currentPageName="PredictionRules"><PredictionRules /></LayoutWrapper>} />
+      <Route path="/SimilarBuilds" element={<LayoutWrapper currentPageName="SimilarBuilds"><SimilarBuilds /></LayoutWrapper>} />
+      <Route path="/ControlledChanges" element={<LayoutWrapper currentPageName="ControlledChanges"><ControlledChanges /></LayoutWrapper>} />
+      <Route path="/RnDEngineDeveloper" element={<LayoutWrapper currentPageName="RnDEngineDeveloper"><RnDEngineDeveloper /></LayoutWrapper>} />
+      <Route path="/BuildWorkflow" element={<LayoutWrapper currentPageName="BuildWorkflow"><BuildWorkflow /></LayoutWrapper>} />
+      <Route path="/CannedJobs" element={<LayoutWrapper currentPageName="CannedJobs"><CannedJobs /></LayoutWrapper>} />
+      <Route path="/Addons" element={<LayoutWrapper currentPageName="Addons"><Addons /></LayoutWrapper>} />
+      <Route path="/VoipPhonebookSettings" element={<LayoutWrapper currentPageName="VoipPhonebookSettings"><VoipPhonebookSettings /></LayoutWrapper>} />
+      <Route path="/VoipPhonebookSyncHistory" element={<LayoutWrapper currentPageName="VoipPhonebookSyncHistory"><VoipPhonebookSyncHistory /></LayoutWrapper>} />
+      <Route path="/Jobs" element={<LayoutWrapper currentPageName="Jobs"><Jobs /></LayoutWrapper>} />
+      <Route path="/JobCard" element={<LayoutWrapper currentPageName="JobCard"><JobCardErrorBoundary><JobCard /></JobCardErrorBoundary></LayoutWrapper>} />
+      <Route path="/ReplacementRules" element={<LayoutWrapper currentPageName="ReplacementRules"><ReplacementRules /></LayoutWrapper>} />
+      <Route path="/ExceptionDashboard" element={<LayoutWrapper currentPageName="ExceptionDashboard"><ExceptionDashboard /></LayoutWrapper>} />
+      <Route path="/MachiningStation" element={<LayoutWrapper currentPageName="MachiningStation"><MachiningStation /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </>
