@@ -35,7 +35,7 @@
     },
     "valve_count": {
       "type": "number",
-      "description": "Total number of valves (e.g., 16 for inline-4 with 4 valves per cylinder)"
+      "description": "Total number of valves"
     },
     "cylinder_count": {
       "type": "number",
@@ -57,5 +57,27 @@
   "required": [
     "name",
     "manufacturer"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

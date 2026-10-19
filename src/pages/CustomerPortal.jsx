@@ -53,7 +53,7 @@ const BUILD_PROGRESS = {
 
 export default function CustomerPortal() {
   const { user } = useAuth();
-  const [customer, setCustomer] = useState(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({});
   const [refreshOpen, setRefreshOpen] = useState(false);
@@ -79,29 +79,8 @@ export default function CustomerPortal() {
     setTimeout(() => window.print(), 300);
   };
 
-  // Find customer record by email
-  const { data: allCustomers = [], isLoading: customersLoading } = useQuery({
-    queryKey: ["portal-customers"],
-    queryFn: () => base44.entities.Customer.list("-created_date", 500),
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (user && allCustomers.length > 0) {
-      if (user.role === "admin") {
-        // Admins can see any customer — default to first or leave unset for picker
-        return;
-      }
-      const found = allCustomers.find(c => c.email?.toLowerCase() === user.email?.toLowerCase());
-      if (found) {
-        setCustomer(found);
-        setProfileForm({ ...found });
-      }
-    }
-  }, [user, allCustomers]);
-
-  // Server-side ownership link: populate user.data.customer_id so customer-
-  // scoped RLS (Estimate, Invoice, etc.) returns this customer's records.
+  // Server-side ownership link: populate user.data.customer_id so the
+  // allowlisted getPortalData endpoint can return this customer's records.
   // Runs once per session for non-admins; refetches portal data after linking.
   useEffect(() => {
     if (!user || user.role === "admin") return;
@@ -110,85 +89,50 @@ export default function CustomerPortal() {
       try {
         const res = await base44.functions.invoke("linkCustomerUser", {});
         if (!cancelled && res?.data?.linked) {
-          qc.invalidateQueries();
+          qc.invalidateQueries({ queryKey: ["portal-data"] });
         }
       } catch (e) {
-        // Non-fatal: email-fallback RLS on Customer still lets the portal work;
-        // Estimate/Invoice reads will populate once an admin links the account.
+        // Non-fatal: portal shows "no account found" until an admin links it.
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const { data: estimates = [] } = useQuery({
-    queryKey: ["portal-estimates", customer?.id],
-    queryFn: () => base44.entities.Estimate.filter({ customer_id: customer.id, archived: { $ne: true } }),
-    enabled: !!customer,
+  // All portal data comes from the allowlisted, ownership-checked getPortalData
+  // backend. Direct SDK reads are blocked by admin-only RLS on source entities,
+  // so internal costs, margins, private notes, and tokens never reach the client.
+  const { data: portalRes, isLoading: portalLoading } = useQuery({
+    queryKey: ["portal-data", selectedCustomerId],
+    queryFn: () =>
+      base44.functions.invoke("getPortalData", { customer_id: selectedCustomerId || undefined }).then((r) => r.data),
+    enabled: !!user,
   });
 
-  const { data: invoices = [] } = useQuery({
-    queryKey: ["portal-invoices", customer?.id],
-    queryFn: () => base44.entities.Invoice.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
+  const customers = portalRes?.customers || [];
+  const customer = portalRes?.data?.customer || null;
+  const estimates = portalRes?.data?.estimates || [];
+  const invoices = portalRes?.data?.invoices || [];
+  const builds = portalRes?.data?.builds || [];
+  const customerEngines = portalRes?.data?.engines || [];
+  const credits = portalRes?.data?.credits || [];
+  const legalDocs = portalRes?.data?.legalDocs || [];
+  const currentDynoSheets = portalRes?.data?.dynoSheets || [];
+  const refreshRequests = portalRes?.data?.refreshRequests || [];
+  const platforms = portalRes?.data?.platforms || [];
+  const specSheets = portalRes?.data?.specSheets || [];
 
-  const { data: builds = [] } = useQuery({
-    queryKey: ["portal-builds", customer?.id],
-    queryFn: () => base44.entities.EngineBuild.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
-
-  const { data: customerEngines = [] } = useQuery({
-    queryKey: ["portal-engines", customer?.id],
-    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
-
-  const { data: platforms = [] } = useQuery({
-    queryKey: ["platforms"],
-    queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
-    enabled: !!customer,
-  });
-
-  const { data: specSheets = [] } = useQuery({
-    queryKey: ["specSheets"],
-    queryFn: () => base44.entities.SpecSheet.list("-created_date", 100),
-    enabled: !!customer,
-  });
-
-  const { data: refreshRequests = [] } = useQuery({
-    queryKey: ["portal-refresh-requests", customer?.id],
-    queryFn: () => base44.entities.RefreshRequest.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
-
-  const { data: credits = [] } = useQuery({
-    queryKey: ["portal-credits", customer?.id],
-    queryFn: () => base44.entities.AccountCredit.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
+  // Initialize profile form when customer data arrives
+  useEffect(() => {
+    if (customer) setProfileForm({ ...customer });
+  }, [customer?.id]);
 
   const { data: settingsData = [] } = useQuery({
     queryKey: ["app-settings"],
     queryFn: async () => {
-      // AppSettings is admin-only under RLS (holds SMTP secrets). Use the
-      // getPublicSettings endpoint which returns only safe display fields.
       const res = await base44Public.functions.invoke("getPublicSettings", {});
       return [res?.data?.settings || {}];
     },
-    enabled: !!customer,
-  });
-
-  const { data: legalDocs = [] } = useQuery({
-    queryKey: ["portal-legal-docs", customer?.id],
-    queryFn: () => base44.entities.LegalDocument.filter({ customer_id: customer.id }),
-    enabled: !!customer,
-  });
-
-  const { data: currentDynoSheets = [] } = useQuery({
-    queryKey: ["portal-dyno-sheets", customer?.id],
-    queryFn: () => base44.entities.DynoSheet.filter({ customer_id: customer.id, is_current: true }, "-created_date", 200),
     enabled: !!customer,
   });
 
@@ -210,9 +154,8 @@ export default function CustomerPortal() {
 
   const profileMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke("updateCustomerProfile", data).then((r) => r.data),
-    onSuccess: (res) => {
-      if (res?.customer) setCustomer((prev) => ({ ...prev, ...res.customer }));
-      qc.invalidateQueries({ queryKey: ["portal-customers"] });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["portal-data"] });
       setProfileOpen(false);
       toast.success("Profile updated");
     },
@@ -221,7 +164,7 @@ export default function CustomerPortal() {
   const refreshMutation = useMutation({
     mutationFn: (data) => base44.entities.RefreshRequest.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["portal-refresh-requests", customer.id] });
+      qc.invalidateQueries({ queryKey: ["portal-data"] });
       setRefreshOpen(false);
       setRefreshMessage("");
       setRefreshBuild(null);
@@ -322,7 +265,7 @@ export default function CustomerPortal() {
     );
   }
 
-  if (customersLoading && !customer) {
+  if (portalLoading && !customer) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-[#e20404] rounded-full animate-spin" />
@@ -330,7 +273,7 @@ export default function CustomerPortal() {
     );
   }
 
-  if (!customer && user?.role !== "admin") {
+  if (portalRes?.not_linked && user?.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Card className="w-full max-w-md border-0 shadow-lg">
@@ -347,7 +290,7 @@ export default function CustomerPortal() {
     );
   }
 
-  if (!customer && user?.role === "admin") {
+  if (!selectedCustomerId && user?.role === "admin" && customers.length > 0) {
     return (
       <div className="min-h-screen bg-slate-50">
         <header className="bg-white border-b border-slate-200">
@@ -364,11 +307,11 @@ export default function CustomerPortal() {
           <h2 className="text-xl font-bold text-slate-900 mb-2">Select a Customer to Preview</h2>
           <p className="text-slate-500 mb-6">As an admin, you can view the portal as any customer.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allCustomers.filter(c => c.status === "active").sort((a, b) => a.last_name?.localeCompare(b.last_name)).map(c => (
+            {customers.sort((a, b) => a.last_name?.localeCompare(b.last_name)).map(c => (
               <button
                 key={c.id}
                 className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-[#e20404] hover:shadow-sm transition-all"
-                onClick={() => { setCustomer(c); setProfileForm({ ...c }); }}
+                onClick={() => setSelectedCustomerId(c.id)}
               >
                 <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
                 {c.company_name && <p className="text-sm text-slate-500">{c.company_name}</p>}
@@ -441,7 +384,7 @@ export default function CustomerPortal() {
               </Button>
             )}
             {user?.role === "admin" && (
-              <Button variant="outline" size="sm" onClick={() => setCustomer(null)}>
+              <Button variant="outline" size="sm" onClick={() => setSelectedCustomerId(null)}>
                 <User className="w-4 h-4 mr-1" /> Switch Customer
               </Button>
             )}
@@ -594,7 +537,7 @@ export default function CustomerPortal() {
                         {/* Legal Documents */}
                         {engineLegalDocs.length > 0 && (
                           <div className="border-t border-slate-100 pt-4 mb-4 space-y-2">
-                            {engineLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}
+                            {engineLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-data"] })} />)}
                           </div>
                         )}
 
@@ -616,7 +559,7 @@ export default function CustomerPortal() {
                                         {inv.status}
                                       </Badge>
                                     </div>
-                                    {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}</div>}
+                                    {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-data"] })} />)}</div>}
                                   </div>
                                 );
                               })}
@@ -753,7 +696,7 @@ export default function CustomerPortal() {
                         <PortalDynoSheet
                           buildId={b.id}
                           currentSheet={currentDynoSheets.find((s) => s.build_id === b.id)}
-                          onUploaded={() => qc.invalidateQueries({ queryKey: ["portal-dyno-sheets", customer?.id] })}
+                          onUploaded={() => qc.invalidateQueries({ queryKey: ["portal-data"] })}
                         />
                       </CardContent>
                     </Card>
@@ -812,7 +755,7 @@ export default function CustomerPortal() {
                           </Badge>
                         </div>
                       </div>
-                      {invLegalDocs.length > 0 && <div className="mt-3 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-legal-docs"] })} />)}</div>}
+                      {invLegalDocs.length > 0 && <div className="mt-3 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-data"] })} />)}</div>}
                     </div>
                   );
                 })}
