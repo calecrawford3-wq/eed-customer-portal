@@ -93,6 +93,10 @@
     "notes": {
       "type": "string",
       "description": "Optional per-task note"
+    },
+    "additional_work_id": {
+      "type": "string",
+      "description": "Linked AdditionalWork document when this task was generated from an approved additional-work request. Used for idempotent dedup \u2014 retried/parallel processing checks for an existing task with this id before creating a duplicate."
     }
   },
   "required": [

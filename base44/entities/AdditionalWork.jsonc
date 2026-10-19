@@ -213,10 +213,29 @@
     "approved_by": {
       "type": "string"
     },
+    "processing_state": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "processing",
+        "processed",
+        "failed"
+      ],
+      "default": "not_started",
+      "description": "Reliability state for applying approved work. not_started = never processed; processing = a worker claimed it (processing_claim_token set); processed = fully applied (processed_at set); failed = a processing attempt errored after partial work (processing_error has the reason). Retries re-claim from failed/not_started and resume idempotently."
+    },
+    "processing_claim_token": {
+      "type": "string",
+      "description": "Opaque token written by an atomic conditional update at the start of processing to claim exclusive ownership. Cleared on success or failure so a retry can re-claim. Present only while a worker is actively processing."
+    },
+    "processing_error": {
+      "type": "string",
+      "description": "Last processing error message when processing_state is failed. Cleared on a successful retry. Safe, non-sensitive message only."
+    },
     "processed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When approved work was applied to reservations, invoice, and tasks. Idempotency guard \u2014 applied exactly once."
+      "description": "When approved work was fully applied to reservations, invoice, and tasks. Idempotency guard \u2014 applied exactly once."
     },
     "invoice_id": {
       "type": "string",
@@ -244,5 +263,27 @@
   "required": [
     "work_number",
     "job_id"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

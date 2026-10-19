@@ -151,19 +151,9 @@
       }
     },
     "update": {
-      "$or": [
-        {
-          "id": "{{user.data.customer_id}}"
-        },
-        {
-          "data.email": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
       "user_condition": {
