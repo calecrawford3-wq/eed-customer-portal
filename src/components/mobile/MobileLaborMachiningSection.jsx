@@ -16,7 +16,7 @@ const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_
  * form until the user taps "Apply Changes".  Cancelling a new item leaves
  * the form untouched.  Catalog selection updates the editor's draft only.
  */
-export default function MobileLaborMachiningSection({ type, items, isCombined, onReplaceItem, onRemove, catalogItems }) {
+export default function MobileLaborMachiningSection({ type, items, isCombined, onReplaceItem, onRemove, catalogItems, onDirtyChange }) {
   const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -74,6 +74,7 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
         canSaveAndAdd
         onSaveAndAdd={handleSaveAndAdd}
         catalogItems={catalogItems}
+        onDirtyChange={onDirtyChange}
       />
     </Card>
   );

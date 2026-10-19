@@ -34,7 +34,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
 import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
-import { useNavigationGuard, bypassNextNavigation } from "@/hooks/useNavigationGuard";
+import { useNavigationGuard } from "@/hooks/useNavigationGuard";
+import NavigationGuardDialog from "@/components/NavigationGuardDialog";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -59,16 +60,6 @@ export default function InvoiceDetail() {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
 
-  // --- Navigation guard: detect unsaved edits and prompt before leaving ---
-  const formRef = useRef(form);
-  formRef.current = form;
-  const baselineRef = useRef(""); // JSON snapshot of the form when it matches the server
-  const isDirty = () => baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current;
-  useNavigationGuard(isDirty, async () => {
-    try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
-    catch { return false; }
-  });
-
   const [form, setForm] = useState({
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
     customer_id: "", status: "draft",
@@ -83,6 +74,20 @@ export default function InvoiceDetail() {
     shipping_cost: 0,
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
+
+  // --- Navigation guard: detect unsaved edits and prompt before leaving ---
+  // form state is declared above so formRef can read it without a TDZ crash.
+  const formRef = useRef(form);
+  formRef.current = form;
+  const baselineRef = useRef(""); // JSON snapshot of the form when it matches the server
+  const editorDraftRef = useRef(false); // true when a mobile item editor has an unapplied draft
+  const [docVersion, setDocVersion] = useState(0); // bumps on document load/switch to reset save-state
+  const isDirty = () => (editorDraftRef.current) || (baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current);
+  const hasEditorDraft = () => editorDraftRef.current;
+  const { blocker, bypass } = useNavigationGuard(isDirty, async () => {
+    try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
+    catch { return false; }
+  }, hasEditorDraft);
   const [sending, setSending] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
@@ -176,7 +181,7 @@ export default function InvoiceDetail() {
         qc.invalidateQueries({ queryKey: ["accountCredits"] });
       }
       toast.success("Converted to estimate — invoice deleted");
-      bypassNextNavigation(); navigate(`/EstimateDetail?id=${estimate.id}`);
+      bypass(); navigate(`/EstimateDetail?id=${estimate.id}`);
     } catch (err) {
       toast.error("Conversion failed: " + err.message);
     } finally {
@@ -276,7 +281,10 @@ export default function InvoiceDetail() {
   });
 
   useEffect(() => {
-    if (invoice && invoice[0]) setForm({ labor_items: [], machining_items: [], ...invoice[0] });
+    if (invoice && invoice[0]) {
+      setForm({ labor_items: [], machining_items: [], ...invoice[0] });
+      setDocVersion(v => v + 1);
+    }
   }, [invoice]);
 
   // Capture the "clean" baseline once the form is populated and initial
@@ -287,6 +295,13 @@ export default function InvoiceDetail() {
     const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
     return () => clearTimeout(t);
   }, [id, invoiceLoading, invoice]);
+
+  // For new documents, set the baseline once after initial derived effects settle.
+  useEffect(() => {
+    if (id) return;
+    const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
+    return () => clearTimeout(t);
+  }, [id]);
 
   useEffect(() => {
     if (isNew && settingsData && settingsData[0] && settingsData[0].default_tax_rate) {
@@ -337,7 +352,7 @@ export default function InvoiceDetail() {
           publicAccessToken: variables.public_access_token,
         }).catch((e) => console.warn("Auto-sync to viewer failed:", e));
       }
-      if (isNew) { bypassNextNavigation(); navigate(`/InvoiceDetail?id=${result.id}`); }
+      if (isNew) { bypass(); navigate(`/InvoiceDetail?id=${result.id}`); }
     },
   });
 
@@ -602,6 +617,27 @@ export default function InvoiceDetail() {
     const items = (form.machining_items || []).filter((_, i) => i !== idx);
     const totals = recalc(form.line_items, form.labor_items || [], items, form.tax_rate, form.amount_paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     setForm(f => ({ ...f, machining_items: items, ...totals }));
+  };
+
+  // Kit-separate from the mobile editor: expands a kit into multiple line items
+  // directly on the document (can't fit a single editor draft). The editor shows
+  // a confirmation dialog before calling this — it is never silently committed.
+  const commitKitSeparate = (kit) => {
+    const override = customer?.parts_markup_override;
+    const useOverride = override !== null && override !== undefined && override !== "";
+    const expanded = (kit.components || []).map(c => {
+      const qty = Number(c.quantity) || 1;
+      const price = useOverride ? (Number(c.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(c.unit_price) || 0);
+      return { part_id: c.part_id || "", part_number: c.part_number || "", item_name: c.name || "", quantity: qty, unit_cost: Number(c.unit_cost) || 0, unit_price: price, total: qty * price };
+    });
+    const kitLabor = (kit.labor_items || []).map(l => ({ name: l.name || "", description: l.description || "", price: Number(l.price) || 0 }));
+    setForm(f => {
+      const newLines = [...(f.line_items || []), ...expanded];
+      const newLabor = [...(f.labor_items || []), ...kitLabor];
+      const totals = recalc(newLines, newLabor, f.machining_items || [], f.tax_rate, f.amount_paid, f.applied_credits, f.discount_type || "none", f.discount_value || 0);
+      return { ...f, line_items: newLines, labor_items: newLabor, ...totals };
+    });
+    toast.success(`Added kit "${kit.name}" — ${expanded.length} part${expanded.length === 1 ? "" : "s"}${kitLabor.length > 0 ? ` + ${kitLabor.length} labor` : ""}`);
   };
 
   // Mobile: replace an entire item at once (single setForm, same recalc)
@@ -1167,11 +1203,16 @@ export default function InvoiceDetail() {
           isCombined={!!form.is_combined}
           onReplaceItem={replaceLine}
           onRemove={removeLine}
-          onAdd={addLine}
-          onPick={(idx) => { setPickingIdx(idx); setPickerInitialTab("parts"); setPartPickerOpen(true); }}
           onAddCoreCredit={() => setCoreCreditOpen(true)}
           onAddCore={() => { setPickingIdx(null); setPickerInitialTab("cores"); setPartPickerOpen(true); }}
-          onAddMultiPart={() => setMultiPartPickerOpen(true)}
+          parts={parts}
+          kits={partKits}
+          cores={engineCores}
+          customer={customer}
+          onCommitKitSeparate={commitKitSeparate}
+          onNewCore={() => { setEditingCore(null); setCoreCreateOpen(true); }}
+          onEditCore={(c) => { setEditingCore(c); setCoreCreateOpen(true); }}
+          onDirtyChange={(d) => { editorDraftRef.current = d; }}
         />
       ) : (
         <Card className="border-0 shadow-sm mb-6">
@@ -1259,8 +1300,8 @@ export default function InvoiceDetail() {
           isCombined={!!form.is_combined}
           onReplaceItem={replaceLabor}
           onRemove={removeLabor}
-          onAdd={addLabor}
-          onPick={(idx) => { setLaborPickingIdx(idx); setLaborPickerOpen(true); }}
+          catalogItems={laborCatalog}
+          onDirtyChange={(d) => { editorDraftRef.current = d; }}
         />
       ) : (
         <Card className="border-0 shadow-sm mb-6">
@@ -1312,8 +1353,8 @@ export default function InvoiceDetail() {
           isCombined={!!form.is_combined}
           onReplaceItem={replaceMachining}
           onRemove={removeMachining}
-          onAdd={addMachining}
-          onPick={(idx) => { setMachiningPickingIdx(idx); setMachiningPickerOpen(true); }}
+          catalogItems={machiningCatalog}
+          onDirtyChange={(d) => { editorDraftRef.current = d; }}
         />
       ) : (
         <Card className="border-0 shadow-sm mb-6">
@@ -1506,10 +1547,20 @@ export default function InvoiceDetail() {
       )}
 
       <MobileSaveBar
-        form={form}
-        onSave={() => saveMutation.mutate(form)}
+        dirty={isDirty()}
         isSaving={saveMutation.isPending}
         isError={saveMutation.isError}
+        onSave={() => saveMutation.mutate(form)}
+        docVersion={docVersion}
+      />
+
+      <NavigationGuardDialog
+        blocker={blocker}
+        hasEditorDraft={hasEditorDraft}
+        onSave={async () => {
+          try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
+          catch { return false; }
+        }}
       />
     </div>
   );

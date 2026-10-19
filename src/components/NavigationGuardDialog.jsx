@@ -2,31 +2,44 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { useBlockedNavigation, clearBlocked, proceedBlocked, saveAndProceed } from "@/hooks/useNavigationGuard";
 
 /**
- * Renders a Stay / Discard / Save & Leave dialog whenever an internal
- * navigation is blocked by an active dirty guard. Mounted once in the Layout
- * so it covers all pages. Save & Leave waits for confirmed success before
- * navigating; on failure the user stays on the document with all edits
- * preserved.
+ * Stay / Discard / Save & Leave dialog driven by a React Router blocker.
+ *
+ * Mounted inside each guarded page (EstimateDetail, InvoiceDetail) so it has
+ * direct access to the blocker returned by useNavigationGuard.
+ *
+ * - Stay: blocker.reset() — cancel the block, stay on the document.
+ * - Discard & Leave: blocker.proceed() — resume the navigation, discarding edits.
+ * - Save & Leave: await onSave(); on success blocker.proceed(); on failure stay.
+ *
+ * When hasEditorDraft() is true, Save & Leave is replaced with a notice to
+ * resolve the item editor first (apply or cancel the open draft), so we never
+ * silently discard an unapplied item draft or save only the parent document.
  */
-export default function NavigationGuardDialog() {
-  const blocked = useBlockedNavigation();
+export default function NavigationGuardDialog({ blocker, onSave, hasEditorDraft }) {
   const [saving, setSaving] = useState(false);
 
-  if (!blocked) return null;
+  if (!blocker || blocker.state !== "blocked") return null;
 
-  const handleStay = () => clearBlocked();
-  const handleDiscard = () => proceedBlocked();
+  const editorDraft = typeof hasEditorDraft === "function" ? hasEditorDraft() : !!hasEditorDraft;
+
+  const handleStay = () => blocker.reset();
+  const handleDiscard = () => blocker.proceed();
   const handleSaveAndLeave = async () => {
     setSaving(true);
-    await saveAndProceed();
-    setSaving(false);
+    try {
+      const ok = await onSave();
+      if (ok) { blocker.proceed(); return; }
+      // Save failed — stay on the document, keep edits.
+      blocker.reset();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={!!blocked} onOpenChange={(o) => { if (!o && !saving) clearBlocked(); }}>
+    <Dialog open onOpenChange={(o) => { if (!o && !saving) blocker.reset(); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <div className="flex items-start gap-3">
@@ -36,20 +49,24 @@ export default function NavigationGuardDialog() {
             <div>
               <DialogTitle>Unsaved changes</DialogTitle>
               <DialogDescription className="mt-1">
-                You have unsaved changes to this document. Leaving will discard them.
+                {editorDraft
+                  ? "You have an unapplied item in the editor. Apply or cancel it before leaving, or discard everything and leave."
+                  : "You have unsaved changes to this document. Leaving will discard them."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
-          <Button
-            className="w-full bg-[#e20404] hover:bg-[#c00303] text-white"
-            onClick={handleSaveAndLeave}
-            disabled={saving}
-          >
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-            {saving ? "Saving..." : "Save & Leave"}
-          </Button>
+          {!editorDraft && (
+            <Button
+              className="w-full bg-[#e20404] hover:bg-[#c00303] text-white"
+              onClick={handleSaveAndLeave}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+              {saving ? "Saving..." : "Save & Leave"}
+            </Button>
+          )}
           <Button variant="outline" className="w-full" onClick={handleDiscard} disabled={saving}>
             Discard & Leave
           </Button>

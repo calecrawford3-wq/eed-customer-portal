@@ -16,7 +16,7 @@ const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, un
  * form until the user taps "Apply Changes".  Cancelling a new item leaves
  * the form untouched.  Catalog selection updates the editor's draft only.
  */
-export default function MobilePartsSection({ items, isCombined, onReplaceItem, onRemove, onAddCoreCredit, onAddCore, parts = [], kits = [], cores = [], customer, onCommitKitSeparate, onNewCore, onEditCore }) {
+export default function MobilePartsSection({ items, isCombined, onReplaceItem, onRemove, onAddCoreCredit, onAddCore, parts = [], kits = [], cores = [], customer, onCommitKitSeparate, onNewCore, onEditCore, onDirtyChange }) {
   const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -94,6 +94,7 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
         onCommitKitSeparate={onCommitKitSeparate}
         onNewCore={onNewCore}
         onEditCore={onEditCore}
+        onDirtyChange={onDirtyChange}
       />
     </Card>
   );

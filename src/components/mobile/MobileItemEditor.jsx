@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ChevronDown, ChevronUp, Check, X, Plus, AlertTriangle } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Check, X, Plus, AlertTriangle, Package } from "lucide-react";
 import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 
@@ -47,16 +47,20 @@ export default function MobileItemEditor({
   catalogItems = [],   // labor/machining catalog
   parts = [], kits = [], cores = [], customer,  // parts catalog
   onCommitKitSeparate, onNewCore, onEditCore,
+  onDirtyChange,
 }) {
   const [draft, setDraft] = useState(item || freshDraft(type));
   const [showShop, setShowShop] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [showKitSeparateConfirm, setShowKitSeparateConfirm] = useState(null); // { kit } | null
   const [pickerOpen, setPickerOpen] = useState(false);
   const applyingRef = useRef(false);
   const skipSyncRef = useRef(false);
   const firstInputRef = useRef(null);
   const previousOverflow = useRef(null);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
 
   const isParts = type === "parts";
   const isMachining = type === "machining";
@@ -86,6 +90,15 @@ export default function MobileItemEditor({
   // Reset the skip flag whenever the editor closes so the next open syncs.
   useEffect(() => {
     if (!open) skipSyncRef.current = false;
+  }, [open]);
+
+  // Notify the parent when the editor has an unapplied dirty draft, so the
+  // navigation guard can protect it. Cleared when the editor closes.
+  useEffect(() => {
+    onDirtyChangeRef.current?.(dirty);
+  }, [dirty]);
+  useEffect(() => {
+    if (!open) onDirtyChangeRef.current?.(false);
   }, [open]);
 
   // Lock body scroll while editor is open; restore on close.
@@ -524,10 +537,10 @@ export default function MobileItemEditor({
               setPickerOpen(false);
             } else if (onCommitKitSeparate) {
               // Kit-separate expands into multiple lines and cannot fit a single
-              // draft; commit directly and close the editor.
+              // draft. Show an explicit confirmation before committing — never
+              // silently commit while the operator has an unconfirmed draft.
               setPickerOpen(false);
-              onClose();
-              onCommitKitSeparate(kit);
+              setShowKitSeparateConfirm(kit);
             }
           }}
           onSelectCore={(core, mode) => { applyCoreToDraft(core, mode); setPickerOpen(false); }}
@@ -560,6 +573,34 @@ export default function MobileItemEditor({
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1 h-11" onClick={() => setShowDiscardConfirm(false)}>Keep Editing</Button>
               <Button variant="destructive" className="flex-1 h-11" onClick={confirmDiscard}>Discard</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kit-separate confirmation — expanding a kit into multiple lines */}
+      {showKitSeparateConfirm && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 px-6">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                <Package className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">Add kit as separate parts?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  "{showKitSeparateConfirm.name}" will be expanded into {(showKitSeparateConfirm.components || []).length} separate line items on the document. The editor will close.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-11" onClick={() => setShowKitSeparateConfirm(null)}>Cancel</Button>
+              <Button className="flex-1 h-11 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => {
+                const kit = showKitSeparateConfirm;
+                setShowKitSeparateConfirm(null);
+                onClose();
+                onCommitKitSeparate(kit);
+              }}>Add Parts</Button>
             </div>
           </div>
         </div>
