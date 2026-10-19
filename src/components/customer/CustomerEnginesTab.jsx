@@ -549,9 +549,90 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
             <Button
               className="bg-[#e20404] hover:bg-[#c00303] text-white"
               disabled={transferMutation.isPending || !transferCustomerId}
-              onClick={() => transferMutation.mutate({ id: transferEngine.id, newCustomerId: transferCustomerId })}
+              onClick={() => {
+                // Check for active estimates (draft or sent, not yet approved/paid)
+                // linked to this engine. If found, ask whether to reassign them
+                // to the new customer along with the engine.
+                const activeEstimates = allEstimates.filter(e =>
+                  e.customer_engine_id === transferEngine.id &&
+                  ["draft", "sent"].includes(e.status)
+                );
+                if (activeEstimates.length > 0) {
+                  setConvertEstimatePrompt({ engine: transferEngine, newCustomerId: transferCustomerId, activeEstimates });
+                } else {
+                  transferMutation.mutate({ id: transferEngine.id, newCustomerId: transferCustomerId });
+                }
+              }}
             >
               {transferMutation.isPending ? "Transferring..." : "Transfer Engine"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert active estimates prompt — shown when transferring an engine
+          that has draft/sent estimates linked to it. Asks whether to reassign
+          those estimates to the new customer along with the engine. */}
+      <Dialog open={!!convertEstimatePrompt} onOpenChange={(o) => { if (!o) setConvertEstimatePrompt(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-amber-600" /> Active Estimates Found
+            </DialogTitle>
+          </DialogHeader>
+          {convertEstimatePrompt && (() => {
+            const target = allCustomers.find(c => c.id === convertEstimatePrompt.newCustomerId);
+            const ests = convertEstimatePrompt.activeEstimates;
+            return (
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-slate-600">
+                  {ests.length} active estimate{ests.length === 1 ? "" : "s"} linked to{" "}
+                  <span className="font-mono font-bold text-[#e20404]">{convertEstimatePrompt.engine.eed_id}</span>{" "}
+                  {ests.length === 1 ? "was" : "were"} found. Would you like to keep{" "}
+                  {ests.length === 1 ? "it" : "them"} and reassign{" "}
+                  {ests.length === 1 ? "it" : "them"} to{" "}
+                  {target ? `${target.first_name} ${target.last_name}` : "the new customer"}?
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                  {ests.map(e => (
+                    <div key={e.id} className="flex items-center justify-between text-xs">
+                      <Link to={`/EstimateDetail?id=${e.id}`} className="font-medium text-[#e20404] hover:underline" onClick={() => setConvertEstimatePrompt(null)}>
+                        {e.estimate_number}
+                      </Link>
+                      <Badge className={`border-0 capitalize ${e.status === "draft" ? "bg-slate-100 text-slate-600" : "bg-blue-100 text-blue-700"}`}>
+                        {e.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full bg-[#e20404] hover:bg-[#c00303] text-white"
+              disabled={transferMutation.isPending}
+              onClick={() => transferMutation.mutate({
+                id: convertEstimatePrompt.engine.id,
+                newCustomerId: convertEstimatePrompt.newCustomerId,
+                convertEstimateIds: convertEstimatePrompt.activeEstimates.map(e => e.id),
+              })}
+            >
+              {transferMutation.isPending ? "Transferring..." : "Yes — Reassign Estimates & Transfer"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={transferMutation.isPending}
+              onClick={() => transferMutation.mutate({
+                id: convertEstimatePrompt.engine.id,
+                newCustomerId: convertEstimatePrompt.newCustomerId,
+              })}
+            >
+              Transfer Engine Only (Leave Estimates)
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setConvertEstimatePrompt(null)} disabled={transferMutation.isPending}>
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
