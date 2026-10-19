@@ -316,14 +316,17 @@ export default function InvoiceDetail() {
     }
   }, [invoice, id]);
 
-  // Capture the "clean" baseline once the form is populated and initial
-  // derived effects (tax defaults, credit auto-apply) have settled.
+  // Capture the "clean" baseline once the form is populated from server data
+  // and initial derived effects (tax defaults, credit auto-apply) have
+  // settled. Depends on docVersion (which only increments when the refresh
+  // guard actually populates the form), NOT on `invoice` — so a background
+  // refetch that the refresh guard preserves (unsaved edits) does NOT
+  // re-capture the baseline and silently mark those edits clean.
   useEffect(() => {
     if (id && invoiceLoading) return;
-    if (id && !invoice?.[0]) return;
     const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
     return () => clearTimeout(t);
-  }, [id, invoiceLoading, invoice]);
+  }, [docVersion, id, invoiceLoading]);
 
   // For new documents, set the baseline once after initial derived effects settle.
   useEffect(() => {

@@ -103,6 +103,10 @@ export function normalizePart(prev, part, priceOverride) {
  */
 export function normalizeKit(prev, kit, kitCost, kitPrice) {
   const next = {
+    // A kit line is identified by kit_id, not part_id. Clear any stale part_id
+    // from the previous item so the kit is not misclassified as a regular part
+    // by downstream reservation / PO / profitability logic.
+    part_id: "",
     is_kit: true,
     kit_id: kit.id || "",
     part_number: kit.part_number || "",

@@ -281,14 +281,17 @@ export default function EstimateDetail() {
     }
   }, [estimate, id]);
 
-  // Capture the "clean" baseline once the form is populated and initial
-  // derived effects (deposit auto-calc, tax defaults, prefill) have settled.
+  // Capture the "clean" baseline once the form is populated from server data
+  // and initial derived effects (deposit auto-calc, tax defaults, prefill)
+  // have settled. Depends on docVersion (which only increments when the
+  // refresh guard actually populates the form), NOT on `estimate` — so a
+  // background refetch that the refresh guard preserves (unsaved edits)
+  // does NOT re-capture the baseline and silently mark those edits clean.
   useEffect(() => {
     if (id && estimateLoading) return;
-    if (id && !estimate?.[0]) return;
     const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
     return () => clearTimeout(t);
-  }, [id, estimateLoading, estimate]);
+  }, [docVersion, id, estimateLoading]);
 
   // For new documents, set the baseline once after initial derived effects settle.
   useEffect(() => {
