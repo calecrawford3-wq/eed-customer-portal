@@ -54,6 +54,7 @@ import LoadingState from "@/components/LoadingState";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import NavigationGuardDialog from "@/components/NavigationGuardDialog";
+import { normalizePart, normalizeKit, normalizeCoreSale, normalizeCoreCredit } from "@/lib/normalizeLineItem";
 
 const COMPARISON_VIEWER_BASE = "https://billing.eedpower.com/comparison";
 
@@ -111,11 +112,28 @@ export default function EstimateDetail() {
   const baselineRef = useRef(""); // JSON snapshot of the form when it matches the server
   const editorDraftRef = useRef(false); // true when a mobile item editor has an unapplied draft
   const [docVersion, setDocVersion] = useState(0); // bumps on document load/switch to reset save-state
+  // submittedSnapshotRef holds the JSON of the exact data sent to the server
+  // during a Save & Leave. After the await, we compare it with the current form
+  // to detect edits made during the request — if newer edits exist, we stay on
+  // the document and preserve them rather than navigating away.
+  const submittedSnapshotRef = useRef("");
   const isDirty = () => (editorDraftRef.current) || (baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current);
   const hasEditorDraft = () => editorDraftRef.current;
   const { blocker, bypass } = useNavigationGuard(isDirty, async () => {
-    try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
-    catch { return false; }
+    // Capture the exact submitted snapshot BEFORE the await so we can compare
+    // it with the current form after the request completes.
+    const snapshot = JSON.stringify(formRef.current);
+    submittedSnapshotRef.current = snapshot;
+    try {
+      await saveMutation.mutateAsync(formRef.current);
+      // Mark the submitted snapshot as the saved baseline. If the form changed
+      // during the request, isDirty() will be true again (form !== baseline).
+      baselineRef.current = snapshot;
+      const newerEdits = JSON.stringify(formRef.current) !== snapshot;
+      return { ok: true, savedSnapshot: snapshot, proceed: !newerEdits };
+    } catch {
+      return { ok: false };
+    }
   }, hasEditorDraft);
   const [sending, setSending] = useState(false);
   const [partPickerOpen, setPartPickerOpen] = useState(false);
@@ -233,8 +251,25 @@ export default function EstimateDetail() {
     queryFn: () => base44.entities.MachiningItem.list("-created_date", 200),
   });
 
+  // Track the document id we last loaded so a slow response from a previously
+  // opened document cannot populate the current document (race guard).
+  const loadedIdRef = useRef(null);
   useEffect(() => {
     if (estimate && estimate[0]) {
+      const incomingId = estimate[0].id;
+      // Race guard: ignore stale responses from a previously opened document.
+      if (id && incomingId && incomingId !== id) return;
+      // Refresh guard: if the user has unsaved edits or an unapplied item
+      // draft, do NOT overwrite the form with newer server data. The user's
+      // edits take precedence; a background refresh or save-triggered
+      // invalidation must not silently discard them.
+      const hasUnsavedEdits = baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current;
+      if (loadedIdRef.current === incomingId && (hasUnsavedEdits || editorDraftRef.current)) {
+        // Same document, newer server data, but local edits exist — preserve them.
+        // The server data is still cached by react-query for the next clean load.
+        return;
+      }
+      loadedIdRef.current = incomingId;
       setForm({ labor_items: [], machining_items: [], payments: [], ...estimate[0] });
       setDocVersion(v => v + 1);
       // Sync engine stage when estimate loads
@@ -244,7 +279,7 @@ export default function EstimateDetail() {
         );
       }
     }
-  }, [estimate]);
+  }, [estimate, id]);
 
   // Capture the "clean" baseline once the form is populated and initial
   // derived effects (deposit auto-calc, tax defaults, prefill) have settled.
@@ -327,7 +362,10 @@ export default function EstimateDetail() {
       qc.invalidateQueries({ queryKey: ["estimates"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Estimate saved");
-      // The form now matches the server — clear the unsaved-edits baseline.
+      // The submitted snapshot (variables) is now the saved baseline. If the
+      // form changed during the request, isDirty() stays true and the save bar
+      // shows "Unsaved Changes" — we do NOT overwrite the baseline with the
+      // current (newer) form, which would silently mark unconfirmed edits clean.
       baselineRef.current = JSON.stringify(variables);
       // Auto-sync to public viewer if this estimate has already been sent
       if (variables?.public_access_token) {
@@ -404,11 +442,11 @@ export default function EstimateDetail() {
     const useOverride = override !== null && override !== undefined && override !== "";
     const price = useOverride ? (Number(part.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(part.sell_price) || 0);
     const lines = [...form.line_items];
-    lines[pickingIdx] = {
-      part_id: part.id, part_number: part.part_number, item_name: part.name,
-      quantity: 1, unit_cost: part.unit_cost || 0, shipping_cost: Number(part.shipping_cost) || 0, unit_price: price,
-      total: price,
-    };
+    // normalizePart clears kit/core flags+references from the previous line so
+    // replacing a kit or core credit with a regular part does not retain
+    // incompatible fields (is_kit, kit_id, kit_components, is_core_credit,
+    // core_id, core_details) that would misclassify or misprocess the new item.
+    lines[pickingIdx] = normalizePart(lines[pickingIdx] || {}, part, price);
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
     setForm({ ...form, line_items: lines, ...totals });
   };
@@ -427,24 +465,11 @@ export default function EstimateDetail() {
       const laborPrice = kitLabor.reduce((s, l) => s + (Number(l.price) || 0), 0);
       const kitCost = hasCostOv ? Number(kit.kit_cost_override) : partsCost;
       const kitPrice = hasPriceOv ? Number(kit.kit_price_override) : (partsPrice + laborPrice);
-      const kitLine = {
-        is_kit: true,
-        kit_id: kit.id || "",
-        part_number: kit.part_number || "",
-        item_name: kit.name || "",
-        quantity: 1,
-        unit_cost: kitCost,
-        unit_price: kitPrice,
-        total: kitPrice,
-        kit_components: (kit.components || []).map(c => ({
-          part_id: c.part_id || "",
-          part_number: c.part_number || "",
-          name: c.name || "",
-          quantity: Number(c.quantity) || 1,
-          unit_cost: Number(c.unit_cost) || 0,
-        })),
-      };
       const idx = (pickingIdx === null || pickingIdx === undefined || pickingIdx >= lines.length) ? lines.length : pickingIdx;
+      // normalizeKit clears core flags/references from the previous line so
+      // replacing a core credit with a kit does not leave is_core_credit/core_id.
+      const prev = idx === lines.length ? {} : (lines[idx] || {});
+      const kitLine = normalizeKit(prev, kit, kitCost, kitPrice);
       const newLines = idx === lines.length ? [...lines, kitLine] : [...lines.slice(0, idx), kitLine, ...lines.slice(idx + 1)];
       const totals = recalc(newLines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
       setForm({ ...form, line_items: newLines, ...totals });
@@ -479,22 +504,18 @@ export default function EstimateDetail() {
   const selectCore = (core, mode) => {
     const lines = [...form.line_items];
     const idx = (pickingIdx === null || pickingIdx === undefined || pickingIdx >= lines.length) ? lines.length : pickingIdx;
+    const prev = idx === lines.length ? {} : (lines[idx] || {});
+    // normalizeCoreSale / normalizeCoreCredit clear kit flags/references from
+    // the previous line so replacing a kit with a core does not leave
+    // is_kit/kit_id/kit_components on the new core line.
     let line;
     if (mode === "credit") {
+      line = normalizeCoreCredit(prev, core);
       const credit = Number(core.core_credit) || 0;
-      line = {
-        part_id: "", part_number: core.core_number,
-        item_name: `Core Credit: ${core.name}`,
-        quantity: 1, unit_cost: 0, unit_price: -credit, total: -credit,
-      };
       toast.success(`Added core credit for "${core.name}" (−$${credit.toFixed(2)})`);
     } else {
+      line = normalizeCoreSale(prev, core);
       const price = Number(core.sell_price) || 0;
-      line = {
-        part_id: "", part_number: core.core_number, core_id: core.id,
-        item_name: `${core.name} (Core)`,
-        quantity: 1, unit_cost: Number(core.unit_cost) || 0, unit_price: price, total: price,
-      };
       toast.success(`Added core "${core.name}" for sale ($${price.toFixed(2)})`);
     }
     if (idx === lines.length) lines.push(line); else lines[idx] = line;
@@ -2194,8 +2215,18 @@ export default function EstimateDetail() {
         blocker={blocker}
         hasEditorDraft={hasEditorDraft}
         onSave={async () => {
-          try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
-          catch { return false; }
+          // Capture the exact submitted snapshot before the await. After success,
+          // compare with the current form: if unchanged, proceed; if newer edits
+          // exist, stay and preserve them. On failure, stay and retain all edits.
+          const snapshot = JSON.stringify(formRef.current);
+          try {
+            await saveMutation.mutateAsync(formRef.current);
+            baselineRef.current = snapshot;
+            const newerEdits = JSON.stringify(formRef.current) !== snapshot;
+            return { ok: true, savedSnapshot: snapshot, proceed: !newerEdits };
+          } catch {
+            return { ok: false };
+          }
         }}
       />
     </div>

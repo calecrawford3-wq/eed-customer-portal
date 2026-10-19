@@ -11,7 +11,12 @@ import { Loader2, AlertTriangle } from "lucide-react";
  *
  * - Stay: blocker.reset() — cancel the block, stay on the document.
  * - Discard & Leave: blocker.proceed() — resume the navigation, discarding edits.
- * - Save & Leave: await onSave(); on success blocker.proceed(); on failure stay.
+ * - Save & Leave: await onSave(); onSave returns { ok, savedSnapshot }.
+ *   After success, the page compares savedSnapshot with the current form:
+ *     * If unchanged → the saved version is what the user intended; proceed.
+ *     * If newer edits exist → stay on the document, preserve them, show
+ *       "Unsaved Changes" (the page's isDirty() stays true). Do NOT proceed.
+ *   On failure → stay, retain all edits.
  *
  * When hasEditorDraft() is true, Save & Leave is replaced with a notice to
  * resolve the item editor first (apply or cancel the open draft), so we never
@@ -29,8 +34,19 @@ export default function NavigationGuardDialog({ blocker, onSave, hasEditorDraft 
   const handleSaveAndLeave = async () => {
     setSaving(true);
     try {
-      const ok = await onSave();
-      if (ok) { blocker.proceed(); return; }
+      const result = await onSave();
+      // onSave returns { ok, savedSnapshot }. The page compares savedSnapshot
+      // with the current form to decide whether newer edits were made during
+      // the request. If ok and no newer edits, proceed. Otherwise stay.
+      if (result?.ok && result?.savedSnapshot) {
+        // The page already updated baselineRef to savedSnapshot. If the form
+        // still differs (newer edits), isDirty() is true — don't proceed.
+        // The page signals this by returning { ok: true, proceed: false }.
+        if (result.proceed !== false) { blocker.proceed(); return; }
+        // Newer edits exist — stay, preserve them, show Unsaved Changes.
+        blocker.reset();
+        return;
+      }
       // Save failed — stay on the document, keep edits.
       blocker.reset();
     } finally {

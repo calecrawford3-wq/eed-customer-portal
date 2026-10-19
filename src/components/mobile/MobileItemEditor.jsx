@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, ChevronDown, ChevronUp, Check, X, Plus, AlertTriangle, Package } from "lucide-react";
 import LaborMachiningPickerModal from "@/components/estimates/LaborMachiningPickerModal";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
+import { normalizePart, normalizeKit, normalizeCoreSale, normalizeCoreCredit } from "@/lib/normalizeLineItem";
 
 /**
  * Full-screen mobile item editor for parts, labor, and machining line items.
@@ -142,17 +143,10 @@ export default function MobileItemEditor({
     const override = customer?.parts_markup_override;
     const useOverride = override !== null && override !== undefined && override !== "";
     const price = useOverride ? (Number(part.unit_cost) || 0) * (1 + Number(override) / 100) : (Number(part.sell_price) || 0);
-    setDraft(d => ({
-      ...d,
-      part_id: part.id || "",
-      part_number: part.part_number || "",
-      item_name: part.name || "",
-      quantity: Number(d.quantity) || 1,
-      unit_cost: Number(part.unit_cost) || 0,
-      shipping_cost: Number(part.shipping_cost) || 0,
-      unit_price: price,
-      total: (Number(d.quantity) || 1) * price,
-    }));
+    // normalizePart clears kit/core flags+references from the previous draft so
+    // replacing a kit or core credit with a regular part does not leave
+    // incompatible fields that would misclassify or misprocess the new item.
+    setDraft(d => normalizePart(d, part, price));
     setDirty(true);
   };
 
@@ -190,56 +184,20 @@ export default function MobileItemEditor({
     const hasPriceOv = kit.kit_price_override != null && !isNaN(Number(kit.kit_price_override));
     const kitCost = hasCostOv ? Number(kit.kit_cost_override) : partsCost;
     const kitPrice = hasPriceOv ? Number(kit.kit_price_override) : (partsPrice + laborPrice);
-    setDraft(d => ({
-      ...d,
-      is_kit: true,
-      kit_id: kit.id || "",
-      part_number: kit.part_number || "",
-      item_name: kit.name || "",
-      quantity: 1,
-      unit_cost: kitCost,
-      unit_price: kitPrice,
-      total: kitPrice,
-      kit_components: (kit.components || []).map(c => ({
-        part_id: c.part_id || "",
-        part_number: c.part_number || "",
-        name: c.name || "",
-        quantity: Number(c.quantity) || 1,
-        unit_cost: Number(c.unit_cost) || 0,
-      })),
-    }));
+    // normalizeKit clears core flags/references from the previous draft so
+    // replacing a core credit with a kit does not leave is_core_credit/core_id.
+    setDraft(d => normalizeKit(d, kit, kitCost, kitPrice));
     setDirty(true);
   };
 
   const applyCoreToDraft = (core, mode) => {
+    // normalizeCoreSale / normalizeCoreCredit clear kit flags/references from
+    // the previous draft so replacing a kit with a core does not leave
+    // is_kit/kit_id/kit_components on the new core line.
     if (mode === "credit") {
-      const credit = Number(core.core_credit) || 0;
-      setDraft(d => ({
-        ...d,
-        part_id: "",
-        part_number: core.core_number || "",
-        item_name: `Core Credit: ${core.name || ""}`,
-        quantity: 1,
-        unit_cost: 0,
-        unit_price: -credit,
-        total: -credit,
-        is_core_credit: true,
-        core_id: core.id || "",
-        core_details: { ...core },
-      }));
+      setDraft(d => normalizeCoreCredit(d, core));
     } else {
-      const price = Number(core.sell_price) || 0;
-      setDraft(d => ({
-        ...d,
-        part_id: "",
-        part_number: core.core_number || "",
-        core_id: core.id || "",
-        item_name: `${core.name || ""} (Core)`,
-        quantity: 1,
-        unit_cost: Number(core.unit_cost) || 0,
-        unit_price: price,
-        total: price,
-      }));
+      setDraft(d => normalizeCoreSale(d, core));
     }
     setDirty(true);
   };

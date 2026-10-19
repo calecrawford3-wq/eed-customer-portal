@@ -12,7 +12,12 @@ import { useBlocker } from "react-router-dom";
  *
  * Pages register a guard via useNavigationGuard(isDirty, onSave, hasEditorDraft):
  *   - isDirty:        () => boolean  — true when there are unsaved document edits
- *   - onSave:         () => Promise<boolean> — persists edits; resolves true on success
+ *   - onSave:         () => Promise<{ ok: boolean, savedSnapshot?: string }> —
+ *                     persists edits; resolves { ok: true, savedSnapshot } on
+ *                     success (savedSnapshot is the JSON of the exact data that
+ *                     was sent to the server). The page compares savedSnapshot
+ *                     with the current form AFTER the await to decide whether
+ *                     newer edits were made during the request.
  *   - hasEditorDraft: () => boolean  — true when a mobile item editor has an unapplied draft
  *
  * Intentional navigations that follow a save (e.g. approving an estimate

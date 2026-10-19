@@ -59,6 +59,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferEngine, setTransferEngine] = useState(null);
   const [transferCustomerId, setTransferCustomerId] = useState("");
+  const [convertEstimatePrompt, setConvertEstimatePrompt] = useState(null); // { engine, newCustomerId, activeEstimates } | null
   const [legalDocToView, setLegalDocToView] = useState(null);
   const [voidDoc, setVoidDoc] = useState(null);
   const [deleteEngine, setDeleteEngine] = useState(null);
@@ -82,6 +83,11 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const { data: allInvoices = [] } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date", 500),
+  });
+
+  const { data: allEstimates = [] } = useQuery({
+    queryKey: ["estimates"],
+    queryFn: () => base44.entities.Estimate.list("-created_date", 500),
   });
 
   const { data: legalDocs = [] } = useQuery({
@@ -141,15 +147,29 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   });
 
   const transferMutation = useMutation({
-    mutationFn: async ({ id, newCustomerId }) => base44.entities.CustomerEngine.update(id, { customer_id: newCustomerId }),
-    onSuccess: () => {
+    mutationFn: async ({ id, newCustomerId, convertEstimateIds = [] }) => {
+      await base44.entities.CustomerEngine.update(id, { customer_id: newCustomerId });
+      // Optionally reassign active estimates to the new customer so the
+      // in-progress quote follows the engine to its new owner.
+      for (const estId of convertEstimateIds) {
+        try {
+          await base44.entities.Estimate.update(estId, { customer_id: newCustomerId });
+        } catch (e) {
+          console.warn(`Failed to reassign estimate ${estId}:`, e);
+        }
+      }
+    },
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
-      const target = allCustomers.find(c => c.id === transferCustomerId);
+      qc.invalidateQueries({ queryKey: ["estimates"] });
+      const target = allCustomers.find(c => c.id === vars.newCustomerId);
       setTransferOpen(false);
       setTransferEngine(null);
       setTransferCustomerId("");
-      toast.success(`Engine transferred to ${target ? `${target.first_name} ${target.last_name}` : "new customer"}`);
+      setConvertEstimatePrompt(null);
+      const converted = (vars.convertEstimateIds || []).length;
+      toast.success(`Engine transferred to ${target ? `${target.first_name} ${target.last_name}` : "new customer"}${converted > 0 ? ` · ${converted} estimate${converted === 1 ? "" : "s"} reassigned` : ""}`);
     },
     onError: (err) => toast.error(err.message),
   });
