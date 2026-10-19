@@ -1,3 +1,4 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import {
   allowlistCustomer, allowlistCustomerSummary, allowlistEstimate, allowlistInvoice,
   allowlistBuild, allowlistEngine, allowlistCredit, allowlistLegalDoc,
@@ -16,14 +17,15 @@ import {
  * credentials, and approval/payment tokens. Direct SDK reads are blocked by
  * admin-only RLS on the source entities, so this function is the only path.
  */
-export default async function(req, res) {
+export default async function(req) {
   try {
+    const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) {
       return Response.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const body = req.body || {};
+    const body = await req.json().catch(() => ({}));
     const isAdmin = user.role === "admin";
 
     // ── Admin picker mode: return customer list ──
