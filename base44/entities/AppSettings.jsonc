@@ -310,6 +310,46 @@
     "storage_locations": {
       "type": "string",
       "description": "JSON object mapping category keys (engines, carts, stands, parts) to arrays of storage location names (e.g. {\"engines\":[\"ES1\",\"ES2\"],\"carts\":[\"Cart 1\",\"Cart 2\"]}). Used to populate location pickers and print location labels."
+    },
+    "notif_customer_estimate_ready": {
+      "type": "string",
+      "enum": [
+        "ask_me",
+        "automatic",
+        "off"
+      ],
+      "default": "ask_me",
+      "description": "Customer notification behavior when an estimate is ready to send: ask_me = show the Notify Customer panel, automatic = send both channels without asking, off = never notify"
+    },
+    "notif_customer_additional_work": {
+      "type": "string",
+      "enum": [
+        "ask_me",
+        "automatic",
+        "off"
+      ],
+      "default": "ask_me",
+      "description": "Customer notification behavior when additional work is ready for approval"
+    },
+    "notif_customer_stage_change": {
+      "type": "string",
+      "enum": [
+        "ask_me",
+        "automatic",
+        "off"
+      ],
+      "default": "ask_me",
+      "description": "Customer notification behavior on meaningful engine work-stage changes"
+    },
+    "notif_customer_completion": {
+      "type": "string",
+      "enum": [
+        "ask_me",
+        "automatic",
+        "off"
+      ],
+      "default": "ask_me",
+      "description": "Customer notification behavior when an engine is completed and ready for pickup/shipping"
     }
   },
   "required": [

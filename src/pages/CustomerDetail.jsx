@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ArrowLeft, User, Mail, Phone, MapPin, Building2, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound, Cpu, Send,
-  ChevronDown, ChevronUp, DollarSign, Award, CalendarClock
+  ArrowLeft, Mail, Phone, MapPin, Edit, Wrench,
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound,
+  ChevronDown, ChevronUp, CalendarClock
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -30,12 +29,12 @@ import AdditionalEmailsField from "@/components/customers/AdditionalEmailsField"
 import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicationsTab";
 import CustomerContactsCard from "@/components/customer/CustomerContactsCard";
 import EmailsSection from "@/components/emails/EmailsSection";
+import PortalAccessBadge from "@/components/portal/PortalAccessBadge";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -43,7 +42,6 @@ export default function CustomerDetail() {
   const [assignBuildOpen, setAssignBuildOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
-  const [sendingInvite, setSendingInvite] = useState(false);
   const [dynoBuildId, setDynoBuildId] = useState(null);
 
   const { data: customerArr = [] } = useQuery({
@@ -121,27 +119,6 @@ export default function CustomerDetail() {
     },
   });
 
-  const handleSendPortalInvite = async () => {
-    if (!customer?.email) {
-      toast.error("Customer has no email address");
-      return;
-    }
-    setSendingInvite(true);
-    try {
-      await base44.functions.invoke("sendPortalInvite", {
-        customerId: id,
-        customerEmail: customer.email,
-        customerName: `${customer.first_name} ${customer.last_name}`,
-      });
-      toast.success(`Portal invite sent to ${customer.email}`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to send portal invite");
-    } finally {
-      setSendingInvite(false);
-    }
-  };
-
   const unassignedBuilds = allBuilds.filter(b => !b.customer_id || b.customer_id === "");
 
   const getPlatformName = (pid) => platforms.find(p => p.id === pid)?.name || "Unknown";
@@ -193,6 +170,7 @@ export default function CustomerDetail() {
         <Badge className={customer.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
           {customer.status}
         </Badge>
+        <PortalAccessBadge customer={customer} onUpdated={() => qc.invalidateQueries({ queryKey: ["customer", id] })} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white">
@@ -210,9 +188,6 @@ export default function CustomerDetail() {
         </DropdownMenu>
         <Button variant="outline" size="sm" onClick={() => window.open('/CustomerPortal', '_blank')}>
           <Monitor className="w-4 h-4 mr-1" /> Portal
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleSendPortalInvite} disabled={sendingInvite}>
-          <Send className="w-4 h-4 mr-1" /> {sendingInvite ? "Sending..." : "Invite"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => { setTempPassword(customer.portal_temp_password || ""); setPasswordOpen(true); }}>
           <KeyRound className="w-4 h-4 mr-1" /> Password

@@ -87,6 +87,11 @@
       "format": "date-time",
       "description": "When the portal invite was first sent to this customer"
     },
+    "sms_opt_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this customer has opted out of SMS notifications. The SMS channel is skipped for all customer-facing notifications regardless of channel selection."
+    },
     "voipms_phonebook_id": {
       "type": "string",
       "description": "VoIP.ms Phone Book entry ID for the primary phone (backward compat \u2014 VoipmsPhoneEntry entity is the source of truth for all numbers)"

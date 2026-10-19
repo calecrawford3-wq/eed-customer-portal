@@ -1,0 +1,113 @@
+{
+  "name": "CustomerNotification",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "estimate_ready",
+        "additional_work_ready",
+        "stage_change",
+        "completion"
+      ],
+      "description": "Type of customer-facing event that triggered this notification"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Deterministic key (event_type + ':' + entity_id) preventing duplicate sends from retries, double clicks, or repeated workflow events. The backend checks for an existing record with this key before sending."
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Snapshot of customer name for display in notification history"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Linked Job (when applicable) for communication history"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the primary entity this notification relates to (estimate, additional work, build, or job)"
+    },
+    "entity_label": {
+      "type": "string",
+      "description": "Display label for the entity (e.g. estimate number, build number, work number) shown in notification history"
+    },
+    "channels_attempted": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "email",
+          "sms"
+        ]
+      },
+      "default": [],
+      "description": "Which channels were attempted for this notification (email, sms, or both)"
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Delivery status of the email channel: pending = not yet sent, sent = delivered to mail server, failed = error during send, skipped = no email on file or channel not selected"
+    },
+    "email_error": {
+      "type": "string",
+      "description": "Error message if email_status is failed"
+    },
+    "sms_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped",
+        "unknown"
+      ],
+      "default": "pending",
+      "description": "Delivery status of the SMS channel: pending = not yet sent, sent = VoIP.ms confirmed, failed = hard error, skipped = no phone, opted out, or channel not selected, unknown = bridge timeout (may have delivered)"
+    },
+    "sms_error": {
+      "type": "string",
+      "description": "Error message if sms_status is failed or unknown"
+    },
+    "sms_message_id": {
+      "type": "string",
+      "description": "ID of the Message record created for the SMS, linking this notification to the messaging history"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject line used for this notification"
+    },
+    "body_preview": {
+      "type": "string",
+      "description": "Short preview of the message body for display in notification history"
+    },
+    "link_url": {
+      "type": "string",
+      "description": "The document or approval link included in the notification"
+    },
+    "sent_by": {
+      "type": "string",
+      "description": "Name of the admin who triggered the notification, or 'Automatic' when sent by a workflow"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the notification was first sent"
+    }
+  },
+  "required": [
+    "event_type",
+    "idempotency_key",
+    "customer_id"
+  ]
+}
