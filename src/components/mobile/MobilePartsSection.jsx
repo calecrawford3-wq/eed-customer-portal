@@ -11,30 +11,35 @@ const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, un
  * Mobile replacement for the desktop parts table.  Renders stacked cards
  * with a full-screen editor.  All mutations go through onReplaceItem /
  * onRemove / onAdd / onPick which call the parent's existing recalc logic.
+ *
+ * "Add" opens the editor with a local draft — no blank row is added to the
+ * form until the user taps "Apply Changes".  Cancelling a new item leaves
+ * the form untouched.
  */
 export default function MobilePartsSection({ items, isCombined, onReplaceItem, onRemove, onAdd, onPick, onAddCoreCredit, onAddCore, onAddMultiPart }) {
-  const [editingIdx, setEditingIdx] = useState(null);
+  const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
   const openEditor = (idx) => { setEditingIdx(idx); setEditorOpen(true); };
+  const openNewEditor = () => { setEditingIdx(null); setEditorOpen(true); };
   const closeEditor = () => { setEditorOpen(false); setEditingIdx(null); };
 
+  // idx === null means new item: append via onAdd, then replace at the new index
   const handleApply = (idx, draft) => {
     const total = (Number(draft.quantity) || 0) * (Number(draft.unit_price) || 0);
-    onReplaceItem(idx, { ...draft, total });
+    const itemWithTotal = { ...draft, total };
+    if (idx === null || idx === undefined) {
+      onAdd();
+      onReplaceItem(items.length, itemWithTotal);
+    } else {
+      onReplaceItem(idx, itemWithTotal);
+    }
   };
 
+  // Apply current, then switch to a fresh draft (editor stays open)
   const handleSaveAndAdd = (idx, draft) => {
     handleApply(idx, draft);
-    onAdd();
-    setEditingIdx(items.length);
-    // editor stays open — item prop changes to the new blank item, useEffect resets draft
-  };
-
-  const handleAddManual = () => {
-    onAdd();
-    setEditingIdx(items.length);
-    setEditorOpen(true);
+    setEditingIdx(null);
   };
 
   return (
@@ -45,7 +50,7 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
       <CardContent className="space-y-3">
         {/* Add buttons */}
         <div className="grid grid-cols-3 gap-2">
-          <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white h-11" onClick={onAddMultiPart}>
+          <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white h-11" onClick={openNewEditor}>
             <Plus className="w-4 h-4 mr-1" /> Part
           </Button>
           <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 h-11" onClick={onAddCore}>
@@ -66,7 +71,7 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
           </div>
         )}
 
-        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#e20404] w-full h-10" onClick={handleAddManual}>
+        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#e20404] w-full h-10" onClick={openNewEditor}>
           <Plus className="w-4 h-4 mr-1" /> Add Manual Part
         </Button>
       </CardContent>
@@ -78,7 +83,7 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
         item={editingIdx !== null ? (items[editingIdx] || emptyPart) : emptyPart}
         idx={editingIdx}
         onApply={handleApply}
-        onPick={(idx) => onPick(idx)}
+        onPick={(idx) => onPick(idx === null ? items.length : idx)}
         isCombined={isCombined}
         canSaveAndAdd
         onSaveAndAdd={handleSaveAndAdd}
@@ -89,18 +94,27 @@ export default function MobilePartsSection({ items, isCombined, onReplaceItem, o
 
 function PartCard({ line, isCombined, onEdit, onRemove }) {
   const [showShop, setShowShop] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const total = Number(line.total || 0);
   const qty = Number(line.quantity) || 0;
   const price = Number(line.unit_price) || 0;
   const cost = (Number(line.unit_cost) || 0) + (Number(line.shipping_cost) || 0);
   const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
   const isCredit = line.is_core_credit || total < 0;
+  const hasLongName = (line.item_name || "").length > 60;
 
   return (
     <div className={`border rounded-lg p-3 ${isCredit ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-slate-900 break-words">{line.item_name || <span className="text-slate-400 italic">Untitled part</span>}</p>
+          <p className="font-medium text-slate-900 break-words">
+            {line.item_name || <span className="text-slate-400 italic">Untitled part</span>}
+          </p>
+          {hasLongName && (
+            <button className="text-xs text-slate-400 mt-0.5" onClick={() => setExpanded(e => !e)}>
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          )}
           {line.part_number && <p className="text-xs text-slate-500 font-mono mt-0.5 break-all">{line.part_number}</p>}
           {isCombined && line.engine_section && <p className="text-xs text-[#e20404] mt-0.5 break-words">{line.engine_section}</p>}
           {line.is_kit && (

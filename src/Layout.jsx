@@ -159,7 +159,7 @@ export default function Layout({ children, currentPageName }) {
             </div>
           </div>
         )}
-        <div className="pb-16 md:pb-0">{children}</div>
+        <div className="md:pb-0" style={{ paddingBottom: "calc(60px + env(safe-area-inset-bottom))" }}>{children}</div>
       </main>
 
       {/* Mobile bottom navigation */}

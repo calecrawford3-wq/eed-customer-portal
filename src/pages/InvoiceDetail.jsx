@@ -29,6 +29,7 @@ import EmailsSection from "@/components/emails/EmailsSection";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import MobilePartsSection from "@/components/mobile/MobilePartsSection";
 import MobileLaborMachiningSection from "@/components/mobile/MobileLaborMachiningSection";
+import MobileSaveBar from "@/components/mobile/MobileSaveBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
 import NextStepBanner from "@/components/NextStepBanner";
@@ -1481,6 +1482,13 @@ export default function InvoiceDetail() {
           <EmailsSection linkType="invoice" linkId={id} docNumber={form.invoice_number} title="Emails linked to this invoice" />
         </div>
       )}
+
+      <MobileSaveBar
+        form={form}
+        onSave={() => saveMutation.mutate(form)}
+        isSaving={saveMutation.isPending}
+        isError={saveMutation.isError}
+      />
     </div>
   );
 }

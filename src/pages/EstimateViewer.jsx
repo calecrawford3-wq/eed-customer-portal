@@ -7,10 +7,11 @@ const formatMoney = (value) => {
   return `$${parseFloat(value).toFixed(2)}`;
 };
 
-const calculateSubtotal = (lineItems = [], laborItems = []) => {
+const calculateSubtotal = (lineItems = [], laborItems = [], machiningItems = []) => {
   const lineTotal = lineItems.reduce((sum, item) => sum + (item.total || item.quantity * item.unit_price || 0), 0);
   const laborTotal = laborItems.reduce((sum, item) => sum + (item.price || 0), 0);
-  return lineTotal + laborTotal;
+  const machiningTotal = machiningItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  return lineTotal + laborTotal + machiningTotal;
 };
 
 export default function EstimateViewer({ buildVersion }) {
@@ -311,7 +312,10 @@ export default function EstimateViewer({ buildVersion }) {
                   <tbody>
                     {data.estimate.labor_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
-                        <td className="py-3 text-slate-900">{item.name}</td>
+                        <td className="py-3 text-slate-900">
+                          {item.name}
+                          {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                        </td>
                         <td className="text-right py-3 text-slate-900 font-semibold">{formatMoney(item.price)}</td>
                       </tr>
                     ))}
@@ -321,12 +325,66 @@ export default function EstimateViewer({ buildVersion }) {
                 <div className="sm:hidden space-y-3">
                   {data.estimate.labor_items.map((item, idx) => (
                     <div key={idx} className="border border-slate-200 rounded-lg p-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-900">{item.name}</span>
+                      <p className="font-medium text-slate-900 text-sm">{item.name}</p>
+                      {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                      <div className="flex justify-between items-center mt-2 text-sm">
+                        <span className="text-slate-500">Labor Charge</span>
                         <span className="text-slate-900 font-semibold">{formatMoney(item.price)}</span>
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Machining Items */}
+            {data.estimate?.machining_items && data.estimate.machining_items.length > 0 && (
+              <div className="bg-white rounded-lg border border-slate-200 p-4 md:p-6">
+                <h3 className="font-semibold text-slate-900 mb-4">Machining</h3>
+                {/* Desktop table */}
+                <table className="hidden sm:table w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-2 text-slate-600 font-semibold">Description</th>
+                      <th className="text-center py-2 text-slate-600 font-semibold w-16">Qty</th>
+                      <th className="text-right py-2 text-slate-600 font-semibold w-24">Unit Price</th>
+                      <th className="text-right py-2 text-slate-600 font-semibold w-24">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.estimate.machining_items.map((item, idx) => {
+                      const qty = Number(item.quantity) || 1;
+                      const price = Number(item.price) || 0;
+                      return (
+                        <tr key={idx} className="border-b border-slate-100">
+                          <td className="py-3 text-slate-900">
+                            {item.name}
+                            {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                          </td>
+                          <td className="text-center py-3 text-slate-600">{qty}</td>
+                          <td className="text-right py-3 text-slate-600">{formatMoney(price)}</td>
+                          <td className="text-right py-3 text-slate-900 font-semibold">{formatMoney(price * qty)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {/* Mobile stacked cards */}
+                <div className="sm:hidden space-y-3">
+                  {data.estimate.machining_items.map((item, idx) => {
+                    const qty = Number(item.quantity) || 1;
+                    const price = Number(item.price) || 0;
+                    return (
+                      <div key={idx} className="border border-slate-200 rounded-lg p-3">
+                        <p className="font-medium text-slate-900 text-sm">{item.name}</p>
+                        {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                        <div className="flex justify-between items-center mt-2 text-sm">
+                          <span className="text-slate-500">{qty > 1 ? `${qty} × ${formatMoney(price)}` : "Machining"}</span>
+                          <span className="text-slate-900 font-semibold">{formatMoney(price * qty)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -396,7 +454,7 @@ export default function EstimateViewer({ buildVersion }) {
               <div className="space-y-2 mb-6 pb-6 border-b border-slate-200">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Subtotal</span>
-                  <span className="text-slate-900 font-semibold">{formatMoney(data.estimate?.subtotal || calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items))}</span>
+                  <span className="text-slate-900 font-semibold">{formatMoney(data.estimate?.subtotal || calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items, data.estimate?.machining_items))}</span>
                 </div>
                 {(data.estimate?.tax_amount || 0) > 0 && (
                   <div className="flex justify-between text-sm">
@@ -413,7 +471,7 @@ export default function EstimateViewer({ buildVersion }) {
               </div>
               <div className="flex justify-between items-center mb-6">
                 <span className="text-lg font-semibold text-slate-900">Total</span>
-                <span className="text-2xl font-bold text-slate-900">{formatMoney(data.estimate?.total || (calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items) + (data.estimate?.tax_amount || 0)))}</span>
+                <span className="text-2xl font-bold text-slate-900">{formatMoney(data.estimate?.total || (calculateSubtotal(data.estimate?.line_items, data.estimate?.labor_items, data.estimate?.machining_items) + (data.estimate?.tax_amount || 0)))}</span>
               </div>
               {Number(data.estimate?.applied_credits) > 0 && (
                 <>

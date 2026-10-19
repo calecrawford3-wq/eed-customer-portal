@@ -11,9 +11,13 @@ const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_
  * Mobile replacement for SimpleItemsTable.  Renders stacked cards with a
  * full-screen editor.  All mutations go through onReplaceItem / onRemove /
  * onAdd / onPick which call the parent's existing recalc logic.
+ *
+ * "Add" opens the editor with a local draft — no blank row is added to the
+ * form until the user taps "Apply Changes".  Cancelling a new item leaves
+ * the form untouched.
  */
 export default function MobileLaborMachiningSection({ type, items, isCombined, onReplaceItem, onRemove, onAdd, onPick }) {
-  const [editingIdx, setEditingIdx] = useState(null);
+  const [editingIdx, setEditingIdx] = useState(null); // null = new item draft
   const [editorOpen, setEditorOpen] = useState(false);
 
   const isLabor = type === "labor";
@@ -23,28 +27,30 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
   const emptyItem = isLabor ? emptyLabor : emptyMachining;
 
   const openEditor = (idx) => { setEditingIdx(idx); setEditorOpen(true); };
+  const openNewEditor = () => { setEditingIdx(null); setEditorOpen(true); };
   const closeEditor = () => { setEditorOpen(false); setEditingIdx(null); };
 
-  const handleApply = (idx, draft) => { onReplaceItem(idx, draft); };
-
-  const handleSaveAndAdd = (idx, draft) => {
-    handleApply(idx, draft);
-    onAdd();
-    setEditingIdx(items.length);
-    // editor stays open — item prop changes to the new blank item, useEffect resets draft
+  // idx === null means new item: append via onAdd, then replace at the new index
+  const handleApply = (idx, draft) => {
+    if (idx === null || idx === undefined) {
+      onAdd();
+      onReplaceItem(items.length, draft);
+    } else {
+      onReplaceItem(idx, draft);
+    }
   };
 
-  const handleAdd = () => {
-    onAdd();
-    setEditingIdx(items.length);
-    setEditorOpen(true);
+  // Apply current, then switch to a fresh draft (editor stays open)
+  const handleSaveAndAdd = (idx, draft) => {
+    handleApply(idx, draft);
+    setEditingIdx(null);
   };
 
   return (
     <Card className="border-0 shadow-sm mb-6">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2"><Icon className="w-4 h-4" /> {nameLabel}</CardTitle>
-        <Button size="sm" variant="outline" className="h-9" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" /> Add</Button>
+        <Button size="sm" variant="outline" className="h-9" onClick={openNewEditor}><Plus className="w-4 h-4 mr-1" /> Add</Button>
       </CardHeader>
       <CardContent className="space-y-2">
         {(items || []).length === 0 ? (
@@ -63,7 +69,7 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
         item={editingIdx !== null ? (items[editingIdx] || emptyItem) : emptyItem}
         idx={editingIdx}
         onApply={handleApply}
-        onPick={(idx) => onPick(idx)}
+        onPick={(idx) => onPick(idx === null ? items.length : idx)}
         isCombined={isCombined}
         canSaveAndAdd
         onSaveAndAdd={handleSaveAndAdd}
@@ -74,17 +80,28 @@ export default function MobileLaborMachiningSection({ type, items, isCombined, o
 
 function LaborMachiningCard({ item, type, isCombined, onEdit, onRemove }) {
   const [showShop, setShowShop] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const isMachining = type === "machining";
   const price = Number(item.price) || 0;
   const qty = isMachining ? (Number(item.quantity) || 1) : 1;
   const total = price * qty;
+  const hasLongDesc = (item.description || "").length > 100;
 
   return (
     <div className="border border-slate-200 rounded-lg p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-slate-900 break-words">{item.name || <span className="text-slate-400 italic">Untitled</span>}</p>
-          {item.description && <p className="text-sm text-slate-500 break-words mt-0.5">{item.description}</p>}
+          {item.description && (
+            <>
+              <p className={`text-sm text-slate-500 break-words mt-0.5 ${!expanded && hasLongDesc ? "line-clamp-2" : ""}`}>{item.description}</p>
+              {hasLongDesc && (
+                <button className="text-xs text-slate-400 mt-0.5" onClick={() => setExpanded(e => !e)}>
+                  {expanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </>
+          )}
           {isCombined && item.engine_section && <p className="text-xs text-[#e20404] mt-0.5 break-words">{item.engine_section}</p>}
         </div>
         <p className="text-lg font-bold text-slate-900 shrink-0">${total.toFixed(2)}</p>

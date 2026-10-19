@@ -281,12 +281,30 @@ export default function InvoiceViewer() {
                 ))}
                 {(inv.labor_items || []).map((item, idx) => (
                   <tr key={`labor-${idx}`} className="border-b border-slate-100">
-                    <td className="py-2">{item.name}</td>
+                    <td className="py-2">
+                      {item.name}
+                      {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                    </td>
                     <td className="text-center py-2">1</td>
                     <td className="text-right py-2">${Number(item.price).toFixed(2)}</td>
                     <td className="text-right py-2 font-medium">${Number(item.price).toFixed(2)}</td>
                   </tr>
                 ))}
+                {(inv.machining_items || []).map((item, idx) => {
+                  const qty = Number(item.quantity) || 1;
+                  const price = Number(item.price) || 0;
+                  return (
+                    <tr key={`machining-${idx}`} className="border-b border-slate-100">
+                      <td className="py-2">
+                        {item.name}
+                        {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                      </td>
+                      <td className="text-center py-2">{qty}</td>
+                      <td className="text-right py-2">${price.toFixed(2)}</td>
+                      <td className="text-right py-2 font-medium">${(price * qty).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {/* Mobile stacked cards */}
@@ -302,12 +320,28 @@ export default function InvoiceViewer() {
               ))}
               {(inv.labor_items || []).map((item, idx) => (
                 <div key={`labor-${idx}`} className="border border-slate-200 rounded-lg p-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-900">{item.name}</span>
+                  <p className="font-medium text-slate-900 text-sm">{item.name}</p>
+                  {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                  <div className="flex justify-between items-center mt-2 text-sm">
+                    <span className="text-slate-500">Labor Charge</span>
                     <span className="text-slate-900 font-semibold">${Number(item.price).toFixed(2)}</span>
                   </div>
                 </div>
               ))}
+              {(inv.machining_items || []).map((item, idx) => {
+                const qty = Number(item.quantity) || 1;
+                const price = Number(item.price) || 0;
+                return (
+                  <div key={`machining-${idx}`} className="border border-slate-200 rounded-lg p-3">
+                    <p className="font-medium text-slate-900 text-sm">{item.name}</p>
+                    {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                    <div className="flex justify-between items-center mt-2 text-sm">
+                      <span className="text-slate-500">{qty > 1 ? `${qty} × $${price.toFixed(2)}` : "Machining"}</span>
+                      <span className="text-slate-900 font-semibold">${(price * qty).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

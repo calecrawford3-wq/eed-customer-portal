@@ -43,6 +43,7 @@ import EstimateHeader from "@/components/estimates/EstimateHeader";
 import SimpleItemsTable from "@/components/estimates/SimpleItemsTable";
 import MobilePartsSection from "@/components/mobile/MobilePartsSection";
 import MobileLaborMachiningSection from "@/components/mobile/MobileLaborMachiningSection";
+import MobileSaveBar from "@/components/mobile/MobileSaveBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MultiPartPickerModal from "@/components/estimates/MultiPartPickerModal";
 import StageComparisonSection from "@/components/estimates/StageComparisonSection";
@@ -2118,6 +2119,13 @@ export default function EstimateDetail() {
         title={confirmState.title}
         message={confirmState.message}
         confirmLabel={confirmState.confirmLabel}
+      />
+
+      <MobileSaveBar
+        form={form}
+        onSave={() => saveMutation.mutate(form)}
+        isSaving={saveMutation.isPending}
+        isError={saveMutation.isError}
       />
     </div>
   );

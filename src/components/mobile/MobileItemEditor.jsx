@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,41 +6,91 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ChevronDown, ChevronUp, Save, X, Plus } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Check, X, Plus, AlertTriangle } from "lucide-react";
 
 /**
  * Full-screen mobile item editor for parts, labor, and machining line items.
  * Maintains a local draft; calls onApply to push to the form (which runs the
- * same recalc as desktop), then onClose to dismiss.  Catalog search applies
- * the draft first so the picker updates the correct line, then the editor
- * re-syncs from the updated item prop.
+ * same recalc as desktop), then onClose to dismiss.
+ *
+ * z-index is 45 — below dialog/select portals (z-50) so catalog pickers and
+ * dropdowns render above the editor, but above the bottom nav (z-40).
+ *
+ * Labor is fixed-price: no quantity input, price labeled "Labor Charge".
+ * Machining and parts support quantity.
  */
 export default function MobileItemEditor({ open, onClose, type, item, idx, onApply, onPick, isCombined, canSaveAndAdd, onSaveAndAdd }) {
   const [draft, setDraft] = useState(item || {});
   const [showShop, setShowShop] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const firstInputRef = useRef(null);
+  const previousOverflow = useRef(null);
 
+  const isParts = type === "parts";
+  const isMachining = type === "machining";
+  const isLabor = type === "labor";
+  const typeLabel = isParts ? "Part" : isLabor ? "Labor" : "Machining";
+  const isNew = idx === null || idx === undefined;
+  const title = isNew ? `Add ${typeLabel}` : `Edit ${typeLabel}`;
+
+  // Sync draft from item prop when editor opens or item changes externally
   useEffect(() => {
     if (open) {
       setDraft(item || {});
       setShowShop(false);
+      setDirty(false);
+      setShowDiscardConfirm(false);
     }
   }, [item, open]);
 
+  // Lock body scroll while editor is open; restore on close
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    previousOverflow.current = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow.current || "";
+    };
+  }, [open]);
+
+  // Focus the first input shortly after open (after portal renders)
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      firstInputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  // Escape handler — triggers discard check
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === "Escape") requestClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [open, dirty]);
 
-  const set = useCallback((field, value) => setDraft(d => ({ ...d, [field]: value })), []);
+  const set = useCallback((field, value) => {
+    setDraft(d => ({ ...d, [field]: value }));
+    setDirty(true);
+  }, []);
+
+  const requestClose = useCallback(() => {
+    if (dirty) {
+      setShowDiscardConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [dirty, onClose]);
+
+  const confirmDiscard = () => {
+    setShowDiscardConfirm(false);
+    onClose();
+  };
 
   if (!open) return null;
-
-  const isParts = type === "parts";
-  const isMachining = type === "machining";
-  const typeLabel = isParts ? "Part" : type === "labor" ? "Labor" : "Machining";
-  const title = `Edit ${typeLabel}`;
 
   const lineTotal = isParts
     ? (Number(draft.quantity) || 0) * (Number(draft.unit_price) || 0)
@@ -56,24 +106,53 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
   const nameField = isParts ? "item_name" : "name";
   const priceValue = isParts ? draft.unit_price : draft.price;
   const priceField = isParts ? "unit_price" : "price";
+  const priceLabel = isLabor ? "Labor Charge" : isParts ? "Unit Price" : "Unit Price";
 
-  const handleSave = () => { onApply(idx, draft); onClose(); };
-  const handleSearchCatalog = () => { onApply(idx, draft); onPick(idx); };
-  const handleSaveAndAdd = () => { if (onSaveAndAdd) { onSaveAndAdd(idx, draft); } else { onApply(idx, draft); onClose(); } };
+  const handleApply = () => {
+    if (saving) return;
+    setSaving(true);
+    onApply(idx, draft);
+    setSaving(false);
+    onClose();
+  };
+
+  const handleSearchCatalog = () => {
+    // Do NOT commit the draft before opening the picker — the picker will
+    // update the form item, and the editor re-syncs. Cancel preserves draft.
+    onPick(idx);
+  };
+
+  const handleApplyAndAdd = () => {
+    if (saving) return;
+    setSaving(true);
+    if (onSaveAndAdd) {
+      onSaveAndAdd(idx, draft);
+    } else {
+      onApply(idx, draft);
+    }
+    setSaving(false);
+    setDirty(false);
+    // Editor stays open; section switches to a fresh draft
+  };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
+    <div
+      className="fixed inset-0 z-[45] bg-white flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       {/* Header with top safe area */}
-      <div className="flex items-center justify-between px-4 border-b border-slate-200 bg-white"
+      <div className="flex items-center justify-between px-4 border-b border-slate-200 bg-white shrink-0"
            style={{ paddingTop: "max(env(safe-area-inset-top), 0.75rem)", paddingBottom: "0.75rem" }}>
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        <button onClick={onClose} className="h-11 w-11 flex items-center justify-center -mr-2 text-slate-500 hover:text-slate-900">
+        <button onClick={requestClose} className="h-11 w-11 flex items-center justify-center -mr-2 text-slate-500 hover:text-slate-900" aria-label="Close">
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ paddingBottom: "2rem" }}>
         {/* Catalog search */}
         <Button variant="outline" className="w-full h-12 text-base" onClick={handleSearchCatalog}>
           <Search className="w-4 h-4 mr-2" /> Search Catalog
@@ -83,6 +162,7 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
         <div>
           <Label className="text-sm font-medium">{isParts ? "Item Name" : "Name"} *</Label>
           <Input
+            ref={firstInputRef}
             value={nameValue || ""}
             onChange={e => set(nameField, e.target.value)}
             placeholder={isParts ? "Item name..." : "Name..."}
@@ -110,7 +190,7 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
             <Textarea
               value={draft.description || ""}
               onChange={e => set("description", e.target.value)}
-              placeholder="Description..."
+              placeholder="Customer-facing description..."
               rows={3}
               className="mt-1 text-base"
             />
@@ -130,22 +210,10 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
           </div>
         )}
 
-        {/* Quantity + Price */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Quantity + Price — labor is fixed-price, no quantity */}
+        {isLabor ? (
           <div>
-            <Label className="text-sm font-medium">Quantity</Label>
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={isParts ? (draft.quantity ?? 1) : (draft.quantity ?? 1)}
-              onChange={e => set("quantity", isMachining ? (Number(e.target.value) || 1) : Number(e.target.value))}
-              className="mt-1 h-12 text-base text-center"
-              min={isMachining ? "1" : "0"}
-              step={isMachining ? "1" : "0.01"}
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">{isParts ? "Unit Price" : "Price"}</Label>
+            <Label className="text-sm font-medium">{priceLabel}</Label>
             <div className="relative mt-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
               <Input
@@ -159,7 +227,37 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
               />
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm font-medium">Quantity</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={draft.quantity ?? 1}
+                onChange={e => set("quantity", isMachining ? (Number(e.target.value) || 1) : Number(e.target.value))}
+                className="mt-1 h-12 text-base text-center"
+                min={isMachining ? "1" : "0"}
+                step={isMachining ? "1" : "0.01"}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">{priceLabel}</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={priceValue ?? 0}
+                  onChange={e => set(priceField, Number(e.target.value))}
+                  className="h-12 text-base text-right pl-7"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Line total */}
         <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
@@ -184,6 +282,7 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
             <button
               className="w-full flex items-center justify-between px-3 py-3 bg-slate-50 text-sm font-medium text-slate-700"
               onClick={() => setShowShop(s => !s)}
+              aria-expanded={showShop}
             >
               <span>Shop Details {isParts ? "(Cost & Margin)" : "(Cost Type & Vendor)"}</span>
               {showShop ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -254,18 +353,39 @@ export default function MobileItemEditor({ open, onClose, type, item, idx, onApp
       </div>
 
       {/* Sticky action bar with bottom safe area */}
-      <div className="border-t border-slate-200 bg-white px-4 flex gap-2"
+      <div className="border-t border-slate-200 bg-white px-4 flex gap-2 shrink-0"
            style={{ paddingTop: "0.75rem", paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
-        <Button variant="outline" className="flex-1 h-12 text-base" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" className="flex-1 h-12 text-base" onClick={requestClose}>Cancel</Button>
         {canSaveAndAdd && (
-          <Button variant="outline" className="flex-1 h-12 text-base border-[#e20404] text-[#e20404]" onClick={handleSaveAndAdd}>
-            <Plus className="w-4 h-4 mr-1" /> Save & Add
+          <Button variant="outline" className="flex-1 h-12 text-base border-[#e20404] text-[#e20404]" onClick={handleApplyAndAdd} disabled={saving}>
+            <Plus className="w-4 h-4 mr-1" /> Apply & Add
           </Button>
         )}
-        <Button className="flex-1 h-12 text-base bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleSave}>
-          <Save className="w-4 h-4 mr-1" /> Save
+        <Button className="flex-1 h-12 text-base bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleApply} disabled={saving}>
+          <Check className="w-4 h-4 mr-1" /> {saving ? "Saving..." : "Apply Changes"}
         </Button>
       </div>
+
+      {/* Discard confirmation */}
+      {showDiscardConfirm && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 px-6">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">Discard changes?</h3>
+                <p className="text-sm text-slate-500 mt-1">Your edits to this {typeLabel.toLowerCase()} will be lost.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-11" onClick={() => setShowDiscardConfirm(false)}>Keep Editing</Button>
+              <Button variant="destructive" className="flex-1 h-11" onClick={confirmDiscard}>Discard</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
