@@ -54,7 +54,6 @@ export default async function (req) {
       sort_order: t.sort_order,
       is_required: t.is_required,
       completed_at: t.completed_at,
-      photos: t.photos || [],
     }));
 
     // Teardown findings (customer-safe: strip private measurements/notes/part ids).
@@ -84,7 +83,6 @@ export default async function (req) {
       id: r.id,
       component: r.component,
       replaced_at: r.replaced_at,
-      notes: r.notes,
     }));
 
     return Response.json({ job: jobSafe, tasks, findings, replacements });

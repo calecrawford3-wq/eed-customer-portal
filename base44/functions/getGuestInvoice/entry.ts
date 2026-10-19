@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { guestInvoicePayload } from '../../shared/guestFields.ts';
+import { guestInvoicePayload, guestTokenExpired } from '../../shared/guestFields.ts';
 
 // Restricted guest view of a single invoice, keyed by a payment-only
 // guest_payment_token (distinct from the approval-capable public_access_token).
@@ -19,6 +19,9 @@ export default async function (req) {
 
     if (['void'].includes(inv.status)) {
       return Response.json({ error: 'Document not available' }, { status: 403 });
+    }
+    if (guestTokenExpired(inv.guest_payment_token)) {
+      return Response.json({ error: 'Payment link has expired' }, { status: 410 });
     }
 
     let customer = null;

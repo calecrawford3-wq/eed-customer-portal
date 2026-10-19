@@ -1,6 +1,6 @@
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { guestAllowedPaymentAmount } from '../../shared/guestFields.ts';
+import { guestAllowedPaymentAmount, guestTokenExpired } from '../../shared/guestFields.ts';
 
 // Guest checkout session for a single document, keyed by guest_payment_token.
 // The backend computes the permitted amount (deposit if outstanding, else
@@ -13,6 +13,12 @@ import { guestAllowedPaymentAmount } from '../../shared/guestFields.ts';
 export default async function (req) {
   try {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+
+    // Production gate: guest checkout is not enabled until webhook compatibility
+    // and payment recording are verified. Leave GUEST_CHECKOUT_ENABLED unset to refuse.
+    if (Deno.env.get('GUEST_CHECKOUT_ENABLED') !== 'true') {
+      return Response.json({ error: 'Guest checkout is not available' }, { status: 403 });
+    }
 
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -48,8 +54,13 @@ export default async function (req) {
       return Response.json({ error: 'No payment is currently due' }, { status: 400 });
     }
 
+    if (guestTokenExpired(doc.guest_payment_token)) {
+      return Response.json({ error: 'Payment link has expired' }, { status: 410 });
+    }
+
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
-    const origin = req.headers.get('origin') || Deno.env.get('APP_BASE_URL') || '';
+    // Trusted, configured origin only — never accept an arbitrary request Origin header.
+    const origin = Deno.env.get('PORTAL_BASE_URL') || 'https://race-engine-specs.base44.app';
 
     const label = documentType === 'estimate' ? `Deposit/Estimate ${doc.estimate_number}` : `Invoice ${doc.invoice_number}`;
     const metadata = {

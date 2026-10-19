@@ -209,9 +209,9 @@ export default function CustomerPortal() {
   };
 
   const profileMutation = useMutation({
-    mutationFn: (data) => base44.entities.Customer.update(customer.id, data),
-    onSuccess: (updated) => {
-      setCustomer(updated);
+    mutationFn: (data) => base44.functions.invoke("updateCustomerProfile", data).then((r) => r.data),
+    onSuccess: (res) => {
+      if (res?.customer) setCustomer((prev) => ({ ...prev, ...res.customer }));
       qc.invalidateQueries({ queryKey: ["portal-customers"] });
       setProfileOpen(false);
       toast.success("Profile updated");

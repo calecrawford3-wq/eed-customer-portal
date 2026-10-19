@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { guestEstimatePayload } from '../../shared/guestFields.ts';
+import { guestEstimatePayload, guestTokenExpired } from '../../shared/guestFields.ts';
 
 // Restricted guest view of a single estimate, keyed by a payment-only
 // guest_payment_token (distinct from the approval-capable public_access_token).
@@ -21,6 +21,9 @@ export default async function (req) {
     // Only allow viewing while the estimate is in a customer-facing state.
     if (!['sent', 'approved'].includes(est.status)) {
       return Response.json({ error: 'Document not available' }, { status: 403 });
+    }
+    if (guestTokenExpired(est.guest_payment_token)) {
+      return Response.json({ error: 'Payment link has expired' }, { status: 410 });
     }
 
     let customer = null;

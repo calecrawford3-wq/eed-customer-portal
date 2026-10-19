@@ -116,3 +116,15 @@ export function guestInvoicePayload(inv: any, customer: any, engine: any) {
     // email, phone, address, serial number, payments array, internal fields — excluded
   };
 }
+
+// Validate a guest_payment_token's embedded expiry. Token format: <uuid>.<expiresAtMs>
+// A token without an expiry suffix, or past its expiry, is invalid. This is the
+// sole expiry enforcement for guest payment links — no schema field is needed.
+export function guestTokenExpired(token: string): boolean {
+  if (!token) return true;
+  const parts = String(token).split('.');
+  if (parts.length < 2) return true;
+  const exp = Number(parts[parts.length - 1]);
+  if (!Number.isFinite(exp) || exp <= 0) return true;
+  return Date.now() > exp;
+}
