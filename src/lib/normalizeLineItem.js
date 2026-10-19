@@ -6,41 +6,34 @@
  * new item is not misclassified or misprocessed by downstream business rules
  * (PO generation, inventory reservation, core processing, profitability).
  *
- * normalizeLineItem(prev, next) returns a single line-item object with:
- *  - incompatible flags/references cleared (is_kit, kit_id, kit_components,
- *    is_core_credit, core_id, core_details) as applicable;
- *  - the correct inventory association, quantity, cost, price, and total;
- *  - shared context preserved where appropriate (engine_section, tax_class);
- *  - stable invoice-line identity preserved where appropriate (uid on
- *    machining items, engine_section on combined invoices);
- *  - NO carryover of an unrelated source or machining-task association onto a
- *    replacement item — those relationships are reconciled explicitly through
- *    existing business rules (syncMachiningTaskBilling, etc.).
+ * Three categories of fields are handled:
+ *
+ * 1. Stable document-line identity and shared context — PRESERVED across
+ *    replacement: engine_section (combined-invoice attribution), tax_class
+ *    (Oklahoma sales tax), uid (machining-charge link key).
+ *
+ * 2. Product-specific fields — REPLACED entirely from the catalog selection:
+ *    part_id, part_number, item_name, quantity, unit_cost, shipping_cost,
+ *    unit_price, total, is_kit, kit_id, kit_components, is_core_credit,
+ *    core_id, core_details. The previous item's values are never carried over.
+ *
+ * 3. Business relationships — NOT carried onto an unrelated replacement:
+ *    source_type, source_id, charge_key, task_ids, finding_id,
+ *    additional_work_id, invoice_id, billing_status, expense_id, vendor,
+ *    cost_type, actual_cost. These belong to the old product; the replacement
+ *    is a different product, so the old links are stale. Reconciliation happens
+ *    through existing business rules (syncMachiningTaskBilling, etc.) which
+ *    detect the old charge is gone and recompute the task's billing status —
+ *    no relationships are blindly deleted and no duplicate charges are created.
+ *
+ * normalizeLineItem(prev, next) builds the result from `next` plus the preserved
+ * shared context only — it never spreads the previous item, so no stale
+ * product-specific fields or business relationships can leak through.
  *
  * Used by both the mobile editor (MobileItemEditor) and the desktop catalog
  * replacement handlers (selectPart / selectKit / selectCore) so the rules are
  * identical everywhere.
  */
-
-const PART_ONLY_FIELDS = [
-  "part_id",
-  "part_number",
-  "item_name",
-  "quantity",
-  "unit_cost",
-  "shipping_cost",
-  "unit_price",
-  "total",
-];
-
-/**
- * Strip every type-specific flag and reference so the next item starts clean.
- * Shared context (engine_section, tax_class, uid) is preserved by the caller.
- */
-function stripTypeFields(item) {
-  const { is_kit, kit_id, kit_components, is_core_credit, core_id, core_details, ...rest } = item || {};
-  return rest;
-}
 
 /**
  * Build a normalized line item from a previous item and a candidate next item.
@@ -50,17 +43,18 @@ function stripTypeFields(item) {
  * @returns {object}          — a single normalized line item
  */
 export function normalizeLineItem(prev, next) {
-  const clean = stripTypeFields(prev);
+  // Preserve stable document-line identity and shared context that are
+  // independent of the selected product.
   const engineSection = prev?.engine_section || next?.engine_section || "";
   const taxClass = prev?.tax_class || next?.tax_class || "";
   const uid = next?.uid || prev?.uid || "";
 
-  // Start from the stripped previous item so unrelated source/machining-task
-  // associations (source_type, source_id, charge_key, task_ids, etc.) are NOT
-  // carried onto the replacement. The candidate `next` provides the new values.
-  const base = { ...clean, ...next };
+  // Build the replacement from the candidate `next` only. We deliberately do
+  // NOT spread the previous item, so stale product-specific fields and business
+  // relationships (source_type, source_id, charge_key, task_ids, ...) from the
+  // old product cannot carry onto the unrelated replacement.
+  const base = { ...next };
 
-  // Preserve shared context that is independent of item type.
   if (engineSection) base.engine_section = engineSection;
   else delete base.engine_section;
   if (taxClass) base.tax_class = taxClass;
@@ -78,8 +72,9 @@ export function normalizeLineItem(prev, next) {
 
 /**
  * Normalize a regular part selection.
- * Clears kit/core flags and references; sets inventory association, qty, cost,
- * price, and total. Preserves engine_section.
+ * Sets inventory association, qty, cost, per-unit shipping, price, and total.
+ * Clears kit/core flags and all business relationships from the previous item.
+ * Preserves engine_section and tax_class.
  */
 export function normalizePart(prev, part, priceOverride) {
   const price = (priceOverride ?? Number(part.sell_price)) || 0;
@@ -98,14 +93,14 @@ export function normalizePart(prev, part, priceOverride) {
 
 /**
  * Normalize a kit selection (whole kit as a single line).
- * Clears core flags/references; sets is_kit, kit_id, kit_components, qty=1,
- * cost, price, and total. Preserves engine_section.
+ * Sets is_kit, kit_id, kit_components, qty=1, cost, price, and total.
+ * A kit line is identified by kit_id, not part_id. Per-unit inbound shipping
+ * is zero (kit shipping is handled at the kit level, not per component).
+ * Clears core flags and all business relationships from the previous item.
+ * Preserves engine_section and tax_class.
  */
 export function normalizeKit(prev, kit, kitCost, kitPrice) {
   const next = {
-    // A kit line is identified by kit_id, not part_id. Clear any stale part_id
-    // from the previous item so the kit is not misclassified as a regular part
-    // by downstream reservation / PO / profitability logic.
     part_id: "",
     is_kit: true,
     kit_id: kit.id || "",
@@ -113,6 +108,7 @@ export function normalizeKit(prev, kit, kitCost, kitPrice) {
     item_name: kit.name || "",
     quantity: 1,
     unit_cost: kitCost,
+    shipping_cost: 0,
     unit_price: kitPrice,
     total: kitPrice,
     kit_components: (kit.components || []).map((c) => ({
@@ -128,8 +124,11 @@ export function normalizeKit(prev, kit, kitCost, kitPrice) {
 
 /**
  * Normalize a core sale selection.
- * Clears kit flags/references; sets core_id, part_number, qty=1, cost, price,
- * and total. Preserves engine_section. Does NOT set is_core_credit.
+ * Sets core_id, part_number, qty=1, cost, price, and total. Does NOT set
+ * is_core_credit. Per-unit inbound shipping is zero (core shipping is handled
+ * separately from per-item internal shipping costs).
+ * Clears kit flags and all business relationships from the previous item.
+ * Preserves engine_section and tax_class.
  */
 export function normalizeCoreSale(prev, core) {
   const price = Number(core.sell_price) || 0;
@@ -140,6 +139,7 @@ export function normalizeCoreSale(prev, core) {
     item_name: `${core.name || ""} (Core)`,
     quantity: 1,
     unit_cost: Number(core.unit_cost) || 0,
+    shipping_cost: 0,
     unit_price: price,
     total: price,
   };
@@ -148,8 +148,10 @@ export function normalizeCoreSale(prev, core) {
 
 /**
  * Normalize a core credit selection.
- * Clears kit flags/references; sets is_core_credit, core_id, core_details,
- * qty=1, unit_cost=0, unit_price=-credit, total=-credit. Preserves engine_section.
+ * Sets is_core_credit, core_id, core_details, qty=1, unit_cost=0,
+ * unit_price=-credit, total=-credit. Per-unit inbound shipping is zero.
+ * Clears kit flags and all business relationships from the previous item.
+ * Preserves engine_section and tax_class.
  */
 export function normalizeCoreCredit(prev, core) {
   const credit = Number(core.core_credit) || 0;
@@ -159,6 +161,7 @@ export function normalizeCoreCredit(prev, core) {
     item_name: `Core Credit: ${core.name || ""}`,
     quantity: 1,
     unit_cost: 0,
+    shipping_cost: 0,
     unit_price: -credit,
     total: -credit,
     is_core_credit: true,
@@ -167,5 +170,3 @@ export function normalizeCoreCredit(prev, core) {
   };
   return normalizeLineItem(prev, next);
 }
-
-export { PART_ONLY_FIELDS };

@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2, Send, Printer, DollarSign, Package, Wrench, Search, Cog, Recycle, FileText, Paperclip, Download, Unlink, History, MessageSquare, Layers } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
 import { Link, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import CoreCreditModal from "@/components/estimates/CoreCreditModal";
@@ -848,7 +847,7 @@ export default function InvoiceDetail() {
       const invoiceId = id || saved?.id;
       try {
         await base44.functions.invoke("syncInvoiceSnapshot", { invoiceId, publicAccessToken: accessToken });
-      } catch (e) { /* link still usable */ }
+      } catch { /* link still usable */ }
       const viewUrl = `https://billing.eedpower.com/invoice/${accessToken}`;
       const body = `Hi ${customer.first_name}, your invoice ${form.invoice_number} from Elite Engine Development is ready. Amount due: $${Number(form.balance_due ?? form.total ?? 0).toFixed(2)}. View & pay here: ${viewUrl}`;
       if (openSmsDraft(customer.phone, body)) {

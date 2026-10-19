@@ -10,14 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ArrowLeft, Plus, Trash2, Send, Printer, Package, Wrench, Search, Cog,
-  DollarSign, Wrench as WrenchIcon, CheckCircle, AlertTriangle, Receipt, Recycle, History, MessageSquare, Sparkles, Clock
+  Plus, Trash2, Send, Package, Wrench, Search,
+  Wrench as WrenchIcon, Receipt, Recycle, Sparkles, Clock
 } from "lucide-react";
 import { openSmsDraft } from "@/lib/shareDocText";
-import { Link, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PartPickerModal from "@/components/estimates/PartPickerModal";
 import CoreCreditModal from "@/components/estimates/CoreCreditModal";
@@ -62,14 +60,6 @@ const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, un
 const emptyLabor = { name: "", description: "", price: 0 };
 const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_type: "unspecified", actual_cost: null, vendor: "" };
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
-
-const STATUS_BADGE = {
-  draft: "bg-slate-100 text-slate-600",
-  sent: "bg-blue-100 text-blue-700",
-  approved: "bg-emerald-100 text-emerald-700",
-  declined: "bg-red-100 text-red-700",
-  expired: "bg-slate-100 text-slate-400",
-};
 
 export default function EstimateDetail() {
   const params = new URLSearchParams(window.location.search);
@@ -1291,7 +1281,7 @@ export default function EstimateDetail() {
       qc.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Engine build created! Redirecting...");
       bypass(); navigate(`/BuildDetail?id=${build.id}`);
-    } catch (e) {
+    } catch {
       toast.error("Failed to create build");
     } finally {
       setConvertingToBuild(false);
@@ -1518,7 +1508,7 @@ export default function EstimateDetail() {
             publicAccessToken, customerEmail: customer.email,
           });
           if (stripeUrlRes?.data?.checkout_url) checkoutUrl = stripeUrlRes.data.checkout_url;
-        } catch (e) { /* link still usable without checkout */ }
+        } catch { /* link still usable without checkout */ }
       }
       const status = form.status === "draft" ? "sent" : form.status;
       await base44.entities.Estimate.update(id, {
@@ -1529,7 +1519,7 @@ export default function EstimateDetail() {
       setForm(f => ({ ...f, public_access_token: publicAccessToken, ...(checkoutUrl ? { stripe_checkout_url: checkoutUrl } : {}), status }));
       try {
         await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken });
-      } catch (e) { /* link still usable */ }
+      } catch { /* link still usable */ }
       const viewUrl = `https://billing.eedpower.com/estimate/${publicAccessToken}`;
       const body = `Hi ${customer.first_name}, your estimate ${form.estimate_number} from Elite Engine Development is ready. Total: $${Number(form.total || 0).toFixed(2)}. Review & approve here: ${viewUrl}`;
       if (openSmsDraft(customer.phone, body)) {
