@@ -1,0 +1,10 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer record id. Set server-side by linkCustomerUser / backfillCustomerUserLinks after verifying the user's email matches exactly one Customer record. This is the durable ownership anchor used by customer-scoped RLS rules across the app. Locked: only admins (and service-role backend functions, which bypass RLS) may change it. A user must never be able to set their own customer_id from the client."
+    }
+  }
+}

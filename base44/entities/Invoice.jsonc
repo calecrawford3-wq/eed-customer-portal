@@ -21,7 +21,11 @@
     },
     "public_access_token": {
       "type": "string",
-      "description": "Secure random token for public viewing without authentication"
+      "description": "Secure random token for public viewing without authentication. Preserved for backward compatibility with the legacy viewer app."
+    },
+    "guest_payment_token": {
+      "type": "string",
+      "description": "Distinct payment-only token for guest (no-login) viewing/payment of this invoice. Can NEVER authorize approval, account activation, or portal access \u2014 only the restricted getGuestInvoice / createGuestCheckoutSession endpoints accept it, returning only allowlisted guest fields with a server-calculated payment amount. Separate from public_access_token."
     },
     "stripe_checkout_url": {
       "type": "string",
@@ -422,5 +426,34 @@
   "required": [
     "invoice_number",
     "customer_id"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.customer_id": "{{user.data.customer_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

@@ -350,9 +350,36 @@
       ],
       "default": "ask_me",
       "description": "Customer notification behavior when an engine is completed and ready for pickup/shipping"
+    },
+    "auto_apply_customer_approvals": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, a customer's approved additional-work response is applied automatically (reservations, invoice, machining/build tasks) via the same idempotent core as the admin Approve & Apply action. Defaults OFF so historical approvals are never retroactively processed. Turn on only after the shop has verified the flow."
     }
   },
   "required": [
     "key"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

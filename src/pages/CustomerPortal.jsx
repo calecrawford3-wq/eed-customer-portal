@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, base44Public } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +100,27 @@ export default function CustomerPortal() {
     }
   }, [user, allCustomers]);
 
+  // Server-side ownership link: populate user.data.customer_id so customer-
+  // scoped RLS (Estimate, Invoice, etc.) returns this customer's records.
+  // Runs once per session for non-admins; refetches portal data after linking.
+  useEffect(() => {
+    if (!user || user.role === "admin") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await base44.functions.invoke("linkCustomerUser", {});
+        if (!cancelled && res?.data?.linked) {
+          qc.invalidateQueries();
+        }
+      } catch (e) {
+        // Non-fatal: email-fallback RLS on Customer still lets the portal work;
+        // Estimate/Invoice reads will populate once an admin links the account.
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const { data: estimates = [] } = useQuery({
     queryKey: ["portal-estimates", customer?.id],
     queryFn: () => base44.entities.Estimate.filter({ customer_id: customer.id, archived: { $ne: true } }),
@@ -150,7 +171,12 @@ export default function CustomerPortal() {
 
   const { data: settingsData = [] } = useQuery({
     queryKey: ["app-settings"],
-    queryFn: () => base44.entities.AppSettings.filter({ key: "global" }),
+    queryFn: async () => {
+      // AppSettings is admin-only under RLS (holds SMTP secrets). Use the
+      // getPublicSettings endpoint which returns only safe display fields.
+      const res = await base44Public.functions.invoke("getPublicSettings", {});
+      return [res?.data?.settings || {}];
+    },
     enabled: !!customer,
   });
 

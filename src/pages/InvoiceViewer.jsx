@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44, base44Public } from "@/api/base44Client";
+import { base44Public } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -61,36 +61,14 @@ export default function InvoiceViewer() {
       return;
     }
 
+    // Cash/check payments are staff-only. Guests may not declare a payment
+    // successful or record cash/check payments themselves — only a verified
+    // provider event (card) or an authorized staff entry may record a payment.
     if (paymentMethod === "cash" || paymentMethod === "check") {
-      setProcessingPayment(true);
-      try {
-        const payment = {
-          amount,
-          method: paymentMethod,
-          date: new Date().toISOString().split("T")[0],
-          note: `${paymentMethod === "check" ? "Check" : "Cash"} payment`,
-        };
-        const updatedPayments = [...(inv.payments || []), payment];
-        const newAmountPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
-        const newBalanceDue = Math.max(0, (inv.total || 0) - (Number(inv.applied_credits) || 0) - newAmountPaid);
-        const newStatus = newBalanceDue <= 0 ? "paid" : "partial";
-
-        await base44.asServiceRole.entities.Invoice.update(inv.id, {
-          payments: updatedPayments,
-          amount_paid: newAmountPaid,
-          balance_due: newBalanceDue,
-          status: newStatus,
-        });
-
-        toast.success(`Payment of $${amount.toFixed(2)} recorded! Thank you.`);
-        setPaymentMethod("");
-        setPaymentAmount("");
-        refetch();
-      } catch (err) {
-        toast.error("Failed to record payment");
-      } finally {
-        setProcessingPayment(false);
-      }
+      toast.error("Cash/check payments must be recorded by our staff. Please contact us to arrange payment.");
+      setPaymentMethod("");
+      setPaymentAmount("");
+      return;
     }
   };
 
@@ -221,8 +199,6 @@ export default function InvoiceViewer() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="stripe">💳 Credit/Debit Card (Stripe)</SelectItem>
-                      <SelectItem value="cash">💵 Cash</SelectItem>
-                      <SelectItem value="check">✓ Check</SelectItem>
                     </SelectContent>
                   </Select>
 
