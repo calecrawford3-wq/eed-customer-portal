@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,6 +52,7 @@ import EstimateAddonsSection from "@/components/estimates/EstimateAddonsSection"
 import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";
+import { useNavigationGuard, bypassNextNavigation } from "@/hooks/useNavigationGuard";
 
 const COMPARISON_VIEWER_BASE = "https://billing.eedpower.com/comparison";
 
@@ -80,6 +81,17 @@ export default function EstimateDetail() {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [confirmState, setConfirmState] = useState({ open: false });
+
+  // --- Navigation guard: detect unsaved edits and prompt before leaving ---
+  const formRef = useRef(form);
+  formRef.current = form;
+  const baselineRef = useRef(""); // JSON snapshot of the form when it matches the server
+  const isDirty = () => baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current;
+  const markClean = () => { baselineRef.current = JSON.stringify(formRef.current); };
+  useNavigationGuard(isDirty, async () => {
+    try { await saveMutation.mutateAsync(formRef.current); markClean(); return true; }
+    catch { return false; }
+  });
 
   const [form, setForm] = useState({
     estimate_number: `EST-${Date.now().toString().slice(-6)}`,
@@ -229,6 +241,15 @@ export default function EstimateDetail() {
     }
   }, [estimate]);
 
+  // Capture the "clean" baseline once the form is populated and initial
+  // derived effects (deposit auto-calc, tax defaults, prefill) have settled.
+  useEffect(() => {
+    if (id && estimateLoading) return;
+    if (id && !estimate?.[0]) return;
+    const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
+    return () => clearTimeout(t);
+  }, [id, estimateLoading, estimate]);
+
   useEffect(() => {
     if (isNew && settingsData?.[0]?.default_tax_rate) {
       setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
@@ -294,6 +315,8 @@ export default function EstimateDetail() {
       qc.invalidateQueries({ queryKey: ["estimates"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Estimate saved");
+      // The form now matches the server — clear the unsaved-edits baseline.
+      baselineRef.current = JSON.stringify(variables);
       // Auto-sync to public viewer if this estimate has already been sent
       if (variables?.public_access_token) {
         const estimateId = id || result?.id;
@@ -312,7 +335,7 @@ export default function EstimateDetail() {
           })
           .catch((e) => console.warn("Failed to link estimate to job:", e));
       }
-      if (isNew) navigate(`/EstimateDetail?id=${result.id}`);
+      if (isNew) { bypassNextNavigation(); navigate(`/EstimateDetail?id=${result.id}`); }
     },
   });
 
@@ -907,7 +930,7 @@ export default function EstimateDetail() {
         }
         }
         toast.success("Payment recorded — invoice created!");
-        navigate(`/InvoiceDetail?id=${invoice.id}`);
+        bypassNextNavigation(); navigate(`/InvoiceDetail?id=${invoice.id}`);
         };
 
   const handleApprove = async () => {
@@ -1063,7 +1086,7 @@ export default function EstimateDetail() {
         } catch (e) { console.warn("Failed to create/activate job:", e); }
         setConvertingToBuild(false);
         toast.success("Estimate approved — engine build & invoice created!");
-        navigate(`/BuildDetail?id=${build.id}`);
+        bypassNextNavigation(); navigate(`/BuildDetail?id=${build.id}`);
       } catch (e) {
         console.error("Failed to create build/invoice on approval:", e);
         setConvertingToBuild(false);
@@ -1120,7 +1143,7 @@ export default function EstimateDetail() {
         qc.invalidateQueries({ queryKey: ["jobs"] });
       } catch (e) { console.warn("Failed to create/activate job:", e); }
       toast.success("Estimate approved — invoice created!");
-      navigate(`/InvoiceDetail?id=${invoice.id}`);
+      bypassNextNavigation(); navigate(`/InvoiceDetail?id=${invoice.id}`);
     }
   };
 
@@ -1210,7 +1233,7 @@ export default function EstimateDetail() {
       } catch (e) { console.warn("Failed to reconcile job:", e); }
       qc.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Engine build created! Redirecting...");
-      navigate(`/BuildDetail?id=${build.id}`);
+      bypassNextNavigation(); navigate(`/BuildDetail?id=${build.id}`);
     } catch (e) {
       toast.error("Failed to create build");
     } finally {

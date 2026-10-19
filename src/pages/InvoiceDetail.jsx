@@ -34,6 +34,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import PrintableBuildPartsList from "@/components/PrintableBuildPartsList";
 import NextStepBanner from "@/components/NextStepBanner";
 import LoadingState from "@/components/LoadingState";
+import { useNavigationGuard, bypassNextNavigation } from "@/hooks/useNavigationGuard";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
@@ -57,6 +58,16 @@ export default function InvoiceDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
+
+  // --- Navigation guard: detect unsaved edits and prompt before leaving ---
+  const formRef = useRef(form);
+  formRef.current = form;
+  const baselineRef = useRef(""); // JSON snapshot of the form when it matches the server
+  const isDirty = () => baselineRef.current !== "" && JSON.stringify(formRef.current) !== baselineRef.current;
+  useNavigationGuard(isDirty, async () => {
+    try { await saveMutation.mutateAsync(formRef.current); baselineRef.current = JSON.stringify(formRef.current); return true; }
+    catch { return false; }
+  });
 
   const [form, setForm] = useState({
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
@@ -165,7 +176,7 @@ export default function InvoiceDetail() {
         qc.invalidateQueries({ queryKey: ["accountCredits"] });
       }
       toast.success("Converted to estimate — invoice deleted");
-      navigate(`/EstimateDetail?id=${estimate.id}`);
+      bypassNextNavigation(); navigate(`/EstimateDetail?id=${estimate.id}`);
     } catch (err) {
       toast.error("Conversion failed: " + err.message);
     } finally {
@@ -268,6 +279,15 @@ export default function InvoiceDetail() {
     if (invoice && invoice[0]) setForm({ labor_items: [], machining_items: [], ...invoice[0] });
   }, [invoice]);
 
+  // Capture the "clean" baseline once the form is populated and initial
+  // derived effects (tax defaults, credit auto-apply) have settled.
+  useEffect(() => {
+    if (id && invoiceLoading) return;
+    if (id && !invoice?.[0]) return;
+    const t = setTimeout(() => { baselineRef.current = JSON.stringify(formRef.current); }, 0);
+    return () => clearTimeout(t);
+  }, [id, invoiceLoading, invoice]);
+
   useEffect(() => {
     if (isNew && settingsData && settingsData[0] && settingsData[0].default_tax_rate) {
       setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
@@ -307,6 +327,8 @@ export default function InvoiceDetail() {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
       toast.success("Invoice saved");
+      // The form now matches the server — clear the unsaved-edits baseline.
+      baselineRef.current = JSON.stringify(variables);
       // Auto-sync to public viewer if this invoice has already been sent
       if (variables?.public_access_token) {
         const invoiceId = id || result?.id;
@@ -315,7 +337,7 @@ export default function InvoiceDetail() {
           publicAccessToken: variables.public_access_token,
         }).catch((e) => console.warn("Auto-sync to viewer failed:", e));
       }
-      if (isNew) navigate(`/InvoiceDetail?id=${result.id}`);
+      if (isNew) { bypassNextNavigation(); navigate(`/InvoiceDetail?id=${result.id}`); }
     },
   });
 

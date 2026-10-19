@@ -165,6 +165,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Mobile bottom navigation */}
       <MobileBottomNav />
+      <NavigationGuardDialog />
     </div>
   );
 }
