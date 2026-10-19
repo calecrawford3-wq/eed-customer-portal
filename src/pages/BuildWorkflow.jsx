@@ -370,7 +370,7 @@ export default function BuildWorkflow() {
       </div>
 
       {/* Floating voice control */}
-      <div className="fixed bottom-6 right-4 md:right-8 z-30">
+      <div className="fixed bottom-20 md:bottom-6 right-4 md:right-8 z-[45]">
         <VoiceControl
           currentBuild={currentBuild}
           currentTasks={tasks}

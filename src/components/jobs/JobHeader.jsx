@@ -40,7 +40,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
   const nextAction = deriveNextAction(job, billing, build);
 
   return (
-    <div className="bg-white border-b border-slate-200 sticky top-12 md:top-12 z-10 print:hidden">
+    <div className="bg-white border-b border-slate-200 sticky top-14 md:top-12 z-10 print:hidden">
       <div className="px-4 md:px-8 py-3">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="font-mono text-sm text-[#e20404] font-bold">{job.job_number}</span>

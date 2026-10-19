@@ -282,7 +282,7 @@ export default function ShopDisplay() {
       )}
 
       {/* Footer */}
-      <div className="fixed bottom-4 left-0 right-0 text-center text-slate-600 text-sm">
+      <div className="fixed bottom-20 md:bottom-4 left-0 right-0 text-center text-slate-600 text-sm">
         Shop Display • {new Date().toLocaleDateString()}
       </div>
     </div>
