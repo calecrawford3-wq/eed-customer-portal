@@ -10,7 +10,7 @@ const blankCar = {name:'',car_number:'',class_name:'',chassis:'',team:'',notes:'
 const blankDriver = {name:'',nickname:'',phone:'',notes:''};
 const tracks = ['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
 const split = (v) => String(v || '').split(',').map(x=>x.trim()).filter(Boolean);
-export default function RacingGarage({customerId,engines=[],onChange}) {
+export default function RacingGarage({customerId,engines=[],onChange,onEditingChange}) {
   const [cars,setCars] = useState([]);
   const [drivers,setDrivers] = useState([]);
   const [kind,setKind] = useState('car');
@@ -18,6 +18,7 @@ export default function RacingGarage({customerId,engines=[],onChange}) {
   const [form,setForm] = useState(blankCar);
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState('');
+  useEffect(()=>{onEditingChange?.(!!editing);},[editing,onEditingChange]);
   const invoke = async (body) => {
     const r = await base44.functions.invoke('managePortalGarage',body);
     if(r?.data?.error) throw Error(r.data.error);
