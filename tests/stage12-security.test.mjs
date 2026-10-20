@@ -74,6 +74,22 @@ test('invalid build id rejected before data access', async () => {
   assert.equal((await h.call({ injected: true })).status, 400);
   assert.equal(h.state.getBuild, 0);
 });
+test('portal data never trusts a stale session customer ID when stored profile is unlinked', async () => {
+  const calls = [];
+  const base44 = {
+    auth: { me: async () => ({ id: 'u1', role: 'user', customer_id: 'other-customer' }) },
+    asServiceRole: { entities: new Proxy({}, { get: (_target, name) => ({ filter: async q => { calls.push([name, q]); return []; } }) }) },
+  };
+  const { default: handler } = compile('base44/functions/getPortalData/entry.ts', {
+    '@base44/sdk': { createClientFromRequest: () => base44 },
+    'portalAllowlists': {},
+    'portalDocument': { portalCustomerId: async () => '' },
+  });
+  const res = await handler(new Request('https://portal.test', { method: 'POST', body: '{}' }));
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).not_linked, true);
+  assert.equal(calls.length, 0);
+});
 test('shared-photo serializer excludes foreign-job findings even when referenced in approval', async () => {
   const seen = { signed: [], queriedPhotos: [] };
   const base44 = { asServiceRole: {
