@@ -168,6 +168,10 @@
       "type": "boolean",
       "description": "Customer editable portal profile information; no private shop notes or billing authority."
     },
+    "onboarding_profile_completed": {
+      "type": "boolean",
+      "description": "Customer has explicitly finished the portal onboarding flow."
+    },
     "onboarding_tour_skipped": {
       "type": "boolean",
       "description": "Customer opted to skip the guided portal tour during onboarding."
