@@ -26,6 +26,8 @@ export function verifiedPaymentFacts(session: any, appId: string, live: boolean)
   if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(fee) || fee < 0 || amount + fee !== session.amount_total) throw new PaymentError('Payment amount or fee requires review', 409);
   const method = session.metadata.payment_method || 'card';
   if (!['card', 'us_bank_account', 'affirm'].includes(method)) throw new PaymentError('Unrecognized payment method', 409);
+  const actualTypes = session.payment_method_types;
+  if (Array.isArray(actualTypes) && !actualTypes.includes(method)) throw new PaymentError('Stripe payment method differs from checkout', 409);
   const intent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
   if (!intent || !intent.startsWith('pi_')) throw new PaymentError('Missing payment reference', 409);
   return { type, id, amount, fee, method, sessionId: session.id, intent, live: session.livemode,
@@ -55,12 +57,13 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
       note: 'Stripe payment ' + facts.sessionId + ' / ' + facts.intent + (facts.fee ? ' · processing fee $' + (facts.fee / 100).toFixed(2) + ' collected separately' : ''),
       stripe_session_id: facts.sessionId, stripe_payment_intent: facts.intent };
     const paid = recorded + facts.amount;
+    const excess = Math.max(0, paid + cents(invoice.applied_credits) - cents(invoice.total));
     const balance = Math.max(0, cents(invoice.total) - cents(invoice.applied_credits) - paid);
     const result = await entity.updateMany({
       id: invoice.id, customer_id: cid, payments: same(invoice, 'payments'), amount_paid: same(invoice, 'amount_paid'),
       total: same(invoice, 'total'), applied_credits: same(invoice, 'applied_credits'),
       status: same(invoice, 'status'), updated_date: same(invoice, 'updated_date'),
-    }, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, status: balance === 0 ? 'paid' : 'partial' } });
+    }, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
     if (result?.updated === 1) {
       const fresh = portalItems(await entity.filter({ id: invoice.id, customer_id: cid }))[0];
       if (!fresh || !hasStripePayment(fresh.payments, facts)) throw new PaymentError('Payment write could not be confirmed', 503);
