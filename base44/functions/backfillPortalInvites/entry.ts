@@ -7,6 +7,10 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     if (user.role !== "admin")
       return Response.json({ error: "Only admins can run this backfill" }, { status: 403 });
+    // Backfill is an explicit, owner-approved batch operation, never an automatic send.
+    const body = await req.json().catch(() => ({}));
+    const dryRun = body.confirm_send !== 'SEND_PORTAL_INVITES';
+    const limit = Math.min(25, Math.max(1, Number.isSafeInteger(body.limit) ? body.limit : 25));
 
     // Gather all builds that are complete or shipped
     const completedBuilds = await base44.asServiceRole.entities.EngineBuild.filter(
@@ -35,6 +39,9 @@ export default async function(req) {
       details: [],
     };
 
+    results.dry_run = dryRun;
+    results.batch_limit = limit;
+    results.eligible_preview = [];
     for (const customerId of customerIds) {
       try {
         const custs = await base44.asServiceRole.entities.Customer.filter(
@@ -59,6 +66,11 @@ export default async function(req) {
           continue;
         }
 
+        if (results.sent + results.eligible_preview.length >= limit) break;
+        if (dryRun) {
+          results.eligible_preview.push({ customerId: customer.id, email: customer.email });
+          continue;
+        }
         try {
           await base44.asServiceRole.users.inviteUser(customer.email, "user");
           await base44.asServiceRole.entities.Customer.update(customer.id, {
