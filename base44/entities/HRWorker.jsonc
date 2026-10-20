@@ -60,6 +60,11 @@
         "manager"
       ]
     },
+    "can_view_build_profitability": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicitly assigned by the owner; never inferred from job title or manager role."
+    },
     "pto_hours_available": {
       "type": "number"
     },
