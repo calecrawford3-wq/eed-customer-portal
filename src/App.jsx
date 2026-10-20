@@ -59,7 +59,7 @@ import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
 import {base44} from '@/api/base44Client';
 import FormerEmployeeTaxPortal from './pages/FormerEmployeeTaxPortal';
-import {canStaffVisit} from '@/lib/staff-page-permissions';
+import {canStaffVisit,STAFF_SAFE_WORKSPACE_PAGES} from '@/lib/staff-page-permissions';
 
 const { Pages, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -129,6 +129,7 @@ function AdminLayout() {
     if(!segment)return <Navigate to="/EmployeePortal" replace />;
     const page=ALL_PAGE_NAMES.find(p=>p.toLowerCase()===segment.toLowerCase())||segment;
     if(!canStaffVisit(page,staffAccess.allowed_pages))return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Page access not granted</h1><p>Your owner has not enabled this page for your account.</p><a className="text-blue-700 underline" href="/EmployeePortal">Return to my time clock</a></main>;
+    if(!STAFF_SAFE_WORKSPACE_PAGES.includes(page))return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Page selected, data access pending</h1><p>Your owner has selected this page, but the module's staff-safe data permissions have not yet been enabled. This prevents employee accounts from receiving administrator-only records.</p><a className="text-blue-700 underline" href="/EmployeePortal">Return to my time clock</a></main>;
     if(page==='EmployeePortal')return (<>{splashOverlay}<NavigationTracker /><EmployeePortal /></>);
     if(page==='StaffWorkspace')return (<>{splashOverlay}<NavigationTracker /><StaffWorkspace /></>);
     return (<>{splashOverlay}<NavigationTracker /><Layout currentPageName={page} staffAllowedPages={staffAccess.allowed_pages} staffMode><Outlet /></Layout></>);
