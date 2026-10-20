@@ -32,7 +32,7 @@ function setup() {
     updateMany: async (query, update) => {
       let updated = 0;
       for (const row of state.rows[name] || []) if (matches(row, query)) {
-        Object.assign(row, update.$set || {}); updated++;
+        Object.assign(row, update.$set || {}); state.writes.push([name, row.id, update.$set || {}]); updated++;
       }
       return { updated };
     },
