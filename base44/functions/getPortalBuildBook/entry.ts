@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { portalCustomerId } from '../../shared/portalDocument.ts';
+import { publicFinding } from '../../shared/findingPhotos.ts';
 
 // Returns customer-safe Build Book data (tasks, findings, replacements, job) for a
 // given build, after verifying the calling user owns that build. Customers never
@@ -14,22 +16,18 @@ export default async function (req) {
 
     const body = await req.json().catch(() => ({}));
     const { build_id } = body || {};
-    if (!build_id) return Response.json({ error: 'build_id required' }, { status: 400 });
+    if (typeof build_id !== 'string' || !build_id.trim() || build_id.length > 128) return Response.json({ error: 'Valid build_id required' }, { status: 400 });
 
     // Load the build and verify ownership (admins preview any customer).
     const build = await base44.asServiceRole.entities.EngineBuild.get(build_id).catch(() => null);
     if (!build) return Response.json({ error: 'Build not found' }, { status: 404 });
 
-    if (user.role !== 'admin') {
-      const cid = user.customer_id || user.data?.customer_id;
-      if (!cid || build.customer_id !== cid) {
-        return Response.json({ error: 'Access denied' }, { status: 403 });
-      }
-    }
+    const cid = user.role === 'admin' ? null : await portalCustomerId(base44, user);
+    if (user.role !== 'admin' && (!cid || build.customer_id !== cid)) return Response.json({ error: 'Access denied' }, { status: 403 });
 
     // Job for this build (customer-safe: stage + identifiers only).
     const jobPage = await base44.asServiceRole.entities.Job.filter({ build_id }, { limit: 5 });
-    const job = (jobPage.items || jobPage || [])[0] || null;
+    const job = (jobPage.items || jobPage || []).find(j => j.build_id === build_id && j.customer_id === build.customer_id) || null;
     const jobSafe = job
       ? {
           id: job.id,
@@ -63,15 +61,7 @@ export default async function (req) {
         { job_id: job.id },
         { limit: 200 }
       );
-      findings = (fPage.items || fPage || []).map((f) => ({
-        id: f.id,
-        component: f.component,
-        condition: f.condition,
-        customer_description: f.customer_description,
-        recommended_action: f.recommended_action,
-        status: f.status,
-        photos: f.photos || [],
-      }));
+      findings = (fPage.items || fPage || []).filter(f => f.job_id === job.id && !['canceled', 'declined'].includes(f.status)).map(publicFinding);
     }
 
     // Component replacements (customer-safe: component + when + notes, no internal ids).
@@ -85,9 +75,9 @@ export default async function (req) {
       replaced_at: r.replaced_at,
     }));
 
-    return Response.json({ job: jobSafe, tasks, findings, replacements });
+    return Response.json({ job: jobSafe, tasks, findings, replacements }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[getPortalBuildBook] error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to load build book' }, { status: 500 });
   }
 }
