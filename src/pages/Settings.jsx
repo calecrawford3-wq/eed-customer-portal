@@ -184,8 +184,8 @@ export default function Settings() {
         <TabsContent value="billing">
           <div className="mb-4 rounded-xl border bg-white p-4">
             <h2 className="font-semibold">Portal Payments</h2>
-            <p className="mt-1 mb-3 text-sm text-slate-600">Review Stripe configuration, verified payment recovery, and launch status. In-app Stripe account setup will be added later.</p>
-            <Button asChild variant="outline"><Link to="/PaymentMigration">Open Payment Setup & Launch Checks</Link></Button>
+            <p className="mt-1 mb-3 text-sm text-slate-600">Verify your Stripe account, test or live mode, webhooks, and checkout readiness. Secure keys remain in Base44 server-side secrets; existing billing stays active.</p>
+            <Button asChild variant="outline"><Link to="/PaymentMigration">Open Settings → Payments</Link></Button>
           </div>
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Billing Defaults</CardTitle></CardHeader>
