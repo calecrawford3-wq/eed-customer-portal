@@ -11,7 +11,9 @@ export default async function(req){
   if(typeof body.worker_id!=='string')return fail('Select an employee');
   const matches=rows(await api.asServiceRole.entities.HRWorker.filter({id:body.worker_id}));
   if(matches.length!==1)return fail('Employee not found',404);
-  const worker=matches[0],email=String(worker.email||'').trim().toLowerCase();
+  const worker=matches[0];
+  if(worker.worker_type==='owner'||worker.access_level==='owner')return fail('Owners require the separate full-access owner invitation',409);
+  const email=String(worker.email||'').trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('Employee needs a valid email');
   if(worker.status==='inactive')return fail('Activate the employee before sending an invite',409);
   const same=rows(await api.asServiceRole.entities.HRWorker.filter({email}));
