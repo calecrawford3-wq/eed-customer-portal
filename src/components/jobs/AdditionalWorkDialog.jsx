@@ -47,7 +47,7 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
       toast.success(`${num} created — pending approval`);
       onSaved();
       // Trigger customer notification based on per-event preference
-      const approvalUrl = `https://billing.eedpower.com/additional-work/${aw.public_access_token}`;
+      const approvalUrl = `https://portal.eedpower.com/additional-work/${aw.public_access_token}`;
       await triggerNotify({
         eventType: "additional_work_ready",
         customerId: job.customer_id,
