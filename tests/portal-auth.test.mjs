@@ -29,6 +29,7 @@ function form(file, auth, search = '') {
     if (name === '@/api/base44Client') return { base44: { auth } };
     if (name === '@/lib/AuthContext') return { useAuth: () => ({ user: null, isLoadingAuth: false, isLoadingPublicSettings: false }) };
     if (name === '@/lib/portal-entry') return { portalDestination };
+    if (name === '@/lib/post-login-destination') return { postLoginDestination: async requested => requested };
     if (name.includes('/ui/')) return { Button: 'button', Input: 'input', Label: 'label' };
     throw new Error(`Unexpected import ${name}`);
   };
