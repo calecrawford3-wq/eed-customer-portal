@@ -62,7 +62,8 @@ export default function PortalAccessBadge({ customer, onUpdated }) {
       setTimeout(checkUserExists, 2000);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to send portal invite");
+      const detail = err?.response?.data?.error || err?.data?.error || err?.message || 'Unknown invitation error';
+      toast.error(`Portal invitation failed: ${detail}`, { duration: 9000 });
     } finally {
       setSending(false);
     }
