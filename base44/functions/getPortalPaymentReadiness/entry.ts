@@ -1,6 +1,7 @@
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { portalCheckoutEnabled } from '../../shared/portalCheckout.ts';
+import { readPortalFeeSettings } from '../../shared/portalFees.ts';
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -54,11 +55,15 @@ export default async function (req) {
         report.endpoint_list_incomplete = endpoints.has_more;
       } catch { report.account_check = 'unavailable'; }
     }
+    const feeSettings = await readPortalFeeSettings(base44);
+    report.configured_payment_methods = ['card', ...(feeSettings.ach_enabled === true && Deno.env.get('PORTAL_ENABLE_ACH') === 'true' ? ['us_bank_account'] : []), ...(feeSettings.affirm_enabled === true && Deno.env.get('PORTAL_ENABLE_AFFIRM') === 'true' ? ['affirm'] : [])];
+    report.payment_method_configuration_ready = report.configured_payment_methods.length === 3;
+    report.processing_fee_configuration_ready = feeSettings.ach_fee_approved === true && Number.isFinite(feeSettings.ach_fee_percent) && Number.isSafeInteger(feeSettings.ach_fee_fixed_cents) && Number.isSafeInteger(feeSettings.ach_fee_cap_cents);
     // Readiness is intentionally conservative: configuration is not proof of
     // a signed webhook delivery or a successfully recorded test payment.
     report.payment_recording_ready = report.account_check === 'complete' && report.account_charges_enabled && report.signing_secret_configured && report.endpoint_registered && report.endpoint_event_coverage && report.recording_ready_flag;
-    // The current checkout only supports cards and does not itemize fees.
-    // Never present the three-method customer-paid-fee rollout as launch ready.
+    // Configuration readiness does not imply a tested provider integration.
+    // Customer-paid card and Affirm surcharges remain disabled by design.
     report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled && report.payment_method_configuration_ready && report.processing_fee_configuration_ready;
     report.guest_checkout_ready = report.customer_checkout_ready && report.guest_flag_enabled;
     return Response.json(report, { headers: { 'Cache-Control': 'no-store' } });
