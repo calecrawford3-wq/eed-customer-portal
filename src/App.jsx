@@ -13,6 +13,8 @@ import CustomerPortal from './pages/CustomerPortal';
 import PortalAccess from './pages/PortalAccess';
 import PortalResetPassword from './pages/PortalResetPassword';
 import GuestPayment from './pages/GuestPayment';
+import HRAdmin from './pages/HRAdmin';
+import EmployeePortal from './pages/EmployeePortal';
 import PaymentMigration from './pages/PaymentMigration';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
@@ -103,6 +105,7 @@ function AdminLayout() {
   const splashOverlay = !splashGone ? <SplashScreen ready={true} /> : null;
 
   if (!isAdmin) {
+    if (location.pathname.toLowerCase() === '/employeeportal') return (<>{splashOverlay}<NavigationTracker /><EmployeePortal /></>);
     return (<>{splashOverlay}<NavigationTracker /><CustomerPortal /></>);
   }
 
@@ -152,6 +155,8 @@ const routes = createRoutesFromElements(
       <Route path="Credits" element={<Credits />} />
       <Route path="PaymentMigration" element={<PaymentMigration />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
+      <Route path="EmployeePortal" element={<EmployeePortal />} />
+      <Route path="HRAdmin" element={<HRAdmin />} />
       <Route path="RefreshRequests" element={<RefreshRequests />} />
       <Route path="CustomerSuccess" element={<CustomerSuccess />} />
       <Route path="Calendar" element={<CalendarPage />} />
