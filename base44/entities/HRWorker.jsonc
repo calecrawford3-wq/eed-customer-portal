@@ -31,7 +31,8 @@
       "enum": [
         "invited",
         "active",
-        "inactive"
+        "inactive",
+        "terminated"
       ]
     },
     "job_title": {
@@ -74,6 +75,13 @@
       "type": "boolean",
       "default": false,
       "description": "Allows restricted shop job work queue only; does not grant admin role or raw entity access."
+    },
+    "former_employee_invite_sent_at": {
+      "type": "string",
+      "description": "Tax-only former employee personal-email invitation timestamp."
+    },
+    "termination_date": {
+      "type": "string"
     },
     "portal_invite_sent_at": {
       "type": "string"
