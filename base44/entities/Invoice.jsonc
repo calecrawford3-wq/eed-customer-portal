@@ -302,6 +302,14 @@
         }
       }
     },
+    "payment_overage_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "payment_overage_review_required": {
+      "type": "boolean",
+      "default": false
+    },
     "payments": {
       "type": "array",
       "description": "All payment records for this invoice",
