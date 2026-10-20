@@ -71,6 +71,14 @@
       "type": "number",
       "description": "Recorded legal/economic ownership percentage from 0 to 100. Owner profiles only; does not grant authentication permissions."
     },
+    "allowed_pages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Owner-selected page navigation permissions for active employees. Does not bypass backend entity RLS or authorize sensitive data access."
+    },
     "can_view_shop_jobs": {
       "type": "boolean",
       "default": false,
