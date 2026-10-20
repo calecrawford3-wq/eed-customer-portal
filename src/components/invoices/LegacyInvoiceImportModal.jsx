@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileUp, CheckCircle2, AlertTriangle, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import { validateLegacyInvoiceImport } from "@/lib/legacyImportSafety";
 
 const MAPPABLE_FIELDS = [
   { key: "invoice_number", label: "Invoice #", type: "string" },
@@ -119,23 +120,13 @@ const mapStatus = (raw, balance, paid) => {
 const matchCustomer = (clientName, customers) => {
   if (!clientName || !customers.length) return null;
   const target = clientName.toLowerCase().trim();
-  // exact full name
-  let match = customers.find(c =>
-    `${c.first_name} ${c.last_name}`.toLowerCase().trim() === target
+  // Never use fuzzy or first-match ownership during financial migration.
+  // Only a unique exact full-name/company match may be suggested.
+  const matches = customers.filter(c =>
+    `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase().trim() === target ||
+    (c.company_name && c.company_name.toLowerCase().trim() === target)
   );
-  if (match) return match.id;
-  // exact company
-  match = customers.find(c => c.company_name && c.company_name.toLowerCase().trim() === target);
-  if (match) return match.id;
-  // contains
-  match = customers.find(c =>
-    `${c.first_name} ${c.last_name}`.toLowerCase().includes(target) ||
-    target.includes(`${c.first_name} ${c.last_name}`.toLowerCase())
-  );
-  if (match) return match.id;
-  match = customers.find(c => c.company_name && target.includes(c.company_name.toLowerCase()));
-  if (match) return match.id;
-  return null;
+  return matches.length === 1 ? matches[0].id : null;
 };
 
 export default function LegacyInvoiceImportModal({ open, onClose }) {
@@ -214,7 +205,17 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
   const importMutation = useMutation({
     mutationFn: async () => {
       let ok = 0, fail = 0;
-      const toImport = previewRows.filter((r) => selected.has(r._idx) && r.total != null && getEffectiveCustomerId(r));
+      const toImport = previewRows.filter((r) => selected.has(r._idx));
+      // Fail closed before any bulk write. Existing invoice numbers are checked
+      // against the scanned database sample; at-limit results require a full
+      // export and reconciliation rather than risking duplicates.
+      const existing = await base44.entities.Invoice.list("-created_date", 500);
+      const preflight = validateLegacyInvoiceImport(
+        toImport.map(r => ({ ...r, customer_id: getEffectiveCustomerId(r) })),
+        Array.isArray(existing) ? existing : existing?.items,
+        { scannedLimit: 500 }
+      );
+      if (!preflight.valid) throw new Error(preflight.errors.slice(0, 5).join(" ") + (preflight.errors.length > 5 ? " Review all selected rows." : ""));
       const records = toImport.map((r) => {
         const total = Number(r.total) || 0;
         const paid = Number(r.amount_paid) || 0;
@@ -223,7 +224,7 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
         const status = mapStatus(r.status, balance, paid);
         const issueDate = normalizeDate(r.issue_date);
         const inv = {
-          invoice_number: r.invoice_number || `LEG-${Date.now().toString().slice(-6)}-${r._idx}`,
+          invoice_number: String(r.invoice_number).trim(),
           customer_id: getEffectiveCustomerId(r),
           customer_engine_id: engineMap[r._idx] || "",
           is_legacy: true,
