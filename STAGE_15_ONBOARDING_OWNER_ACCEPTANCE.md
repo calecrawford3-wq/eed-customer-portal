@@ -17,3 +17,14 @@
 - [ ] Stripe and legacy billing launch acceptance remain separate and pending.
 
 Do not publish, switch domains, or enable live payment without explicit owner approval.
+
+## Increment: saved contact and racing profile
+- [ ] Verify first/last name, international phone, billing and shipping addresses are prefilled where available and saved to the same customer.
+- [ ] Confirm leaving and reopening the setup card retains completed contact and racing data.
+- [ ] Confirm required contact details prevent marking contact setup complete, while estimates and payments remain accessible.
+- [ ] Confirm optional racing questions can be skipped and resumed.
+- [ ] Verify SMS consent is independent of phone entry; no phone verification is claimed.
+- [ ] Verify staff sees updated Customer fields, while private shop notes, financial settings and ownership remain unchanged.
+- [ ] Verify existing customers can review profile without being forced to create a new login.
+- [ ] Perform direct API cross-customer write attempts; confirm stored owner link blocks access.
+- [ ] Verify production Base44 accepts the new Customer schema fields.
