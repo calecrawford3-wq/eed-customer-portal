@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { serializePhotos, publicFinding, publicAdditionalWork } from '../../shared/findingPhotos.ts';
+import { portalCustomerId, portalRevision } from '../../shared/portalDocument.ts';
 
 // Authenticated customer portal: returns the logged-in customer's findings
 // (customer-safe fields only) with SHARED photos + signed URLs, plus any
@@ -13,17 +14,16 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Resolve the customer by email (non-admin) or allow admin to pass a customer_id
+    // Only staff preview may specify another customer. Customers use their
+    // durable, server-controlled ownership link, never an email first-match.
     let customerId = '';
     if (user.role === 'admin') {
       const body = await req.json().catch(() => ({}));
       customerId = body?.customer_id || '';
     }
     if (!customerId) {
-      const custRes = await base44.asServiceRole.entities.Customer.filter({ email: user.email });
-      const cust = (custRes.items || custRes || [])[0];
-      if (!cust) return Response.json({ error: 'No customer account' }, { status: 403 });
-      customerId = cust.id;
+      customerId = await portalCustomerId(base44, user);
+      if (!customerId) return Response.json({ error: 'No customer account' }, { status: 403 });
     }
 
     // Customer's jobs (findings always carry job_id, so this is the most reliable link)
@@ -50,7 +50,7 @@ export default async function(req) {
 
     if (engineIds.length > 0) {
       const eRes = await base44.asServiceRole.entities.CustomerEngine.filter(
-        { id: { $in: engineIds } },
+        { id: { $in: engineIds }, customer_id: customerId },
         { limit: 500, fields: ['id', 'eed_id', 'engine_serial_number', 'platform_id'] }
       );
       engines = (eRes.items || eRes || []).map((e: any) => ({
@@ -59,7 +59,7 @@ export default async function(req) {
     }
     if (estimateIds.length > 0) {
       const estRes = await base44.asServiceRole.entities.Estimate.filter(
-        { id: { $in: estimateIds } },
+        { id: { $in: estimateIds }, customer_id: customerId, status: { $ne: 'draft' } },
         { limit: 500, fields: ['id', 'estimate_number', 'issue_date'] }
       );
       estimates = (estRes.items || estRes || []).map((e: any) => ({
@@ -68,7 +68,7 @@ export default async function(req) {
     }
     if (invoiceIds.length > 0) {
       const invRes = await base44.asServiceRole.entities.Invoice.filter(
-        { id: { $in: invoiceIds } },
+        { id: { $in: invoiceIds }, customer_id: customerId, status: { $ne: 'draft' } },
         { limit: 500, fields: ['id', 'invoice_number', 'issue_date'] }
       );
       invoices = (invRes.items || invRes || []).map((i: any) => ({
@@ -99,14 +99,16 @@ export default async function(req) {
     }
 
     // Approvals for the jobs of these findings
-    const jobIds = [...new Set(findings.map((f: any) => f.job_id).filter(Boolean))];
+    const jobIds = customerJobIds;
     let approvals: any[] = [];
     if (jobIds.length > 0) {
       const awRes = await base44.asServiceRole.entities.AdditionalWork.filter(
-        { job_id: { $in: jobIds } },
+        { job_id: { $in: jobIds }, customer_id: customerId },
         { limit: 200 }
       );
-      approvals = (awRes.items || awRes || []).map((aw: any) => publicAdditionalWork(aw));
+      approvals = await Promise.all((awRes.items || awRes || []).filter((aw: any) => aw.submitted_at).map(async (aw: any) => ({
+        ...publicAdditionalWork(aw), revision: await portalRevision(aw, 'additional_work'),
+      })));
     }
 
     const findingsOut = findings.map((f: any) => ({

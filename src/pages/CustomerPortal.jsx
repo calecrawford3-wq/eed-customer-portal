@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { base44, base44Public } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
 import PortalFindingsSection from "@/components/portal/PortalFindingsSection";
+import PortalDocumentDialog from '@/components/portal/PortalDocumentDialog';
 import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_COLORS = {
@@ -53,6 +55,33 @@ const BUILD_PROGRESS = {
 
 export default function CustomerPortal() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [portalDocument, setPortalDocument] = useState(null);
+  const [portalTab, setPortalTab] = useState('engines');
+  useEffect(() => {
+    const type = searchParams.get('document');
+    const id = searchParams.get('id');
+    if (['estimate', 'invoice'].includes(type) && id) {
+      setPortalDocument({ type, id });
+      setPortalTab(type === 'estimate' ? 'estimates' : 'invoices');
+    } else {
+      setPortalDocument(null);
+      const tab = searchParams.get('tab');
+      if (['engines', 'builds', 'invoices', 'estimates', 'findings', 'credits', 'tax'].includes(tab)) setPortalTab(tab);
+    }
+  }, [searchParams]);
+  const openDocument = (type, id) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('document', type); params.set('id', id);
+    setSearchParams(params);
+  };
+  const closeDocument = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('document'); params.delete('id');
+    params.set('tab', portalTab);
+    setSearchParams(params, { replace: true });
+    setPortalDocument(null);
+  };
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({});
@@ -191,12 +220,13 @@ export default function CustomerPortal() {
   };
 
   // Tax year summary
+  const billingInvoices = invoices.filter(i => i.status !== 'void' && !i.combined_parent_id);
   const currentYear = new Date().getFullYear();
-  const yearlyInvoices = invoices.filter(i => i.issue_date?.startsWith(String(currentYear)));
-  const yearTotal = yearlyInvoices.reduce((s, i) => s + (i.total || 0), 0);
-  const yearPaid = yearlyInvoices.reduce((s, i) => s + (i.amount_paid || 0), 0);
+  const yearlyInvoices = billingInvoices.filter(i => i.issue_date?.startsWith(String(currentYear)));
+  const yearTotal = yearlyInvoices.reduce((s, i) => s + (Number(i.total) || 0), 0);
+  const yearPaid = yearlyInvoices.reduce((s, i) => s + (Number(i.amount_paid) || 0), 0);
 
-  const totalBalance = invoices.reduce((s, i) => s + (i.balance_due || 0), 0);
+  const totalBalance = billingInvoices.reduce((s, i) => s + (Number(i.balance_due) || 0), 0);
 
   if (!user) {
     return (
@@ -419,7 +449,7 @@ export default function CustomerPortal() {
                 <span className="text-sm text-slate-500">Total Invoiced</span>
               </div>
               <p className="text-2xl font-bold text-slate-900">
-                ${invoices.reduce((s, i) => s + (i.total || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                ${billingInvoices.reduce((s, i) => s + (Number(i.total) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </CardContent>
           </Card>
@@ -430,7 +460,7 @@ export default function CustomerPortal() {
                 <span className="text-sm text-slate-500">Total Paid</span>
               </div>
               <p className="text-2xl font-bold text-emerald-700">
-                ${invoices.reduce((s, i) => s + (i.amount_paid || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                ${billingInvoices.reduce((s, i) => s + (Number(i.amount_paid) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </CardContent>
           </Card>
@@ -443,13 +473,21 @@ export default function CustomerPortal() {
                 <span className="text-sm text-slate-500">Balance Due</span>
               </div>
               <p className={`text-2xl font-bold ${totalBalance > 0 ? "text-[#e20404]" : "text-slate-400"}`}>
-                ${totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                ${totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="engines">
+        <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+          <h2 className="font-semibold text-slate-900">What would you like to do?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Button variant="outline" className="min-h-11 whitespace-normal" onClick={() => setPortalTab('estimates')}>Review Estimates</Button>
+            <Button variant="outline" className="min-h-11 whitespace-normal" onClick={() => setPortalTab('findings')}>Review Findings & Approvals</Button>
+            <Button className="min-h-11 whitespace-normal bg-[#e20404] hover:bg-red-700" onClick={() => setPortalTab('invoices')}>View & Pay Invoices</Button>
+          </div>
+        </section>
+        <Tabs value={portalTab} onValueChange={setPortalTab}>
           <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:flex-wrap [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:break-words [&>button]:px-2">
             <TabsTrigger value="engines">My Engines ({customerEngines.length})</TabsTrigger>
             <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
@@ -559,14 +597,12 @@ export default function CustomerPortal() {
                                 const invLegalDocs = legalDocs.filter(d => d.invoice_id === inv.id && d.status !== "void");
                                 return (
                                   <div key={inv.id}>
-                                    <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                                    <div className="flex flex-wrap gap-2 items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
                                       <div>
                                         <span className="text-sm font-medium">{inv.invoice_number}</span>
                                         <span className="ml-2 text-xs text-slate-500">{inv.issue_date} · ${Number(inv.total || 0).toFixed(2)}</span>
                                       </div>
-                                      <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>
-                                        {inv.status}
-                                      </Badge>
+                                      <div className="flex flex-wrap items-center gap-2"><Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[inv.status] || "bg-slate-100 text-slate-600"}`}>{inv.status}</Badge><Button variant="outline" size="sm" className="min-h-11" onClick={() => openDocument('invoice', inv.id)}>View / Pay</Button></div>
                                     </div>
                                     {invLegalDocs.length > 0 && <div className="mt-1 space-y-2">{invLegalDocs.map(d => <PortalLegalDocument key={d.id} doc={d} onSigned={() => qc.invalidateQueries({ queryKey: ["portal-data"] })} />)}</div>}
                                   </div>
@@ -728,8 +764,8 @@ export default function CustomerPortal() {
                   const invLegalDocs = legalDocs.filter(d => d.invoice_id === inv.id && d.status !== "void");
                   return (
                     <div key={inv.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
+                      <div className="flex flex-wrap gap-3 items-start justify-between">
+                        <div className="min-w-0 flex-1 break-words">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-slate-900">{inv.invoice_number}</p>
                             {inv.is_legacy && <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">Legacy</Badge>}
@@ -751,8 +787,8 @@ export default function CustomerPortal() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => { setDetailInvoice(inv); setPrintInvoice(false); }}>
-                            <FileText className="w-3.5 h-3.5 mr-1" /> View
+                          <Button size="sm" variant="outline" className="min-h-11" onClick={() => openDocument('invoice', inv.id)}>
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View / Pay
                           </Button>
                           {inv.legacy_pdf_url && (
                             <a href={inv.legacy_pdf_url} target="_blank" rel="noopener noreferrer">
@@ -782,8 +818,8 @@ export default function CustomerPortal() {
             ) : (
               <div className="space-y-3">
                 {estimates.map(est => (
-                  <div key={est.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
-                    <div>
+                  <div key={est.id} className="bg-white rounded-xl border border-slate-100 p-4 flex flex-wrap gap-3 items-start justify-between shadow-sm">
+                    <div className="min-w-0 flex-1 break-words">
                       <p className="font-semibold text-slate-900">{est.estimate_number}</p>
                       <p className="text-sm text-slate-500">
                         {est.issue_date} · ${Number(est.total || 0).toFixed(2)}
@@ -797,9 +833,10 @@ export default function CustomerPortal() {
                         </p>
                       ))}
                     </div>
-                    <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[est.status] || "bg-slate-100 text-slate-600"}`}>
-                      {est.status}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <Badge className={`text-xs border-0 capitalize ${STATUS_COLORS[est.status] || "bg-slate-100 text-slate-600"}`}>{est.status}</Badge>
+                      <Button className="min-h-11" onClick={() => openDocument('estimate', est.id)}>{est.status === 'sent' ? 'Review & Approve' : 'View Estimate'}</Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -987,6 +1024,8 @@ export default function CustomerPortal() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {portalDocument && <PortalDocumentDialog key={`${portalDocument.type}:${portalDocument.id}`} selection={portalDocument} customerId={customer?.id} onClose={closeDocument} onOpen={openDocument} onPrintable={doc => { closeDocument(); setDetailInvoice(doc); setPrintInvoice(false); }} />}
 
       {/* Edit Profile Dialog */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>

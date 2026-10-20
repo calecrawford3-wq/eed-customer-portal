@@ -108,6 +108,8 @@ export async function serializeAdditionalWorkWithPhotos(base44: any, aw: any) {
 export function publicAdditionalWork(aw: any) {
   return {
     id: aw.id,
+    version: aw.version || 1,
+    finding_ids: (aw.finding_ids || []).filter((id: any) => typeof id === 'string'),
     work_number: aw.work_number || "",
     title: aw.title || "",
     description: aw.description || "",

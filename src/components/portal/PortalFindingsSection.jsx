@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Wrench, ClipboardList, CheckCircle2, XCircle, Clock, ChevronDown, Cog, FileText, Receipt } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import PhotoGallery from "@/components/findings/PhotoGallery";
+import PortalWorkApproval from './PortalWorkApproval';
 
 const CONDITION_CLS = {
   good: "bg-emerald-100 text-emerald-700",
@@ -27,9 +28,13 @@ const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { year: "num
  * Estimate / Invoice (with issue dates) → individual findings.
  */
 export default function PortalFindingsSection({ customer }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["portal-findings", customer?.id],
-    queryFn: () => base44.functions.invoke("getPortalFindings", { customer_id: customer?.id }).then((r) => r.data),
+    queryFn: async () => {
+      const r = await base44.functions.invoke("getPortalFindings", { customer_id: customer?.id });
+      if (r.data?.error) throw new Error(r.data.error);
+      return r.data;
+    },
     enabled: !!customer,
   });
 
@@ -74,7 +79,9 @@ export default function PortalFindingsSection({ customer }) {
     );
   }
 
-  if (findings.length === 0) {
+  if (error) return <div role="alert" className="rounded-lg border p-4"><p>Unable to load inspection findings.</p><button className="mt-2 min-h-11 underline" onClick={() => refetch()}>Try Again</button></div>;
+
+  if (findings.length === 0 && approvals.length === 0) {
     return (
       <div className="text-center py-16 text-slate-400">
         <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -92,6 +99,7 @@ export default function PortalFindingsSection({ customer }) {
 
   return (
     <div className="space-y-4">
+      {approvals.length > 0 && <section className="space-y-3"><h2 className="text-lg font-semibold">Work approvals</h2><p className="text-sm text-slate-500">Review each request below. Shared inspection photos appear underneath.</p>{approvals.map(aw => <PortalWorkApproval key={aw.id} approval={aw} customerId={customer.id} />)}</section>}
       {engineIds.map((engineId) => {
         const engine = engineMap[engineId];
         const engineLabel = engine
