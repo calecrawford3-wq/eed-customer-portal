@@ -92,7 +92,8 @@ export async function serializeAdditionalWorkWithPhotos(base44: any, aw: any) {
       { finding_id: { $in: verifiedFindingIds }, share_with_customer: true },
       { limit: 1000 }
     );
-    const photos = pRes.items || pRes || [];
+    const verified = new Set(verifiedFindingIds);
+    const photos = (pRes.items || pRes || []).filter((p: any) => verified.has(p.finding_id));
     const serialized = await serializePhotos(base44, photos, { shareOnly: true });
     for (const p of serialized) {
       (photosByFinding[p.finding_id] ||= []).push(p);
