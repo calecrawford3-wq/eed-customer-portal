@@ -51,7 +51,7 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
     const recorded = previous.reduce((sum: number, p: any) => sum + cents(p.amount), 0);
     // Do not silently discard a historical amount_paid with an incomplete array.
     if (recorded !== cents(invoice.amount_paid)) throw new PaymentError('Existing payment totals need staff reconciliation');
-    const payment = { amount: facts.amount / 100, method: facts.method || 'card', date: facts.date,
+    const payment = { amount: facts.amount / 100, processing_fee_amount: (facts.fee || 0) / 100, gross_charge_amount: (facts.amount + (facts.fee || 0)) / 100, method: facts.method || 'card', date: facts.date,
       note: 'Stripe payment ' + facts.sessionId + ' / ' + facts.intent + (facts.fee ? ' · processing fee $' + (facts.fee / 100).toFixed(2) + ' collected separately' : ''),
       stripe_session_id: facts.sessionId, stripe_payment_intent: facts.intent };
     const paid = recorded + facts.amount;
