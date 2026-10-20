@@ -71,6 +71,13 @@ export default function AccountSetup({ customer, engines = [], onSaved, onClose,
       racing_notes_public:form.racing_notes_public || '',onboarding_racing_skipped:false
     })) setSection('finish');
   };
+  const finishProfileSetup = async () => {
+    if (progress !== 4) {setError('Complete the remaining profile steps before finishing setup.');return;}
+    if (await save({onboarding_profile_completed:true})) {
+      onClose?.();
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+  };
   const finishCars = async (startTour) => {
     if (garageEditing) {setError('Save or cancel the car or driver you are editing before continuing.');return;}
     const patch = {onboarding_cars_skipped:!customer?.onboarding_garage_completed};
@@ -110,7 +117,7 @@ export default function AccountSetup({ customer, engines = [], onSaved, onClose,
         </div>
         {garageEditing && <p className="text-sm text-amber-700">Save or cancel the car or driver you are editing to continue.</p>}
       </div>}
-      {section==='security' && <div className="space-y-3"><p className="text-sm text-slate-600">Your password and email verification are managed by Base44. Your account email is {customer?.email || 'not available'}.</p><p className="text-sm text-slate-600">For account email changes, contact Elite so your engine and billing records stay correctly linked.</p><Button variant="outline" disabled={saving || !customer?.email} onClick={async()=>{setSaving(true);setSecurityNotice('');try{await base44.auth.resetPasswordRequest(customer.email);setSecurityNotice('Password reset instructions have been requested. Check your inbox and spam folder.');}catch{setError('Unable to request a password reset. Try again later.');}finally{setSaving(false);}}}>Email password reset instructions</Button>{securityNotice && <p role="status" className="text-sm text-emerald-700">{securityNotice}</p>}</div>}
+      {section==='security' && <div className="space-y-3"><p className="text-sm text-slate-600">Your password and email verification are managed by Base44. Your account email is {customer?.email || 'not available'}.</p><p className="text-sm text-slate-600">For account email changes, contact Elite so your engine and billing records stay correctly linked.</p><Button variant="outline" disabled={saving || !customer?.email} onClick={async()=>{setSaving(true);setSecurityNotice('');try{await base44.auth.resetPasswordRequest(customer.email);setSecurityNotice('Password reset instructions have been requested. Check your inbox and spam folder.');}catch{setError('Unable to request a password reset. Try again later.');}finally{setSaving(false);}}}>Email password reset instructions</Button>{securityNotice && <p role="status" className="text-sm text-emerald-700">{securityNotice}</p>}<div className="pt-3 border-t border-slate-200"><Button className="w-full bg-[#e20404] hover:bg-red-700" disabled={saving || progress !== 4} onClick={finishProfileSetup}>{saving ? 'Saving...' : 'Finish Profile Setup'}</Button><p className="mt-2 text-xs text-slate-500">Finish setup to return to your dashboard. You can still update your profile, cars and drivers or replay the tour later.</p></div></div>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <Button variant="ghost" className="w-full" onClick={onClose}>Return to portal</Button>
     </CardContent>
