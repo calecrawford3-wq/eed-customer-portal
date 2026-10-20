@@ -11,6 +11,10 @@
     "email": {
       "type": "string"
     },
+    "personal_email": {
+      "type": "string",
+      "description": "Private personal HR contact email for tax forms, benefits, and employment documents. Not used for authentication or workspace invitations."
+    },
     "phone": {
       "type": "string"
     },
