@@ -28,6 +28,12 @@ export default async function (req) {
       customer_checkout_ready: false,
       guest_checkout_ready: false,
       setup_method: 'Base44 server-side environment secrets (one-time setup)',
+      requested_payment_methods: ['card', 'us_bank_account', 'affirm'],
+      configured_payment_methods: ['card'],
+      customer_pays_processing_fees: true,
+      processing_fee_configuration_ready: false,
+      payment_method_configuration_ready: false,
+      fee_policy_note: 'Debit card surcharges are prohibited; credit surcharges and ACH fees require applicable rules and disclosures; Affirm terms may prohibit customer fee pass-through.',
       runtime_checks_still_required: ['Signed Stripe test delivery', 'Base44 conditional update concurrency', 'Deposit and full payment', 'Duplicate delivery and interrupted conversion recovery', 'Old in-flight checkout and link compatibility'],
     };
     if (key) {
@@ -51,7 +57,9 @@ export default async function (req) {
     // Readiness is intentionally conservative: configuration is not proof of
     // a signed webhook delivery or a successfully recorded test payment.
     report.payment_recording_ready = report.account_check === 'complete' && report.account_charges_enabled && report.signing_secret_configured && report.endpoint_registered && report.endpoint_event_coverage && report.recording_ready_flag;
-    report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled;
+    // The current checkout only supports cards and does not itemize fees.
+    // Never present the three-method customer-paid-fee rollout as launch ready.
+    report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled && report.payment_method_configuration_ready && report.processing_fee_configuration_ready;
     report.guest_checkout_ready = report.customer_checkout_ready && report.guest_flag_enabled;
     return Response.json(report, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return Response.json({ error: 'Unable to check payment readiness' }, { status: 500 }); }
