@@ -371,14 +371,9 @@ async function consumeReservationsForBuild(base44, { build_id, operation_id, all
       const parts = await base44.entities.Part.filter({ id: r.part_id });
       const part = (parts.items || parts || [])[0];
       if (!part) {
-        // Mark consumed even if part is missing (don't block completion)
-        await base44.entities.PartReservation.update(r.id, {
-          quantity_consumed: consumeQty,
-          status: "consumed",
-          consumed_at: new Date().toISOString(),
-          operation_id,
-        });
-        return { skipped: false, from: 0, to: 0, deducted: 0, error: "part not found" };
+        // Never mark a reservation consumed if its stock record is missing.
+        // This requires reconciliation rather than falsely reporting a deduction.
+        throw new Error(`Inventory part ${r.part_id} missing; completion blocked`);
       }
 
       // Atomically deduct and mark this reservation on the Part itself.
