@@ -63,6 +63,18 @@ test('onboarding tour returns to security after finishing or skipping', () => {
   const api = readFileSync('base44/functions/updateCustomerProfile/entry.ts', 'utf8');
   assert.match(api, /'onboarding_tour_skipped'/);
 });
+test('guided tour highlights real portal controls and scrolls them into view', () => {
+  const tour = readFileSync('src/components/portal/PortalTour.jsx', 'utf8');
+  const portal = readFileSync('src/pages/CustomerPortal.jsx', 'utf8');
+  for (const target of ['engines','builds','estimates','invoices','findings','account','garage']) {
+    assert.match(tour, new RegExp("target:'"+target+"'"));
+    assert.match(portal, new RegExp('data-tour="'+target+'"'));
+  }
+  assert.match(tour, /scrollIntoView/);
+  assert.match(tour, /getBoundingClientRect/);
+  assert.match(tour, /boxShadow/);
+  assert.match(tour, /onFinish/);
+});
 test('failed invitation email does not mark customer as invited', async () => {
   const h = inviteHarness({ smtpFailure: true });
   assert.equal((await h.call({ customerId: 'c1' })).status, 502);
