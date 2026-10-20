@@ -56,13 +56,23 @@ or credential values in the review report.
    If the platform strips caller Authorization, the new guard fails closed;
    use a documented verified service-caller mechanism rather than restoring
    the old anonymous fallback. Check scheduled task health after publishing.
-3. **Vendor purchase-order links.** acknowledgePO currently validates a
-   predictable base64(po_id:po_number), which is not a secure signature.
-   Replace with stored random or signed capabilities and plan compatibility
-   for outstanding supplier links before opening public access.
-4. **Phone-provider callback.** receiveVoipSms needs verified provider/shared-
-   secret authorization and replay validation. Configure the provider callback
-   together with the receiver so current incoming messages are not interrupted.
+3. **Vendor purchase-order links.** New emails now use stored random tokens
+   expiring after 90 days. GET only displays confirmation; POST validates the
+   capability and conditionally advances status without regressing received,
+   partial, or cancelled orders. Legacy predictable links remain compatible
+   only on records without a new token or expiry. Before public launch, resend
+   outstanding orders with new links and set ALLOW_LEGACY_PO_LINKS=false.
+   Verify the deployed /functions/acknowledgePO route in a safe test order.
+4. **Phone-provider callback.** Correction: receiveVoipSms already authenticated
+   against VOIP_MS_API_PASSWORD. It now prefers VOIP_SMS_WEBHOOK_SECRET; once
+   set, the old password is rejected. Leave the new secret unset until the
+   VoIP.ms callback URL can be updated together with it. Existing api_key and
+   API_KEY aliases remain supported. GET success/retry returns plain `ok`, as
+   required by VoIP.ms callback retry. Raw credentials and message content are
+   no longer logged. Failed duplicate reads return 503 without creating a
+   message. Existing ID deduplication is not an atomic uniqueness guarantee:
+   simultaneous callbacks can still race. Verify real SMS and photo-only MMS
+   after publishing. No provider configuration was changed during development.
 5. **Legacy viewer security and compatibility.** Its independent schemas,
    public functions, approval routes, snapshots, fees, and signed callbacks
    require the same audit. New portal guest links never accept approval-capable

@@ -1,120 +1,45 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 
-Deno.serve(async (req) => {
+const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+function page(title: string, message: string, status = 200, fields?: Record<string, string>) {
+  const form = fields ? `<form method="post">${Object.entries(fields).map(([k,v]) => `<input type="hidden" name="${escape(k)}" value="${escape(v)}">`).join('')}<button type="submit">${fields.action === 'ready' ? 'Confirm order ready' : 'Confirm acknowledgment'}</button></form>` : '';
+  return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:16px system-ui;background:#f8fafc;color:#0f172a;margin:0;padding:24px;display:grid;min-height:85vh;place-items:center}main{box-sizing:border-box;background:white;padding:32px;border-radius:16px;width:100%;max-width:480px;text-align:center;overflow-wrap:anywhere}p{line-height:1.6;color:#475569}button{background:#0f172a;color:white;border:0;border-radius:8px;padding:16px;font:inherit;width:100%;cursor:pointer}footer{margin-top:32px;color:#64748b}</style><main><h1>${escape(title)}</h1><p>${escape(message)}</p>${form}<footer>Elite Engine Development</footer></main></html>`, {
+    status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'", 'X-Content-Type-Options': 'nosniff' },
+  });
+}
+
+Deno.serve(async req => {
+  if (!['GET', 'POST'].includes(req.method)) return page('Invalid request', 'Use the link in your order email.', 405);
   try {
     const url = new URL(req.url);
-    const poId = url.searchParams.get("po_id");
-    const token = url.searchParams.get("token");
-    const action = url.searchParams.get("action") || "acknowledge"; // "acknowledge" or "ready"
-
-    if (!poId || !token) {
-      return new Response(htmlPage("Missing Parameters", "Invalid link. Please contact the sender.", false), {
-        headers: { "Content-Type": "text/html" },
-        status: 400,
-      });
-    }
-
+    const params = req.method === 'POST' ? new URLSearchParams(await req.text()) : url.searchParams;
+    const poId = params.get('po_id') || '';
+    const token = params.get('token') || '';
+    const action = params.get('action') || 'acknowledge';
+    if (!poId || poId.length > 200 || !token || token.length > 512 || !['acknowledge', 'ready'].includes(action)) return page('Invalid link', 'Please request a new link from the shop.', 400);
     const base44 = createClientFromRequest(req);
-
-    const pos = await base44.asServiceRole.entities.PurchaseOrder.filter({ id: poId });
-    const po = pos?.[0];
-
-    if (!po) {
-      return new Response(htmlPage("Not Found", "Purchase order not found.", false), {
-        headers: { "Content-Type": "text/html" },
-        status: 404,
-      });
-    }
-
-    // Token validation: base64(po_id:po_number)
-    const raw = `${poId}:${po.po_number}`;
-    const expectedToken = btoa(raw).replace(/=/g, "");
-    if (token !== expectedToken) {
-      return new Response(htmlPage("Invalid Link", "This link is not valid.", false), {
-        headers: { "Content-Type": "text/html" },
-        status: 403,
-      });
-    }
-
-    if (action === "ready") {
-      if (po.status === "received" || po.status === "cancelled") {
-        return new Response(htmlPage("Already Processed", `Purchase Order <strong>${po.po_number}</strong> has already been processed.`, true), {
-          headers: { "Content-Type": "text/html" },
-        });
-      }
-      await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "ready" });
-      try {
-        await base44.asServiceRole.functions.invoke("sendAdminNotification", {
-          title: "Purchase Order Ready",
-          message: `Supplier marked PO ${po.po_number} as ready for pickup / shipment.`,
-          type: "po_ready",
-          link_url: `/PurchaseOrderDetail?id=${poId}`,
-        });
-      } catch (e) {
-        console.error("PO ready notification failed:", e.message);
-      }
-      return new Response(htmlPage("Order Ready!", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been marked as <strong>ready for pickup / shipment</strong>. We have been notified.`, true), {
-        headers: { "Content-Type": "text/html" },
-      });
-    }
-
-    // Default: acknowledge
-    if (po.status === "acknowledged" || po.status === "ready" || po.status === "received" || po.status === "cancelled") {
-      return new Response(htmlPage("Already Acknowledged", `Purchase Order <strong>${po.po_number}</strong> has already been acknowledged. No further action needed.`, true), {
-        headers: { "Content-Type": "text/html" },
-      });
-    }
-
-    await base44.asServiceRole.entities.PurchaseOrder.update(poId, { status: "acknowledged" });
-
+    const po = (await base44.asServiceRole.entities.PurchaseOrder.filter({ id: poId }))?.[0];
+    // Transitional support for old emails only. Minting a new token retires the old link.
+    // Disable globally before public launch, after outstanding suppliers receive new links.
+    const legacy = po && !po.supplier_access_token && !po.supplier_token_expires_at && Deno.env.get('ALLOW_LEGACY_PO_LINKS') !== 'false';
+    const valid = po && (po.supplier_access_token
+      ? token === po.supplier_access_token && Number.isFinite(Date.parse(po.supplier_token_expires_at)) && Date.parse(po.supplier_token_expires_at) > Date.now()
+      : legacy && token === btoa(`${poId}:${po.po_number}`).replace(/=/g, ''));
+    if (!valid) return page('Link unavailable', 'This link is invalid or expired. Please contact the shop.', 403);
+    const next = action === 'ready' ? 'ready' : 'acknowledged';
+    const eligible = action === 'ready' ? ['sent', 'acknowledged'] : ['sent'];
+    if (!eligible.includes(po.status)) return page('No update needed', 'This order has already advanced or is no longer accepting supplier updates.');
+    if (req.method === 'GET') return page('Confirm order update', `Purchase order ${po.po_number}. ${action === 'ready' ? 'Confirm the items are ready for pickup or shipment.' : 'Confirm you have received and accepted this order.'}`, 200, { po_id: poId, token, action });
+    const match: Record<string, unknown> = { id: poId, status: po.status, updated_date: po.updated_date };
+    if (po.supplier_access_token) { match.supplier_access_token = token; match.supplier_token_expires_at = po.supplier_token_expires_at; }
+    const result = await base44.asServiceRole.entities.PurchaseOrder.updateMany(match, { $set: { status: next } });
+    if (result?.updated !== 1) return page('Order changed', 'The shop updated this order. Reopen your link to check the current status.', 409);
     try {
-      await base44.asServiceRole.functions.invoke("sendAdminNotification", {
-        title: "Purchase Order Acknowledged",
-        message: `Supplier acknowledged PO ${po.po_number}.`,
-        type: "po_accepted",
-        link_url: `/PurchaseOrderDetail?id=${poId}`,
-      });
-    } catch (e) {
-      console.error("PO ack notification failed:", e.message);
-    }
-
-    return new Response(htmlPage("Order Acknowledged", `Thank you! Purchase Order <strong>${po.po_number}</strong> has been successfully acknowledged. We will follow up on delivery details.`, true), {
-      headers: { "Content-Type": "text/html" },
-    });
-
-  } catch (error) {
-    return new Response(htmlPage("Error", `An error occurred: ${error.message}`, false), {
-      headers: { "Content-Type": "text/html" },
-      status: 500,
-    });
+      await base44.asServiceRole.functions.invoke('sendAdminNotification', { title: action === 'ready' ? 'Purchase Order Ready' : 'Purchase Order Acknowledged', message: `Supplier updated PO ${po.po_number} to ${next}.`, type: action === 'ready' ? 'po_ready' : 'po_accepted', link_url: `/PurchaseOrderDetail?id=${encodeURIComponent(poId)}` });
+    } catch { console.error('PO supplier notification failed'); }
+    return page('Thank you', `Purchase order ${po.po_number} is now ${next === 'ready' ? 'ready for pickup or shipment' : 'acknowledged'}.`);
+  } catch {
+    console.error('Supplier order update failed');
+    return page('Unable to update order', 'Please try again or contact the shop.', 500);
   }
 });
-
-function htmlPage(title, message, success) {
-  const color = success ? "#16a34a" : "#dc2626";
-  const icon = success ? "✓" : "✗";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>${title}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 48px 40px; max-width: 480px; width: 90%; text-align: center; }
-    .icon { font-size: 48px; color: ${color}; background: ${color}18; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
-    h1 { color: #0f172a; font-size: 24px; margin: 0 0 12px; }
-    p { color: #475569; font-size: 15px; line-height: 1.6; margin: 0; }
-    .brand { margin-top: 32px; font-size: 13px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">${icon}</div>
-    <h1>${title}</h1>
-    <p>${message}</p>
-    <div class="brand">Elite Engine Development</div>
-  </div>
-</body>
-</html>`;
-}

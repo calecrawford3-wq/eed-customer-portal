@@ -38,6 +38,12 @@ function parseMediaUrls(rawValue: string): string[] {
 }
 
 Deno.serve(async (req) => {
+  if (!['GET', 'POST'].includes(req.method)) {
+    return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, POST' } });
+  }
+  const accepted = (data: Record<string, unknown>) => req.method === 'GET'
+    ? new Response('ok', { headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } })
+    : Response.json(data, { headers: { 'Cache-Control': 'no-store' } });
   try {
     const base44 = createClientFromRequest(req);
     const url = new URL(req.url);
@@ -91,24 +97,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(
-      'receiveVoipSms params:',
-      JSON.stringify({
-        ...params,
-        api_key: params.api_key ? '[REDACTED]' : '',
-      })
-    );
-
     /*
      * Authenticate the VoIP.ms callback.
      */
     const apiKey =
-      params.api_key ||
+      req.headers.get('x-webhook-secret') || params.api_key ||
       params.API_KEY ||
       '';
 
     const expectedKey =
-      Deno.env.get('VOIP_MS_API_PASSWORD') ||
+      Deno.env.get('VOIP_SMS_WEBHOOK_SECRET') || Deno.env.get('VOIP_MS_API_PASSWORD') ||
       '';
 
     if (!expectedKey || apiKey !== expectedKey) {
@@ -207,10 +205,7 @@ Deno.serve(async (req) => {
       customerName = resolved.customer_name || null;
       contactName = resolved.contact_name || null;
     } catch (error) {
-      console.error(
-        'Caller lookup failed:',
-        error?.message || error
-      );
+      console.error('Caller lookup failed');
     }
 
     /*
@@ -224,16 +219,14 @@ Deno.serve(async (req) => {
           });
 
         if (existing?.length > 0) {
-          return Response.json({
+          return accepted({
             success: true,
             duplicate: true,
           });
         }
       } catch (error) {
-        console.error(
-          'Duplicate check failed:',
-          error?.message || error
-        );
+        console.error('Duplicate check failed');
+        return Response.json({ error: 'Please retry callback' }, { status: 503 });
       }
     }
 
@@ -261,14 +254,7 @@ Deno.serve(async (req) => {
       sent_at: sentAt,
     });
 
-    console.log(
-      `${isMms ? 'MMS' : 'SMS'} stored from`,
-      normalizedFrom,
-      JSON.stringify({
-        textPreview: message.substring(0, 50),
-        mediaCount: mediaUrls.length,
-      })
-    );
+    console.log('Inbound message stored', { channel: isMms ? 'mms' : 'sms', mediaCount: mediaUrls.length });
 
     /*
      * In-app notification + push notification.
@@ -305,10 +291,7 @@ Deno.serve(async (req) => {
           is_read: false,
         });
       } catch (notifError) {
-        console.error(
-          'In-app notification create failed:',
-          notifError?.message || notifError
-        );
+        console.error('In-app notification create failed');
       }
 
       // Push notification — mobile
@@ -318,27 +301,20 @@ Deno.serve(async (req) => {
         url: deepLink,
       });
     } catch (pushError) {
-      console.error(
-        'Push notification failed:',
-        pushError?.message || pushError
-      );
+      console.error('Push notification failed');
     }
 
-    return Response.json({
+    return accepted({
       success: true,
       message_type: isMms ? 'mms' : 'sms',
       media_count: mediaUrls.length,
     });
   } catch (error) {
-    console.error(
-      'receiveVoipSms error:',
-      error?.message || error
-    );
+    console.error('receiveVoipSms failed');
 
     return Response.json(
       {
         error:
-          error?.message ||
           'Internal error',
       },
       { status: 500 }

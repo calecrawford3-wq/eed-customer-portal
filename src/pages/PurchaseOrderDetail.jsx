@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes, FileText, Undo2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { appParams } from "@/lib/app-params";
 import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
 import PoKitPickerModal from "@/components/estimates/PoKitPickerModal";
 import EmailsSection from "@/components/emails/EmailsSection";
@@ -157,13 +156,13 @@ export default function PurchaseOrderDetail() {
     const supplier = suppliers.find(s => s.id === form.supplier_id);
     if (!supplier?.email) { toast.error("Supplier has no email address"); return; }
     setSending(true);
+    try {
     const saved = await saveMutation.mutateAsync(form);
     const poId = id || saved?.id;
 
-    // Build acknowledge URL — functions are served at /functions/<name> on the app domain
-    const token = btoa(`${poId}:${form.po_number}`).replace(/=/g, "");
-    const baseUrl = (appParams.appBaseUrl || window.location.origin).replace(/\/$/, "");
-    const ackUrl = `${baseUrl}/functions/acknowledgePO?po_id=${poId}&token=${token}`;
+    const link = await base44.functions.invoke("generatePurchaseOrderLink", { po_id: poId });
+    const ackUrl = link?.data?.url;
+    if (!ackUrl) throw new Error("Unable to prepare supplier link");
 
     const accountRef = supplier.account_number ? ` (Acct #${supplier.account_number})` : "";
     const subject = `Purchase Order ${form.po_number}${accountRef} from Elite Engine Development`;
@@ -215,11 +214,16 @@ export default function PurchaseOrderDetail() {
     const result = await base44.functions.invoke("sendSmtpEmail", { to: supplier.email, subject, html, usePOSmtp: true });
     if (result?.data?.error) { toast.error("Failed to send email"); setSending(false); return; }
 
-    await base44.entities.PurchaseOrder.update(poId, { status: "sent" });
+    // Resending an acknowledged order must not move it back to sent.
+    if (form.status === "draft") await base44.entities.PurchaseOrder.update(poId, { status: "sent" });
     qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
-    setForm(f => ({ ...f, status: "sent" }));
-    setSending(false);
+    setForm(f => ({ ...f, status: f.status === "draft" ? "sent" : f.status }));
     toast.success(`PO sent to ${supplier.email}`);
+    } catch {
+      toast.error("Unable to send purchase order. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const supplier = suppliers.find(s => s.id === form.supplier_id);

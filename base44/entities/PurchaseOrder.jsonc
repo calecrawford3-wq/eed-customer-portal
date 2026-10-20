@@ -2,6 +2,8 @@
   "name": "PurchaseOrder",
   "type": "object",
   "properties": {
+    "supplier_access_token": { "type": "string", "description": "Random supplier update capability. Admin-only entity." },
+    "supplier_token_expires_at": { "type": "string", "format": "date-time" },
     "po_number": {
       "type": "string"
     },
