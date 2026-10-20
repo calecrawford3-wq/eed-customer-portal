@@ -44,7 +44,7 @@ export default async function (req) {
       { build_id },
       { sort: 'sort_order', limit: 500 }
     );
-    const tasks = (taskPage.items || taskPage || []).map((t) => ({
+    const tasks = (taskPage.items || taskPage || []).filter(t => t.build_id === build_id).map((t) => ({
       id: t.id,
       name: t.name,
       stage: t.stage,
@@ -69,7 +69,7 @@ export default async function (req) {
       { build_id },
       { limit: 100 }
     );
-    const replacements = (rPage.items || rPage || []).map((r) => ({
+    const replacements = (rPage.items || rPage || []).filter(r => r.build_id === build_id).map((r) => ({
       id: r.id,
       component: r.component,
       replaced_at: r.replaced_at,
