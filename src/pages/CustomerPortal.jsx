@@ -79,33 +79,27 @@ export default function CustomerPortal() {
     setTimeout(() => window.print(), 300);
   };
 
-  // Server-side ownership link: populate user.data.customer_id so the
-  // allowlisted getPortalData endpoint can return this customer's records.
-  // Runs once per session for non-admins; refetches portal data after linking.
-  useEffect(() => {
-    if (!user || user.role === "admin") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await base44.functions.invoke("linkCustomerUser", {});
-        if (!cancelled && res?.data?.linked) {
-          qc.invalidateQueries({ queryKey: ["portal-data"] });
-        }
-      } catch (e) {
-        // Non-fatal: portal shows "no account found" until an admin links it.
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   // All portal data comes from the allowlisted, ownership-checked getPortalData
   // backend. Direct SDK reads are blocked by admin-only RLS on source entities,
   // so internal costs, margins, private notes, and tokens never reach the client.
-  const { data: portalRes, isLoading: portalLoading } = useQuery({
-    queryKey: ["portal-data", selectedCustomerId],
-    queryFn: () =>
-      base44.functions.invoke("getPortalData", { customer_id: selectedCustomerId || undefined }).then((r) => r.data),
+  const { data: portalRes, isLoading: portalLoading, error: portalError, refetch: retryPortal } = useQuery({
+    queryKey: ["portal-data", selectedCustomerId, user?.id],
+    queryFn: async () => {
+      if (user.role !== "admin") {
+        const res = await base44.functions.invoke("linkCustomerUser", {});
+        const link = res.data || res;
+        if (!link.linked) {
+          if (link.reason === "no_customer") return { not_linked: true };
+          throw new Error(link.reason === "duplicate_email"
+            ? "Your email matches multiple customer records. The shop needs to link your account."
+            : "We couldn't finish linking your portal account. Please try again.");
+        }
+      }
+      const res = await base44.functions.invoke("getPortalData", { customer_id: selectedCustomerId || undefined });
+      if (res.data?.error) throw new Error("We couldn't load your portal. Please try again.");
+      return res.data;
+    },
+    retry: false,
     enabled: !!user,
   });
 
@@ -269,6 +263,21 @@ export default function CustomerPortal() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-[#e20404] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (portalError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardContent className="p-8 text-center space-y-4">
+            <h2 className="text-xl font-bold text-slate-900">Portal connection needs attention</h2>
+            <p className="text-slate-600">{portalError.message}</p>
+            <Button onClick={() => retryPortal()}>Try Again</Button>
+            <Button variant="outline" className="ml-2" onClick={() => base44.auth.logout()}>Sign Out</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
