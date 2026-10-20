@@ -3,7 +3,7 @@ import { portalCustomerId } from '../../shared/portalDocument.ts';
 
 // Never accept customer_id, role, pricing, shop workflow or engine ownership from a customer.
 const FIELDS = {
-  car: ['name','car_number','chassis','class_name','team','notes','primary_track','track_names','driver_ids','engine_id','photo_url','archived'],
+  car: ['name','car_number','chassis','class_name','team','notes','primary_track','track_names','driver_ids','primary_driver_id','engine_id','photo_url','archived'],
   driver: ['name','nickname','phone','notes','archived'],
 };
 const ENTITY = { car: 'PortalCar', driver: 'PortalDriver' };
@@ -69,6 +69,13 @@ export default async function(req: Request) {
           const d = items(await api.asServiceRole.entities.PortalDriver.filter({id,customer_id:customerId}))[0];
           if (!d || d.customer_id!==customerId || d.archived) return error('Driver does not belong to your account',403);
         }
+      }
+      const primary = patch.primary_driver_id ?? existing?.primary_driver_id;
+      if (primary) {
+        const d = items(await api.asServiceRole.entities.PortalDriver.filter({id:primary,customer_id:customerId}))[0];
+        if (!d || d.customer_id!==customerId || d.archived) return error('Primary driver does not belong to your account',403);
+        const selected = patch.driver_ids ?? existing?.driver_ids ?? [];
+        if (!selected.includes(primary)) return error('Primary driver must be selected for the car');
       }
       if (patch.engine_id) {
         const engine = items(await api.asServiceRole.entities.CustomerEngine.filter({id:patch.engine_id,customer_id:customerId}))[0];

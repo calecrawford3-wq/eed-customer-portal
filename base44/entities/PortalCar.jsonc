@@ -46,6 +46,9 @@
     },
     "archived": {
       "type": "boolean"
+    },
+    "primary_driver_id": {
+      "type": "string"
     }
   },
   "required": [

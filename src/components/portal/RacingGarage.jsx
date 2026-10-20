@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-const blankCar = {name:'',car_number:'',class_name:'',chassis:'',team:'',notes:'',primary_track:'',track_names:[],driver_ids:[],engine_id:'',photo_url:''};
+const blankCar = {name:'',car_number:'',class_name:'',chassis:'',team:'',notes:'',primary_track:'',track_names:[],driver_ids:[],primary_driver_id:'',engine_id:'',photo_url:''};
 const blankDriver = {name:'',nickname:'',phone:'',notes:''};
 const tracks = ['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
 const split = (v) => String(v || '').split(',').map(x=>x.trim()).filter(Boolean);
@@ -41,8 +41,7 @@ export default function RacingGarage({customerId,engines=[],onChange}) {
   const save = async () => {
     setLoading(true);setError('');
     try {
-      const values = {...form};
-      delete values.id;
+      const values = Object.fromEntries(Object.entries(form).filter(([key,value])=>key!=='id' && value!==null && value!==undefined));
       if(kind==='car') values.track_names=Array.isArray(values.track_names)?values.track_names:split(values.track_names);
       await invoke({kind,action:editing==='new'?'create':'update',id:editing==='new'?undefined:editing,values,customer_id:customerId});
       if(kind==='car') await base44.functions.invoke('updateCustomerProfile',{onboarding_garage_completed:true,onboarding_cars_skipped:false});
@@ -75,6 +74,7 @@ export default function RacingGarage({customerId,engines=[],onChange}) {
           <div><Label htmlFor="garage-tracks">Additional tracks (comma-separated)</Label><Input id="garage-tracks" list="garage-track-list" value={Array.isArray(form.track_names)?form.track_names.join(', '):form.track_names||''} onChange={e=>change('track_names',e.target.value)} /><datalist id="garage-track-list">{tracks.map(t=><option key={t} value={t}/>)}</datalist></div>
           <div><Label htmlFor="garage-engine">Associated engine</Label><select id="garage-engine" className="block w-full min-h-11 border rounded-md px-3" value={form.engine_id||''} onChange={e=>change('engine_id',e.target.value)}><option value="">No engine associated</option>{engines.map(e=><option key={e.id} value={e.id}>{e.eed_id||e.engine_serial_number||e.id}</option>)}</select></div>
           <fieldset className="space-y-2"><legend className="font-medium text-sm">Drivers for this car</legend>{activeDrivers.length===0?<p className="text-sm text-slate-500">Add a driver first, then link them to this car.</p>:activeDrivers.map(d=><label key={d.id} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={(form.driver_ids||[]).includes(d.id)} onChange={e=>change('driver_ids',e.target.checked?[...(form.driver_ids||[]),d.id]:(form.driver_ids||[]).filter(x=>x!==d.id))}/>{d.name}</label>)}</fieldset>
+          <div><Label htmlFor="garage-primary-driver">Primary driver</Label><select id="garage-primary-driver" className="block w-full min-h-11 border rounded-md px-3" value={form.primary_driver_id||''} onChange={e=>change('primary_driver_id',e.target.value)}><option value="">No primary driver</option>{activeDrivers.filter(d=>(form.driver_ids||[]).includes(d.id)).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
         </>}
         <div className="flex gap-2"><Button disabled={loading} onClick={save}>Save</Button><Button variant="outline" onClick={()=>setEditing(null)}>Cancel</Button></div>
       </div>}
