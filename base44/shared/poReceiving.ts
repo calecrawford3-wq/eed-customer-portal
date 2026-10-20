@@ -101,21 +101,32 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
       const partRes = await base44.entities.Part.filter({ id: line.part_id });
       const part = (partRes.items || partRes || [])[0];
       if (part) {
-        const newQty = roundQty((part.quantity_on_hand || 0) + qty);
-        const partUpdates = { quantity_on_hand: newQty };
-        if (unitCost != null) {
-          partUpdates.unit_cost = unitCost;
+        // Quantity and durable receipt marker change in ONE conditional write.
+        // A crash after this write cannot add the same receipt line twice.
+        const movementKey = `po:${poId}:${receiptId}:${idx}`;
+        const movement = await base44.entities.Part.updateMany(
+          { id: line.part_id, inventory_operation_keys: { $ne: movementKey } },
+          { $inc: { quantity_on_hand: qty }, $addToSet: { inventory_operation_keys: movementKey } }
+        );
+        if (movement?.updated !== 1 && movement?.updated !== 0) {
+          throw new Error("Inventory movement outcome unknown; reconcile this receipt before retrying");
+        }
+        const applied = movement.updated === 1;
+        if (applied && unitCost != null) {
+          const partUpdates = { unit_cost: unitCost };
           if (part.use_markup && part.markup_percentage) {
             partUpdates.sell_price = parseFloat((unitCost * (1 + part.markup_percentage / 100)).toFixed(2));
           }
+          await base44.entities.Part.update(line.part_id, partUpdates);
         }
-        await base44.entities.Part.update(line.part_id, partUpdates);
-        inventoryUpdates.push({ part_id: line.part_id, added: qty, new_on_hand: newQty });
+        const currentPartRes = await base44.entities.Part.filter({ id: line.part_id });
+        const currentPart = (currentPartRes.items || currentPartRes || [])[0];
+        inventoryUpdates.push({ part_id: line.part_id, added: applied ? qty : 0, new_on_hand: currentPart?.quantity_on_hand, already_applied: !applied });
 
         // Allocate received qty to outstanding shortages (locked per-part)
         const alloc = await allocateReceiptToShortages(base44, {
           part_id: line.part_id,
-          received_qty: qty,
+          received_qty: applied ? qty : 0,
           operation_id: operationId,
         });
         if (alloc.allocated.length > 0) {
