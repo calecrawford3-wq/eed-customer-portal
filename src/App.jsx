@@ -113,6 +113,9 @@ function AdminLayout() {
     return <UserNotRegisteredError />;
   }
 
+  // A first-time/incognito visitor has no authenticated user. The staff
+  // access check only runs for signed-in users, so never wait for it here.
+  if(!user?.email) return <Navigate to="/PortalAccess?mode=signin" replace />;
   if(staffAccess==='checking') return <SplashScreen ready={false} />;
   if(staffAccess==='blocked') return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Account access disabled</h1><p>Your company login is no longer active, or your account requires an administrator review. Former employees must use their personal email to sign in for tax documents.</p></main>;
   if(staffAccess==='tax_only') return <><NavigationTracker /><FormerEmployeeTaxPortal /></>;
