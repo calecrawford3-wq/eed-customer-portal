@@ -42,6 +42,10 @@ export async function applyApprovedAdditionalWork(base44: any, aw: any, actor: s
     return { ok: false, error: 'Only pending work can be approved' };
   }
 
+  if (aw.customer_response !== 'approved' || Number(aw.customer_approved_version || 0) !== Number(aw.version || 1)) {
+    return { ok: false, error: 'Customer approval of the current version is required' };
+  }
+
   // --- Atomic claim: win exclusive ownership before doing any work ---
   const claimToken = crypto.randomUUID();
   await base44.asServiceRole.entities.AdditionalWork.updateMany(
