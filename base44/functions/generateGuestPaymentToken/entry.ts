@@ -1,42 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-
-// Admin-only: generate (or rotate) a document-scoped guest payment token.
-// The token encodes an expiry timestamp so no extra schema field is needed:
-//   <uuid>.<expiresAtUnixMs>
-// A guest token can ONLY view/pay its document via getGuestEstimate /
-// getGuestInvoice / createGuestCheckoutSession — never approve or activate.
-// Calling this again rotates the token (the old one stops working).
+import { ownedGuestDocument, guestVisible } from '../../shared/guestAccess.ts';
+import { guestTokenExpired } from '../../shared/guestFields.ts';
 
 export default async function (req) {
   try {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
-
     const body = await req.json().catch(() => ({}));
-    const { document_type, document_id, expires_in_days } = body;
-    if (!document_type || !document_id) return Response.json({ error: 'document_type and document_id required' }, { status: 400 });
-    if (!['estimate', 'invoice'].includes(document_type)) return Response.json({ error: 'Invalid document_type' }, { status: 400 });
-
-    const days = Math.max(1, Number(expires_in_days) || 30);
-    const expiresAt = Date.now() + days * 86400000;
-    const token = `${crypto.randomUUID()}.${expiresAt}`;
-
-    if (document_type === 'estimate') {
-      const res = await base44.asServiceRole.entities.Estimate.filter({ id: document_id });
-      if (!(res.items || res || [])[0]) return Response.json({ error: 'Document not found' }, { status: 404 });
-      await base44.asServiceRole.entities.Estimate.update(document_id, { guest_payment_token: token });
-    } else {
-      const res = await base44.asServiceRole.entities.Invoice.filter({ id: document_id });
-      if (!(res.items || res || [])[0]) return Response.json({ error: 'Document not found' }, { status: 404 });
-      await base44.asServiceRole.entities.Invoice.update(document_id, { guest_payment_token: token });
+    const owned = await ownedGuestDocument(base44, user, body.document_type, body.document_id);
+    if (!owned) return Response.json({ error: 'Document not found' }, { status: 404 });
+    if (!guestVisible(owned.doc, body.document_type)) return Response.json({ error: 'Document unavailable' }, { status: 409 });
+    const action = body.action || 'create';
+    if (!['status', 'create', 'rotate'].includes(action)) return Response.json({ error: 'Invalid action' }, { status: 400 });
+    let token = owned.doc.guest_payment_token;
+    const active = !guestTokenExpired(token);
+    if (action !== 'status' && (!active || action === 'rotate')) {
+      const days = body.expires_in_days === undefined ? 30 : Number(body.expires_in_days);
+      if (!Number.isInteger(days) || days < 1 || days > 30) return Response.json({ error: 'Expiry must be 1 to 30 days' }, { status: 400 });
+      token = crypto.randomUUID() + '.' + (Date.now() + days * 86400000);
+      await owned.entity.update(owned.doc.id, { guest_payment_token: token });
     }
-
-    return Response.json({ success: true, guest_payment_token: token, expires_at: new Date(expiresAt).toISOString() });
-  } catch (error) {
-    console.error('[generateGuestPaymentToken] error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    const available = !guestTokenExpired(token);
+    const origin = new URL(Deno.env.get('PORTAL_BASE_URL') || 'https://portal.eedpower.com');
+    if (origin.protocol !== 'https:' || origin.username || origin.password) throw new Error('Invalid portal origin');
+    return Response.json({ active: available, url: available ? origin.origin + '/guest/' + body.document_type + '/' + encodeURIComponent(token) : null,
+      expires_at: available ? new Date(Number(token.split('.')[1])).toISOString() : null,
+      checkout_enabled: Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true' });
+  } catch {
+    return Response.json({ error: 'Unable to manage payment link' }, { status: 500 });
   }
 }

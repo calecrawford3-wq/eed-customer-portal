@@ -53,19 +53,11 @@ export function guestMachiningItems(items: any[] = []) {
 // one is outstanding, otherwise the current balance due. Computed server-side
 // from the live record — never accepted from the client.
 export function guestAllowedPaymentAmount(doc: any, isEstimate: boolean): number {
-  if (isEstimate) {
-    const total = Number(doc.total) || 0;
-    const paid = Number(doc.amount_paid) || 0;
-    const credits = Number(doc.applied_credits) || 0;
-    if (doc.deposit_required && !doc.deposit_paid && doc.deposit_amount) {
-      return Number(doc.deposit_amount);
-    }
-    return Math.max(0, total - credits - paid);
-  }
-  const total = Number(doc.total) || 0;
-  const paid = Number(doc.amount_paid) || 0;
-  const credits = Number(doc.applied_credits) || 0;
-  return Math.max(0, total - credits - paid);
+  const cents = (v: any) => Math.round((Number(v) || 0) * 100);
+  const balance = Math.max(0, cents(doc.total) - cents(doc.amount_paid) - cents(doc.applied_credits));
+  const deposit = isEstimate && doc.deposit_required && !doc.deposit_paid
+    ? Math.min(balance, Math.max(0, cents(doc.deposit_amount) - cents(doc.amount_paid) - cents(doc.applied_credits))) : 0;
+  return (deposit || balance) / 100;
 }
 
 export function guestEstimatePayload(est: any, customer: any, engine: any) {
@@ -78,6 +70,8 @@ export function guestEstimatePayload(est: any, customer: any, engine: any) {
     line_items: guestEstimateLineItems(est.line_items),
     labor_items: guestLaborItems(est.labor_items),
     machining_items: guestMachiningItems(est.machining_items),
+    outsourced_services: guestLaborItems(est.outsourced_services),
+    addons: guestLaborItems((est.addons || []).filter((a: any) => ['preselected', 'customer_selected'].includes(a.selection_state))).map(a => ({ ...a, selection_state: 'customer_selected' })),
     subtotal: Number(est.subtotal) || 0,
     tax_amount: Number(est.tax_amount) || 0,
     total: Number(est.total) || 0,
@@ -89,7 +83,6 @@ export function guestEstimatePayload(est: any, customer: any, engine: any) {
     allowed_payment_amount: guestAllowedPaymentAmount(est, true),
     customer: guestCustomer(customer),
     engine: guestEngine(engine),
-    notes: est.notes || '',
     // email, phone, address, serial number, platform, costs, vendor — excluded
   };
 }
@@ -104,6 +97,8 @@ export function guestInvoicePayload(inv: any, customer: any, engine: any) {
     line_items: guestEstimateLineItems(inv.line_items),
     labor_items: guestLaborItems(inv.labor_items),
     machining_items: guestMachiningItems(inv.machining_items),
+    outsourced_services: guestLaborItems(inv.outsourced_services),
+    addons: guestLaborItems((inv.addons || []).filter((a: any) => ['preselected', 'customer_selected'].includes(a.selection_state))).map(a => ({ ...a, selection_state: 'customer_selected' })),
     subtotal: Number(inv.subtotal) || 0,
     tax_amount: Number(inv.tax_amount) || 0,
     total: Number(inv.total) || 0,
@@ -121,10 +116,10 @@ export function guestInvoicePayload(inv: any, customer: any, engine: any) {
 // A token without an expiry suffix, or past its expiry, is invalid. This is the
 // sole expiry enforcement for guest payment links — no schema field is needed.
 export function guestTokenExpired(token: string): boolean {
-  if (!token) return true;
+  if (typeof token !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.\d{13}$/.test(token)) return true;
   const parts = String(token).split('.');
   if (parts.length < 2) return true;
   const exp = Number(parts[parts.length - 1]);
   if (!Number.isFinite(exp) || exp <= 0) return true;
-  return Date.now() > exp;
+  return Date.now() >= exp;
 }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PortalLegalDocument from '@/components/legal/PortalLegalDocument';
 import { formatMoney } from '@/lib/money';
+import GuestPaymentShare from './GuestPaymentShare';
 
 export default function PortalDocumentDialog({ selection, customerId, onClose, onOpen, onPrintable }) {
   const qc = useQueryClient();
@@ -99,6 +100,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {doc.is_legacy && doc.legacy_pdf_url && <a href={doc.legacy_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg border px-4 py-3 text-sm font-medium">Open original invoice PDF</a>}
             {!isEstimate && !doc.is_legacy && <Button variant="outline" className="min-h-11" onClick={() => onPrintable(doc)}>Open Printable Invoice</Button>}
             <DocumentCharges doc={doc} />
+            {['estimate', 'invoice'].includes(selection.type) && !['void', 'declined', 'expired'].includes(doc.status) && <GuestPaymentShare type={selection.type} id={selection.id} />}
             <dl className="space-y-2 text-sm border-t pt-4">
               <Total label="Subtotal" value={doc.subtotal} />
               {Number(doc.discount_amount) > 0 && <Total label="Discount" value={-Number(doc.discount_amount)} />}

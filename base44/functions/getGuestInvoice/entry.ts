@@ -6,18 +6,21 @@ import { guestInvoicePayload, guestTokenExpired } from '../../shared/guestFields
 // Returns ONLY the allowlisted guest fields. This token can never authorize
 // approval, account activation, or portal access.
 
+import { guestPaymentState, guestVisible } from '../../shared/guestAccess.ts';
+
 export default async function (req) {
   try {
+    if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const { guestPaymentToken } = body;
-    if (!guestPaymentToken) return Response.json({ error: 'guestPaymentToken is required' }, { status: 400 });
+    if (typeof guestPaymentToken !== 'string' || guestTokenExpired(guestPaymentToken)) return Response.json({ error: 'guestPaymentToken is required' }, { status: 400 });
 
     const invRes = await base44.asServiceRole.entities.Invoice.filter({ guest_payment_token: guestPaymentToken });
     const inv = (invRes.items || invRes || [])[0];
     if (!inv) return Response.json({ error: 'Document not found' }, { status: 404 });
 
-    if (['void'].includes(inv.status)) {
+    if (!guestVisible(inv, 'invoice')) {
       return Response.json({ error: 'Document not available' }, { status: 403 });
     }
     if (guestTokenExpired(inv.guest_payment_token)) {
@@ -31,13 +34,13 @@ export default async function (req) {
     }
     let engine = null;
     if (inv.customer_engine_id) {
-      const eRes = await base44.asServiceRole.entities.CustomerEngine.filter({ id: inv.customer_engine_id });
+      const eRes = await base44.asServiceRole.entities.CustomerEngine.filter({ id: inv.customer_engine_id, customer_id: inv.customer_id });
       engine = (eRes.items || eRes || [])[0] || null;
     }
 
-    return Response.json(guestInvoicePayload(inv, customer, engine));
+    return Response.json({ ...guestInvoicePayload(inv, customer, engine), ...await guestPaymentState(base44, inv, 'invoice') }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error) {
     console.error('[getGuestInvoice] error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to load payment link' }, { status: 500 });
   }
 }
