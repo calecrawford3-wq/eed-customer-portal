@@ -1,0 +1,51 @@
+{
+  "name": "HRTimeEntry",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "clock_in": {
+      "type": "string"
+    },
+    "clock_out": {
+      "type": "string"
+    },
+    "break_minutes": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed",
+        "adjusted"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
