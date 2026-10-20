@@ -7,7 +7,7 @@ const entities = {
   pay: 'HRPayStatement', benefits: 'HRBenefitEnrollment', tax: 'HRTaxDocument',
 };
 const fields = {
-  workers: ['first_name','last_name','email','personal_email','phone','worker_type','status','termination_date','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','ownership_percentage','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
+  workers: ['first_name','last_name','email','personal_email','phone','worker_type','status','termination_date','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','ownership_percentage','allowed_pages','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
   time: ['worker_id','clock_in','clock_out','break_minutes','status','notes'],
   leave: ['worker_id','start_date','end_date','hours','leave_type','status','reason','decision_note'],
   pay: ['worker_id','period_start','period_end','pay_date','gross_pay','net_pay','taxes_withheld','deductions','statement_url','payroll_provider_reference','status'],
@@ -95,6 +95,12 @@ export default async function(req) {
         if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(loginEmail)) return fail('Staff login email must be an @eedpower.com address');
         if(prior?.portal_invite_sent_at && values.email && values.email!==String(prior.email||'').trim().toLowerCase()) return fail('Login email cannot be changed after invitation. Update the Base44 account first.',409);
         const resultingType=values.worker_type || prior?.worker_type;
+        if(Object.prototype.hasOwnProperty.call(values,'allowed_pages')) {
+          const validPages=new Set('EmployeePortal StaffWorkspace Dashboard Jobs JobCard BuildWorkflow MachiningStation ShopDisplay BarcodeScan ExceptionDashboard Calendar Customers CustomerDetail CustomerSuccess RefreshRequests Communications Messaging Emails Inventory PurchaseOrders PurchaseOrderDetail Suppliers Estimates EstimateDetail Invoices InvoiceDetail Approvals Payments Credits Expenses Reports Platforms SpecSheets SpecView SpecCompare Documents Builds BuildDetail DevelopmentData RnDEngineDeveloper'.split(' '));
+          if(!Array.isArray(values.allowed_pages)||values.allowed_pages.length>validPages.size||values.allowed_pages.some(p=>typeof p!=='string'||!validPages.has(p)))return fail('Invalid employee page permissions');
+          values.allowed_pages=[...new Set(values.allowed_pages)];
+          if(resultingType==='owner' && values.allowed_pages.length) return fail('Owner page access is managed by administrator role');
+        }
         if(values.status==='terminated') {
           if(resultingType==='owner') return fail('Owner access must be revoked through a separate ownership and administrator offboarding process',409);
           if(!values.termination_date && !prior?.termination_date) values.termination_date=new Date().toISOString().slice(0,10);
