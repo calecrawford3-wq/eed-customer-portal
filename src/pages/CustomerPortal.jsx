@@ -455,7 +455,7 @@ export default function CustomerPortal() {
         </div>
 
         {user?.role !== 'admin' && <div className="mb-6">{accountSetupOpen ? <AccountSetup customer={customer} engines={customerEngines} initialSection={accountSetupSection} onSaved={async () => { await qc.invalidateQueries({queryKey:['portal-data']}); }} onStartTour={()=>{setAccountSetupOpen(false);setTourFromOnboarding(true);setTourOpen(true);}} onClose={()=>{setAccountSetupOpen(false);setAccountSetupSection('contact');}} /> : <Card className="border-red-100"><CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><p className="font-semibold">{accountContactComplete(customer) ? 'My Account' : 'Account setup'}</p><p className="text-sm text-slate-600">{accountContactComplete(customer) ? 'Review your profile and racing information whenever you like.' : 'Confirm your contact information. You can still use all estimates, approvals and payments.'}</p></div><Button onClick={()=>setAccountSetupOpen(true)}>{accountContactComplete(customer) ? 'Review profile' : 'Continue setup'}</Button></CardContent></Card>}</div>}
-        {user?.role !== 'admin' && <div className="mb-6 flex flex-wrap gap-2"><Button variant="outline" onClick={()=>{setAccountSetupSection('contact');setAccountSetupOpen(v=>!v);setGarageOpen(false);setTourOpen(false);setTourFromOnboarding(false);}}>My Account</Button><Button variant="outline" onClick={()=>{setGarageOpen(v=>!v);setAccountSetupOpen(false);setTourOpen(false);}}>Cars & drivers</Button><Button variant="outline" onClick={()=>{setTourFromOnboarding(false);setTourOpen(v=>!v);setAccountSetupOpen(false);setGarageOpen(false);}}>Portal tour</Button></div>}
+        {user?.role !== 'admin' && <div className="mb-6 flex flex-wrap gap-2"><span data-tour="account"><Button variant="outline" onClick={()=>{setAccountSetupSection('contact');setAccountSetupOpen(v=>!v);setGarageOpen(false);setTourOpen(false);setTourFromOnboarding(false);}}>My Account</Button></span><span data-tour="garage"><Button variant="outline" onClick={()=>{setGarageOpen(v=>!v);setAccountSetupOpen(false);setTourOpen(false);}}>Cars & drivers</Button></span><Button variant="outline" onClick={()=>{setTourFromOnboarding(false);setTourOpen(v=>!v);setAccountSetupOpen(false);setGarageOpen(false);}}>Portal tour</Button></div>}
         {user?.role !== 'admin' && garageOpen && <div className="mb-6"><RacingGarage customerId={customer.id} engines={customerEngines} onChange={()=>qc.invalidateQueries({queryKey:['portal-data']})} /></div>}
         {user?.role !== 'admin' && tourOpen && <div className="mb-6"><PortalTour onNavigate={setPortalTab} onFinish={async()=>{try{const response=await base44.functions.invoke('updateCustomerProfile',{onboarding_tour_completed:true,onboarding_tour_skipped:false});if(response?.data?.error)throw Error(response.data.error);await qc.invalidateQueries({queryKey:['portal-data']});toast.success('Tour complete');if(tourFromOnboarding)showOnboardingSecurity();else setTourOpen(false);}catch{toast.error('Could not save tour progress');}}} onClose={async()=>{if(tourFromOnboarding){try{const response=await base44.functions.invoke('updateCustomerProfile',{onboarding_tour_skipped:true});if(response?.data?.error)throw Error(response.data.error);await qc.invalidateQueries({queryKey:['portal-data']});showOnboardingSecurity();}catch{toast.error('Could not save tour preference');}}else setTourOpen(false);}}/></div>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -506,11 +506,11 @@ export default function CustomerPortal() {
         </section>
         <Tabs value={portalTab} onValueChange={setPortalTab}>
           <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:flex-wrap [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:break-words [&>button]:px-2">
-            <TabsTrigger value="engines">My Engines ({customerEngines.length})</TabsTrigger>
-            <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
-            <TabsTrigger value="estimates">Estimates ({estimates.length})</TabsTrigger>
-            <TabsTrigger value="findings">Findings</TabsTrigger>
+            <TabsTrigger data-tour="engines" value="engines">My Engines ({customerEngines.length})</TabsTrigger>
+            <TabsTrigger data-tour="builds" value="builds">Engine Builds ({builds.length})</TabsTrigger>
+            <TabsTrigger data-tour="invoices" value="invoices">Invoices ({invoices.length})</TabsTrigger>
+            <TabsTrigger data-tour="estimates" value="estimates">Estimates ({estimates.length})</TabsTrigger>
+            <TabsTrigger data-tour="findings" value="findings">Findings</TabsTrigger>
             <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="tax">Tax Statement</TabsTrigger>
           </TabsList>
