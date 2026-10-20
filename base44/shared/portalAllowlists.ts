@@ -192,7 +192,6 @@ export function allowlistBuild(b: any): any {
     valve_lash_intake: b.valve_lash_intake,
     valve_lash_exhaust: b.valve_lash_exhaust,
     cam_info: b.cam_info,
-    assembly_notes: b.assembly_notes,
     start_date: b.start_date,
     created_date: b.created_date,
   };
@@ -209,7 +208,6 @@ export function allowlistEngine(e: any): any {
     current_stage: e.current_stage,
     check_in_status: e.check_in_status,
     check_in_date: e.check_in_date,
-    notes: e.notes,
     created_date: e.created_date,
   };
 }
@@ -250,7 +248,6 @@ export function allowlistLegalDoc(d: any): any {
     customer_signature: d.customer_signature,
     customer_signed_at: d.customer_signed_at,
     status: d.status,
-    public_access_token: d.public_access_token,
     created_date: d.created_date,
   };
 }
@@ -271,7 +268,6 @@ export function allowlistDynoSheet(d: any): any {
     uploaded_by: d.uploaded_by,
     uploaded_by_role: d.uploaded_by_role,
     is_current: d.is_current,
-    notes: d.notes,
     created_date: d.created_date,
   };
 }
@@ -318,8 +314,12 @@ export function allowlistSpecSheet(s: any): any {
     version: s.version,
     is_current: s.is_current,
     status: s.status,
-    specs: s.specs,
-    notes: s.notes,
+    // Only the dimensions already shown on the customer's printable sheets.
+    // Never send the full shop specification or its free-form notes.
+    specs: {
+      block: { bore_diameter_mm: s.specs?.block?.bore_diameter_mm },
+      rotating_assembly: { stroke_mm: s.specs?.rotating_assembly?.stroke_mm },
+    },
     created_date: s.created_date,
   };
 }

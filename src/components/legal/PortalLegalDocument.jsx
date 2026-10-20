@@ -41,7 +41,7 @@ export default function PortalLegalDocument({ doc, onSigned }) {
     setSubmitting(true);
     try {
       const res = await base44.functions.invoke("signLegalDocument", {
-        publicAccessToken: currentDoc.public_access_token,
+        documentId: currentDoc.id,
         customerSignature: signature,
       });
       const data = res.data || res;

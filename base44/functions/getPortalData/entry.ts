@@ -66,7 +66,6 @@ export default async function(req) {
     const [
       estimatesRes, invoicesRes, buildsRes, enginesRes,
       creditsRes, legalDocsRes, dynoSheetsRes, refreshRes,
-      platformsRes, specSheetsRes,
     ] = await Promise.all([
       base44.asServiceRole.entities.Estimate.filter(
         { customer_id: targetCustomerId, archived: { $ne: true } },
@@ -100,33 +99,38 @@ export default async function(req) {
         { customer_id: targetCustomerId },
         { sort: "-created_date", limit: 500 }
       ),
-      base44.asServiceRole.entities.EnginePlatform.list(
-        "-created_date", 100
-      ),
-      base44.asServiceRole.entities.SpecSheet.list(
-        "-created_date", 100
-      ),
     ]);
 
     const items = (r: any) => r.items || r || [];
+    const owned = (r: any) => items(r).filter((v: any) => v.customer_id === targetCustomerId);
+    const builds = owned(buildsRes);
+    const engines = owned(enginesRes);
+    const specIds = [...new Set(builds.map((b: any) => b.spec_sheet_id).filter(Boolean))];
+    const platformIds = [...new Set([...builds, ...engines].map((v: any) => v.platform_id).filter(Boolean))];
+    const specSheets = (await Promise.all(specIds.map(id =>
+      base44.asServiceRole.entities.SpecSheet.filter({ id }, { limit: 1 })
+    ))).flatMap(items).filter((s: any) => ["active", "archived"].includes(s.status));
+    const platforms = (await Promise.all(platformIds.map(id =>
+      base44.asServiceRole.entities.EnginePlatform.filter({ id }, { limit: 1 })
+    ))).flatMap(items);
 
     return Response.json({
       data: {
         customer: allowlistCustomer(customerRecord),
-        estimates: items(estimatesRes).map(allowlistEstimate),
-        invoices: items(invoicesRes).map(allowlistInvoice),
-        builds: items(buildsRes).map(allowlistBuild),
-        engines: items(enginesRes).map(allowlistEngine),
-        credits: items(creditsRes).map(allowlistCredit),
-        legalDocs: items(legalDocsRes).map(allowlistLegalDoc),
-        dynoSheets: items(dynoSheetsRes).map(allowlistDynoSheet),
-        refreshRequests: items(refreshRes).map(allowlistRefreshRequest),
-        platforms: items(platformsRes).map(allowlistPlatform),
-        specSheets: items(specSheetsRes).map(allowlistSpecSheet),
+        estimates: owned(estimatesRes).filter((e: any) => ["sent", "approved", "declined", "expired"].includes(e.status)).map(allowlistEstimate),
+        invoices: owned(invoicesRes).filter((i: any) => ["sent", "partial", "paid", "overdue", "void"].includes(i.status)).map(allowlistInvoice),
+        builds: builds.map(allowlistBuild),
+        engines: engines.map(allowlistEngine),
+        credits: owned(creditsRes).map(allowlistCredit),
+        legalDocs: owned(legalDocsRes).filter((d: any) => ["pending_customer", "fully_signed"].includes(d.status)).map(allowlistLegalDoc),
+        dynoSheets: owned(dynoSheetsRes).map(allowlistDynoSheet),
+        refreshRequests: owned(refreshRes).map(allowlistRefreshRequest),
+        platforms: platforms.map(allowlistPlatform),
+        specSheets: specSheets.map(allowlistSpecSheet),
       },
     });
   } catch (error) {
     console.error("[getPortalData] error:", error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: "Unable to load portal data" }, { status: 500 });
   }
 }

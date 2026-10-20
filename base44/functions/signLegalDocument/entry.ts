@@ -3,18 +3,35 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { publicAccessToken, customerSignature } = await req.json();
+    const { publicAccessToken, documentId, customerSignature } = await req.json();
 
-    if (!publicAccessToken || !customerSignature) {
-      return Response.json({ error: 'publicAccessToken and customerSignature are required' }, { status: 400 });
+    if ((!publicAccessToken && !documentId) || typeof customerSignature !== 'string' ||
+        !customerSignature.startsWith('data:image/png;base64,') || customerSignature.length > 2000000) {
+      return Response.json({ error: 'Document and a valid PNG signature are required' }, { status: 400 });
     }
 
-    const docs = await base44.asServiceRole.entities.LegalDocument.filter({ public_access_token: publicAccessToken });
-    if (!docs || docs.length === 0) {
+    // Portal signing uses the authenticated ownership link, never a token
+    // exposed in the dashboard response. Existing emailed links stay supported.
+    let customerId = null;
+    if (documentId) {
+      const user = await base44.auth.me().catch(() => null);
+      if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
+      customerId = user.data?.customer_id || user.customer_id;
+      if (!customerId || user.role === 'admin') return Response.json({ error: 'Customer account required' }, { status: 403 });
+    }
+    const result = await base44.asServiceRole.entities.LegalDocument.filter(
+      documentId ? { id: documentId, customer_id: customerId } : { public_access_token: publicAccessToken }
+    );
+    const docs = result.items || result || [];
+    if (docs.length === 0) {
       return Response.json({ error: 'Document not found' }, { status: 404 });
     }
 
     const doc = docs[0];
+    if (documentId && doc.customer_id !== customerId) return Response.json({ error: 'Document not found' }, { status: 404 });
+    if (doc.status === 'pending_admin' || (doc.document_type === 'contract_engine' && !doc.admin_signature)) {
+      return Response.json({ error: 'Awaiting shop signature' }, { status: 409 });
+    }
     if (doc.status === 'fully_signed') {
       return Response.json({ error: 'Document already signed' }, { status: 400 });
     }
