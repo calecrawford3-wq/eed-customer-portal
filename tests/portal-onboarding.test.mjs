@@ -91,11 +91,12 @@ test('profile completion hides redundant dashboard card but preserves profile an
 });
 test('public billing viewers and comparison stay on the Elite portal domain', () => {
   const app = readFileSync('src/App.jsx', 'utf8');
-  for (const route of ['/estimate/:token','/invoice/:token','/comparison/:token','/additional-work/:token']) assert.ok(app.includes(route), route);
+  for (const route of ['/estimate/:token','/invoice/:token','/comparison/:token','/additional-work/:token','/legal/:token']) assert.ok(app.includes(route), route);
   const estimate = readFileSync('src/pages/EstimateDetail.jsx','utf8');
   const invoice = readFileSync('src/pages/InvoiceDetail.jsx','utf8');
   assert.match(estimate, /https:\/\/portal\.eedpower\.com\/estimate\//);
   assert.match(invoice, /https:\/\/portal\.eedpower\.com\/invoice\//);
+  assert.doesNotMatch(estimate, /generateStripeCheckoutUrl/);
   const sync = readFileSync('base44/shared/syncEstimateSnapshot.ts','utf8');
   assert.doesNotMatch(sync, /fetch\(|Deno\.env\.get\('SYNC_SECRET'\)|billing\.eedpower/);
   const invSync = readFileSync('base44/functions/syncInvoiceSnapshot/entry.ts','utf8');
