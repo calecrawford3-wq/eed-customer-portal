@@ -11,15 +11,19 @@ Deno.serve(async req => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Only staff can send portal invitations' }, { status: 403 });
     const payload = await req.json();
-    const email = String(payload.customer_email || payload.customerEmail || '').trim();
-    if (!email) return Response.json({ error: 'Customer email is required' }, { status: 400 });
-    const customerResult = await base44.asServiceRole.entities.Customer.filter({ email });
+    if (!payload.customerId || typeof payload.customerId !== 'string') return Response.json({ error: 'Select a customer record' }, { status: 400 });
+    const byId = await base44.asServiceRole.entities.Customer.filter({ id: payload.customerId });
+    const customer = (byId.items || byId || [])[0];
+    if (!customer) return Response.json({ error: 'Customer not found' }, { status: 404 });
+    const email = String(customer.email || '').trim().toLowerCase();
+    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return Response.json({ error: 'Save a valid customer email before inviting' }, { status: 400 });
+    const customerResult = await base44.asServiceRole.entities.Customer.filter({ email: customer.email });
     const matches = customerResult.items || customerResult || [];
-    if (matches.length !== 1) return Response.json({ error: matches.length ? 'Multiple customers use this email. Resolve the customer link before inviting.' : 'Save this email on the customer record before inviting.' }, { status: 409 });
-    const customer = matches[0];
+    if (matches.length !== 1 || matches[0].id !== customer.id) return Response.json({ error: 'This email is shared by multiple customer records. Resolve the customer link before inviting.' }, { status: 409 });
+    if (payload.customerEmail && String(payload.customerEmail).trim().toLowerCase() !== email) return Response.json({ error: 'Customer email changed. Refresh the customer record.' }, { status: 409 });
     const name = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || 'Valued Customer';
     try {
-      await base44.users.inviteUser(email, 'user');
+      await base44.asServiceRole.users.inviteUser(email, 'user');
     } catch (error) {
       const status = error.status || error.response?.status;
       if (status !== 409 && !(status === 400 && /already (exists|invited|registered)/i.test(error.message || ''))) {
@@ -43,7 +47,9 @@ Deno.serve(async req => {
       to: email, subject: `Your Customer Portal Access — ${company}`, text, html, usePOSmtp: false,
     });
     if (result?.data?.error) return Response.json({ error: 'The invitation email could not be delivered. Please retry.' }, { status: 502 });
-    return Response.json({ message: 'Portal invitation sent successfully.' });
+    const now = new Date().toISOString();
+    await base44.asServiceRole.entities.Customer.update(customer.id, { portal_invite_sent: true, portal_invite_sent_at: now });
+    return Response.json({ success: true, customer_id: customer.id, portal_invite_sent_at: now, message: 'Portal invitation sent successfully.' });
   } catch (error) {
     console.error('[sendPortalInvite]', error.message);
     return Response.json({ error: 'Unable to send the portal invitation. Please try again.' }, { status: 500 });
