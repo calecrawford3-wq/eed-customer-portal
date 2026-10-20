@@ -3,6 +3,7 @@ import {base44} from '@/api/base44Client';
 import {useAuth} from '@/lib/AuthContext';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
+import {StaffSignOut} from '@/components/hr/StaffSignOut';
 const dollars=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
 const call=async payload=>{const r=await base44.functions.invoke('ownerEarnings',payload);if(r.data?.error)throw Error(r.data.error);return r.data};
 export default function OwnerEarnings(){
@@ -12,7 +13,7 @@ export default function OwnerEarnings(){
  const load=async()=>{try{setData(await call({action:'dashboard'}));setError('')}catch(e){setError(e.response?.data?.error||e.message)}};
  useEffect(()=>{load()},[]);
  const save=async e=>{e.preventDefault();setBusy(true);setError('');try{await call({action:'record',...entry});setEntry({...entry,amount:'',notes:'',reference:''});await load()}catch(e){setError(e.response?.data?.error||e.message)}finally{setBusy(false)}};
- return <main className="mx-auto max-w-5xl space-y-6 p-4 md:p-8"><header><h1 className="text-3xl font-bold">Owner Earnings</h1><p className="text-slate-600">Private owner distributions and actual payments. Not an automatic calculation from business profit.</p></header>
+ return <main className="mx-auto max-w-5xl space-y-6 p-4 md:p-8"><header><div className="flex justify-end mb-3"><StaffSignOut /></div><h1 className="text-3xl font-bold">Owner Earnings</h1><p className="text-slate-600">Private owner distributions and actual payments. Not an automatic calculation from business profit.</p></header>
  {error&&<p role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
  {!data&&!error&&<p>Loading private owner records…</p>}
  {data&&<><section className="rounded-xl border bg-white p-5"><h2 className="text-xl font-semibold">{data.owner.name}</h2><p className="text-sm text-slate-500">Recorded ownership: {data.owner.ownership_percentage==null?'Not set':data.owner.ownership_percentage+'%'}</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{[['Total received',data.total_received],['Distributions declared',data.total_declared],['Declared less paid',data.total_declared-data.total_received]].map(([name,value])=><div key={name} className="rounded-lg bg-slate-50 p-4"><p className="text-sm text-slate-600">{name}</p><p className="text-2xl font-bold">{dollars(value)}</p></div>)}</div><p className="mt-3 text-xs text-slate-500">Declared less paid is a bookkeeping comparison, not a legal determination of money owed. Entries are manually recorded and are not synced with bank or accounting transactions.</p></section>
