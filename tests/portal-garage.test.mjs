@@ -79,3 +79,17 @@ test('unlisted sensitive fields are discarded',async()=>{
   assert.equal(d.customer_id,'c1');
   assert.equal(d.role,undefined);
 });
+test('primary driver must be an owned selected driver',async()=>{
+ const h=setup();
+ assert.equal((await h.call({kind:'car',action:'create',values:{name:'Micro',primary_driver_id:'d2',driver_ids:['d1']}})).status,403);
+ assert.equal((await h.call({kind:'car',action:'create',values:{name:'Micro',primary_driver_id:'d1',driver_ids:[]}})).status,400);
+ assert.equal((await h.call({kind:'car',action:'create',values:{name:'Micro',primary_driver_id:'d1',driver_ids:['d1']}})).status,200);
+});
+test('engine reassignment closes old history and preserves engine ownership',async()=>{
+ const h=setup();
+ const created=await h.call({kind:'car',action:'create',values:{name:'Micro',engine_id:'e1'}});
+ const updated=await h.call({kind:'car',action:'update',id:created.data.id,values:{engine_id:''}});
+ assert.equal(updated.status,200);
+ assert.ok(h.db.PortalCarEngineHistory[0].ended_at);
+ assert.equal(h.db.CustomerEngine[0].customer_id,'c1');
+});

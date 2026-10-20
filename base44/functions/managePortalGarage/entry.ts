@@ -89,11 +89,12 @@ export default async function(req: Request) {
       const others = items(await entity.filter({customer_id:customerId},{limit:200}));
       if (others.some((d:any)=>d.id!==existing?.id && !d.archived && clean(d.name).toLowerCase()===clean(name).toLowerCase())) return error('A driver with this name already exists',409);
     }
+    const priorEngineId = existing?.engine_id || '';
     const updated = action==='create'
       ? await entity.create({...patch,customer_id:customerId,archived:false})
       : await entity.update(existing.id,patch);
     // Engine associations are historical references only. Never modify CustomerEngine or engine ownership.
-    if (kind==='car' && Object.prototype.hasOwnProperty.call(patch,'engine_id') && (existing?.engine_id || '')!==patch.engine_id) {
+    if (kind==='car' && Object.prototype.hasOwnProperty.call(patch,'engine_id') && priorEngineId!==patch.engine_id) {
       const history = api.asServiceRole.entities.PortalCarEngineHistory;
       const now = new Date().toISOString();
       const active = items(await history.filter({customer_id:customerId,car_id:updated.id},{limit:100})).filter((h:any)=>!h.ended_at);
