@@ -254,7 +254,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       // Sync billing to the invoice (adds billable tasks, links estimate/invoice-sourced).
       try {
         await base44.functions.invoke("syncMachiningTaskBilling", { job_id: job.id });
-      } catch (e) { /* best-effort sync; tasks still saved */ }
+      } catch (e) { toast.error("Tasks saved, but invoice sync failed. Review the invoice before billing."); }
       qc.invalidateQueries({ queryKey: ["machining-tasks", job.id] });
       qc.invalidateQueries({ queryKey: ["job", job.id] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
@@ -317,7 +317,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       // Re-sync billing after an edit (price/billable changes flow to the invoice).
       try {
         await base44.functions.invoke("syncMachiningTaskBilling", { job_id: job.id });
-      } catch (e) { /* best-effort */ }
+      } catch (e) { toast.error("Task updated, but invoice sync failed. Review the invoice before billing."); }
       qc.invalidateQueries({ queryKey: ["machining-tasks", job.id] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Task updated");
@@ -331,6 +331,13 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   };
 
   const deleteTask = async (taskId) => {
+    const task = existingTasks.find(t => t.id === taskId);
+    if (!task) return;
+    if (task.status === "complete" || ["billed", "linked"].includes(task.billing_status)) {
+      toast.error("Completed or invoice-linked tasks cannot be deleted. Preserve the audit trail and correct the billing record instead.");
+      return;
+    }
+    if (!window.confirm("Delete this uncompleted, unbilled machining task?")) return;
     try {
       await base44.entities.MachiningTask.delete(taskId);
       try {
