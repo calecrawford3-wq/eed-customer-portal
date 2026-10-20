@@ -5,15 +5,15 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { email, customerName } = await req.json();
-
-    if (!email) {
-      return Response.json({ error: 'Email is required' }, { status: 400 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Admin required' }, { status: 403 });
+    const { customerId } = await req.json();
+    if (!customerId || typeof customerId !== 'string') return Response.json({ error: 'Customer ID required' }, { status: 400 });
+    const customers = await base44.asServiceRole.entities.Customer.filter({ id: customerId });
+    const customer = (customers.items || customers || [])[0];
+    if (!customer?.email) return Response.json({ error: 'Customer email required' }, { status: 400 });
+    const email = customer.email;
+    const customerName = [customer.first_name, customer.last_name].filter(Boolean).join(' ');
 
     const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
     const settings = settingsList[0];
