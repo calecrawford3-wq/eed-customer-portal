@@ -508,6 +508,8 @@ export default function EstimateViewer({ buildVersion }) {
                 </div>
               )}
 
+              {/* Required legal agreements are now served from this portal. */}
+              {data.legal_document?.public_access_token && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-3 text-sm"><p className="font-semibold">Required agreement</p><p className="mt-1">{data.legal_document.status === 'fully_signed' ? 'Signed' : 'Please review and sign before payment.'}</p><a className="mt-2 inline-block font-semibold text-red-700 underline" href={'/legal/'+encodeURIComponent(data.legal_document.public_access_token)}>View agreement</a></div>}
               {/* Action Buttons */}
               <div className="flex gap-3">
                 {data.estimate?.status === "sent" && (
