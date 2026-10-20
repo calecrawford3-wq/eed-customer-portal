@@ -84,7 +84,7 @@ export default async function(req) {
             values.ownership_percentage=null;
           } else {
             const pct=Number(values.ownership_percentage);
-            if(!Number.isFinite(pct)||pct<0||pct>100||!/^\\d+(\\.\\d{1,4})?$/.test(String(values.ownership_percentage))) return fail('Ownership percentage must be between 0 and 100, with up to four decimal places');
+            if(!Number.isFinite(pct)||pct<0||pct>100||!/^\d+(\.\d{1,4})?$/.test(String(values.ownership_percentage))) return fail('Ownership percentage must be between 0 and 100, with up to four decimal places');
             values.ownership_percentage=pct;
           }
         }
@@ -94,7 +94,7 @@ export default async function(req) {
           const currentPct=Object.prototype.hasOwnProperty.call(values,'ownership_percentage')?Number(values.ownership_percentage||0):Number(prior?.ownership_percentage||0);
           if(otherTotal+currentPct>100.0000001) return fail('Combined ownership percentages cannot exceed 100%',409);
         }
-        if(values.access_level==='owner' && values.worker_type!=='owner') return fail('Owner access level requires owner classification');
+        if(values.access_level==='owner' && resultingType!=='owner') return fail('Owner access level requires owner classification');
         if(values.worker_type==='owner' && action==='update' && body.id) {
           const existing=await workers.get(body.id);
           if(existing?.worker_type!=='owner' && values.worker_type==='owner') return fail('Create a separate owner profile; do not convert employees to owners',409);
