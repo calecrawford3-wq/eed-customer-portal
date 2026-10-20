@@ -21,7 +21,7 @@ export default async function (req) {
     if (!build) return Response.json({ error: 'Build not found' }, { status: 404 });
 
     if (user.role !== 'admin') {
-      const cid = user.data?.customer_id;
+      const cid = user.customer_id || user.data?.customer_id;
       if (!cid || build.customer_id !== cid) {
         return Response.json({ error: 'Access denied' }, { status: 403 });
       }
