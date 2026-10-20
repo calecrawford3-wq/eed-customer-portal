@@ -92,13 +92,22 @@ export default async function (req) {
       });
     const existing = (existingRes.items || existingRes || [])[0];
 
+    // Respect customer preferences while retaining legacy behavior for accounts
+    // that have never configured a notification category.
+    const preferenceField = {
+      estimate_ready: 'notification_estimates',
+      additional_work_ready: 'notification_estimates',
+      stage_change: 'notification_build_updates',
+      completion: 'notification_build_updates',
+    }[event_type];
+    const categoryAllowed = customer[preferenceField] !== false;
     // Determine which channels to attempt
     const wantEmail =
-      channels.includes("email") && !!customer.email;
+      categoryAllowed && channels.includes("email") && !!customer.email;
     const wantSms =
-      channels.includes("sms") &&
+      categoryAllowed && channels.includes("sms") &&
       !!customer.phone &&
-      !customer.sms_opt_out;
+      !customer.sms_opt_out && customer.sms_consent === true;
 
     // If we have an existing record, check which channels still need sending
     let emailStatus = wantEmail ? "pending" : "skipped";
