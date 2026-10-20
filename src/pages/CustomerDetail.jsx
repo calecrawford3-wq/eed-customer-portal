@@ -30,6 +30,7 @@ import CustomerCommunicationsTab from "@/components/customer/CustomerCommunicati
 import CustomerContactsCard from "@/components/customer/CustomerContactsCard";
 import EmailsSection from "@/components/emails/EmailsSection";
 import PortalAccessBadge from "@/components/portal/PortalAccessBadge";
+import RacingGarage from "@/components/portal/RacingGarage";
 import { toast } from "sonner";
 
 export default function CustomerDetail() {
@@ -40,8 +41,6 @@ export default function CustomerDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [assignBuildOpen, setAssignBuildOpen] = useState(false);
-  const [passwordOpen, setPasswordOpen] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
   const [dynoBuildId, setDynoBuildId] = useState(null);
 
   const { data: customerArr = [] } = useQuery({
@@ -189,9 +188,6 @@ export default function CustomerDetail() {
         <Button variant="outline" size="sm" onClick={() => window.open('/CustomerPortal', '_blank')}>
           <Monitor className="w-4 h-4 mr-1" /> Portal
         </Button>
-        <Button variant="outline" size="sm" onClick={() => { setTempPassword(customer.portal_temp_password || ""); setPasswordOpen(true); }}>
-          <KeyRound className="w-4 h-4 mr-1" /> Password
-        </Button>
         <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...customer }); setEditOpen(true); }}>
           <Edit className="w-4 h-4 mr-1" /> Edit
         </Button>
@@ -288,6 +284,8 @@ export default function CustomerDetail() {
           </CardContent>
         </Card>
 
+        <Card className="border-0 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">Racing profile</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Role: {customer.racing_role || 'Not supplied'}</p><p>Classes: {customer.racing_classes || 'Not supplied'}</p><p>Primary track: {customer.racing_primary_track || 'Not supplied'}</p><p>Other tracks: {customer.racing_tracks || 'Not supplied'}</p><p>Racing notes: {customer.racing_notes_public || 'None'}</p><p>Contact confirmed: {customer.onboarding_contact_confirmed ? 'Yes' : 'No'}</p><p>SMS consent: {customer.sms_consent ? 'Yes' : 'No'}</p></CardContent></Card>
+        <RacingGarage customerId={id} />
         <CustomerContactsCard customerId={id} />
         </div>
 
@@ -499,70 +497,7 @@ export default function CustomerDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Portal Password Dialog */}
-      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Portal Password</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-slate-500">
-              Set a temporary password for <span className="font-medium text-slate-700">{customer.first_name} {customer.last_name}</span> to access the customer portal. Share this with the customer directly.
-            </p>
-            {customer.portal_temp_password && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-700">
-                Current password: <span className="font-mono font-bold">{customer.portal_temp_password}</span>
-              </div>
-            )}
-            <div>
-              <Label>New Temporary Password</Label>
-              <Input
-                className="mt-1 font-mono"
-                value={tempPassword}
-                onChange={e => setTempPassword(e.target.value)}
-                placeholder="e.g. EliteAccess2024"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-slate-500"
-                onClick={() => {
-                  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
-                  setTempPassword(random);
-                }}
-              >
-                Generate
-              </Button>
-              {customer.portal_temp_password && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-500 border-red-200 hover:bg-red-50"
-                  onClick={() => {
-                    updateMutation.mutate({ portal_temp_password: "" });
-                    setPasswordOpen(false);
-                  }}
-                >
-                  Clear Password
-                </Button>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordOpen(false)}>Cancel</Button>
-            <Button
-              className="bg-[#e20404] hover:bg-[#c00303] text-white"
-              disabled={!tempPassword || updateMutation.isPending}
-              onClick={() => {
-                updateMutation.mutate({ portal_temp_password: tempPassword });
-                setPasswordOpen(false);
-              }}
-            >
-              Save Password
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Assign Build Dialog */}
       <Dialog open={assignBuildOpen} onOpenChange={setAssignBuildOpen}>
