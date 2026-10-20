@@ -21,7 +21,7 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
 
     // Ownership anchor: user.data.customer_id (set server-side, field-locked).
-    const cid = user.data?.customer_id;
+    const cid = user.customer_id || user.data?.customer_id;
     if (!cid) return Response.json({ error: 'Account not linked to a customer record' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
