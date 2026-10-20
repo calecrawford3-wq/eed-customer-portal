@@ -66,6 +66,8 @@ test('activation verifies the email before logging in and preserves the portal d
   await f.submit();
   assert.equal(calls.length, 1);
   assert.equal(f.navigation.length, 0);
+  assert(f.text().includes('You can resend your code in 1:00'));
+  assert(!f.text().includes('id\\\":\\\"portal-password'));
   f.field('portal-code', '123456');
   await f.submit();
   assert.deepEqual(calls.map(c => c[0]), ['register', 'verify', 'login']);
@@ -78,9 +80,9 @@ test('failed verification never logs in', async () => {
     verifyOtp: async () => { throw new Error('Expired code'); },
     loginViaEmailPassword: async () => { logins++; },
   });
-  await f.button('Already have a verification code?');
   f.field('portal-email', 'test@example.com');
   f.field('portal-password', 'example-password');
+  await f.button('Already have a verification code?');
   f.field('portal-code', 'invalid');
   await f.submit();
   assert.equal(logins, 0);
@@ -93,9 +95,9 @@ test('verified email with failed auto-login offers sign-in rather than repeating
     verifyOtp: async () => ({}),
     loginViaEmailPassword: async () => { throw new Error('Try sign-in'); },
   });
-  await f.button('Already have a verification code?');
   f.field('portal-email', 'test@example.com');
   f.field('portal-password', 'example-password');
+  await f.button('Already have a verification code?');
   f.field('portal-code', '123456');
   await f.submit();
   assert(f.text().includes('Your email is verified'));
