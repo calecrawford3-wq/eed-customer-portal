@@ -108,6 +108,26 @@ test('unpaid completion stays pending; asynchronous paid success records once', 
   assert.equal(state.rows.Invoice[0].amount_paid, 300);
   assert.equal(state.rows.Invoice[0].balance_due, 675);
 });
+test('provider fee is separate from invoice principal and recorded once', async () => {
+  const { state, payment, deliver } = setup();
+  const id = payment('cs_test_fee', 'invoice', 30000);
+  state.sessions[id].metadata.fee_cents = '250';
+  state.sessions[id].metadata.payment_method = 'us_bank_account';
+  state.sessions[id].amount_total = 30250;
+  assert.equal((await deliver(id)).status, 200);
+  assert.equal((await deliver(id)).body.duplicate, true);
+  assert.equal(state.rows.Invoice[0].amount_paid, 300);
+  assert.equal(state.rows.Invoice[0].payments[0].processing_fee_amount, 2.5);
+  assert.equal(state.rows.Invoice[0].payments[0].gross_charge_amount, 302.5);
+  assert.equal(state.rows.Invoice[0].payments[0].method, 'us_bank_account');
+});
+test('fee mismatch never credits the invoice', async () => {
+  const { state, payment, deliver } = setup();
+  const id = payment('cs_test_bad_fee', 'invoice', 30000);
+  state.sessions[id].metadata.fee_cents = '250';
+  assert.equal((await deliver(id)).status, 409);
+  assert.equal(state.rows.Invoice[0].amount_paid, 0);
+});
 test('different event IDs and concurrent retries of one session do not double credit', async () => {
   const { state, payment, deliver } = setup(); const id = payment();
   const result = await Promise.all(Array.from({ length: 5 }, () => deliver(id)));
