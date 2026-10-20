@@ -79,7 +79,8 @@ export default async function(req: Request) {
       if (type !== 'additional_work' || !['approved', 'declined'].includes(body.response)) return Response.json({ error: 'Choose approve or decline' }, { status: 400 });
       if (doc.status !== 'pending' || doc.processed_at || ['approved', 'declined'].includes(doc.customer_response)) return Response.json({ error: 'This request already has a response or was withdrawn. Reload to see its current status.' }, { status: 409 });
       const note = typeof body.note === 'string' ? body.note.trim().slice(0, 2000) : '';
-      await entity.update(id, { customer_response: body.response, customer_response_at: new Date().toISOString(), customer_note: note });
+      const updated = await entity.updateMany({ id, customer_id: cid, status: 'pending', processed_at: { $exists: false }, $or: [{ customer_response: 'pending' }, { customer_response: { $exists: false } }, { customer_response: null }] }, { $set: { customer_response: body.response, customer_response_at: new Date().toISOString(), customer_note: note, customer_approved_version: body.response === 'approved' ? Number(doc.version || 1) : 0 } });
+      if (updated?.updated !== 1) return Response.json({ error: 'Approval changed. Reload and review the latest request.' }, { status: 409 });
       let applied = false;
       if (body.response === 'approved') {
         const settings = portalItems(await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' }))[0];
