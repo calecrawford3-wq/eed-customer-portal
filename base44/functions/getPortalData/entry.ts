@@ -4,6 +4,7 @@ import {
   allowlistBuild, allowlistEngine, allowlistCredit, allowlistLegalDoc,
   allowlistDynoSheet, allowlistRefreshRequest, allowlistPlatform, allowlistSpecSheet,
 } from "../../shared/portalAllowlists.ts";
+import { portalCustomerId } from "../../shared/portalDocument.ts";
 
 /**
  * Returns all customer-safe portal data for the authenticated user.
@@ -45,13 +46,8 @@ export default async function(req) {
     if (isAdmin) {
       targetCustomerId = body.customer_id;
     } else {
-      targetCustomerId = user.customer_id || user.data?.customer_id || null;
-      if (!targetCustomerId) {
-        // Session claims can lag behind a newly linked stored profile.
-        const result = await base44.asServiceRole.entities.User.filter({ id: user.id });
-        const stored = (result.items || result || [])[0];
-        targetCustomerId = stored?.customer_id || stored?.data?.customer_id || null;
-      }
+      // Always use the durable stored ownership link, not potentially stale session claims.
+      targetCustomerId = await portalCustomerId(base44, user) || null;
     }
 
     if (!targetCustomerId) {
@@ -134,7 +130,7 @@ export default async function(req) {
         platforms: platforms.map(allowlistPlatform),
         specSheets: specSheets.map(allowlistSpecSheet),
       },
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error("[getPortalData] error:", error.message);
     return Response.json({ error: "Unable to load portal data" }, { status: 500 });
