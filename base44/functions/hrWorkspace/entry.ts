@@ -39,7 +39,7 @@ export default async function(req) {
         return Response.json({admin:true,...result});
       }
       if(!mine) return fail('No employee profile linked',404);
-      const result={worker:clean(mine,['id','first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pto_hours_available'])};
+      const result={worker:clean(mine,['id','first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pto_hours_available','allowed_pages'])};
       for(const [key,name] of Object.entries(entities)) {
         if(key==='workers') continue;
         const data=rows(await api.asServiceRole.entities[name].filter({worker_id:mine.id}));
