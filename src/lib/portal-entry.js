@@ -1,8 +1,8 @@
-// Login return links may only lead into the customer portal on this origin.
+// Login return links may lead only to explicitly approved portal routes on this origin.
 export function portalDestination(value, origin) {
   try {
     const url = new URL(value || '/CustomerPortal', origin);
-    if (url.origin !== origin || url.pathname !== '/CustomerPortal') return '/CustomerPortal';
+    if (url.origin !== origin || !['/CustomerPortal','/StaffWorkspace','/EmployeePortal'].includes(url.pathname)) return '/CustomerPortal';
     return url.pathname + url.search;
   } catch {
     return '/CustomerPortal';
