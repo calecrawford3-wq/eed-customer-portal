@@ -27,7 +27,7 @@ export default async function (req) {
     if (origin.protocol !== 'https:' || origin.username || origin.password) throw new Error('Invalid portal origin');
     return Response.json({ active: available, url: available ? origin.origin + '/guest/' + body.document_type + '/' + encodeURIComponent(token) : null,
       expires_at: available ? new Date(Number(token.split('.')[1])).toISOString() : null,
-      checkout_enabled: Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true' });
+      checkout_enabled: Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true' && Deno.env.get('PORTAL_PAYMENTS_ENABLED') === 'true' && Deno.env.get('PORTAL_STRIPE_RECORDING_READY') === 'true' && !!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET') });
   } catch {
     return Response.json({ error: 'Unable to manage payment link' }, { status: 500 });
   }

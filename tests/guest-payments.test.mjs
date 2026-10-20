@@ -29,7 +29,7 @@ function setup() {
     const exports = {}; cache.set(file, exports);
     const require = name => name.startsWith('npm:@base44/sdk') ? { createClientFromRequest: () => client } :
       name.startsWith('npm:stripe') ? { default: Stripe } : load(path.resolve(path.dirname(file), name));
-    const Deno = { env: { get: key => key === 'GUEST_CHECKOUT_ENABLED' ? String(state.enabled) : key === 'PORTAL_BASE_URL' ? 'https://portal.eedpower.com' : 'mock' } };
+    const Deno = { env: { get: key => ['GUEST_CHECKOUT_ENABLED', 'PORTAL_PAYMENTS_ENABLED', 'PORTAL_STRIPE_RECORDING_READY'].includes(key) ? String(state.enabled) : key === 'PORTAL_BASE_URL' ? 'https://portal.eedpower.com' : key === 'PORTAL_STRIPE_SECRET_KEY' ? 'sk_test_mock' : key === 'PORTAL_STRIPE_TEST_CUSTOMER_ID' ? 'A' : 'mock' } };
     new Function('require', 'exports', 'Deno', ts.transpile(readFileSync(file, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(require, exports, Deno);
     return exports;
   }
@@ -39,7 +39,7 @@ function setup() {
   }
   const manage = (extra = {}) => call('generateGuestPaymentToken', { document_type: 'estimate', document_id: 'estA', ...extra });
   const read = (t = state.rows.Estimate[0].guest_payment_token) => call('getGuestEstimate', { guestPaymentToken: t });
-  const checkout = extra => call('createGuestCheckoutSession', { guestPaymentToken: state.rows.Estimate[0].guest_payment_token, documentType: 'estimate', ...extra });
+  const checkout = extra => call('createGuestCheckoutSession', { guestPaymentToken: state.rows.Estimate[0].guest_payment_token, documentType: 'estimate', expectedAmount: extra?.amountOption === 'balance' ? 925 : 225, ...extra });
   return { state, token, call, manage, read, checkout };
 }
 

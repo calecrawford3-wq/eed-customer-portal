@@ -77,7 +77,7 @@ export default function CustomerPortal() {
   };
   const closeDocument = () => {
     const params = new URLSearchParams(searchParams);
-    params.delete('document'); params.delete('id');
+    params.delete('document'); params.delete('id'); params.delete('payment'); params.delete('session_id');
     params.set('tab', portalTab);
     setSearchParams(params, { replace: true });
     setPortalDocument(null);

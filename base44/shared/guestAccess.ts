@@ -33,8 +33,8 @@ export async function guestPaymentState(base44: any, doc: any, type: string) {
       (doc.contains_contract_engine && !legal.some(d => ['contract_engine', 'contract'].includes(d.document_type)));
     if (missing || legal.some(d => d.status !== 'fully_signed')) reason = 'The customer must finish the required agreements before payment.';
   }
-  const enabled = Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true';
-  return { ...amounts, checkout_enabled: enabled, can_pay: !reason && enabled,
+  const enabled = Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true' && Deno.env.get('PORTAL_PAYMENTS_ENABLED') === 'true' && Deno.env.get('PORTAL_STRIPE_RECORDING_READY') === 'true' && !!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET');
+  return { ...amounts, payment_eligible: !reason, checkout_enabled: enabled, can_pay: !reason && enabled,
     payment_message: reason || (enabled ? '' : 'Online payment through this link is not available yet. Please contact the shop.'),
     payment_options: reason ? [] : [ ...(amounts.deposit > 0 && amounts.deposit < amounts.balance ? [{ value: 'deposit', label: 'Required deposit', amount: amounts.deposit }] : []),
       { value: 'balance', label: 'Full remaining balance', amount: amounts.balance } ] };

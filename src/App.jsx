@@ -13,6 +13,7 @@ import CustomerPortal from './pages/CustomerPortal';
 import PortalAccess from './pages/PortalAccess';
 import PortalResetPassword from './pages/PortalResetPassword';
 import GuestPayment from './pages/GuestPayment';
+import PaymentMigration from './pages/PaymentMigration';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
 import DebugServiceWorker from './pages/DebugServiceWorker';
@@ -134,6 +135,7 @@ const routes = createRoutesFromElements(
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
       <Route path="Credits" element={<Credits />} />
+      <Route path="PaymentMigration" element={<PaymentMigration />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="RefreshRequests" element={<RefreshRequests />} />
       <Route path="CustomerSuccess" element={<CustomerSuccess />} />

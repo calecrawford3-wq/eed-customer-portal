@@ -2,6 +2,8 @@
   "name": "Estimate",
   "type": "object",
   "properties": {
+    "stripe_conversion_claim": { "type": "string", "description": "Server-owned invoice conversion claim; never automatically expired" },
+    "stripe_conversion_error": { "type": "string", "description": "Staff recovery status for interrupted Stripe invoice preparation" },
     "estimate_number": {
       "type": "string"
     },

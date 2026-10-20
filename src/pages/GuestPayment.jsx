@@ -5,6 +5,7 @@ import { base44Public } from '@/api/base44Client';
 import { DocumentCharges } from '@/components/portal/PortalDocumentDialog';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/money';
+import PortalPaymentReceipt from '@/components/portal/PortalPaymentReceipt';
 
 export default function GuestPayment() {
   const { type, token } = useParams();
@@ -28,7 +29,7 @@ export default function GuestPayment() {
     if (busy || !selected) return;
     setBusy(true); setError('');
     try {
-      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value });
+      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount });
       if (r.data?.error || !r.data?.checkout_url) throw new Error();
       const url = new URL(r.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error();
@@ -46,12 +47,13 @@ export default function GuestPayment() {
           <p className="text-sm text-slate-500">This link gives access to this document only. Approval stays with the customer.</p>
         </section>
         {params.get('payment') === 'success' && <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">You returned from checkout. Payment is confirmed only after the payment provider verifies it. Refresh below to check the balance.</p>}
+        <PortalPaymentReceipt type={type} token={token} onRefresh={refetch} />
         <section className="rounded-xl bg-white p-5 shadow-sm"><DocumentCharges doc={data} /><dl className="mt-5 space-y-2 border-t pt-4">{[['Document total', data.total], ['Payments received', data.amount_paid], ['Credits applied', data.applied_credits], ['Balance remaining', data.balance]].map(([label, amount]) => <div key={label} className="flex flex-wrap justify-between gap-2"><dt>{label}</dt><dd className="font-semibold tabular-nums">{formatMoney(amount)}</dd></div>)}</dl></section>
         <section className="rounded-xl bg-white p-5 shadow-sm space-y-4">
           <h2 className="text-lg font-bold">{data.balance <= 0 || data.status === 'paid' ? 'Payment complete' : 'Choose a payment'}</h2>
           {data.payment_message && <p role="status" className="rounded-lg bg-slate-100 p-3 text-sm">{data.payment_message}</p>}
           {choices.map(c => <label key={c.value} className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="radio" name="amount" value={c.value} checked={selected?.value === c.value} onChange={() => setOption(c.value)} /><span className="min-w-0 flex-1">{c.label}</span><strong className="tabular-nums">{formatMoney(c.amount)}</strong></label>)}
-          {data.can_pay && selected && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(selected.amount)}</Button>}
+          {data.can_pay && selected && !params.get('session_id') && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(selected.amount)}</Button>}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <Button variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => { setOption(''); refetch(); }}>Refresh Payment Status</Button>
           <p className="text-xs text-slate-500">Payments reduce the customer's document balance. Payment does not authorize additional work.</p>

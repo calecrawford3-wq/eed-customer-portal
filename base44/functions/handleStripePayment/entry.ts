@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
     }
 
     const session = event.data.object;
+    if (session.metadata?.source === 'eed_portal_v1') return Response.json({ received: true, ignored: true });
     const metadata = session.metadata || {};
 
     const { public_access_token, estimate_number, estimate_id, customer_name, total } = metadata;

@@ -2,6 +2,7 @@
   "name": "Invoice",
   "type": "object",
   "properties": {
+    "contains_contract_engine": { "type": "boolean", "default": false },
     "invoice_number": {
       "type": "string"
     },
@@ -304,6 +305,8 @@
       "items": {
         "type": "object",
         "properties": {
+          "stripe_session_id": { "type": "string" },
+          "stripe_payment_intent": { "type": "string" },
           "amount": {
             "type": "number"
           },

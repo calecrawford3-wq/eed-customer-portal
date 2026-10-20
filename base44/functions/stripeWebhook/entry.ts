@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
     // Handle payment success
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
+      // Portal payments have one dedicated, verified recorder. Never credit them here.
+      if (session.metadata?.source === 'eed_portal_v1') return Response.json({ received: true, ignored: true });
       const base44 = createClientFromRequest(req);
 
       const documentType = session.metadata?.document_type;

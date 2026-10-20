@@ -3,6 +3,8 @@ import { portalItems, portalCustomerId, safePortalDocument, portalRevision, port
 import { allowlistLegalDoc, allowlistEngine } from '../../shared/portalAllowlists.ts';
 import { applyApprovedAdditionalWork } from '../../shared/applyAdditionalWork.ts';
 
+import { portalCheckoutEnabled } from '../../shared/portalCheckout.ts';
+
 export default async function(req: Request) {
   try {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -42,6 +44,7 @@ export default async function(req: Request) {
         : type === 'invoice' && doc.combined_parent_id ? portalItems(await base44.asServiceRole.entities.Invoice.filter({ customer_id: cid, id: doc.combined_parent_id })).filter(i => ['sent', 'partial', 'paid', 'overdue'].includes(i.status)) : [];
       const pendingPayments = type === 'additional_work' ? [] : portalItems(await base44.asServiceRole.entities.ManualPayment.filter({ customer_id: cid, document_type: type, [type === 'estimate' ? 'estimate_id' : 'invoice_id']: id, status: 'pending' }));
       return Response.json({ document: safePortalDocument(doc, type), revision, amounts, engine, readOnly: admin,
+        portalCheckoutEnabled: portalCheckoutEnabled(),
         legalDocuments: legal.filter(d => ['pending_customer', 'fully_signed'].includes(d.status)).map(allowlistLegalDoc),
         awaitingShopAgreement: !!missingLegal || legal.some(d => d.status === 'pending_admin'),
         requiresSignature: unsigned || !!missingLegal, expired,

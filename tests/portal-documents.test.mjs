@@ -47,7 +47,7 @@ function setup() {
       if (name.endsWith('applyAdditionalWork.ts')) return { applyApprovedAdditionalWork: async () => { state.applied++; return { ok: true }; } };
       return load(path.resolve(path.dirname(file), name));
     };
-    new Function('require', 'exports', ts.transpile(readFileSync(file, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(require, exports);
+    new Function('require', 'exports', 'Deno', ts.transpile(readFileSync(file, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(require, exports, { env: { get: () => undefined } });
     return exports;
   }
   const handler = load(path.join(root, 'base44/functions/portalDocument/entry.ts')).default;

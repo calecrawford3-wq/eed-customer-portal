@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import PortalLegalDocument from '@/components/legal/PortalLegalDocument';
 import { formatMoney } from '@/lib/money';
 import GuestPaymentShare from './GuestPaymentShare';
+import PortalPaymentReceipt from './PortalPaymentReceipt';
 
 export default function PortalDocumentDialog({ selection, customerId, onClose, onOpen, onPrintable }) {
   const qc = useQueryClient();
@@ -66,10 +67,21 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
   const optional = isEstimate && (doc?.addons || []).some(a => a.selection_state === 'optional');
   const pendingApproval = isEstimate && doc?.status === 'sent';
   const hasInvoice = !!data?.relatedInvoices?.length;
-  const canPay = !!doc && !data?.readOnly && !data?.expired && !pendingApproval && !data.requiresSignature && !hasInvoice &&
+  const canPay = !!doc && !new URLSearchParams(window.location.search).get('session_id') && !data?.readOnly && !data?.expired && !pendingApproval && !data.requiresSignature && !hasInvoice &&
     !['void', 'paid', 'declined', 'expired'].includes(doc.status) && data.amounts.balance > 0;
   const chosenOption = data?.amounts.deposit > 0 && amountOption === 'deposit' ? 'deposit' : 'balance';
   const chosenAmount = chosenOption === 'deposit' ? data?.amounts.deposit : data?.amounts.balance;
+  async function payInPortal() {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount });
+      if (result.data?.error || !result.data?.checkout_url) throw new Error(result.data?.error || 'Unable to open checkout.');
+      const url = new URL(result.data.checkout_url);
+      if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Payment link could not be verified.');
+      window.location.assign(url.href);
+    } catch (err) { setError(err.response?.data?.error || err.message || 'Unable to start payment. Refresh and try again.'); setBusy(false); }
+  }
 
   return (
     <Dialog open={!!selection} onOpenChange={open => { if (!open && !busy) onClose(); }}>
@@ -100,6 +112,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {doc.is_legacy && doc.legacy_pdf_url && <a href={doc.legacy_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg border px-4 py-3 text-sm font-medium">Open original invoice PDF</a>}
             {!isEstimate && !doc.is_legacy && <Button variant="outline" className="min-h-11" onClick={() => onPrintable(doc)}>Open Printable Invoice</Button>}
             <DocumentCharges doc={doc} />
+            <PortalPaymentReceipt type={selection.type} id={selection.id} onRefresh={refresh} />
             {['estimate', 'invoice'].includes(selection.type) && !['void', 'declined', 'expired'].includes(doc.status) && <GuestPaymentShare type={selection.type} id={selection.id} />}
             <dl className="space-y-2 text-sm border-t pt-4">
               <Total label="Subtotal" value={doc.subtotal} />
@@ -125,7 +138,12 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {hasInvoice && <section className="rounded-xl bg-blue-50 p-4 space-y-3"><h3 className="font-semibold">Your invoice is ready</h3><p className="text-sm text-slate-600">Use the invoice for the current balance so the same work is not paid twice.</p>{data.relatedInvoices.map(inv => <Button key={inv.id} className="w-full min-h-11" variant="outline" onClick={() => onOpen('invoice', inv.id)}>Open {inv.invoice_number}</Button>)}</section>}
             {canPay && <section className="rounded-xl border p-4 space-y-3">
               <h3 className="font-semibold">{data.amounts.deposit > 0 ? `Deposit due: ${formatMoney(data.amounts.deposit)}` : `Balance due: ${formatMoney(data.amounts.balance)}`}</h3>
-              {Number(doc.applied_credits) > 0 ? <p className="text-sm text-slate-600">Your balance includes account credits. Arrange online payment with the shop so the adjusted amount is charged correctly, or choose cash/check below.</p> : <><Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={() => act('payment_link')}>Continue to Secure Payment</Button><p className="text-xs text-slate-500">Choose deposit or full balance and review available payment methods and any fees on the secure billing page.</p></>}
+              {data.portalCheckoutEnabled ? <>
+                {data.amounts.deposit > 0 && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'deposit'} onChange={() => setAmountOption('deposit')} />Required deposit {formatMoney(data.amounts.deposit)}</label>}
+                <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'balance'} onChange={() => setAmountOption('balance')} />Full remaining balance {formatMoney(data.amounts.balance)}</label>
+                <Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={payInPortal}>Continue to Pay {formatMoney(chosenAmount)}</Button>
+                <p className="text-xs text-slate-500">Your payment is handled securely by Stripe. Applied account credits are already deducted.</p>
+              </> : Number(doc.applied_credits) > 0 ? <p className="text-sm text-slate-600">Your balance includes account credits. Arrange online payment with the shop so the adjusted amount is charged correctly, or choose cash/check below.</p> : <><Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={() => act('payment_link')}>Continue to Secure Payment</Button><p className="text-xs text-slate-500">Choose deposit or full balance and review available payment methods and any fees on the secure billing page.</p></>}
               <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => setManual(!manual)}>I want to pay by cash or check</Button>
               {manual && <div className="border-t pt-4 space-y-3">
                 <p className="text-sm text-slate-600">Tell the shop how you plan to pay. This does not mark your bill paid.</p>
