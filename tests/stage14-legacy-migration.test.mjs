@@ -39,6 +39,26 @@ test('legacy inventory detects outstanding links, pending approvals, duplicate n
   assert(!safe.includes('private-estimate'));
   assert(!safe.includes('private-additional-work'));
 });
+test('migration exceptions flag customer mismatches, malformed amounts and duplicated access tokens without leaking tokens', () => {
+  const invoices = [
+    { id: 'i1', invoice_number: 'A1', estimate_id: 'e1', customer_id: 'c1', total: 100, amount_paid: 10, balance_due: 90, public_access_token: 'PRIVATE_PUBLIC', guest_payment_token: 'PRIVATE_GUEST' },
+    { id: 'i2', invoice_number: 'A2', customer_id: 'c2', total: 100, amount_paid: 50, balance_due: 60, public_access_token: 'PRIVATE_PUBLIC', guest_payment_token: 'PRIVATE_GUEST' },
+    { id: 'i3', invoice_number: 'A3', customer_id: 'c3', total: 'broken', amount_paid: 0, balance_due: 0 },
+    { id: 'i4', invoice_number: 'A4', customer_id: 'c4', total: -10, amount_paid: 0, balance_due: -10 },
+  ];
+  const result = summarizeLegacyMigration(invoices, [{ id: 'e1', customer_id: 'c9' }], []);
+  assert.equal(result.counts.invoices_with_customer_mismatched_estimates, 1);
+  assert.equal(result.counts.invoices_with_balance_discrepancy, 1);
+  assert.equal(result.counts.invoices_missing_financial_fields, 1);
+  assert.equal(result.counts.invoices_with_negative_financial_values, 1);
+  assert.equal(result.counts.duplicate_public_invoice_tokens, 1);
+  assert.equal(result.counts.duplicate_guest_invoice_tokens, 1);
+  assert(result.exceptions.some(e => e.record_id === 'i1' && e.issues.includes('estimate_customer_mismatch')));
+  assert(result.exceptions.some(e => e.record_id === 'i3' && e.issues.includes('missing_financial_fields')));
+  assert(!JSON.stringify(result).includes('PRIVATE_PUBLIC'));
+  assert(!JSON.stringify(result).includes('PRIVATE_GUEST'));
+  assert.equal(result.redirect_authorized, false);
+});
 test('at-limit scans explicitly report partial inventory', () => {
   const r = summarizeLegacyMigration([{ invoice_number: 'I-1' }], [], [], 1);
   assert.equal(r.potentially_incomplete, true);
