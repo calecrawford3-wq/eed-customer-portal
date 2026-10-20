@@ -1451,7 +1451,6 @@ export default function EstimateDetail() {
     setSending(true);
     try {
       let publicAccessToken = form.public_access_token;
-      let checkoutUrl = null; // Payment sessions are created on demand in the portal.
       if (!publicAccessToken) {
         publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       }
@@ -1459,10 +1458,10 @@ export default function EstimateDetail() {
       const status = form.status === "draft" ? "sent" : form.status;
       await base44.entities.Estimate.update(id, {
         public_access_token: publicAccessToken,
-        ...(checkoutUrl ? { stripe_checkout_url: checkoutUrl } : {}),
+        stripe_checkout_url: null,
         status,
       });
-      setForm(f => ({ ...f, public_access_token: publicAccessToken, ...(checkoutUrl ? { stripe_checkout_url: checkoutUrl } : {}), status }));
+      setForm(f => ({ ...f, public_access_token: publicAccessToken, stripe_checkout_url: null, status }));
       try {
         await base44.functions.invoke("syncEstimateSnapshot", { estimateId: id, publicAccessToken });
       } catch { /* link still usable */ }
