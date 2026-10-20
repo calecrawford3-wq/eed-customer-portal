@@ -50,11 +50,11 @@ export default function PortalAccessBadge({ customer, onUpdated }) {
     }
     setSending(true);
     try {
-      await base44.functions.invoke("sendPortalInvite", {
+      const response = await base44.functions.invoke("sendPortalInvite", {
         customerId: customer.id,
         customerEmail: email,
-        customerName: `${customer.first_name} ${customer.last_name}`,
       });
+      if (response?.data?.error || response?.data?.success !== true) throw new Error(response?.data?.error || 'Invite could not be confirmed');
       toast.success(`Portal invite sent to ${email}`);
       // Mark as invited locally
       if (onUpdated) onUpdated({ ...customer, portal_invite_sent: true, portal_invite_sent_at: new Date().toISOString() });
