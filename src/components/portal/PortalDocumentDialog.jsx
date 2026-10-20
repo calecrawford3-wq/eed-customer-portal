@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,6 +16,8 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [consent, setConsent] = useState(false);
+  const [checkoutAfterApproval, setCheckoutAfterApproval] = useState(false);
+  const checkoutAttempted = useRef(false);
   const [manual, setManual] = useState(false);
   const [method, setMethod] = useState('check');
   const [delivery, setDelivery] = useState('drop_off');
@@ -53,7 +55,8 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
         window.location.assign(url.href);
         return;
       }
-      setNotice(action === 'approve' ? 'Estimate approved. Your next step is below.' : 'Payment intention submitted. Your balance stays unchanged until the shop confirms receipt.');
+      setNotice(action === 'approve' ? 'Estimate approved. Preparing secure checkout…' : 'Payment intention submitted. Your balance stays unchanged until the shop confirms receipt.');
+      if (action === 'approve') setCheckoutAfterApproval(true);
       setConsent(false);
       setManual(false);
       await refresh();
@@ -84,6 +87,21 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
   });
   const selectedQuote = paymentQuote?.methods?.find(m => m.method === paymentMethod);
   const paymentQuoteReady = !!selectedQuote?.enabled && !paymentQuoteLoading && paymentQuote.principalCents === Math.round(Number(chosenAmount) * 100);
+  // A single Approve & Pay click completes approval, refreshes the revision,
+  // obtains a server-verified payment quote, and then opens Stripe checkout.
+  // A redirected public estimate may request the same flow after login.
+  const autoCheckout = checkoutAfterApproval || (selection?.type === 'estimate' && new URLSearchParams(window.location.search).get('payment') === 'checkout');
+  useEffect(() => {
+    if (!autoCheckout || checkoutAttempted.current || busy || !canPay || !paymentQuoteReady || paymentMethod !== 'card') return;
+    checkoutAttempted.current = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'checkout') {
+      params.delete('payment');
+      window.history.replaceState(window.history.state, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+    }
+    payInPortal();
+  }, [autoCheckout, busy, canPay, paymentQuoteReady, paymentMethod, data?.revision]);
+
   async function payInPortal() {
     if (busy || !paymentQuoteReady) return;
     setBusy(true); setError('');
@@ -141,10 +159,10 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {data.expired && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">This estimate has expired. Contact the shop for an updated estimate.</p>}
             {pendingApproval && !data.expired && <section className="rounded-xl border border-red-100 p-4 space-y-3">
               <h3 className="font-semibold">1. Review and approve</h3>
-              <p className="text-sm text-slate-600">Review all charges above. Approval authorizes this estimate and does not record a payment.</p>
+              <p className="text-sm text-slate-600">Review all charges above. Approve & Pay saves your approval and continues to secure Stripe checkout. Your card is not charged until you confirm payment there.</p>
               {optional ? <><p className="text-sm text-slate-600">This estimate has optional items. Review and choose them before confirming approval.</p><Button className="w-full min-h-11" disabled={busy || data.readOnly} onClick={() => act('options_link')}>Review Options & Approve</Button></> : <>
                 <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1 h-4 w-4 shrink-0" /><span>I reviewed and approve the work shown for {formatMoney(doc.total)}.</span></label>
-                <Button className="w-full min-h-11 bg-[#e20404] hover:bg-red-700" disabled={!consent || busy || data.readOnly} onClick={() => act('approve')}>{busy ? 'Saving…' : 'Approve Estimate'}</Button>
+                <Button className="w-full min-h-11 bg-[#e20404] hover:bg-red-700" disabled={!consent || busy || data.readOnly} onClick={() => act('approve')}>{busy ? 'Approving…' : 'Approve & Pay'}</Button>
               </>}
             </section>}
             {(data.legalDocuments.length > 0 || data.awaitingShopAgreement) && <section className="space-y-3"><h3 className="font-semibold">Required agreements</h3>{data.awaitingShopAgreement && <p className="text-sm text-slate-600">The shop is preparing a required agreement. Payment will be available once it is ready and signed.</p>}{data.legalDocuments.map(legal => <PortalLegalDocument key={legal.id} doc={legal} onSigned={refresh} />)}</section>}
