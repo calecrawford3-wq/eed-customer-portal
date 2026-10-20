@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
+import {StaffSignOut} from '@/components/hr/StaffSignOut';
 const request=async body=>{const r=await base44.functions.invoke('hrWorkspace',body);if(r.data?.error)throw Error(r.data.error);return r.data;};
 const money=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
 export default function EmployeePortal(){
@@ -11,7 +12,7 @@ export default function EmployeePortal(){
  const act=async body=>{setBusy(true);setError('');try{await request(body);await load()}catch(e){setError(e.message)}finally{setBusy(false)}};
  const open=data?.time?.find(t=>t.status==='open');
  return <main className="min-h-screen bg-slate-50 p-4 md:p-8"><div className="mx-auto max-w-4xl space-y-6">
- <header><h1 className="text-3xl font-bold">My Employee Portal</h1><p className="text-slate-600">Elite Engine Development · Private employee access</p></header>
+ <header><div className="flex justify-end mb-3"><StaffSignOut /></div><h1 className="text-3xl font-bold">My Employee Portal</h1><p className="text-slate-600">Elite Engine Development · Private employee access</p></header>
  {error&&<p role="alert" className="rounded bg-red-50 p-4 text-red-700">{error}</p>}
  {!data?<p>Loading your employee profile…</p>:<>
  <section className="rounded-xl bg-white p-5 shadow-sm"><h2 className="text-xl font-bold">{data.worker?.first_name} {data.worker?.last_name}</h2><p>{data.worker?.job_title} · {data.worker?.worker_type==='1099'?'Independent contractor':'W-2 employee'}</p><p className="text-sm text-slate-500">{data.worker?.email}</p></section>
