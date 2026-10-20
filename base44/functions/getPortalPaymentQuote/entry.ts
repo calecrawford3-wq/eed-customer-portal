@@ -3,7 +3,7 @@ import { ownedGuestDocument, guestPaymentState } from '../../shared/guestAccess.
 import { guestTokenExpired } from '../../shared/guestFields.ts';
 import { portalItems } from '../../shared/portalDocument.ts';
 import { cents } from '../../shared/stripePayments.ts';
-import { PAYMENT_METHODS, quotePayment } from '../../shared/portalFees.ts';
+import { PAYMENT_METHODS, quotePayment, readPortalFeeSettings } from '../../shared/portalFees.ts';
 
 // Read-only, server-priced quote. Does not create a Stripe session.
 export default async function (req) {
@@ -28,9 +28,10 @@ export default async function (req) {
     const option = state.payment_options.find(o => o.value === body.amountOption);
     if (!option) return Response.json({ error: 'Invalid payment amount selection' }, { status: 400 });
     const principalCents = cents(option.amount);
+    const feeSettings = await readPortalFeeSettings(base44);
     const methods = PAYMENT_METHODS.map(method => {
       try {
-        const quote = quotePayment(principalCents, method);
+        const quote = quotePayment(principalCents, method, feeSettings);
         return { method, enabled: true, principalCents, feeCents: quote.feeCents, totalCents: quote.totalCents };
       } catch (error) {
         return { method, enabled: false, reason: error.status === 403 ? 'Not enabled' : 'Configuration requires review' };
