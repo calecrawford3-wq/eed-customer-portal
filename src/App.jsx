@@ -14,6 +14,7 @@ import PortalAccess from './pages/PortalAccess';
 import PortalResetPassword from './pages/PortalResetPassword';
 import GuestPayment from './pages/GuestPayment';
 import HRAdmin from './pages/HRAdmin';
+import OwnerEarnings from './pages/OwnerEarnings';
 import EmployeePortal from './pages/EmployeePortal';
 import StaffWorkspace from './pages/StaffWorkspace';
 import PaymentMigration from './pages/PaymentMigration';
@@ -107,6 +108,7 @@ function AdminLayout() {
 
   if (!isAdmin) {
     if (location.pathname.toLowerCase() === '/employeeportal') return (<>{splashOverlay}<NavigationTracker /><EmployeePortal /></>);
+    if (location.pathname.toLowerCase() === '/ownerearnings') return (<>{splashOverlay}<NavigationTracker /><OwnerEarnings /></>);
     if (location.pathname.toLowerCase() === '/staffworkspace') return (<>{splashOverlay}<NavigationTracker /><StaffWorkspace /></>);
     return (<>{splashOverlay}<NavigationTracker /><CustomerPortal /></>);
   }
@@ -160,6 +162,7 @@ const routes = createRoutesFromElements(
       <Route path="EmployeePortal" element={<EmployeePortal />} />
       <Route path="StaffWorkspace" element={<StaffWorkspace />} />
       <Route path="HRAdmin" element={<HRAdmin />} />
+      <Route path="OwnerEarnings" element={<OwnerEarnings />} />
       <Route path="RefreshRequests" element={<RefreshRequests />} />
       <Route path="CustomerSuccess" element={<CustomerSuccess />} />
       <Route path="Calendar" element={<CalendarPage />} />
