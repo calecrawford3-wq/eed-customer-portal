@@ -10,7 +10,7 @@ export default function PortalAccess({ initialMode }) {
   const { user, isLoadingAuth, isLoadingPublicSettings } = useAuth();
   const params = new URLSearchParams(window.location.search);
   const destination = portalDestination(params.get('next'), window.location.origin);
-  const [mode, setMode] = useState(initialMode || (params.get('mode') === 'activate' ? 'activate' : 'signin'));
+  const [mode, setMode] = useState(initialMode || (['activate', 'forgot', 'signin'].includes(params.get('mode')) ? params.get('mode') : 'signin'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
