@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
-function setup({ role = 'admin', pref = 'ask_me', optedOut = false } = {}) {
+function setup({ role = 'admin', pref = 'ask_me', optedOut = false, consent = false, estimatesEnabled = true } = {}) {
   const state = { emails: [], notifications: [], sms: [] };
   const base44 = {
     auth: { me: async () => role ? { role, email: 'admin@example.test' } : null },
     asServiceRole: {
       entities: {
-        Customer: { filter: async () => [{ id: 'c1', email: 'c@example.test', phone: '9185550123', sms_opt_out: optedOut }] },
+        Customer: { filter: async () => [{ id: 'c1', email: 'c@example.test', phone: '9185550123', sms_opt_out: optedOut, sms_consent: consent, notification_estimates: estimatesEnabled }] },
         AppSettings: { filter: async () => [{ key: 'global', notif_customer_estimate_ready: pref }] },
         CustomerNotification: {
           filter: async () => state.notifications,
@@ -58,4 +58,14 @@ test('SMS opt-out blocks SMS even when requested', async () => {
   assert.equal(result.status, 200);
   assert.equal(result.body.sms_status, 'skipped');
   assert.equal(h.state.sms.length, 0);
+});
+
+test('SMS requires separate explicit customer consent', async () => {
+ const h=setup({consent:false});const r=await h.call({channels:['sms']});
+ assert.equal(r.body.sms_status,'skipped');assert.equal(h.state.sms.length,0);
+});
+test('disabled customer notification category prevents email and SMS', async () => {
+ const h=setup({consent:true,estimatesEnabled:false});const r=await h.call({channels:['email','sms']});
+ assert.equal(r.body.email_status,'skipped');assert.equal(r.body.sms_status,'skipped');
+ assert.equal(h.state.emails.length,0);assert.equal(h.state.sms.length,0);
 });
