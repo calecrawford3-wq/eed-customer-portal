@@ -14,7 +14,7 @@ export default async function(req){
   const worker=matches[0];
   if(worker.worker_type==='owner'||worker.access_level==='owner')return fail('Owners require the separate full-access owner invitation',409);
   const email=String(worker.email||'').trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('Employee needs a valid email');
+  if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(email))return fail('Employee login email must be an @eedpower.com address');
   if(worker.status==='inactive')return fail('Activate the employee before sending an invite',409);
   const same=rows(await api.asServiceRole.entities.HRWorker.filter({email}));
   if(same.length!==1||same[0].id!==worker.id)return fail('Duplicate employee email; resolve before inviting',409);
