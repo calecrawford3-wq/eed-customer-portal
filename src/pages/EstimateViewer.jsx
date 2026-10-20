@@ -126,11 +126,12 @@ export default function EstimateViewer({ buildVersion }) {
   };
 
   const handlePayNow = () => {
-    if (!data?.estimate?.stripe_checkout_url) {
-      setPayingError("Payment link unavailable. Please contact Elite Engine Development.");
-      return;
-    }
-    window.location.href = data.estimate.stripe_checkout_url;
+    // Never follow legacy stored checkout sessions. The authenticated portal
+    // creates a fresh, verified Stripe session against the current balance.
+    const id = data?.estimate?.id;
+    if (!id) {setPayingError('Unable to locate this estimate. Please contact Elite.');return;}
+    const next = '/CustomerPortal?document=estimate&id=' + encodeURIComponent(id);
+    window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
   };
 
   return (
