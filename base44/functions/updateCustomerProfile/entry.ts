@@ -15,6 +15,7 @@ const ALLOWED = [
   'shipping_address_line1', 'shipping_address_line2', 'shipping_city', 'shipping_state', 'shipping_zip', 'shipping_country',
   'preferred_contact_method', 'onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_tour_completed',
   'racing_role', 'racing_classes', 'racing_tracks', 'racing_primary_track', 'racing_notes_public', 'sms_consent',
+  'notification_estimates', 'notification_build_updates', 'notification_invoices',
 ];
 
 export default async function (req) {
@@ -33,7 +34,7 @@ export default async function (req) {
     const patch = {};
     for (const k of ALLOWED) {
       if (body[k] !== undefined) {
-        const bool = ['onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_tour_completed', 'sms_consent'].includes(k);
+        const bool = ['onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_tour_completed', 'sms_consent', 'notification_estimates', 'notification_build_updates', 'notification_invoices'].includes(k);
         if (bool ? typeof body[k] !== 'boolean' : typeof body[k] !== 'string' && !(['additional_emails', 'additional_phones'].includes(k) && Array.isArray(body[k]))) return Response.json({ error: `Invalid ${k}` }, { status: 400 });
         if (typeof body[k] === 'string' && body[k].length > 500) return Response.json({ error: `${k} is too long` }, { status: 400 });
         patch[k] = body[k];
@@ -48,6 +49,11 @@ export default async function (req) {
     const cust = (custRes.items || custRes || [])[0];
     if (!cust) return Response.json({ error: 'Customer record not found' }, { status: 404 });
 
+    if (patch.onboarding_contact_confirmed === true) {
+      const merged = {...cust,...patch};
+      if (!['first_name','last_name','phone','address_line1','city','state','zip','country'].every(k => typeof merged[k] === 'string' && merged[k].trim())) return Response.json({error:'Complete required contact details first'}, {status:400});
+    }
+    if (patch.preferred_contact_method && !['email','phone','sms'].includes(patch.preferred_contact_method)) return Response.json({error:'Invalid contact method'}, {status:400});
     const updated = await base44.asServiceRole.entities.Customer.update(cid, patch);
     const safe = {};
     for (const k of ALLOWED) safe[k] = updated[k] ?? null;

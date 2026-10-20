@@ -191,6 +191,15 @@
     "sms_consent": {
       "type": "boolean",
       "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "notification_estimates": {
+      "type": "boolean"
+    },
+    "notification_build_updates": {
+      "type": "boolean"
+    },
+    "notification_invoices": {
+      "type": "boolean"
     }
   },
   "required": [
