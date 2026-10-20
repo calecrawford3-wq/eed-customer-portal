@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ export function accountContactComplete(c) {
   return !!c?.onboarding_contact_confirmed && required.every(k => String(c?.[k] || '').trim());
 }
 export default function AccountSetup({ customer, engines = [], onSaved, onClose, onStartTour, initialSection = 'contact' }) {
+  const setupTopRef = useRef(null);
   const [form,setForm] = useState({});
   const [same,setSame] = useState(false);
   const [section,setSection] = useState(initialSection);
@@ -31,6 +32,10 @@ export default function AccountSetup({ customer, engines = [], onSaved, onClose,
     catch {setError('Some changes could not be saved. Use Save draft to retry.');}
   };
   useEffect(() => { setForm(customer || {}); },[customer?.id]);
+  useEffect(() => {
+    // Move the viewport to the start of each onboarding step, including on mobile.
+    setupTopRef.current?.scrollIntoView({behavior:'smooth',block:'start'});
+  }, [section]);
   const progress = [accountContactComplete(customer),!!customer?.racing_role || !!customer?.onboarding_racing_skipped,!!customer?.onboarding_cars_skipped || !!customer?.onboarding_garage_completed,(!!customer?.onboarding_tour_completed || !!customer?.onboarding_tour_skipped)].filter(Boolean).length;
   const save = async (patch) => {
     setSaving(true);setError('');
@@ -75,7 +80,7 @@ export default function AccountSetup({ customer, engines = [], onSaved, onClose,
     else setSection('security');
   };
   const trackSuggestions=['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
-  return <Card className="border-red-100 shadow-sm">
+  return <Card ref={setupTopRef} className="border-red-100 shadow-sm scroll-mt-4">
     <CardHeader><CardTitle>Welcome to Elite Engine Development</CardTitle><p className="text-sm text-slate-600">Your account setup saves as you go. Estimates, approvals and payments are always available.</p>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={progress} aria-label="Account setup progress"><div className="h-full bg-red-600" style={{width:`${progress*25}%`}}/></div><p className="text-xs text-slate-500">{progress} of 4 profile steps completed. Your login is managed separately by Base44.</p>
     </CardHeader>
