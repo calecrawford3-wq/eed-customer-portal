@@ -86,9 +86,10 @@ export async function serializeAdditionalWorkWithPhotos(base44: any, aw: any) {
       { id: { $in: findingIds } },
       { limit: 200 }
     );
-    findings = (fRes.items || fRes || []).map((f: any) => publicFinding(f));
+    findings = (fRes.items || fRes || []).filter((f: any) => f.job_id === aw.job_id && !['canceled', 'declined'].includes(f.status)).map((f: any) => publicFinding(f));
+    const verifiedFindingIds = findings.map((f: any) => f.id);
     const pRes = await base44.asServiceRole.entities.FindingPhoto.filter(
-      { finding_id: { $in: findingIds }, share_with_customer: true },
+      { finding_id: { $in: verifiedFindingIds }, share_with_customer: true },
       { limit: 1000 }
     );
     const photos = pRes.items || pRes || [];
