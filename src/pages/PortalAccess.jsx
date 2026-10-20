@@ -144,7 +144,7 @@ export default function PortalAccess({ initialMode }) {
           <Button type="submit" disabled={busy} className="w-full min-h-11 bg-[#e20404] hover:bg-red-700 text-white">{busy ? 'Please wait…' : mode === 'activate' ? 'Create account & send code' : mode === 'verify' ? 'Verify & open portal' : mode === 'forgot' ? 'Email reset instructions' : 'Sign In'}</Button>
         </form>
         <div className="mt-4 space-y-2">
-          {mode !== 'signin' && <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('signin')}>{isVerification ? 'Back to sign in' : 'Already registered? Sign In'}</Button>
+          {mode !== 'signin' && <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('signin')}>{isVerification ? 'Back to sign in' : 'Already registered? Sign In'}</Button>}
           {mode === 'signin' && <><Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('activate')}>First time here? Activate Account</Button><Button variant="ghost" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('forgot')}>Forgot Password?</Button></>}
           {mode === 'signin' && <Button variant="ghost" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('verify')}>Already have a verification code?</Button>}
           {isVerification && <div className="rounded-lg bg-slate-50 p-3 text-center" aria-live="polite">
