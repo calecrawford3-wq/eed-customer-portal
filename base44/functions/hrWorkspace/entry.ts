@@ -7,7 +7,7 @@ const entities = {
   pay: 'HRPayStatement', benefits: 'HRBenefitEnrollment', tax: 'HRTaxDocument',
 };
 const fields = {
-  workers: ['first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','can_view_build_profitability','pto_hours_available','emergency_contact'],
+  workers: ['first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
   time: ['worker_id','clock_in','clock_out','break_minutes','status','notes'],
   leave: ['worker_id','start_date','end_date','hours','leave_type','status','reason','decision_note'],
   pay: ['worker_id','period_start','period_end','pay_date','gross_pay','net_pay','taxes_withheld','deductions','statement_url','payroll_provider_reference','status'],
