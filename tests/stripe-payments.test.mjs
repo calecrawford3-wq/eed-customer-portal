@@ -121,6 +121,24 @@ test('provider fee is separate from invoice principal and recorded once', async 
   assert.equal(state.rows.Invoice[0].payments[0].gross_charge_amount, 302.5);
   assert.equal(state.rows.Invoice[0].payments[0].method, 'us_bank_account');
 });
+test('overpaid Stripe session is credited once and flagged for manual refund review', async () => {
+  const { state, payment, deliver } = setup();
+  const id = payment('cs_test_overpaid', 'invoice', 99000);
+  assert.equal((await deliver(id)).status, 200);
+  assert.equal(state.rows.Invoice[0].amount_paid, 990);
+  assert.equal(state.rows.Invoice[0].balance_due, 0);
+  assert.equal(state.rows.Invoice[0].payment_overage_amount, 15);
+  assert.equal(state.rows.Invoice[0].payment_overage_review_required, true);
+  assert.equal((await deliver(id)).body.duplicate, true);
+});
+test('Stripe payment method type mismatch cannot credit a receipt', async () => {
+  const { state, payment, deliver } = setup();
+  const id = payment('cs_test_wrong_method');
+  state.sessions[id].metadata.payment_method = 'affirm';
+  state.sessions[id].payment_method_types = ['card'];
+  assert.equal((await deliver(id)).status, 409);
+  assert.equal(state.rows.Invoice[0].payments.length, 0);
+});
 test('fee mismatch never credits the invoice', async () => {
   const { state, payment, deliver } = setup();
   const id = payment('cs_test_bad_fee', 'invoice', 30000);
