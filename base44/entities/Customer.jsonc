@@ -123,6 +123,74 @@
     "voipms_synced_phone": {
       "type": "string",
       "description": "Normalized phone number that was last written to the VoIP.ms Phone Book"
+    },
+    "shipping_address_line1": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "shipping_address_line2": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "shipping_city": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "shipping_state": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "shipping_zip": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "shipping_country": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "preferred_contact_method": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "onboarding_contact_confirmed": {
+      "type": "boolean",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "onboarding_racing_skipped": {
+      "type": "boolean",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "onboarding_cars_skipped": {
+      "type": "boolean",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "onboarding_tour_completed": {
+      "type": "boolean",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "racing_role": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "racing_classes": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "racing_tracks": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "racing_primary_track": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "racing_notes_public": {
+      "type": "string",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
+    },
+    "sms_consent": {
+      "type": "boolean",
+      "description": "Customer editable portal profile information; no private shop notes or billing authority."
     }
   },
   "required": [
