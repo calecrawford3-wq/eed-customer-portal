@@ -22,9 +22,9 @@ export default async function(req) {
     return Response.json({
       approval,
       findings: approval.findings,
-    });
+    }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error) {
     console.error('[getPublicAdditionalWork] error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to load approval' }, { status: 500 });
   }
 }
