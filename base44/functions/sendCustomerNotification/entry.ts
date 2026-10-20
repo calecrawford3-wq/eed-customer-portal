@@ -50,6 +50,10 @@ export default async function (req) {
       entity_label,
     } = body;
 
+    const preferences = { estimate_ready: 'notif_customer_estimate_ready', additional_work_ready: 'notif_customer_additional_work', stage_change: 'notif_customer_stage_change', completion: 'notif_customer_completion' };
+    if (!Object.hasOwn(preferences, event_type)) return Response.json({ error: 'Unsupported notification event' }, { status: 400 });
+    if (!Array.isArray(channels) || channels.some(c => !['email', 'sms'].includes(c))) return Response.json({ error: 'Invalid notification channels' }, { status: 400 });
+    if (typeof idempotency_key !== 'string' || idempotency_key !== `${event_type}:${entity_id || customer_id}`) return Response.json({ error: 'Invalid event identity' }, { status: 400 });
     if (!event_type || !idempotency_key || !customer_id) {
       return Response.json(
         { error: "event_type, idempotency_key, and customer_id are required" },
@@ -79,6 +83,7 @@ export default async function (req) {
     });
     const settings = (settingsRes.items || settingsRes || [])[0] || {};
     const companyName = settings.company_name || "Elite Engine Development";
+    if (settings[preferences[event_type]] === 'off') return Response.json({ skipped: true, reason: 'Notification disabled in Settings' });
 
     // Check for existing notification (idempotency)
     const existingRes =
