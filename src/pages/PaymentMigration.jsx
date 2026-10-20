@@ -8,6 +8,7 @@ export default function PaymentMigration() {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
   const [launchReport, setLaunchReport] = useState(null);
+  const [legacyReport, setLegacyReport] = useState(null);
   const [session, setSession] = useState('');
   const [fees, setFees] = useState(null);
   const [providerGates, setProviderGates] = useState(null);
@@ -32,6 +33,7 @@ export default function PaymentMigration() {
       if (r.data?.error) throw new Error(r.data.error);
       if (name === 'getPortalPaymentReadiness') setReport(r.data);
       else if (name === 'getPortalLaunchReadiness') setLaunchReport(r.data);
+      else if (name === 'getLegacyMigrationReadiness') setLegacyReport(r.data);
       else if (name === 'verifyAutomationCaller') setMessage(r.data.message);
       else setMessage(r.data.pending ? 'Stripe has not confirmed payment. No credit recorded.' : r.data.duplicate ? 'Payment was already recorded. Its document links were rechecked.' : 'Verified payment recorded on invoice ' + r.data.invoice_id + '.');
     } catch (e) { setError(e.response?.data?.error || e.message || 'Unable to continue.'); }
@@ -39,6 +41,22 @@ export default function PaymentMigration() {
   }
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <div><h1 className="text-2xl font-bold">Settings / Payments</h1><p className="mt-2 text-slate-600">Secure Stripe connection checks for the new portal. Existing billing remains active until cutover is verified.</p></div>
+    <section className="rounded-xl border border-slate-300 bg-white p-5 space-y-3">
+      <h2 className="font-semibold">Stage 14: Legacy billing migration audit</h2>
+      <p className="text-sm text-slate-600">Read-only inventory of legacy invoices, unpaid balances, pending approvals, payment links and migration risks. The old billing viewer remains active. This does not import records, change URLs, or authorize redirects.</p>
+      <Button variant="outline" disabled={busy} onClick={() => run('getLegacyMigrationReadiness')}>Audit Legacy Billing</Button>
+      {legacyReport && <div className="space-y-3 text-sm">
+        <p role="status" className="font-semibold text-amber-800">Legacy billing is retained. Migration and redirect are NOT authorized.</p>
+        {legacyReport.potentially_incomplete && <p className="rounded-md bg-amber-50 p-3">This scan reached the {legacyReport.scanned_record_limit_per_entity}-record cap. Counts may be incomplete. Obtain a full export before cutover.</p>}
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">{[
+          ['Invoices scanned', legacyReport.counts?.invoices_scanned], ['Legacy invoices', legacyReport.counts?.legacy_invoices], ['Open legacy invoices', legacyReport.counts?.legacy_invoices_open], ['Open invoice balance', typeof legacyReport.counts?.open_invoice_balance_cents === 'number' ? (legacyReport.counts.open_invoice_balance_cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'Unknown'], ['Legacy invoices missing PDF', legacyReport.counts?.legacy_invoices_without_original_pdf], ['Pending estimate decisions', legacyReport.counts?.estimates_awaiting_customer_decision], ['Pending additional-work decisions', legacyReport.counts?.additional_work_awaiting_customer_decision], ['Invoice number duplicate groups', legacyReport.duplicate_invoice_number_groups], ['Invoice balance discrepancies', legacyReport.counts?.invoices_with_balance_discrepancy], ['Invoices with legacy checkout links', legacyReport.counts?.invoices_with_old_checkout_links], ['Estimates with legacy checkout links', legacyReport.counts?.estimates_with_old_checkout_links]
+        ].map(([label, value]) => <div key={label} className="rounded-lg border p-3"><dt className="text-slate-600">{label}</dt><dd className="font-semibold">{value ?? 'Unknown'}</dd></div>)}</dl>
+        <h3 className="font-semibold">Migration blockers and cautions</h3>
+        {legacyReport.blockers?.length ? <ul className="list-disc space-y-1 pl-5">{legacyReport.blockers.map(item => <li key={item}>{item}</li>)}</ul> : <p>No issues found in the scanned sample. This does not establish cutover readiness.</p>}
+        <h3 className="font-semibold">Known legacy integrations to verify</h3>
+        <ul className="list-disc space-y-1 pl-5">{legacyReport.known_legacy_integrations?.map(item => <li key={item.source + item.integration}>{item.integration}</li>)}</ul>
+      </div>}
+    </section>
     <section className="rounded-xl border border-slate-300 bg-slate-50 p-5 space-y-3">
       <h2 className="font-semibold">Stage 13: Controlled launch preflight</h2>
       <p className="text-sm">This is a read-only readiness check. It cannot publish the app, enable live Stripe, send invitations, or retire the old billing system. Owner acceptance and real environment testing are still required.</p>
