@@ -58,7 +58,7 @@ export default async function(req: Request) {
     if (body.revision !== revision) return Response.json({ error: 'This document changed. Reload it and review the latest charges before continuing.' }, { status: 409 });
     if (action === 'options_link') {
       if (type !== 'estimate' || doc.status !== 'sent' || expired || !doc.public_access_token) return Response.json({ error: 'Options are no longer available' }, { status: 409 });
-      return Response.json({ url: `https://billing.eedpower.com/estimate/${encodeURIComponent(doc.public_access_token)}` });
+      return Response.json({ url: `https://portal.eedpower.com/estimate/${encodeURIComponent(doc.public_access_token)}` });
     }
 
     if (action === 'approve') {
@@ -109,7 +109,7 @@ export default async function(req: Request) {
       if (Number(doc.applied_credits) > 0) return Response.json({ error: 'This document includes account credits. Please arrange payment with the shop so the adjusted balance is charged correctly.' }, { status: 409 });
       // Temporary handoff preserves the currently deployed Stripe webhook.
       // The payment migration will replace this with in-app checkout.
-      return Response.json({ url: `https://billing.eedpower.com/${type}/${encodeURIComponent(doc.public_access_token)}` });
+      return Response.json({ url: `https://portal.eedpower.com/${type}/${encodeURIComponent(doc.public_access_token)}` });
     }
 
     if (!['cash', 'check'].includes(body.method) || !['drop_off', 'mail'].includes(body.delivery)) return Response.json({ error: 'Choose a payment and delivery method' }, { status: 400 });
