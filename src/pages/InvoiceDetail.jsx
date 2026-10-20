@@ -751,7 +751,7 @@ export default function InvoiceDetail() {
 
     const settings = settingsData?.[0] || {};
     const subject = `Invoice ${form.invoice_number} — Payment Due`;
-    const viewUrl = `https://billing.eedpower.com/invoice/${accessToken}`;
+    const viewUrl = `https://portal.eedpower.com/invoice/${accessToken}`;
     const dueDate = form.due_date
       ? new Date(form.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       : form.due_on_completion
@@ -848,7 +848,7 @@ export default function InvoiceDetail() {
       try {
         await base44.functions.invoke("syncInvoiceSnapshot", { invoiceId, publicAccessToken: accessToken });
       } catch { /* link still usable */ }
-      const viewUrl = `https://billing.eedpower.com/invoice/${accessToken}`;
+      const viewUrl = `https://portal.eedpower.com/invoice/${accessToken}`;
       const body = `Hi ${customer.first_name}, your invoice ${form.invoice_number} from Elite Engine Development is ready. Amount due: $${Number(form.balance_due ?? form.total ?? 0).toFixed(2)}. View & pay here: ${viewUrl}`;
       if (openSmsDraft(customer.phone, body)) {
         toast.success("Opening text message with invoice link…");
