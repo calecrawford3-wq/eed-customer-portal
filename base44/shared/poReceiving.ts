@@ -38,7 +38,45 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     }
   }
 
+  // Validate the entire receipt before changing stock. Reject partial/ambiguous
+  // requests rather than silently skipping invalid lines.
+  if (!receiptId || typeof receiptId !== "string" || receiptId.length > 200) {
+    throw new Error("A stable receipt_id is required to receive inventory");
+  }
+  if (!Array.isArray(receivedItems) || receivedItems.length === 0) {
+    throw new Error("At least one receipt line is required");
+  }
+  if (po.status === "cancelled") throw new Error("Cannot receive a cancelled purchase order");
+
   const lines = [...(po.line_items || [])];
+  const seenIndices = new Set();
+  for (const item of receivedItems) {
+    const idx = Number(item.line_idx);
+    const qty = Number(item.qty);
+    const cost = item.unit_cost;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= lines.length || seenIndices.has(idx)) {
+      throw new Error("Invalid or duplicate purchase order line index");
+    }
+    seenIndices.add(idx);
+    if (!Number.isFinite(qty) || qty <= 0 || roundQty(qty) <= 0) {
+      throw new Error("Receipt quantities must be positive finite numbers");
+    }
+    if (cost != null && (!Number.isFinite(Number(cost)) || Number(cost) < 0)) {
+      throw new Error("Receipt unit costs must be nonnegative finite numbers");
+    }
+    const ordered = Number(lines[idx].quantity);
+    const already = Number(lines[idx].received_qty) || 0;
+    if (!Number.isFinite(ordered) || ordered < 0 || !Number.isFinite(already) ||
+        roundQty(already + qty) > roundQty(ordered)) {
+      throw new Error("Receipt quantity exceeds the unreceived purchase order quantity");
+    }
+    if (lines[idx].part_id) {
+      const parts = await base44.entities.Part.filter({ id: lines[idx].part_id });
+      if (!(parts.items || parts || [])[0]) {
+        throw new Error("Linked inventory part is missing; receipt was not applied");
+      }
+    }
+  }
   const inventoryUpdates = [];
   const shortageAllocations = [];
   const jobsToRecompute = new Set();
@@ -48,7 +86,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     const idx = Number(item.line_idx);
     const qty = roundQty(item.qty || 0);
     const unitCost = item.unit_cost != null ? Number(item.unit_cost) : null;
-    if (qty <= 0 || idx < 0 || idx >= lines.length) continue;
+    // All indices and quantities were validated before any inventory mutation.
 
     const line = { ...lines[idx] };
     line.received_qty = roundQty((line.received_qty || 0) + qty);
