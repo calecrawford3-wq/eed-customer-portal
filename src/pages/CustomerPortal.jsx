@@ -371,13 +371,13 @@ export default function CustomerPortal() {
 
       {/* Header */}
       <header className="bg-white border-b border-slate-200 print:hidden">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-wrap items-center justify-between gap-2">
           <img
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
             alt="Elite Engine Development"
             className="h-8 md:h-10"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {user?.role !== "admin" && (
               <Button variant="ghost" size="sm" onClick={() => { setProfileForm({ ...customer }); setProfileOpen(true); }}>
                 <User className="w-4 h-4 mr-1" /> {customer.first_name} {customer.last_name}
@@ -441,7 +441,7 @@ export default function CustomerPortal() {
         </div>
 
         <Tabs defaultValue="engines">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:flex-wrap [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:break-words [&>button]:px-2">
             <TabsTrigger value="engines">My Engines ({customerEngines.length})</TabsTrigger>
             <TabsTrigger value="builds">Engine Builds ({builds.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
