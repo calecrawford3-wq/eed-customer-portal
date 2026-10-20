@@ -16,6 +16,7 @@ export default async function(req){
   else if(c.some(w=>w.worker_type==='owner'&&user.role!=='admin'))access='blocked';
   const activeCompany=c.length===1&&c[0].status==='active'?c[0]:null;
   const destination=access==='tax_only'?'/FormerEmployeeTaxPortal':access==='blocked'?'/PortalAccess?mode=signin':user.role==='admin'?'/Dashboard':activeCompany?'/EmployeePortal':'/CustomerPortal';
-  return Response.json({access,destination},{headers:{'Cache-Control':'no-store'}});
+  const allowed_pages=access==='normal'&&activeCompany&&user.role!=='admin'&&activeCompany.worker_type!=='owner'?Array.isArray(activeCompany.allowed_pages)?activeCompany.allowed_pages.filter(p=>typeof p==='string'):[]:[];
+  return Response.json({access,destination,allowed_pages},{headers:{'Cache-Control':'no-store'}});
  }catch(e){console.error('[staffAccessGate]',e?.message);return Response.json({access:'blocked'},{headers:{'Cache-Control':'no-store'}})}
 }
