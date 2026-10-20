@@ -16,7 +16,7 @@ import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
 import NavSidebar from "@/components/NavSidebar";
 import MobileBottomNav from "@/components/mobile/MobileBottomNav";
 
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children, currentPageName, staffMode=false, staffAllowedPages=[] }) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -34,8 +34,8 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
-      <GlobalBarcodeListener />
-      <GlobalSearch />
+      {!staffMode&&<GlobalBarcodeListener />}
+      {!staffMode&&<GlobalSearch />}
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
@@ -80,6 +80,7 @@ export default function Layout({ children, currentPageName }) {
           currentPageName={currentPageName}
           collapsed={collapsed}
           onNavigate={() => setMobileOpen(false)}
+          allowedPages={staffMode?staffAllowedPages:null}
         />
 
         {/* Collapse Button */}
@@ -110,19 +111,19 @@ export default function Layout({ children, currentPageName }) {
             className="h-7 object-contain"
           />
           <div className="flex items-center gap-1">
-            <button
+            {!staffMode&&<button
               onClick={() => navigate(createPageUrl("BarcodeScan"))}
               className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
             >
               <ScanLine className="w-5 h-5" />
-            </button>
-            <button
+            </button>}
+            {!staffMode&&<button
               onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
               className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
             >
               <Search className="w-5 h-5" />
-            </button>
-            <NotificationBell />
+            </button>}
+            {!staffMode&&<NotificationBell />}
           </div>
         </div>
         {/* Desktop sticky bar — hidden on Build Workflow (full-screen dark mode); Back button shown on non-Dashboard pages */}
@@ -163,7 +164,7 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Mobile bottom navigation */}
-      <MobileBottomNav />
+      <MobileBottomNav allowedPages={staffMode?staffAllowedPages:null} />
     </div>
   );
 }
