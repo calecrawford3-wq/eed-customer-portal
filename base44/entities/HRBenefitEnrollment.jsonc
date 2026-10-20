@@ -1,0 +1,55 @@
+{
+  "name": "HRBenefitEnrollment",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "benefit_name": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string"
+    },
+    "coverage_start": {
+      "type": "string"
+    },
+    "coverage_end": {
+      "type": "string"
+    },
+    "employee_contribution": {
+      "type": "number"
+    },
+    "employer_contribution": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
