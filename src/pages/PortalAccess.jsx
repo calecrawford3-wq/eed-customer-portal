@@ -58,6 +58,7 @@ export default function PortalAccess({ initialMode }) {
         await base44.auth.register({ email: address, password });
         setMode('verify');
         setResendAt(Date.now() + 60000);
+        setResendSeconds(60);
         setNotice('We sent a verification code to your email. Enter it below to activate your account.');
       } else if (mode === 'verify') {
         await base44.auth.verifyOtp({ email: address, otpCode: code.trim() });
@@ -103,6 +104,7 @@ export default function PortalAccess({ initialMode }) {
     try {
       await base44.auth.resendOtp(email.trim());
       setResendAt(Date.now() + 60000);
+      setResendSeconds(60);
       setNotice('A new verification code was requested. Check your inbox and spam folder.');
     } catch {
       setError('Unable to resend the code. Please wait a minute and try again.');
