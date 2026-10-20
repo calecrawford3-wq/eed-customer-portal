@@ -95,8 +95,10 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
         qc.invalidateQueries({ queryKey: ["job-linked", "EngineBuild", job.build_id] }),
       ]);
       toast.success("Moved to Assembly");
+      return true;
     } catch (e) {
       toast.error("Failed to move stage: " + e.message);
+      return false;
     } finally {
       setMoving(false);
     }
@@ -112,9 +114,11 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
 
   const confirmOverride = () => {
     if (!overrideReason.trim()) { toast.error("Enter an override reason"); return; }
-    moveNext(true, overrideReason).then(() => {
-      setOverrideOpen(false);
-      setOverrideReason("");
+    moveNext(true, overrideReason).then(success => {
+      if (success) {
+        setOverrideOpen(false);
+        setOverrideReason("");
+      }
     });
   };
 
