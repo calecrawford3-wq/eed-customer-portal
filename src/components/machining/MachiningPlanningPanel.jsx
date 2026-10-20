@@ -342,7 +342,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       await base44.entities.MachiningTask.delete(taskId);
       try {
         await base44.functions.invoke("syncMachiningTaskBilling", { job_id: job.id });
-      } catch (e) { /* best-effort */ }
+      } catch (e) { toast.error("Task removed, but invoice sync failed. Review the invoice."); }
       qc.invalidateQueries({ queryKey: ["machining-tasks", job.id] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Task removed");
