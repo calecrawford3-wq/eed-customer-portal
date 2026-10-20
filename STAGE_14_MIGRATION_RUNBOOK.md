@@ -7,6 +7,13 @@ Status: PREPARATION ONLY. No legacy URLs, DNS, invoices, Stripe settings, or pro
 - Existing legacy Stripe handlers and checkout links must remain active until in-flight transactions and unpaid invoices have been reconciled.
 - Stage 13 launch approval and acceptance evidence are required before any live cutover.
 
+## Implemented read-only audit
+- Admin Settings → Payments → **Audit Legacy Billing** invokes `getLegacyMigrationReadiness`.
+- The backend scans up to 500 invoices, estimates, and additional-work records each. At-limit scans are explicitly partial, not a complete export.
+- The report counts open balances, old checkout links, outstanding approvals, duplicate invoice numbers, missing PDFs, conversion/reconciliation flags, financial mismatches, missing customer links, cross-customer estimate associations, duplicate access-token groups, missing financial values and negative values.
+- It displays at most 100 record-ID-only reconciliation exceptions, never token values, contact details or payment credentials.
+- This audit is not a live Stripe reconciliation, full legacy viewer export or authorization to migrate. No records or routes are modified.
+
 ## Migration inventory and evidence
 - [ ] Export legacy invoices and estimates with stable IDs, customer IDs, totals, amounts paid, remaining balances, currency, tax, status, and original URLs.
 - [ ] Inventory outstanding payment links, pending ACH, open Stripe Checkout Sessions, refunds, disputes, credits, deposits, subscriptions (if any), and legally signed documents.
