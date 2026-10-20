@@ -59,6 +59,14 @@
       "type": "number",
       "default": 0
     },
+    "inventory_operation_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Durable idempotency markers for atomic inventory quantity movements; do not edit manually"
+    },
     "reservation_lock": {
       "type": "string",
       "default": "",
