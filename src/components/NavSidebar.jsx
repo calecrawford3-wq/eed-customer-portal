@@ -85,6 +85,12 @@ const navSections = [
     ],
   },
   {
+    label: "Human Resources",
+    icon: Users,
+    main: { name: "HR Administration", page: "HRAdmin" },
+    secondary: [{ name: "Employee Portal", page: "EmployeePortal", icon: Briefcase }],
+  },
+  {
     label: "Inbox",
     icon: MessageSquare,
     main: { name: "Inbox", page: "Communications", badge: "messages" },
