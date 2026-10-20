@@ -7,7 +7,7 @@ const entities = {
   pay: 'HRPayStatement', benefits: 'HRBenefitEnrollment', tax: 'HRTaxDocument',
 };
 const fields = {
-  workers: ['first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
+  workers: ['first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','ownership_percentage','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
   time: ['worker_id','clock_in','clock_out','break_minutes','status','notes'],
   leave: ['worker_id','start_date','end_date','hours','leave_type','status','reason','decision_note'],
   pay: ['worker_id','period_start','period_end','pay_date','gross_pay','net_pay','taxes_withheld','deductions','statement_url','payroll_provider_reference','status'],
@@ -75,7 +75,25 @@ export default async function(req) {
       if(kind==='workers') {
         if(values.email) values.email=String(values.email).trim().toLowerCase();
         if(action==='create' && (!values.email || !values.first_name || !values.last_name || !['w2','1099','owner'].includes(values.worker_type))) return fail('Name, email and worker classification required');
-        if(values.worker_type==='owner') values.access_level='owner';
+        const prior=action==='update' ? await workers.get(body.id) : null;
+        const resultingType=values.worker_type || prior?.worker_type;
+        if(resultingType==='owner') values.access_level='owner';
+        if(Object.prototype.hasOwnProperty.call(values,'ownership_percentage')) {
+          if(resultingType!=='owner') return fail('Only owners can have an ownership percentage');
+          if(values.ownership_percentage===''||values.ownership_percentage===null||values.ownership_percentage===undefined) {
+            values.ownership_percentage=null;
+          } else {
+            const pct=Number(values.ownership_percentage);
+            if(!Number.isFinite(pct)||pct<0||pct>100||!/^\\d+(\\.\\d{1,4})?$/.test(String(values.ownership_percentage))) return fail('Ownership percentage must be between 0 and 100, with up to four decimal places');
+            values.ownership_percentage=pct;
+          }
+        }
+        if(resultingType==='owner') {
+          const allOwners=rows(await workers.filter({worker_type:'owner'}));
+          const otherTotal=allOwners.filter(w=>w.id!==body.id).reduce((sum,w)=>sum+Number(w.ownership_percentage||0),0);
+          const currentPct=Object.prototype.hasOwnProperty.call(values,'ownership_percentage')?Number(values.ownership_percentage||0):Number(prior?.ownership_percentage||0);
+          if(otherTotal+currentPct>100.0000001) return fail('Combined ownership percentages cannot exceed 100%',409);
+        }
         if(values.access_level==='owner' && values.worker_type!=='owner') return fail('Owner access level requires owner classification');
         if(values.worker_type==='owner' && action==='update' && body.id) {
           const existing=await workers.get(body.id);
