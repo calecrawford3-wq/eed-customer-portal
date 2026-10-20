@@ -63,6 +63,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
       racing_notes_public:form.racing_notes_public || '',onboarding_racing_skipped:false
     })) setSection('finish');
   };
+  const trackSuggestions=['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
   return <Card className="border-red-100 shadow-sm">
     <CardHeader><CardTitle>Welcome to Elite Engine Development</CardTitle><p className="text-sm text-slate-600">Your account setup saves as you go. Estimates, approvals and payments are always available.</p>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={progress} aria-label="Account setup progress"><div className="h-full bg-red-600" style={{width:`${progress*25}%`}}/></div><p className="text-xs text-slate-500">{progress} of 4 profile steps completed. Your login is managed separately by Base44.</p>
@@ -80,7 +81,8 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
       </div>}
       {section==='racing' && <div className="space-y-3">
         <p className="text-sm text-slate-600">Tell us about your racing program so we can better understand your engine application. Optional.</p>
-        {[[ 'racing_role','Your role (driver, owner, manager, other)' ],['racing_classes','Racing types and classes'],['racing_primary_track','Primary track'],['racing_tracks','Other preferred tracks (separate with commas)'],['racing_notes_public','Notes for Elite (visible to the shop)']].map(([key,title])=><div key={key}><Label htmlFor={key}>{title}</Label><Input id={key} value={form[key] || ''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} onBlur={e=>saveField(key,e.target.value.trim())} className="mt-1 min-h-11"/></div>)}
+        {[[ 'racing_role','Your role (driver, owner, manager, other)' ],['racing_classes','Racing types and classes'],['racing_primary_track','Primary track'],['racing_tracks','Other preferred tracks (separate with commas)'],['racing_notes_public','Notes for Elite (visible to the shop)']].map(([key,title])=><div key={key}><Label htmlFor={key}>{title}</Label><Input id={key} value={form[key] || ''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} onBlur={e=>saveField(key,e.target.value.trim())} className="mt-1 min-h-11" list={key==='racing_primary_track'?'racing-track-options':undefined}/></div>)}
+        <datalist id="racing-track-options">{trackSuggestions.map(t=><option key={t} value={t}/>)}</datalist>
         <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={()=>saveRacing(false)}>Save racing profile</Button><Button variant="outline" disabled={saving} onClick={()=>saveRacing(true)}>Skip for now</Button></div>
       </div>}
       {section==='finish' && <div className="space-y-3"><p className="text-sm">Use the Cars & drivers and Portal tour buttons on your dashboard to complete your setup. Both can be revisited at any time.</p><Button variant="outline" disabled={saving} onClick={async()=>{if(await save({onboarding_cars_skipped:true})) onClose?.();}}>Finish for now</Button></div>}
