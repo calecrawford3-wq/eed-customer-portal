@@ -60,6 +60,14 @@
         "manager"
       ]
     },
+    "can_view_shop_jobs": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allows restricted shop job work queue only; does not grant admin role or raw entity access."
+    },
+    "portal_invite_sent_at": {
+      "type": "string"
+    },
     "can_view_build_profitability": {
       "type": "boolean",
       "default": false,
