@@ -83,6 +83,7 @@ const MORE_SECTIONS = [
     items: [
       { name: "HR Administration", page: "HRAdmin", icon: ShieldCheck },
       { name: "Staff Workspace", page: "StaffWorkspace", icon: Briefcase },
+      { name: "Owner Earnings", page: "OwnerEarnings", icon: DollarSign },
       { name: "Employee Portal", page: "EmployeePortal", icon: Users },
     ],
   },
