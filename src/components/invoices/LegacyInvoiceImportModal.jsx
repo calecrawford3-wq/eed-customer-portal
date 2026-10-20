@@ -118,7 +118,7 @@ const mapStatus = (raw, balance, paid) => {
 };
 
 const matchCustomer = (clientName, customers) => {
-  if (!clientName || !customers.length) return null;
+  if (!clientName || !customers.length || customers.length >= 500) return null;
   const target = clientName.toLowerCase().trim();
   // Never use fuzzy or first-match ownership during financial migration.
   // Only a unique exact full-name/company match may be suggested.
