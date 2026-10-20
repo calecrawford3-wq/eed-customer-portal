@@ -77,6 +77,18 @@ test('guided tour highlights real portal controls and scrolls them into view', (
   assert.match(tour, /boxShadow/);
   assert.match(tour, /onFinish/);
 });
+test('profile completion hides redundant dashboard card but preserves profile and garage buttons', () => {
+  const setup = readFileSync('src/components/portal/AccountSetup.jsx', 'utf8');
+  const portal = readFileSync('src/pages/CustomerPortal.jsx', 'utf8');
+  const api = readFileSync('base44/functions/updateCustomerProfile/entry.ts', 'utf8');
+  const safe = readFileSync('base44/shared/portalAllowlists.ts', 'utf8');
+  assert.match(setup, /Finish Profile Setup/);
+  assert.match(setup, /save\(\{onboarding_profile_completed:true\}\)/);
+  assert.match(portal, /!customer\?\.onboarding_profile_completed \|\| accountSetupOpen/);
+  for (const label of ['My Account','Cars & drivers','Portal tour']) assert.match(portal, new RegExp(label));
+  assert.match(api, /Complete all four onboarding steps before finishing setup/);
+  assert.match(safe, /onboarding_profile_completed: c.onboarding_profile_completed/);
+});
 test('failed invitation email does not mark customer as invited', async () => {
   const h = inviteHarness({ smtpFailure: true });
   assert.equal((await h.call({ customerId: 'c1' })).status, 502);
