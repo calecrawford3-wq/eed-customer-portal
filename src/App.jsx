@@ -59,6 +59,7 @@ import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
 import {base44} from '@/api/base44Client';
 import FormerEmployeeTaxPortal from './pages/FormerEmployeeTaxPortal';
+import {canStaffVisit} from '@/lib/staff-page-permissions';
 
 const { Pages, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -82,12 +83,12 @@ function AdminLayout() {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
   const location = useLocation();
   const [splashGone, setSplashGone] = useState(false);
-  const [staffAccess,setStaffAccess]=useState('checking');
+  const [staffAccess,setStaffAccess]=useState({access:'checking',allowed_pages:[]});
   useEffect(()=>{
-    if(!user?.email){setStaffAccess('checking');return;}
+    if(!user?.email){setStaffAccess({access:'checking',allowed_pages:[]});return;}
     let live=true;
-    setStaffAccess('checking');
-    base44.functions.invoke('staffAccessGate',{}).then(r=>{if(live)setStaffAccess(r.data?.access||'blocked')}).catch(()=>{if(live)setStaffAccess('blocked')});
+    setStaffAccess({access:'checking',allowed_pages:[]});
+    base44.functions.invoke('staffAccessGate',{}).then(r=>{if(live)setStaffAccess(r.data?.access?r.data:{access:'blocked',allowed_pages:[]})}).catch(()=>{if(live)setStaffAccess({access:'blocked',allowed_pages:[]})});
     return ()=>{live=false};
   },[user?.email,user?.role]);
   const loading = isLoadingPublicSettings || isLoadingAuth;
@@ -116,17 +117,21 @@ function AdminLayout() {
   // A first-time/incognito visitor has no authenticated user. The staff
   // access check only runs for signed-in users, so never wait for it here.
   if(!user?.email) return <Navigate to="/PortalAccess?mode=signin" replace />;
-  if(staffAccess==='checking') return <SplashScreen ready={false} />;
-  if(staffAccess==='blocked') return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Account access disabled</h1><p>Your company login is no longer active, or your account requires an administrator review. Former employees must use their personal email to sign in for tax documents.</p></main>;
-  if(staffAccess==='tax_only') return <><NavigationTracker /><FormerEmployeeTaxPortal /></>;
+  if(staffAccess.access==='checking') return <SplashScreen ready={false} />;
+  if(staffAccess.access==='blocked') return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Account access disabled</h1><p>Your company login is no longer active, or your account requires an administrator review. Former employees must use their personal email to sign in for tax documents.</p></main>;
+  if(staffAccess.access==='tax_only') return <><NavigationTracker /><FormerEmployeeTaxPortal /></>;
   const isAdmin = user?.role === 'admin';
   const splashOverlay = !splashGone ? <SplashScreen ready={true} /> : null;
 
   if (!isAdmin) {
-    if (location.pathname.toLowerCase() === '/employeeportal') return (<>{splashOverlay}<NavigationTracker /><EmployeePortal /></>);
-    if (location.pathname.toLowerCase() === '/ownerearnings') return (<>{splashOverlay}<NavigationTracker /><OwnerEarnings /></>);
-    if (location.pathname.toLowerCase() === '/staffworkspace') return (<>{splashOverlay}<NavigationTracker /><StaffWorkspace /></>);
-    return (<>{splashOverlay}<NavigationTracker /><CustomerPortal /></>);
+    const segment=location.pathname.replace(/^\//,'').split('/')[0];
+    if(staffAccess.destination==='/CustomerPortal')return (<>{splashOverlay}<NavigationTracker /><CustomerPortal /></>);
+    if(!segment)return <Navigate to="/EmployeePortal" replace />;
+    const page=ALL_PAGE_NAMES.find(p=>p.toLowerCase()===segment.toLowerCase())||segment;
+    if(!canStaffVisit(page,staffAccess.allowed_pages))return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Page access not granted</h1><p>Your owner has not enabled this page for your account.</p><a className="text-blue-700 underline" href="/EmployeePortal">Return to my time clock</a></main>;
+    if(page==='EmployeePortal')return (<>{splashOverlay}<NavigationTracker /><EmployeePortal /></>);
+    if(page==='StaffWorkspace')return (<>{splashOverlay}<NavigationTracker /><StaffWorkspace /></>);
+    return (<>{splashOverlay}<NavigationTracker /><Layout currentPageName={page} staffAllowedPages={staffAccess.allowed_pages} staffMode><Outlet /></Layout></>);
   }
 
   const pathSegment = location.pathname.replace(/^\//, '').split('/')[0];
