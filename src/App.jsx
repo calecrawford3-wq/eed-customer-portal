@@ -5,7 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Outlet, useLocation } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Outlet, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { MessagingProvider } from "@/contexts/MessagingContext";
@@ -85,7 +85,13 @@ function AdminLayout() {
 
   if (authError) {
     if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
-    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
+    if (authError.type === 'auth_required') {
+      // Customer portal uses Elite's own email/password form, not Base44's hosted login.
+      if (location.pathname.toLowerCase().startsWith('/customerportal')) {
+        return <Navigate to="/PortalAccess?mode=signin" replace />;
+      }
+      navigateToLogin(); return null;
+    }
     return <UserNotRegisteredError />;
   }
 
