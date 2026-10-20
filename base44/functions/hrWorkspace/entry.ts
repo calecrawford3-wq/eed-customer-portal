@@ -26,7 +26,9 @@ export default async function(req) {
     const body=await req.json().catch(()=>({}));
     const admin=user.role==='admin';
     const workers=api.asServiceRole.entities.HRWorker;
-    const mine=rows(await workers.filter({email:user.email.toLowerCase().trim()})).find(w=>w.email?.toLowerCase()===user.email.toLowerCase().trim() && w.status==='active');
+    const companyMatches=rows(await workers.filter({email:user.email.toLowerCase().trim()}));
+    if(companyMatches.some(w=>w.status==='terminated'))return fail('Company login disabled. Use personal email for former employee tax documents.',403);
+    const mine=companyMatches.find(w=>w.email?.toLowerCase()===user.email.toLowerCase().trim() && w.status==='active');
     if(!admin && !mine) return fail('Employee access not activated',403);
     const action=body.action||'dashboard';
     const kind=body.kind;
