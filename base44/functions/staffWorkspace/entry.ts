@@ -13,6 +13,7 @@ export default async function(req){
   const matches=rows(await api.asServiceRole.entities.HRWorker.filter({email}));
   if(matches.length>1)return reply('Duplicate employee accounts; contact owner',409);
   const worker=matches[0];
+  if(worker?.status==='terminated')return reply('Former employees may only access tax documents using their personal email',403);
   const isOwner=user.role==='admin';
   if(!isOwner&&(!worker||worker.status!=='active'))return reply('Your employee account is not active',403);
   if(body.action==='identity'||!body.action){
