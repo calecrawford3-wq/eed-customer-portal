@@ -111,6 +111,20 @@ test('public viewers do not follow stored legacy checkout URLs', () => {
     assert.match(content, /PortalAccess\?mode=signin/);
   }
 });
+test('Approve & Pay saves approval before launching portal checkout', () => {
+  const viewer = readFileSync('src/pages/EstimateViewer.jsx','utf8');
+  const dialog = readFileSync('src/components/portal/PortalDocumentDialog.jsx','utf8');
+  assert.match(viewer, /Approve & Pay/);
+  assert.match(viewer, /if \(response\?\.data\?\.success\)/);
+  assert.match(viewer, /openPortalCheckout\(\)/);
+  assert.match(viewer, /payment=checkout/);
+  assert.match(viewer, /data\.estimate\?\.status === "approved"/);
+  assert.match(dialog, /Approve & Pay/);
+  assert.match(dialog, /if \(action === 'approve'\) setCheckoutAfterApproval\(true\)/);
+  assert.match(dialog, /checkoutAttempted\.current = true/);
+  assert.match(dialog, /paymentQuoteReady/);
+  assert.match(dialog, /createPortalCheckoutSession/);
+});
 test('failed invitation email does not mark customer as invited', async () => {
   const h = inviteHarness({ smtpFailure: true });
   assert.equal((await h.call({ customerId: 'c1' })).status, 502);
