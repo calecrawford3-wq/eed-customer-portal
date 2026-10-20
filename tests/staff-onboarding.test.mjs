@@ -20,7 +20,7 @@ test('Staff shop jobs are explicitly allowed, sanitized and no profitability is 
 test('Staff portal is separate from customer portal, with same-origin login destination',()=>{
  const route=file('src/App.jsx'),entry=file('src/lib/portal-entry.js');
  assert.match(route,/path="StaffWorkspace"/);
- assert.match(route,/location.pathname.toLowerCase\(\) === '\/staffworkspace'/);
+ assert.match(route,/if\(page==='StaffWorkspace'\)/);
  assert.match(entry,/url.origin !== origin/);
  assert.match(entry,/\/StaffWorkspace/);
 });
