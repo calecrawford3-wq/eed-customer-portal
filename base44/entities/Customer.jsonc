@@ -168,6 +168,10 @@
       "type": "boolean",
       "description": "Customer editable portal profile information; no private shop notes or billing authority."
     },
+    "onboarding_tour_skipped": {
+      "type": "boolean",
+      "description": "Customer opted to skip the guided portal tour during onboarding."
+    },
     "racing_role": {
       "type": "string",
       "description": "Customer editable portal profile information; no private shop notes or billing authority."
