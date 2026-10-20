@@ -30,7 +30,11 @@ export default function MachiningTaskCard({ task, large }) {
   const [blockReason, setBlockReason] = useState("");
   const [measurements, setMeasurements] = useState(task.measurements || {});
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["machining-tasks", task.job_id] });
+  const invalidate = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["machining-tasks", task.job_id] }),
+    qc.invalidateQueries({ queryKey: ["machining-station-tasks"] }),
+    qc.invalidateQueries({ queryKey: ["engine-service-history"] }),
+  ]);
 
   const startTask = async () => {
     try {
