@@ -19,11 +19,26 @@ export default async function (req) {
       webhook_url: new URL('/api/functions/portalStripeWebhook', Deno.env.get('PORTAL_BASE_URL') || 'https://portal.eedpower.com').href,
       endpoint_registered: false, endpoint_event_coverage: false,
       account_check: 'not_run',
+      account_id: null,
+      account_business_name: null,
+      account_charges_enabled: false,
+      account_payouts_enabled: false,
+      account_details_submitted: false,
+      payment_recording_ready: false,
+      customer_checkout_ready: false,
+      guest_checkout_ready: false,
+      setup_method: 'Base44 server-side environment secrets (one-time setup)',
       runtime_checks_still_required: ['Signed Stripe test delivery', 'Base44 conditional update concurrency', 'Deposit and full payment', 'Duplicate delivery and interrupted conversion recovery', 'Old in-flight checkout and link compatibility'],
     };
     if (key) {
       try {
         const stripe = new Stripe(key);
+        const account = await stripe.accounts.retrieve();
+        report.account_id = account.id;
+        report.account_business_name = account.business_profile?.name || account.settings?.dashboard?.display_name || null;
+        report.account_charges_enabled = !!account.charges_enabled;
+        report.account_payouts_enabled = !!account.payouts_enabled;
+        report.account_details_submitted = !!account.details_submitted;
         const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
         const endpoint = endpoints.data.find(e => e.url === report.webhook_url && e.status === 'enabled');
         report.endpoint_registered = !!endpoint;
@@ -33,7 +48,11 @@ export default async function (req) {
         report.endpoint_list_incomplete = endpoints.has_more;
       } catch { report.account_check = 'unavailable'; }
     }
-    // Configuration checks do not prove signature matching or successful recording.
+    // Readiness is intentionally conservative: configuration is not proof of
+    // a signed webhook delivery or a successfully recorded test payment.
+    report.payment_recording_ready = report.account_check === 'complete' && report.account_charges_enabled && report.signing_secret_configured && report.endpoint_registered && report.endpoint_event_coverage && report.recording_ready_flag;
+    report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled;
+    report.guest_checkout_ready = report.customer_checkout_ready && report.guest_flag_enabled;
     return Response.json(report, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return Response.json({ error: 'Unable to check payment readiness' }, { status: 500 }); }
 }
