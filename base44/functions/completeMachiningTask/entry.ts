@@ -100,7 +100,10 @@ Deno.serve(async (req) => {
                 performed_at: now,
               });
             }
-          } catch (e) { /* best-effort history update */ }
+          } catch (e) {
+            console.error("[completeMachiningTask] History correction failed:", e);
+            return Response.json({ error: "Machining measurements saved, but service history update failed. Reconcile history before continuing." }, { status: 409 });
+          }
         }
       }
       return Response.json({
@@ -145,6 +148,8 @@ Deno.serve(async (req) => {
       if (existing) {
         await base44.asServiceRole.entities.ServiceHistoryEntry.update(existing.id, historyData);
         historyEntry = { id: existing.id, ...historyData };
+        // A previous attempt may have created history before linking it to the task.
+        await base44.asServiceRole.entities.MachiningTask.update(taskId, { history_entry_id: existing.id });
       } else {
         const created = await base44.asServiceRole.entities.ServiceHistoryEntry.create(historyData);
         historyEntry = { id: created.id, ...historyData };
