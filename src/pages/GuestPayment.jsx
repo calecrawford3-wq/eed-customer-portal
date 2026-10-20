@@ -11,6 +11,7 @@ export default function GuestPayment() {
   const { type, token } = useParams();
   const [params] = useSearchParams();
   const [option, setOption] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const valid = ['estimate', 'invoice'].includes(type) && !!token;
@@ -29,7 +30,7 @@ export default function GuestPayment() {
     if (busy || !selected) return;
     setBusy(true); setError('');
     try {
-      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount });
+      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount, paymentMethod, expectedFeeCents: 0 });
       if (r.data?.error || !r.data?.checkout_url) throw new Error();
       const url = new URL(r.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error();
@@ -53,6 +54,7 @@ export default function GuestPayment() {
           <h2 className="text-lg font-bold">{data.balance <= 0 || data.status === 'paid' ? 'Payment complete' : 'Choose a payment'}</h2>
           {data.payment_message && <p role="status" className="rounded-lg bg-slate-100 p-3 text-sm">{data.payment_message}</p>}
           {choices.map(c => <label key={c.value} className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="radio" name="amount" value={c.value} checked={selected?.value === c.value} onChange={() => setOption(c.value)} /><span className="min-w-0 flex-1">{c.label}</span><strong className="tabular-nums">{formatMoney(c.amount)}</strong></label>)}
+          {data.can_pay && selected && <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="guest-method">Payment method</label><select id="guest-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account">ACH bank payment (when enabled)</option><option value="affirm">Affirm (when enabled)</option></select><p className="text-xs text-slate-600">Invoice amount {formatMoney(selected.amount)} · Fee $0.00 currently quoted · Total {formatMoney(selected.amount)}. Additional fees are not charged until approved and displayed before checkout.</p></div>}
           {data.can_pay && selected && !params.get('session_id') && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(selected.amount)}</Button>}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <Button variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => { setOption(''); refetch(); }}>Refresh Payment Status</Button>
