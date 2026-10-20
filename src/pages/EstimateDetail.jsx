@@ -1476,7 +1476,7 @@ export default function EstimateDetail() {
     setSending(true);
     try {
       let publicAccessToken = form.public_access_token;
-      let checkoutUrl = form.stripe_checkout_url;
+      let checkoutUrl = null; // Payment sessions are created on demand in the portal.
       if (!publicAccessToken) {
         publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       }
