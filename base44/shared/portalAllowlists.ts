@@ -35,6 +35,7 @@ export function allowlistCustomer(c: any): any {
     onboarding_garage_completed: c.onboarding_garage_completed,
     onboarding_tour_completed: c.onboarding_tour_completed,
     onboarding_tour_skipped: c.onboarding_tour_skipped,
+    onboarding_profile_completed: c.onboarding_profile_completed,
     racing_role: c.racing_role,
     racing_classes: c.racing_classes,
     racing_tracks: c.racing_tracks,
