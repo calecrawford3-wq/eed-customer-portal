@@ -19,14 +19,23 @@ function setup() {
     }, writes: [], applied: 0,
   };
   const matches = (row, query) => Object.entries(query).every(([key, expected]) => {
+    if (key === '$or') return expected.some(q => matches(row, q));
     if (expected && typeof expected === 'object') {
       if ('$in' in expected) return expected.$in.includes(row[key]);
       if ('$ne' in expected) return row[key] !== expected.$ne;
+      if ('$exists' in expected) return (row[key] !== undefined) === expected.$exists;
     }
     return row[key] === expected;
   });
   const entities = new Proxy({}, { get: (_, name) => ({
     filter: async query => (state.rows[name] || []).filter(row => matches(row, query)),
+    updateMany: async (query, update) => {
+      let updated = 0;
+      for (const row of state.rows[name] || []) if (matches(row, query)) {
+        Object.assign(row, update.$set || {}); updated++;
+      }
+      return { updated };
+    },
     update: async (id, changes) => {
       state.writes.push([name, id, changes]);
       const row = state.rows[name].find(v => v.id === id);
