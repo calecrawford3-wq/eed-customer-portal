@@ -1,4 +1,6 @@
+import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import { portalCheckoutEnabled } from '../../shared/portalCheckout.ts';
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -9,7 +11,7 @@ export default async function (req) {
     const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
     const report: any = {
       mode: key?.startsWith('sk_live_') ? 'live' : key ? 'test' : 'missing',
-      portal_checkout_enabled: Deno.env.get('PORTAL_PAYMENTS_ENABLED') === 'true' && Deno.env.get('PORTAL_STRIPE_RECORDING_READY') === 'true' && !!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET') && !!key,
+      portal_checkout_enabled: portalCheckoutEnabled(),
       guest_flag_enabled: Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true',
       signing_secret_configured: !!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET'),
       recording_ready_flag: Deno.env.get('PORTAL_STRIPE_RECORDING_READY') === 'true',
@@ -21,8 +23,7 @@ export default async function (req) {
     };
     if (key) {
       try {
-        const { default: Stripe } = await import('npm:stripe@13.11.0');
-        const stripe = new Stripe(key, { timeout: 10000, maxNetworkRetries: 0 });
+        const stripe = new Stripe(key);
         const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
         const endpoint = endpoints.data.find(e => e.url === report.webhook_url && e.status === 'enabled');
         report.endpoint_registered = !!endpoint;
