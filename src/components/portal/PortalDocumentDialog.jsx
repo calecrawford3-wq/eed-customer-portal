@@ -49,7 +49,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
       if (response?.error) throw new Error(response.error);
       if (response?.url) {
         const url = new URL(response.url);
-        if (url.origin !== 'https://billing.eedpower.com') throw new Error('Payment link could not be verified.');
+        if (url.origin !== 'https://portal.eedpower.com') throw new Error('Payment link could not be verified.');
         window.location.assign(url.href);
         return;
       }
