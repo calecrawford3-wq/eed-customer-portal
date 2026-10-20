@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { portalCustomerId } from '../../shared/portalDocument.ts';
 
 // Customer self-service profile update. A customer may update ONLY their own
 // profile fields. Administrative fields (notes, tax_exempt, parts_markup_override,
@@ -8,7 +9,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 // the authenticated user, never from the request body.
 
 const ALLOWED = [
-  'first_name', 'last_name', 'company_name', 'email', 'phone',
+  'first_name', 'last_name', 'company_name', 'phone',
   'address_line1', 'address_line2', 'city', 'state', 'zip', 'country',
   'additional_emails', 'additional_phones',
 ];
@@ -21,13 +22,18 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
 
     // Ownership anchor: user.data.customer_id (set server-side, field-locked).
-    const cid = user.customer_id || user.data?.customer_id;
+    const cid = await portalCustomerId(base44, user);
     if (!cid) return Response.json({ error: 'Account not linked to a customer record' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
+    if (Object.prototype.hasOwnProperty.call(body, 'email')) return Response.json({ error: 'Email changes require authenticated verification through the identity provider. Contact the shop for assistance.' }, { status: 400 });
     const patch = {};
     for (const k of ALLOWED) {
-      if (body[k] !== undefined) patch[k] = body[k];
+      if (body[k] !== undefined) {
+        if (typeof body[k] !== 'string' && !(['additional_emails', 'additional_phones'].includes(k) && Array.isArray(body[k]))) return Response.json({ error: `Invalid ${k}` }, { status: 400 });
+        if (typeof body[k] === 'string' && body[k].length > 500) return Response.json({ error: `${k} is too long` }, { status: 400 });
+        patch[k] = body[k];
+      }
     }
     if (Object.keys(patch).length === 0) {
       return Response.json({ error: 'No updatable fields provided' }, { status: 400 });
