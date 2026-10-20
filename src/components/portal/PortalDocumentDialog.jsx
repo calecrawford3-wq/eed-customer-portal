@@ -72,11 +72,23 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
     !['void', 'paid', 'declined', 'expired'].includes(doc.status) && data.amounts.balance > 0;
   const chosenOption = data?.amounts.deposit > 0 && amountOption === 'deposit' ? 'deposit' : 'balance';
   const chosenAmount = chosenOption === 'deposit' ? data?.amounts.deposit : data?.amounts.balance;
+  const { data: paymentQuote, isFetching: paymentQuoteLoading } = useQuery({
+    queryKey: ['portal-payment-quote', customerId, selection?.type, selection?.id, chosenOption, chosenAmount],
+    enabled: !!selection?.id && !!data?.portalCheckoutEnabled && !!canPay,
+    retry: false, staleTime: 0,
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getPortalPaymentQuote', { documentType: selection.type, documentId: selection.id, amountOption: chosenOption });
+      if (result.data?.error) throw new Error(result.data.error);
+      return result.data;
+    },
+  });
+  const selectedQuote = paymentQuote?.methods?.find(m => m.method === paymentMethod);
+  const paymentQuoteReady = !!selectedQuote?.enabled && !paymentQuoteLoading && paymentQuote.principalCents === Math.round(Number(chosenAmount) * 100);
   async function payInPortal() {
-    if (busy) return;
+    if (busy || !paymentQuoteReady) return;
     setBusy(true); setError('');
     try {
-      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount, paymentMethod, expectedFeeCents: 0 });
+      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount, paymentMethod, expectedFeeCents: selectedQuote.feeCents });
       if (result.data?.error || !result.data?.checkout_url) throw new Error(result.data?.error || 'Unable to open checkout.');
       const url = new URL(result.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Payment link could not be verified.');
@@ -142,8 +154,8 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
               {data.portalCheckoutEnabled ? <>
                 {data.amounts.deposit > 0 && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'deposit'} onChange={() => setAmountOption('deposit')} />Required deposit {formatMoney(data.amounts.deposit)}</label>}
                 <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'balance'} onChange={() => setAmountOption('balance')} />Full remaining balance {formatMoney(data.amounts.balance)}</label>
-                <label className="block text-sm" htmlFor="portal-method">Payment method</label><select id="portal-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account">ACH bank payment (when enabled)</option><option value="affirm">Affirm (when enabled)</option></select><p className="text-xs text-slate-600">Amount {formatMoney(chosenAmount)} · Processing fee $0.00 currently quoted · Total {formatMoney(chosenAmount)}. Any future fee must be shown and accepted before checkout.</p>
-                <Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={payInPortal}>Continue to Pay {formatMoney(chosenAmount)}</Button>
+                <label className="block text-sm" htmlFor="portal-method">Payment method</label><select id="portal-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account" disabled={!paymentQuote?.methods?.find(m => m.method === "us_bank_account")?.enabled}>ACH bank payment</option><option value="affirm" disabled={!paymentQuote?.methods?.find(m => m.method === "affirm")?.enabled}>Affirm</option></select><p className="text-xs text-slate-600">{paymentQuoteReady ? `Amount ${formatMoney(selectedQuote.principalCents / 100)} · Processing fee ${formatMoney(selectedQuote.feeCents / 100)} · Total ${formatMoney(selectedQuote.totalCents / 100)}` : "Checking payment method and fee availability…"}</p>
+                <Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy || !paymentQuoteReady} onClick={payInPortal}>Continue to Pay {formatMoney(paymentQuoteReady ? selectedQuote.totalCents / 100 : chosenAmount)}</Button>
                 <p className="text-xs text-slate-500">Your payment is handled securely by Stripe. Applied account credits are already deducted.</p>
               </> : Number(doc.applied_credits) > 0 ? <p className="text-sm text-slate-600">Your balance includes account credits. Arrange online payment with the shop so the adjusted amount is charged correctly, or choose cash/check below.</p> : <><Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={() => act('payment_link')}>Continue to Secure Payment</Button><p className="text-xs text-slate-500">Choose deposit or full balance and review available payment methods and any fees on the secure billing page.</p></>}
               <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => setManual(!manual)}>I want to pay by cash or check</Button>
