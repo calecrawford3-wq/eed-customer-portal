@@ -15,6 +15,7 @@ export function summarizeLegacyMigration(invoices: any[], estimates: any[], work
     invoices_with_public_links: 0,
     invoices_with_guest_links: 0,
     invoices_with_old_checkout_links: 0,
+    invoices_with_any_checkout_links: 0,
     invoices_missing_customer: 0,
     invoices_with_balance_discrepancy: 0,
     invoices_paid_status_discrepancy: 0,
@@ -23,6 +24,7 @@ export function summarizeLegacyMigration(invoices: any[], estimates: any[], work
     estimates_with_public_approval_links: 0,
     estimates_with_guest_links: 0,
     estimates_with_old_checkout_links: 0,
+    estimates_with_any_checkout_links: 0,
     estimates_awaiting_customer_decision: 0,
     estimates_with_conversion_recovery: 0,
     additional_work_scanned: work.length,
@@ -49,6 +51,7 @@ export function summarizeLegacyMigration(invoices: any[], estimates: any[], work
     if (invoice.public_access_token) counts.invoices_with_public_links++;
     if (invoice.guest_payment_token) counts.invoices_with_guest_links++;
     if (oldLink(invoice.stripe_checkout_url)) counts.invoices_with_old_checkout_links++;
+    if (typeof invoice.stripe_checkout_url === 'string' && invoice.stripe_checkout_url.trim()) counts.invoices_with_any_checkout_links++;
     if (!invoice.customer_id) counts.invoices_missing_customer++;
     if (Number.isFinite(total) && Number.isFinite(paid) && Number.isFinite(balance) && Math.abs(total - paid - balance) > 0.02) counts.invoices_with_balance_discrepancy++;
     if (status === 'paid' && Number.isFinite(balance) && balance > 0.01) counts.invoices_paid_status_discrepancy++;
@@ -60,6 +63,7 @@ export function summarizeLegacyMigration(invoices: any[], estimates: any[], work
     if (estimate.public_access_token) counts.estimates_with_public_approval_links++;
     if (estimate.guest_payment_token) counts.estimates_with_guest_links++;
     if (oldLink(estimate.stripe_checkout_url)) counts.estimates_with_old_checkout_links++;
+    if (typeof estimate.stripe_checkout_url === 'string' && estimate.stripe_checkout_url.trim()) counts.estimates_with_any_checkout_links++;
     if (estimate.status === 'sent') counts.estimates_awaiting_customer_decision++;
     if (estimate.stripe_conversion_claim || estimate.stripe_conversion_error) counts.estimates_with_conversion_recovery++;
   }
@@ -76,6 +80,7 @@ export function summarizeLegacyMigration(invoices: any[], estimates: any[], work
   if (counts.invoices_missing_customer) blockers.push('Invoices without a linked customer require ownership reconciliation.');
   if (counts.invoices_with_pending_stripe_reconciliation || counts.estimates_with_conversion_recovery) blockers.push('Unresolved Stripe or estimate conversion work requires reconciliation.');
   if (counts.legacy_invoices_without_original_pdf) blockers.push('Some legacy invoices have no original PDF. Preserve old viewer access until verified.');
+  if (counts.invoices_with_any_checkout_links || counts.estimates_with_any_checkout_links) blockers.push('Stored checkout URLs may reference active provider sessions; reconcile their status and preserve webhook handling.');
   if (counts.open_invoices || counts.estimates_awaiting_customer_decision || counts.additional_work_awaiting_customer_decision) blockers.push('Outstanding invoices or pending approvals may have active legacy links; preserve them through cutover.');
   return {
     counts,
