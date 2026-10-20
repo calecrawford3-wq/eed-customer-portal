@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import RacingGarage from './RacingGarage';
 
 const required = ['first_name','last_name','phone','address_line1','city','state','zip','country'];
 const fields = [
@@ -17,10 +18,11 @@ const fields = [
 export function accountContactComplete(c) {
   return !!c?.onboarding_contact_confirmed && required.every(k => String(c?.[k] || '').trim());
 }
-export default function AccountSetup({ customer, onSaved, onClose }) {
+export default function AccountSetup({ customer, engines = [], onSaved, onClose, onStartTour, initialSection = 'contact' }) {
   const [form,setForm] = useState({});
   const [same,setSame] = useState(false);
-  const [section,setSection] = useState('contact');
+  const [section,setSection] = useState(initialSection);
+  const [garageEditing,setGarageEditing] = useState(false);
   const [saving,setSaving] = useState(false);
   const [error,setError] = useState('');
   const [securityNotice,setSecurityNotice] = useState('');
@@ -29,7 +31,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
     catch {setError('Some changes could not be saved. Use Save draft to retry.');}
   };
   useEffect(() => { setForm(customer || {}); },[customer?.id]);
-  const progress = [accountContactComplete(customer),!!customer?.racing_role || !!customer?.onboarding_racing_skipped,!!customer?.onboarding_cars_skipped || !!customer?.onboarding_garage_completed,!!customer?.onboarding_tour_completed].filter(Boolean).length;
+  const progress = [accountContactComplete(customer),!!customer?.racing_role || !!customer?.onboarding_racing_skipped,!!customer?.onboarding_cars_skipped || !!customer?.onboarding_garage_completed,(!!customer?.onboarding_tour_completed || !!customer?.onboarding_tour_skipped)].filter(Boolean).length;
   const save = async (patch) => {
     setSaving(true);setError('');
     try {
@@ -64,13 +66,21 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
       racing_notes_public:form.racing_notes_public || '',onboarding_racing_skipped:false
     })) setSection('finish');
   };
+  const finishCars = async (startTour) => {
+    if (garageEditing) {setError('Save or cancel the car or driver you are editing before continuing.');return;}
+    const patch = {onboarding_cars_skipped:!customer?.onboarding_garage_completed};
+    if (!startTour) patch.onboarding_tour_skipped = true;
+    if (!(await save(patch))) return;
+    if (startTour) onStartTour?.();
+    else setSection('security');
+  };
   const trackSuggestions=['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
   return <Card className="border-red-100 shadow-sm">
     <CardHeader><CardTitle>Welcome to Elite Engine Development</CardTitle><p className="text-sm text-slate-600">Your account setup saves as you go. Estimates, approvals and payments are always available.</p>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={progress} aria-label="Account setup progress"><div className="h-full bg-red-600" style={{width:`${progress*25}%`}}/></div><p className="text-xs text-slate-500">{progress} of 4 profile steps completed. Your login is managed separately by Base44.</p>
     </CardHeader>
     <CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2">{[['contact','Contact'],['racing','Racing'],['finish','Cars & tour'],['security','Security']].map(([key,title])=><Button key={key} variant={section===key?'default':'outline'} size="sm" onClick={()=>setSection(key)}>{title}</Button>)}</div>
+      <div className="flex flex-wrap gap-2">{[['contact','Contact'],['racing','Racing'],['finish','Cars & drivers'],['security','Security']].map(([key,title])=><Button key={key} variant={section===key?'default':'outline'} size="sm" onClick={()=>setSection(key)}>{title}</Button>)}</div>
       {section==='contact' && <div className="space-y-3">
         <p className="text-sm">Confirm the information Elite has on file. Email: <strong>{customer?.email}</strong> (account email changes require verified assistance).</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{fields.filter(([k])=>!same || !k.startsWith('shipping_')).map(([key,title])=><div key={key}><Label htmlFor={key}>{title}{required.includes(key)?' *':''}</Label><Input id={key} className="mt-1 min-h-11" autoComplete={key==='first_name'?'given-name':key==='last_name'?'family-name':key==='phone'?'tel':key==='country'?'country-name':'on'} value={form[key] || ''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} onBlur={e=>saveField(key,e.target.value.trim())}/></div>)}</div>
@@ -86,7 +96,15 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
         <datalist id="racing-track-options">{trackSuggestions.map(t=><option key={t} value={t}/>)}</datalist>
         <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={()=>saveRacing(false)}>Save racing profile</Button><Button variant="outline" disabled={saving} onClick={()=>saveRacing(true)}>Skip for now</Button></div>
       </div>}
-      {section==='finish' && <div className="space-y-3"><p className="text-sm">Use the Cars & drivers and Portal tour buttons on your dashboard to complete your setup. Both can be revisited at any time.</p><Button variant="outline" disabled={saving} onClick={async()=>{if(await save({onboarding_cars_skipped:true})) onClose?.();}}>Finish for now</Button></div>}
+      {section==='finish' && <div className="space-y-4">
+        <p className="text-sm text-slate-600">Add your cars and drivers here. Save each car or driver as you go. You can add more later from the dashboard.</p>
+        <RacingGarage customerId={customer?.id} engines={engines} onChange={onSaved} onEditingChange={setGarageEditing}/>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button disabled={saving || garageEditing} onClick={()=>finishCars(true)}>Save & Start Tour</Button>
+          <Button variant="outline" disabled={saving || garageEditing} onClick={()=>finishCars(false)}>Save & Skip Tour</Button>
+        </div>
+        {garageEditing && <p className="text-sm text-amber-700">Save or cancel the car or driver you are editing to continue.</p>}
+      </div>}
       {section==='security' && <div className="space-y-3"><p className="text-sm text-slate-600">Your password and email verification are managed by Base44. Your account email is {customer?.email || 'not available'}.</p><p className="text-sm text-slate-600">For account email changes, contact Elite so your engine and billing records stay correctly linked.</p><Button variant="outline" disabled={saving || !customer?.email} onClick={async()=>{setSaving(true);setSecurityNotice('');try{await base44.auth.resetPasswordRequest(customer.email);setSecurityNotice('Password reset instructions have been requested. Check your inbox and spam folder.');}catch{setError('Unable to request a password reset. Try again later.');}finally{setSaving(false);}}}>Email password reset instructions</Button>{securityNotice && <p role="status" className="text-sm text-emerald-700">{securityNotice}</p>}</div>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <Button variant="ghost" className="w-full" onClick={onClose}>Return to portal</Button>
