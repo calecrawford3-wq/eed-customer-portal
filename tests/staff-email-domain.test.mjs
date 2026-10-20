@@ -18,7 +18,7 @@ test('Employee and owner invitation require @eedpower.com and invite the record 
 });
 test('HR interface displays staff login requirement and blocks invalid addresses',()=>{
  const src=read('src/pages/HRAdmin.jsx');
- assert.match(src,/Staff Login Email \(@eedpower\.com\)/);
+ assert.match(src,/Employee Email \/ Login \(@eedpower\.com\)/);
  assert.match(src,/name@eedpower\.com/);
- assert.match(src,/Staff login email must end in @eedpower\.com/);
+ assert.match(src,/Employee login email must end in @eedpower\.com/);
 });
