@@ -74,11 +74,7 @@ Deno.serve(async (req) => {
           changed_by: userName,
           changed_at: now,
         }))];
-        await base44.asServiceRole.entities.MachiningTask.update(taskId, {
-          measurements,
-          corrections,
-        });
-
+        // Update linked history before the task, so a failed history write can be retried.
         // Update the linked service history entry if it exists
         if (task.history_entry_id) {
           try {
@@ -105,6 +101,10 @@ Deno.serve(async (req) => {
             return Response.json({ error: "Machining measurements saved, but service history update failed. Reconcile history before continuing." }, { status: 409 });
           }
         }
+        await base44.asServiceRole.entities.MachiningTask.update(taskId, {
+          measurements,
+          corrections,
+        });
       }
       return Response.json({
         success: true,
