@@ -49,6 +49,7 @@ import AdditionalWorkViewer from './pages/AdditionalWorkViewer';
 import EstimateViewer from './pages/EstimateViewer';
 import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
+import PublicLegalViewer from './pages/PublicLegalViewer';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
@@ -144,6 +145,7 @@ const routes = createRoutesFromElements(
     <Route path="/estimate/:token" element={<EstimateViewer />} />
     <Route path="/invoice/:token" element={<InvoiceViewer />} />
     <Route path="/comparison/:token" element={<PublicStageComparison />} />
+    <Route path="/legal/:token" element={<PublicLegalViewer />} />
     <Route path="/" element={<AdminLayout />}>
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
