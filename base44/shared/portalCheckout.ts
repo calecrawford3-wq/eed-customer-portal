@@ -25,7 +25,7 @@ export async function createPortalCheckout(base44: any, stripe: any, doc: any, t
   if (!appId) throw new PaymentError('App configuration is missing', 503);
   const amount = cents(option.amount);
   const quote = quotePayment(amount, body.paymentMethod || 'card');
-  if (body.expectedFeeCents !== quote.feeCents) throw new PaymentError('Payment fee quote changed. Refresh and review the total.', 409);
+  if ((body.expectedFeeCents ?? 0) !== quote.feeCents) throw new PaymentError('Payment fee quote changed. Refresh and review the total.', 409);
   // Stable provider idempotency for retries of the same document/amount/path.
   // Do not log or expose capability tokens in Stripe metadata.
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([appId, type, doc.id, revision, option.value, returnPath, quote.method, quote.feeCents])));
