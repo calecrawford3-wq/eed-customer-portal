@@ -58,6 +58,10 @@ const BUILD_PROGRESS = {
 
 export default function CustomerPortal() {
   const { user } = useAuth();
+  const portalSignInUrl = `${window.location.origin}/PortalAccess?mode=signin`;
+  const portalActivateUrl = `${window.location.origin}/PortalAccess?mode=activate`;
+  const portalForgotUrl = `${window.location.origin}/PortalAccess?mode=forgot`;
+  const signOutToPortal = () => base44.auth.logout(portalSignInUrl);
   const [searchParams, setSearchParams] = useSearchParams();
   const [portalDocument, setPortalDocument] = useState(null);
   const [portalTab, setPortalTab] = useState('engines');
@@ -311,7 +315,7 @@ export default function CustomerPortal() {
             <h2 className="text-xl font-bold text-slate-900">Portal connection needs attention</h2>
             <p className="text-slate-600">{portalError.message}</p>
             <Button onClick={() => retryPortal()}>Try Again</Button>
-            <Button variant="outline" className="ml-2" onClick={() => base44.auth.logout()}>Sign Out</Button>
+            <Button variant="outline" className="ml-2" onClick={signOutToPortal}>Sign Out</Button>
           </CardContent>
         </Card>
       </div>
@@ -328,7 +332,7 @@ export default function CustomerPortal() {
             <p className="text-slate-500 mb-4">
               We couldn't find a customer account linked to <strong>{user.email}</strong>. Please contact us to set up your portal access.
             </p>
-            <Button variant="outline" onClick={() => base44.auth.logout()}>Sign Out</Button>
+            <Button variant="outline" onClick={signOutToPortal}>Sign Out</Button>
           </CardContent>
         </Card>
       </div>
@@ -433,7 +437,7 @@ export default function CustomerPortal() {
                 <User className="w-4 h-4 mr-1" /> Switch Customer
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => base44.auth.logout()}>
+            <Button variant="outline" size="sm" onClick={signOutToPortal}>
               <LogOut className="w-4 h-4 mr-1" /> Sign Out
             </Button>
           </div>
