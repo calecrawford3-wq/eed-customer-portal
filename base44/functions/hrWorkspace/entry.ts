@@ -90,6 +90,8 @@ export default async function(req) {
         const personalEmail=values.personal_email ?? String(prior?.personal_email||'').trim().toLowerCase();
         if(!personalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail)) return fail('A valid personal email is required for private HR and tax correspondence');
         if(personalEmail===loginEmail) return fail('Personal email must be different from company login email');
+        const sharedPersonal=rows(await workers.filter({personal_email:personalEmail}));
+        if(sharedPersonal.some(w=>w.id!==body.id)) return fail('Personal email is already assigned to another employee',409);
         if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(loginEmail)) return fail('Staff login email must be an @eedpower.com address');
         if(prior?.portal_invite_sent_at && values.email && values.email!==String(prior.email||'').trim().toLowerCase()) return fail('Login email cannot be changed after invitation. Update the Base44 account first.',409);
         const resultingType=values.worker_type || prior?.worker_type;
