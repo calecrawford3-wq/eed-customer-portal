@@ -83,6 +83,8 @@ export default function EstimateViewer({ buildVersion }) {
           ...prev,
           estimate: { ...prev.estimate, status: "approved" }
         }));
+        // Continue straight into portal checkout after server-confirmed approval.
+        openPortalCheckout();
       } else {
         const errorMsg = response?.data?.error || "Failed to approve estimate";
         console.error("Approval failed:", errorMsg);
@@ -125,6 +127,13 @@ export default function EstimateViewer({ buildVersion }) {
     }
   };
 
+  const openPortalCheckout = () => {
+    const id = data?.estimate?.id;
+    if (!id) {setPayingError('Unable to locate this estimate. Please contact Elite.');return;}
+    const next = '/CustomerPortal?document=estimate&id=' + encodeURIComponent(id) + '&payment=checkout';
+    window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
+  };
+
   const handlePayNow = () => {
     if (data?.estimate?.status !== 'approved') {
       setPayingError('Approve this estimate before making a payment.');
@@ -132,10 +141,7 @@ export default function EstimateViewer({ buildVersion }) {
     }
     // Never follow legacy stored checkout sessions. The authenticated portal
     // creates a fresh, verified Stripe session against the current balance.
-    const id = data?.estimate?.id;
-    if (!id) {setPayingError('Unable to locate this estimate. Please contact Elite.');return;}
-    const next = '/CustomerPortal?document=estimate&id=' + encodeURIComponent(id);
-    window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
+    openPortalCheckout();
   };
 
   return (
@@ -522,7 +528,7 @@ export default function EstimateViewer({ buildVersion }) {
                     disabled={approving}
                     className="w-full rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-5 transition"
                   >
-                    {approving ? "Approving..." : "Approve Estimate"}
+                    {approving ? "Approving & continuing..." : "Approve & Pay"}
                   </button>
                 )}
                 {data.estimate?.status === "approved" && (
