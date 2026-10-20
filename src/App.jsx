@@ -46,6 +46,9 @@ import ReplacementRules from './pages/ReplacementRules';
 import ExceptionDashboard from './pages/ExceptionDashboard';
 import MachiningStation from './pages/MachiningStation';
 import AdditionalWorkViewer from './pages/AdditionalWorkViewer';
+import EstimateViewer from './pages/EstimateViewer';
+import InvoiceViewer from './pages/InvoiceViewer';
+import PublicStageComparison from './pages/PublicStageComparison';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
@@ -137,6 +140,10 @@ const routes = createRoutesFromElements(
     <Route path="/reset-password" element={<PortalResetPassword />} />
     <Route path="/oauth/consent" element={<OAuthConsent />} />
     <Route path="/AdditionalWorkViewer/:token" element={<AdditionalWorkViewer />} />
+    <Route path="/additional-work/:token" element={<AdditionalWorkViewer />} />
+    <Route path="/estimate/:token" element={<EstimateViewer />} />
+    <Route path="/invoice/:token" element={<InvoiceViewer />} />
+    <Route path="/comparison/:token" element={<PublicStageComparison />} />
     <Route path="/" element={<AdminLayout />}>
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
