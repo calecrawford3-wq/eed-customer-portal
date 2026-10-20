@@ -74,7 +74,13 @@ export default async function(req) {
       const values=clean(body.values||{},fields[kind]);
       if(kind==='workers') {
         if(values.email) values.email=String(values.email).trim().toLowerCase();
-        if(action==='create' && (!values.email || !values.first_name || !values.last_name || !['w2','1099'].includes(values.worker_type))) return fail('Name, email and W-2/1099 classification required');
+        if(action==='create' && (!values.email || !values.first_name || !values.last_name || !['w2','1099','owner'].includes(values.worker_type))) return fail('Name, email and worker classification required');
+        if(values.worker_type==='owner') values.access_level='owner';
+        if(values.access_level==='owner' && values.worker_type!=='owner') return fail('Owner access level requires owner classification');
+        if(values.worker_type==='owner' && action==='update' && body.id) {
+          const existing=await workers.get(body.id);
+          if(existing?.worker_type!=='owner' && values.worker_type==='owner') return fail('Create a separate owner profile; do not convert employees to owners',409);
+        }
         if(values.access_level==='manager'||values.access_level==='shop_staff') {
           // HR designation is NOT an authentication role; backend access needs separate explicit provisioning.
         }
