@@ -109,7 +109,10 @@ const MORE_SECTIONS = [
 
 const formatCount = (n) => (n > 99 ? "99+" : String(n));
 
-export default function MobileBottomNav() {
+export default function MobileBottomNav({allowedPages=null}) {
+  const canSee=page=>allowedPages===null||page==='EmployeePortal'||allowedPages.includes(page);
+  const visibleTabs=PRIMARY_TABS.filter(t=>canSee(t.key));
+  const visibleMore=MORE_SECTIONS.map(g=>({...g,items:g.items.filter(i=>canSee(i.page))})).filter(g=>g.items.length);
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -118,18 +121,22 @@ export default function MobileBottomNav() {
     queryKey: ["nav-badge-messages"],
     queryFn: () => base44.entities.Message.count({ is_read: false, direction: "inbound" }),
     refetchInterval: 30000,
+    enabled: allowedPages===null,
   });
   const { data: approvalsCount = 0 } = useQuery({
     queryKey: ["nav-badge-approvals"],
     queryFn: () => base44.entities.Estimate.count({ status: "sent" }),
+    enabled: allowedPages===null,
   });
   const { data: refreshCount = 0 } = useQuery({
     queryKey: ["nav-badge-refresh"],
     queryFn: () => base44.entities.RefreshRequest.count({ status: "pending" }),
+    enabled: allowedPages===null,
   });
   const { data: exceptionsCount = 0 } = useQuery({
     queryKey: ["nav-badge-exceptions"],
     queryFn: () => base44.entities.ExceptionAlert.count({ status: "active" }),
+    enabled: allowedPages===null,
   });
 
   const badgeFor = (key) => {
@@ -146,7 +153,7 @@ export default function MobileBottomNav() {
   };
 
   const isMoreActive = () => {
-    const primaryPages = PRIMARY_TABS.map((t) => t.key);
+    const primaryPages = visibleTabs.map((t) => t.key);
     return !primaryPages.some((p) => isActive(p));
   };
 
@@ -166,7 +173,7 @@ export default function MobileBottomNav() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 flex items-stretch print:hidden"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
       >
-        {PRIMARY_TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = isActive(tab.key);
           const count = tab.badge ? badgeFor(tab.badge) : 0;
           return (
@@ -237,7 +244,7 @@ export default function MobileBottomNav() {
 
             {/* Scrollable sections */}
             <div className="flex-1 overflow-y-auto px-4 py-3">
-              {MORE_SECTIONS.map((section) => (
+              {visibleMore.map((section) => (
                 <div key={section.label} className="mb-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 px-1">
                     {section.label}
