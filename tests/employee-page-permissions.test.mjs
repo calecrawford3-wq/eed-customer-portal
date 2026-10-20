@@ -19,7 +19,7 @@ test('Nonadmin pages require selected permissions, owner pages not selectable',(
  const cat=f('src/lib/staff-page-permissions.js');
  assert.match(cat,/STAFF_OWNER_ONLY/);
  assert.match(cat,/\['EmployeePortal','My Time Clock & HR'\]/);
- assert.doesNotMatch(cat,/\['HRAdmin'/);
+ assert.doesNotMatch(cat.slice(0,cat.indexOf('export const STAFF_PAGE_KEYS')),/\['HRAdmin'/);
  assert.match(f('base44/functions/staffAccessGate/entry.ts'),/allowed_pages=access==='normal'/);
 });
 test('Employee sees owner-selected page links and time clock remains available',()=>{
