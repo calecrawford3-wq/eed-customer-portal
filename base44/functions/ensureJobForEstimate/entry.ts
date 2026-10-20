@@ -15,10 +15,11 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (user.role !== "admin") return Response.json({ error: "Admin required" }, { status: 403 });
 
     const body = await req.json();
     const estimateId = body.estimate_id;
-    if (!estimateId) return Response.json({ error: "estimate_id required" }, { status: 400 });
+    if (typeof estimateId !== "string" || !estimateId || estimateId.length > 200) return Response.json({ error: "Valid estimate_id required" }, { status: 400 });
     const activate = body.activate !== false;
 
     // Load the estimate
