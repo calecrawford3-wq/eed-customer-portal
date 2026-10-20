@@ -53,11 +53,10 @@ export default function InvoiceViewer() {
     }
 
     if (paymentMethod === "stripe") {
-      if (!inv.stripe_checkout_url) {
-        toast.error("Payment link not available. Please contact support.");
-        return;
-      }
-      window.location.href = inv.stripe_checkout_url;
+      // Existing Stripe URLs can point at the retired billing app or an
+      // outdated balance. Sign in and use the portal's verified checkout.
+      const next = '/CustomerPortal?document=invoice&id=' + encodeURIComponent(inv.id);
+      window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
       return;
     }
 
