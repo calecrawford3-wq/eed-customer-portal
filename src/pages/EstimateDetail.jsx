@@ -324,14 +324,13 @@ export default function EstimateDetail() {
       const estimateId = id || result.id;
       // Credits are redeemed only when the estimate is approved (see redeemCreditsOnApproval),
       // so the same credits can be soft-held on multiple estimates without locking the balance.
-      // If this estimate has already been sent and the deposit fields changed,
-      // regenerate the Stripe checkout URL so the public viewer's payment link matches the new deposit.
+      // Portal checkout calculates the current balance when the customer pays.
       if (data.public_access_token && estimate?.[0]) {
         const orig = estimate[0];
         const depositChanged =
           (orig.deposit_required || false) !== (data.deposit_required || false) ||
           Number(orig.deposit_amount || 0) !== Number(data.deposit_amount || 0);
-        if (depositChanged) {
+        if (false && depositChanged) { // Legacy checkout URL regeneration retired.
           try {
             const amount = data.deposit_required ? Number(data.deposit_amount || 0) : Number(data.total || 0);
             const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
