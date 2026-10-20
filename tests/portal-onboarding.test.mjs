@@ -89,6 +89,27 @@ test('profile completion hides redundant dashboard card but preserves profile an
   assert.match(api, /Complete all four onboarding steps before finishing setup/);
   assert.match(safe, /onboarding_profile_completed: c.onboarding_profile_completed/);
 });
+test('public billing viewers and comparison stay on the Elite portal domain', () => {
+  const app = readFileSync('src/App.jsx', 'utf8');
+  for (const route of ['/estimate/:token','/invoice/:token','/comparison/:token','/additional-work/:token']) assert.ok(app.includes(route), route);
+  const estimate = readFileSync('src/pages/EstimateDetail.jsx','utf8');
+  const invoice = readFileSync('src/pages/InvoiceDetail.jsx','utf8');
+  assert.match(estimate, /https:\/\/portal\.eedpower\.com\/estimate\//);
+  assert.match(invoice, /https:\/\/portal\.eedpower\.com\/invoice\//);
+  const sync = readFileSync('base44/shared/syncEstimateSnapshot.ts','utf8');
+  assert.doesNotMatch(sync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+  const invSync = readFileSync('base44/functions/syncInvoiceSnapshot/entry.ts','utf8');
+  assert.doesNotMatch(invSync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+  const legalSync = readFileSync('base44/functions/syncLegalDocument/entry.ts','utf8');
+  assert.doesNotMatch(legalSync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+});
+test('public viewers do not follow stored legacy checkout URLs', () => {
+  for (const path of ['src/pages/EstimateViewer.jsx','src/pages/InvoiceViewer.jsx']) {
+    const content=readFileSync(path,'utf8');
+    assert.doesNotMatch(content, /window\.location\.href = .*stripe_checkout_url/);
+    assert.match(content, /PortalAccess\?mode=signin/);
+  }
+});
 test('failed invitation email does not mark customer as invited', async () => {
   const h = inviteHarness({ smtpFailure: true });
   assert.equal((await h.call({ customerId: 'c1' })).status, 502);
