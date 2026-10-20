@@ -88,7 +88,10 @@ const navSections = [
     label: "Human Resources",
     icon: Users,
     main: { name: "HR Administration", page: "HRAdmin" },
-    secondary: [{ name: "Employee Portal", page: "EmployeePortal", icon: Briefcase }],
+    secondary: [
+      { name: "Staff Workspace", page: "StaffWorkspace", icon: Briefcase },
+      { name: "Employee Portal", page: "EmployeePortal", icon: Users },
+    ],
   },
   {
     label: "Inbox",
