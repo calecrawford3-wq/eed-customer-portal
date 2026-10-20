@@ -1,9 +1,11 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.38";
 import { findTemplateForBuild, applyTemplateToBuild } from "../../shared/workflowAssignment.ts";
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
     const payload = await req.json();
     const event = payload.event;
     const data = payload.data;

@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 
 // Deletes Notification records older than 30 days to keep the dropdown lean.
@@ -5,6 +6,7 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     let deletedCount = 0;

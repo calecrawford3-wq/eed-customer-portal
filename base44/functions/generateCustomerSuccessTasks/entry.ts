@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.38";
 
 const TIMEFRAMES = [
@@ -36,6 +37,7 @@ function toWeekday(dateStr) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
     const payload = await req.json();
     const build = payload.data;
     if (!build || !build.id) {

@@ -1,3 +1,4 @@
+import { syncMachiningBilling } from '../../shared/syncMachiningBilling.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
 Deno.serve(async (req) => {
@@ -155,7 +156,8 @@ Deno.serve(async (req) => {
         const jobs = await base44.asServiceRole.entities.Job.filter({ estimate_id: estimate.id });
         const job = jobs && jobs[0];
         if (job) {
-          await base44.asServiceRole.functions.invoke('syncMachiningTaskBilling', { job_id: job.id });
+          const billing = await syncMachiningBilling(base44, job.id);
+          if (!billing.ok) throw new Error('Machining billing needs retry');
           console.log(`[recordEstimatePayment] Machining billing synced for job ${job.id}`);
         }
       } catch (e) {

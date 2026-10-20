@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { applyApprovedAdditionalWork } from '../../shared/applyAdditionalWork.ts';
 
@@ -17,7 +18,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const { publicAccessToken, response, note } = body;
-    if (!publicAccessToken) return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
+    if (!publicCapability(publicAccessToken)) return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
     if (!['approved', 'declined'].includes(response)) {
       return Response.json({ error: 'response must be approved or declined' }, { status: 400 });
     }

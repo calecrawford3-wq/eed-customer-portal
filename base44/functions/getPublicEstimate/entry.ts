@@ -1,3 +1,5 @@
+import { guestEstimateLineItems, guestLaborItems, guestMachiningItems } from '../../shared/guestFields.ts';
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
@@ -5,14 +7,14 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const { publicAccessToken } = await req.json();
 
-    if (!publicAccessToken) {
+    if (!publicCapability(publicAccessToken)) {
       return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
     }
 
     // Fetch estimate by public access token (service role—no user auth needed)
     const estimates = await base44.asServiceRole.entities.Estimate.filter({ public_access_token: publicAccessToken });
     
-    if (!estimates || estimates.length === 0) {
+    if (!estimates || estimates.length === 0 || !['sent', 'approved', 'declined', 'expired', 'paid', 'partial'].includes(estimates[0].status)) {
       return Response.json({ error: 'Estimate not found' }, { status: 404 });
     }
 
@@ -28,7 +30,7 @@ Deno.serve(async (req) => {
     let customerEngine = null;
     let platform = null;
     if (est.customer_engine_id) {
-      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: est.customer_engine_id });
+      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: est.customer_engine_id, customer_id: est.customer_id });
       customerEngine = engines?.[0] || null;
       if (customerEngine?.platform_id) {
         const platforms = await base44.asServiceRole.entities.EnginePlatform.filter({ id: customerEngine.platform_id });
@@ -56,9 +58,9 @@ Deno.serve(async (req) => {
       status: est.status,
       issue_date: est.issue_date,
       expiry_date: est.expiry_date,
-      line_items: est.line_items,
-      labor_items: est.labor_items,
-      machining_items: est.machining_items || [],
+      line_items: guestEstimateLineItems(est.line_items),
+      labor_items: guestLaborItems(est.labor_items),
+      machining_items: guestMachiningItems(est.machining_items),
       addons: safeAddons,
       subtotal: est.subtotal,
       tax_rate: est.tax_rate,
@@ -67,7 +69,6 @@ Deno.serve(async (req) => {
       deposit_required: est.deposit_required,
       deposit_amount: est.deposit_amount,
       deposit_paid: est.deposit_paid,
-      notes: est.notes,
       stripe_checkout_url: est.stripe_checkout_url,
       contains_illegal_parts: est.contains_illegal_parts || false,
     };
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
     if (est.contains_illegal_parts) {
       try {
         const docs = await base44.asServiceRole.entities.LegalDocument.filter({
-          estimate_id: est.id, document_type: 'illegal_parts'
+          estimate_id: est.id, customer_id: est.customer_id, document_type: 'illegal_parts'
         });
         const activeDoc = (docs || []).find(d => d.status !== 'void') || null;
         if (activeDoc) {
@@ -100,13 +101,6 @@ Deno.serve(async (req) => {
       first_name: customer[0].first_name,
       last_name: customer[0].last_name,
       company_name: customer[0].company_name,
-      email: customer[0].email,
-      phone: customer[0].phone,
-      address_line1: customer[0].address_line1,
-      address_line2: customer[0].address_line2,
-      city: customer[0].city,
-      state: customer[0].state,
-      zip: customer[0].zip,
     } : null;
 
     const safeSettings = settings?.[0] ? {
@@ -125,12 +119,12 @@ Deno.serve(async (req) => {
       estimate: safeEstimate,
       customer: safeCustomer,
       settings: safeSettings,
-      customerEngine: customerEngine ? { eed_id: customerEngine.eed_id, engine_serial_number: customerEngine.engine_serial_number } : null,
+      customerEngine: customerEngine ? { eed_id: customerEngine.eed_id } : null,
       platform: platform ? { name: platform.name, manufacturer: platform.manufacturer, year_range_start: platform.year_range_start, year_range_end: platform.year_range_end } : null,
       legal_document: legalDocument,
     });
   } catch (error) {
     console.error('Error fetching estimate:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to load estimate' }, { status: 500 });
   }
 });

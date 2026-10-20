@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import {
   getZohoMailAccessToken,
@@ -70,6 +71,7 @@ export default async function(req) {
   let skipped = false;
   try {
     base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) { skipped = true; return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 }); }
 
     // Optional full historical resync (admin action) — ignores and resets checkpoints
     let fullResync = false;

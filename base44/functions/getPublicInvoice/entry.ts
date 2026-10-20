@@ -1,69 +1,32 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { serializeAdditionalWorkWithPhotos } from '../../shared/findingPhotos.ts';
+import { publicCapability, publicCompanySettings } from '../../shared/publicCapability.ts';
+import { guestInvoicePayload, guestCustomer, guestEngine } from '../../shared/guestFields.ts';
+import { portalItems } from '../../shared/portalDocument.ts';
 
-Deno.serve(async (req) => {
+export default async function(req) {
+  if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   try {
     const base44 = createClientFromRequest(req);
     const { publicAccessToken } = await req.json();
-
-    if (!publicAccessToken) {
-      return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
-    }
-
-    // Fetch invoice by public access token
-    const invoices = await base44.asServiceRole.entities.Invoice.filter({ public_access_token: publicAccessToken });
-    
-    if (!invoices || invoices.length === 0) {
-      return Response.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    const inv = invoices[0];
-    
-    // Fetch customer data
-    const customer = await base44.asServiceRole.entities.Customer.filter({ id: inv.customer_id });
-    
-    // Fetch app settings
-    const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
-
-    // Fetch engine info if linked
-    let customerEngine = null;
-    let platform = null;
-    if (inv.customer_engine_id) {
-      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: inv.customer_engine_id });
-      customerEngine = engines?.[0] || null;
-      if (customerEngine?.platform_id) {
-        const platforms = await base44.asServiceRole.entities.EnginePlatform.filter({ id: customerEngine.platform_id });
-        platform = platforms?.[0] || null;
-      }
-    }
-
-    // Approved additional-work documents applied to this invoice, each with
-    // its customer-safe findings and SHARED photos (signed URLs). Lets the
-    // public invoice viewer surface the inspection photos behind the charges.
-    let additionalWork: any[] = [];
-    try {
-      const awRes = await base44.asServiceRole.entities.AdditionalWork.filter(
-        { invoice_id: inv.id, status: 'approved' },
-        { limit: 50, sort: '-approved_at' }
-      );
-      const awList = awRes.items || awRes || [];
-      for (const aw of awList) {
-        additionalWork.push(await serializeAdditionalWorkWithPhotos(base44, aw));
-      }
-    } catch (e) {
-      console.warn('[getPublicInvoice] additional work fetch failed:', e?.message || e);
-    }
-
+    if (!publicCapability(publicAccessToken)) return Response.json({ error: 'Valid publicAccessToken required' }, { status: 400 });
+    const inv = portalItems(await base44.asServiceRole.entities.Invoice.filter({ public_access_token: publicAccessToken }))[0];
+    if (!inv || !['sent', 'partial', 'paid', 'overdue', 'void'].includes(inv.status)) return Response.json({ error: 'Invoice not found' }, { status: 404 });
+    const customer = portalItems(await base44.asServiceRole.entities.Customer.filter({ id: inv.customer_id }))[0];
+    const settings = portalItems(await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' }))[0];
+    const engine = inv.customer_engine_id ? portalItems(await base44.asServiceRole.entities.CustomerEngine.filter({ id: inv.customer_engine_id, customer_id: inv.customer_id }))[0] : null;
+    const additionalWork = [];
+    const requests = portalItems(await base44.asServiceRole.entities.AdditionalWork.filter({ invoice_id: inv.id, customer_id: inv.customer_id, status: 'approved' }, { limit: 50 }));
+    for (const aw of requests.filter(a => a.submitted_at)) additionalWork.push(await serializeAdditionalWorkWithPhotos(base44, aw));
+    const payload = guestInvoicePayload(inv, customer, engine);
     return Response.json({
-      invoice: inv,
-      customer: customer?.[0] || null,
-      settings: settings?.[0] || null,
-      customerEngine,
-      platform,
-      additional_work: additionalWork,
-    });
-  } catch (error) {
-    console.error('Error fetching invoice:', error);
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-});
+      invoice: { ...payload, id: inv.id, invoice_number: inv.invoice_number,
+        tax_rate: inv.tax_rate, discount_type: inv.discount_type, discount_value: inv.discount_value, discount_amount: inv.discount_amount,
+        shipping_cost: inv.shipping_cost, due_on_completion: inv.due_on_completion,
+        stripe_checkout_url: inv.stripe_checkout_url,
+        payments: (inv.payments || []).map(p => ({ amount: p.amount, method: p.method, date: p.date })) },
+      customer: guestCustomer(customer), settings: publicCompanySettings(settings), customerEngine: guestEngine(engine),
+      platform: null, additional_work: additionalWork,
+    }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+  } catch { return Response.json({ error: 'Unable to load invoice' }, { status: 500 }); }
+}

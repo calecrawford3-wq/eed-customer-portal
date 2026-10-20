@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { serializeAdditionalWorkWithPhotos } from '../../shared/findingPhotos.ts';
 
@@ -11,7 +12,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const { publicAccessToken } = body;
-    if (!publicAccessToken) return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
+    if (!publicCapability(publicAccessToken)) return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
 
     const awRes = await base44.asServiceRole.entities.AdditionalWork.filter({ public_access_token: publicAccessToken });
     const aw = (awRes.items || awRes || [])[0];

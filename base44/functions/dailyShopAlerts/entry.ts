@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 
 // Daily shop alerts — checks low-stock parts and overdue invoices.
@@ -5,6 +6,7 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 // Intended to be called by a scheduled automation (daily at 8am CT).
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
   const startedAt = new Date().toISOString();
   const logRun = async (status, summary, details) => {
     try {

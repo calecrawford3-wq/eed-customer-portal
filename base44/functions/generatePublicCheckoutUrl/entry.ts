@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import Stripe from "npm:stripe@13.11.0";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const { publicAccessToken, amount, description, customerEmail } = await req.json();
 
-    if (!publicAccessToken || !amount || amount <= 0 || !description || !customerEmail) {
+    if (!publicCapability(publicAccessToken) || !amount || amount <= 0 || !description || !customerEmail) {
       return Response.json({ error: "Missing or invalid parameters" }, { status: 400 });
     }
 

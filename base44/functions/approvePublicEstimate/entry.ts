@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
@@ -5,7 +6,7 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         const { publicAccessToken } = await req.json();
 
-        if (!publicAccessToken) {
+        if (!publicCapability(publicAccessToken)) {
             return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
         }
 

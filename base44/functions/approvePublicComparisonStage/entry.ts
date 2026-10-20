@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
 export default async function(req: Request): Promise<Response> {
@@ -6,11 +7,12 @@ export default async function(req: Request): Promise<Response> {
     const body = await req.json();
     const { comparison_public_token, chosen_estimate_id } = body as { comparison_public_token: string; chosen_estimate_id: string };
 
-    if (!comparison_public_token || !chosen_estimate_id) {
+    if (!publicCapability(comparison_public_token) || !chosen_estimate_id) {
       return Response.json({ error: 'comparison_public_token and chosen_estimate_id are required' }, { status: 400 });
     }
 
     const estimates = await base44.asServiceRole.entities.Estimate.filter({ comparison_public_token });
+    if (Array.isArray(estimates) && estimates.length && estimates.some(e => e.customer_id !== estimates[0].customer_id)) return Response.json({ error: 'Comparison unavailable' }, { status: 404 });
     if (!estimates || estimates.length === 0) {
       return Response.json({ error: 'Comparison not found' }, { status: 404 });
     }

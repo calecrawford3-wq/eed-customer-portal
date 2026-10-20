@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
 export default async function(req: Request): Promise<Response> {
@@ -6,7 +7,7 @@ export default async function(req: Request): Promise<Response> {
     const body = await req.json();
     const { comparison_public_token } = body as { comparison_public_token: string };
 
-    if (!comparison_public_token) {
+    if (!publicCapability(comparison_public_token)) {
       return Response.json({ error: 'comparison_public_token is required' }, { status: 400 });
     }
 
@@ -15,6 +16,7 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'Comparison not found' }, { status: 404 });
     }
 
+    if (estimates.some(e => e.customer_id !== estimates[0].customer_id || !['sent', 'approved', 'declined', 'expired', 'paid', 'partial'].includes(e.status))) return Response.json({ error: 'Comparison unavailable' }, { status: 404 });
     const sorted = estimates.sort((a, b) => (a.comparison_sort_order || 0) - (b.comparison_sort_order || 0));
     const first = sorted[0];
 
@@ -28,7 +30,7 @@ export default async function(req: Request): Promise<Response> {
     let customerEngine = null;
     let platform = null;
     if (first.customer_engine_id) {
-      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: first.customer_engine_id });
+      const engines = await base44.asServiceRole.entities.CustomerEngine.filter({ id: first.customer_engine_id, customer_id: first.customer_id });
       customerEngine = engines?.[0] || null;
       if (customerEngine?.platform_id) {
         const platforms = await base44.asServiceRole.entities.EnginePlatform.filter({ id: customerEngine.platform_id });
@@ -83,8 +85,6 @@ export default async function(req: Request): Promise<Response> {
       first_name: customer.first_name,
       last_name: customer.last_name,
       company_name: customer.company_name,
-      email: customer.email,
-      phone: customer.phone,
     } : null;
 
     const safeSettings = settings ? {
@@ -101,7 +101,7 @@ export default async function(req: Request): Promise<Response> {
       ai_summary: first.comparison_ai_summary || '',
       customer: safeCustomer,
       settings: safeSettings,
-      customerEngine: customerEngine ? { eed_id: customerEngine.eed_id, engine_serial_number: customerEngine.engine_serial_number } : null,
+      customerEngine: customerEngine ? { eed_id: customerEngine.eed_id } : null,
       platform: platform ? { name: platform.name, manufacturer: platform.manufacturer, year_range_start: platform.year_range_start, year_range_end: platform.year_range_end } : null,
     });
   } catch (error) {

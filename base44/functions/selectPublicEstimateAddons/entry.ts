@@ -1,3 +1,4 @@
+import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
 export default async function(req: Request): Promise<Response> {
@@ -8,7 +9,7 @@ export default async function(req: Request): Promise<Response> {
       selectedUids: string[];
     };
 
-    if (!publicAccessToken) {
+    if (!publicCapability(publicAccessToken)) {
       return Response.json({ error: 'publicAccessToken is required' }, { status: 400 });
     }
     if (!Array.isArray(selectedUids)) {

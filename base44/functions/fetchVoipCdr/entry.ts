@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPushToAllSubscriptions } from '../../shared/sendPush.ts';
 import { resolveCaller } from '../../shared/resolveCaller.ts';
@@ -47,6 +48,7 @@ function fmtDuration(s) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
 
     const apiUser = Deno.env.get("VOIP_MS_API_USERNAME");
     const apiPass = Deno.env.get("VOIP_MS_API_PASSWORD");

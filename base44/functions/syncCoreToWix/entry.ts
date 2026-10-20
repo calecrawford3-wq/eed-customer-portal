@@ -1,3 +1,4 @@
+import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 // Sync a single EngineCore to the Wix Stores catalog (used parts section).
@@ -21,6 +22,7 @@ const WIX_API = "https://www.wixapis.com/stores/v1/products";
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
+    if (!await staffOrAutomation(base44)) return Response.json({ error: 'Staff or verified automation access required' }, { status: 403 });
 
     // Auth — admin only
     let actor = "system";

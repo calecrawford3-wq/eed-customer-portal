@@ -1,11 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+import { publicCapability } from '../../shared/publicCapability.ts';
+import { portalCustomerId } from '../../shared/portalDocument.ts';
+
 Deno.serve(async (req) => {
   try {
+    if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const base44 = createClientFromRequest(req);
     const { publicAccessToken, documentId, customerSignature } = await req.json();
 
-    if ((!publicAccessToken && !documentId) || typeof customerSignature !== 'string' ||
+    if (((!documentId && !publicCapability(publicAccessToken)) || (documentId && (typeof documentId !== 'string' || documentId.length > 200))) || typeof customerSignature !== 'string' ||
         !customerSignature.startsWith('data:image/png;base64,') || customerSignature.length > 2000000) {
       return Response.json({ error: 'Document and a valid PNG signature are required' }, { status: 400 });
     }
@@ -16,7 +20,7 @@ Deno.serve(async (req) => {
     if (documentId) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
-      customerId = user.data?.customer_id || user.customer_id;
+      customerId = await portalCustomerId(base44, user);
       if (!customerId || user.role === 'admin') return Response.json({ error: 'Customer account required' }, { status: 403 });
     }
     const result = await base44.asServiceRole.entities.LegalDocument.filter(
@@ -60,6 +64,6 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, legal_document: { id: updated.id, status: updated.status } });
   } catch (error) {
     console.error('Error signing legal document:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to sign document' }, { status: 500 });
   }
 });

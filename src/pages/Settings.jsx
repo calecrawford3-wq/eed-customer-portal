@@ -15,6 +15,7 @@ import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
 import NotificationSettingsPanel from "@/components/settings/NotificationSettingsPanel";
 import WorkflowTemplatesPanel from "@/components/settings/WorkflowTemplatesPanel";
 import StorageLocationsPanel from "@/components/settings/StorageLocationsPanel";
+import { Link } from 'react-router-dom';
 
 const defaultSettings = {
   key: "global",
@@ -181,6 +182,11 @@ export default function Settings() {
 
         {/* Billing Defaults */}
         <TabsContent value="billing">
+          <div className="mb-4 rounded-xl border bg-white p-4">
+            <h2 className="font-semibold">Portal Payments</h2>
+            <p className="mt-1 mb-3 text-sm text-slate-600">Review Stripe configuration, verified payment recovery, and launch status. In-app Stripe account setup will be added later.</p>
+            <Button asChild variant="outline"><Link to="/PaymentMigration">Open Payment Setup & Launch Checks</Link></Button>
+          </div>
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Billing Defaults</CardTitle></CardHeader>
             <CardContent className="space-y-4">
