@@ -21,7 +21,7 @@ export default async function(req){
   const owner=found[0];
   if(owner.worker_type!=='owner'||owner.access_level!=='owner'||owner.status!=='active')return fail('Owner profile must be active and designated as owner',409);
   const email=String(owner.email||'').trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('Owner email is invalid');
+  if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(email))return fail('Owner login email must be an @eedpower.com address');
   const matches=rows(await api.asServiceRole.entities.HRWorker.filter({email}));
   if(matches.length!==1||matches[0].id!==owner.id)return fail('Duplicate owner email',409);
   const invite=typeof api.asServiceRole?.users?.inviteUser==='function'?api.asServiceRole.users.inviteUser.bind(api.asServiceRole.users):typeof api.users?.inviteUser==='function'?api.users.inviteUser.bind(api.users):typeof api.auth?.inviteUser==='function'?api.auth.inviteUser.bind(api.auth):null;
