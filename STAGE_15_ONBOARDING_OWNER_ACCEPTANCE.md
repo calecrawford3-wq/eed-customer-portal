@@ -28,3 +28,21 @@ Do not publish, switch domains, or enable live payment without explicit owner ap
 - [ ] Verify existing customers can review profile without being forced to create a new login.
 - [ ] Perform direct API cross-customer write attempts; confirm stored owner link blocks access.
 - [ ] Verify production Base44 accepts the new Customer schema fields.
+
+## Garage, tour, account and security implementation (direct-code increment)
+- [ ] As Customer A, create two cars and two drivers, select a primary driver and associate additional drivers.
+- [ ] Attempt to link an engine owned by Customer B. Must be rejected, with no engine ownership/workflow change.
+- [ ] Associate, replace and remove a Customer A engine. Verify historical PortalCarEngineHistory rows remain and the old association receives ended_at.
+- [ ] Upload JPEG, PNG or WebP car photo under 5 MB, save, reload and confirm photo persists. Verify unsupported or oversized photos fail.
+- [ ] Archive a car or driver, verify active list hides it and historical record remains for staff.
+- [ ] Create the same driver name twice and verify duplicate rejection.
+- [ ] Use custom track names and a suggested track; verify values persist after refresh.
+- [ ] Review customer racing profile and garage on staff Customer Detail. Confirm staff cannot view other customers through customer-only API calls.
+- [ ] Use portal tour Next/Back/Skip/Finish, verify section navigation and replay. Confirm only Finish saves completed flag.
+- [ ] Change SMS consent and notification preferences; verify estimate and build-update notices honor them. Invoice preference is stored but transactional billing notices may still be sent.
+- [ ] Confirm no customer can write role, pricing, tax-exempt, internal notes, payment status, shop workflow, or engine ownership through profile/garage endpoints.
+- [ ] Confirm invite new user, existing user, OTP, password reset, and document return in published Base44 auth environment.
+- [ ] Verify cross-account access to cars, drivers and photos, including guest invoice and payment links, with two real test accounts.
+- [ ] Verify mobile layout, keyboard navigation, screen reader labels, and production email deliverability.
+
+Automated test results are not a substitute for live published-app authentication, upload, delivery and payment checks. Do not switch production domains or enable live payments without owner approval.
