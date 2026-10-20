@@ -27,8 +27,8 @@ Deno.serve(async req => {
     } catch (error) {
       const status = error.status || error.response?.status;
       if (status !== 409 && !(status === 400 && /already (exists|invited|registered)/i.test(error.message || ''))) {
-        console.error('[sendPortalInvite] platform invitation failed', status);
-        return Response.json({ error: 'The platform invitation could not be confirmed. Please try again.' }, { status: 502 });
+        console.error('[sendPortalInvite] platform invitation failed', {status, message: String(error.message || '').slice(0,300)});
+        return Response.json({ error: status === 403 ? 'Base44 blocked the invitation. Check app access settings and admin permissions.' : status === 404 ? 'Base44 invitation service was not found. Check that the app is deployed and invitations are supported.' : `Base44 account invitation failed${status ? ` (HTTP ${status})` : ''}. Check app access settings.`, stage: 'base44_invite' }, { status: 502 });
       }
     }
     const settingsResult = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
@@ -56,12 +56,15 @@ Deno.serve(async req => {
     const result = await base44.functions.invoke('sendSmtpEmail', {
       to: email, subject: `Your Customer Portal Access — ${company}`, text, html, usePOSmtp: false,
     });
-    if (result?.data?.error) return Response.json({ error: 'The invitation email could not be delivered. Please retry.' }, { status: 502 });
+    if (result?.data?.error || result?.error || result?.data?.success !== true) {
+      console.error('[sendPortalInvite] SMTP send failed', String(result?.data?.error || result?.error || 'No delivery confirmation').slice(0,300));
+      return Response.json({ error: `Portal account invitation succeeded, but the email could not be sent: ${String(result?.data?.error || result?.error || 'SMTP delivery was not confirmed').slice(0,160)}`, stage: 'email_delivery' }, { status: 502 });
+    }
     const now = new Date().toISOString();
     await base44.asServiceRole.entities.Customer.update(customer.id, { portal_invite_sent: true, portal_invite_sent_at: now });
     return Response.json({ success: true, customer_id: customer.id, portal_invite_sent_at: now, message: 'Portal invitation sent successfully.' });
   } catch (error) {
     console.error('[sendPortalInvite]', error.message);
-    return Response.json({ error: 'Unable to send the portal invitation. Please try again.' }, { status: 500 });
+    return Response.json({ error: 'Portal invitation encountered a server error. Check customer details, portal URL, and email configuration.', stage: 'server' }, { status: 500 });
   }
 });
