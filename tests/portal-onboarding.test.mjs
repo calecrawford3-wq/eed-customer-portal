@@ -70,7 +70,9 @@ test('guided tour highlights real portal controls and scrolls them into view', (
     assert.match(tour, new RegExp("target:'"+target+"'"));
     assert.match(portal, new RegExp('data-tour="'+target+'"'));
   }
-  assert.match(tour, /scrollIntoView/);
+  assert.match(tour, /window\.scrollTo/);
+  assert.match(tour, /\[role="tabpanel"\]\[data-state="active"\]/);
+  assert.match(tour, /max-h-\[36dvh\]/);
   assert.match(tour, /getBoundingClientRect/);
   assert.match(tour, /boxShadow/);
   assert.match(tour, /onFinish/);
