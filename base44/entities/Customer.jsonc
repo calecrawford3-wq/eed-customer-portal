@@ -200,6 +200,9 @@
     },
     "notification_invoices": {
       "type": "boolean"
+    },
+    "onboarding_garage_completed": {
+      "type": "boolean"
     }
   },
   "required": [

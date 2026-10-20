@@ -24,7 +24,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
   const [saving,setSaving] = useState(false);
   const [error,setError] = useState('');
   useEffect(() => { setForm(customer || {}); },[customer?.id]);
-  const progress = [accountContactComplete(customer),!!customer?.racing_role || !!customer?.onboarding_racing_skipped,!!customer?.onboarding_cars_skipped,!!customer?.onboarding_tour_completed].filter(Boolean).length;
+  const progress = [accountContactComplete(customer),!!customer?.racing_role || !!customer?.onboarding_racing_skipped,!!customer?.onboarding_cars_skipped || !!customer?.onboarding_garage_completed,!!customer?.onboarding_tour_completed].filter(Boolean).length;
   const save = async (patch) => {
     setSaving(true);setError('');
     try {
@@ -46,6 +46,9 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
     if (missing) {setError('Please complete your name, phone and billing address before confirming.');return;}
     patch.preferred_contact_method = form.preferred_contact_method || 'email';
     patch.sms_consent = !!form.sms_consent;
+    patch.notification_estimates = form.notification_estimates !== false;
+    patch.notification_build_updates = form.notification_build_updates !== false;
+    patch.notification_invoices = form.notification_invoices !== false;
     patch.onboarding_contact_confirmed = true;
     if (await save(patch)) setSection('racing');
   };
@@ -68,7 +71,8 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
         <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={same} onChange={e=>setSame(e.target.checked)}/>Shipping address same as billing</label>
         <div><Label htmlFor="contact-method">Preferred contact method</Label><select id="contact-method" className="w-full min-h-11 border rounded-md px-3" value={form.preferred_contact_method || 'email'} onChange={e=>setForm(p=>({...p,preferred_contact_method:e.target.value}))}><option value="email">Email</option><option value="phone">Phone call</option><option value="sms">Text message</option></select></div>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={!!form.sms_consent} onChange={e=>setForm(p=>({...p,sms_consent:e.target.checked}))}/>I consent to receiving account-related text messages. Entering a phone number does not verify it or grant SMS consent.</label>
-        <Button disabled={saving} onClick={saveContact}>Save and continue</Button>
+        <fieldset className="space-y-2"><legend className="font-medium">Notification preferences</legend>{[['notification_estimates','Estimates and additional work'],['notification_build_updates','Engine build and completion updates'],['notification_invoices','Invoice and payment notices']].map(([key,title])=><label key={key} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form[key] !== false} onChange={e=>setForm(p=>({...p,[key]:e.target.checked}))}/>{title}</label>)}</fieldset>
+        <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={saveContact}>Confirm contact & continue</Button><Button variant="outline" disabled={saving} onClick={()=>save(Object.fromEntries(fields.map(([key])=>[key,String(form[key]||'').trim()]))) }>Save draft</Button></div>
       </div>}
       {section==='racing' && <div className="space-y-3">
         <p className="text-sm text-slate-600">Tell us about your racing program so we can better understand your engine application. Optional.</p>

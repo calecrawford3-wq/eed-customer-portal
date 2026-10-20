@@ -13,7 +13,7 @@ const ALLOWED = [
   'address_line1', 'address_line2', 'city', 'state', 'zip', 'country',
   'additional_emails', 'additional_phones',
   'shipping_address_line1', 'shipping_address_line2', 'shipping_city', 'shipping_state', 'shipping_zip', 'shipping_country',
-  'preferred_contact_method', 'onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_tour_completed',
+  'preferred_contact_method', 'onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_garage_completed', 'onboarding_tour_completed',
   'racing_role', 'racing_classes', 'racing_tracks', 'racing_primary_track', 'racing_notes_public', 'sms_consent',
   'notification_estimates', 'notification_build_updates', 'notification_invoices',
 ];
@@ -34,7 +34,7 @@ export default async function (req) {
     const patch = {};
     for (const k of ALLOWED) {
       if (body[k] !== undefined) {
-        const bool = ['onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_tour_completed', 'sms_consent', 'notification_estimates', 'notification_build_updates', 'notification_invoices'].includes(k);
+        const bool = ['onboarding_contact_confirmed', 'onboarding_racing_skipped', 'onboarding_cars_skipped', 'onboarding_garage_completed', 'onboarding_tour_completed', 'sms_consent', 'notification_estimates', 'notification_build_updates', 'notification_invoices'].includes(k);
         if (bool ? typeof body[k] !== 'boolean' : typeof body[k] !== 'string' && !(['additional_emails', 'additional_phones'].includes(k) && Array.isArray(body[k]))) return Response.json({ error: `Invalid ${k}` }, { status: 400 });
         if (typeof body[k] === 'string' && body[k].length > 500) return Response.json({ error: `${k} is too long` }, { status: 400 });
         patch[k] = body[k];
