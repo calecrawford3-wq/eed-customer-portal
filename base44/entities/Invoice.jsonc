@@ -314,6 +314,12 @@
           "stripe_payment_intent": {
             "type": "string"
           },
+          "processing_fee_amount": {
+            "type": "number"
+          },
+          "gross_charge_amount": {
+            "type": "number"
+          },
           "amount": {
             "type": "number"
           },
