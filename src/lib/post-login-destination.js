@@ -11,6 +11,6 @@ export async function postLoginDestination(requested='/CustomerPortal'){
  if(!data||data.access==='blocked'||data.access==='unauthenticated')throw Error('This account cannot access the portal. Contact the administrator.');
  if(data.access==='tax_only')return '/FormerEmployeeTaxPortal';
  if(user.role==='admin')return '/Dashboard';
- if(data.destination==='/StaffWorkspace'||data.destination==='/EmployeePortal')return data.destination;
+ if(data.destination==='/EmployeePortal')return '/EmployeePortal';
  return portalDestination(requested,window.location.origin);
 }
