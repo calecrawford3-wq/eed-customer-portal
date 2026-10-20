@@ -46,6 +46,12 @@ export default async function(req) {
       targetCustomerId = body.customer_id;
     } else {
       targetCustomerId = user.customer_id || user.data?.customer_id || null;
+      if (!targetCustomerId) {
+        // Session claims can lag behind a newly linked stored profile.
+        const result = await base44.asServiceRole.entities.User.filter({ id: user.id });
+        const stored = (result.items || result || [])[0];
+        targetCustomerId = stored?.customer_id || stored?.data?.customer_id || null;
+      }
     }
 
     if (!targetCustomerId) {
