@@ -7,7 +7,7 @@ const entities = {
   pay: 'HRPayStatement', benefits: 'HRBenefitEnrollment', tax: 'HRTaxDocument',
 };
 const fields = {
-  workers: ['first_name','last_name','email','personal_email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','ownership_percentage','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
+  workers: ['first_name','last_name','email','personal_email','phone','worker_type','status','termination_date','job_title','department','hire_date','pay_type','pay_rate','benefits_notes','access_level','ownership_percentage','can_view_shop_jobs','can_view_build_profitability','pto_hours_available','emergency_contact'],
   time: ['worker_id','clock_in','clock_out','break_minutes','status','notes'],
   leave: ['worker_id','start_date','end_date','hours','leave_type','status','reason','decision_note'],
   pay: ['worker_id','period_start','period_end','pay_date','gross_pay','net_pay','taxes_withheld','deductions','statement_url','payroll_provider_reference','status'],
@@ -91,6 +91,11 @@ export default async function(req) {
         if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(loginEmail)) return fail('Staff login email must be an @eedpower.com address');
         if(prior?.portal_invite_sent_at && values.email && values.email!==String(prior.email||'').trim().toLowerCase()) return fail('Login email cannot be changed after invitation. Update the Base44 account first.',409);
         const resultingType=values.worker_type || prior?.worker_type;
+        if(values.status==='terminated') {
+          if(resultingType==='owner') return fail('Owner access must be revoked through a separate ownership and administrator offboarding process',409);
+          if(!values.termination_date && !prior?.termination_date) values.termination_date=new Date().toISOString().slice(0,10);
+        }
+        if(prior?.status==='terminated' && values.status && values.status!=='terminated') return fail('Rehire requires a separate verified account transition; do not reactivate former employee directly',409);
         if(prior?.worker_type==='owner' && resultingType!=='owner') return fail('Owner profiles cannot be converted to employees; contact the administrator',409);
         if(resultingType==='owner') values.access_level='owner';
         if(Object.prototype.hasOwnProperty.call(values,'ownership_percentage')) {
