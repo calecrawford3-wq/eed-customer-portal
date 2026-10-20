@@ -11,7 +11,8 @@ export async function readPortalFeeSettings(base44: any) {
 
 export function quotePayment(principalCents: number, method: string, settings: any = null) {
   if (!PAYMENT_METHODS.includes(method)) throw new PaymentError('Unsupported payment method', 400);
-  const enabled = method === 'card' || (settings ? (method === 'us_bank_account' ? settings.ach_enabled === true : settings.affirm_enabled === true) : Deno.env.get('PORTAL_ENABLE_' + (method === 'us_bank_account' ? 'ACH' : 'AFFIRM')) === 'true');
+  const providerGate = method === 'card' || Deno.env.get('PORTAL_ENABLE_' + (method === 'us_bank_account' ? 'ACH' : 'AFFIRM')) === 'true';
+  const enabled = method === 'card' || (providerGate && (settings ? (method === 'us_bank_account' ? settings.ach_enabled === true : settings.affirm_enabled === true) : true));
   if (!enabled) throw new PaymentError('This payment method is not enabled yet', 403);
   let feeCents = 0;
   if (method === 'us_bank_account' && (settings ? settings.ach_fee_approved === true : Deno.env.get('PORTAL_ACH_CUSTOMER_FEE_APPROVED') === 'true')) {
