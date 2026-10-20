@@ -45,7 +45,7 @@ export default async function(req) {
     if (isAdmin) {
       targetCustomerId = body.customer_id;
     } else {
-      targetCustomerId = user.data?.customer_id || null;
+      targetCustomerId = user.customer_id || user.data?.customer_id || null;
     }
 
     if (!targetCustomerId) {
