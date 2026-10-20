@@ -381,9 +381,22 @@ async function consumeReservationsForBuild(base44, { build_id, operation_id, all
         return { skipped: false, from: 0, to: 0, deducted: 0, error: "part not found" };
       }
 
-      const current = roundQty(part.quantity_on_hand);
-      const newQty = roundQty(Math.max(0, current - consumeQty));
-      await base44.entities.Part.update(part.id, { quantity_on_hand: newQty });
+      // Atomically deduct and mark this reservation on the Part itself.
+      // Retrying after a crash cannot deduct twice even if the reservation
+      // status update below never completed.
+      const movementKey = `consume:${r.id}`;
+      const movement = await base44.entities.Part.updateMany(
+        { id: part.id, inventory_operation_keys: { $ne: movementKey } },
+        { $inc: { quantity_on_hand: -consumeQty }, $addToSet: { inventory_operation_keys: movementKey } }
+      );
+      if (movement?.updated !== 1 && movement?.updated !== 0) {
+        throw new Error("Inventory consumption outcome unknown; reconcile before retrying");
+      }
+      const applied = movement.updated === 1;
+      const refreshed = await base44.entities.Part.filter({ id: part.id });
+      const latestPart = (refreshed.items || refreshed || [])[0];
+      const newQty = roundQty(latestPart?.quantity_on_hand);
+      const current = applied ? roundQty(newQty + consumeQty) : newQty;
 
       // Capture cost snapshot at consumption time
       const unitCostSnapshot = part.unit_cost != null ? Number(part.unit_cost) : null;
@@ -397,7 +410,7 @@ async function consumeReservationsForBuild(base44, { build_id, operation_id, all
         operation_id,
       });
 
-      return { skipped: false, from: current, to: newQty, deducted: consumeQty, unit_cost_snapshot: unitCostSnapshot };
+      return { skipped: !applied, from: current, to: newQty, deducted: applied ? consumeQty : 0, unit_cost_snapshot: unitCostSnapshot };
     });
 
     if (result.skipped) continue;
