@@ -1,0 +1,58 @@
+{
+  "name": "HRTaxDocument",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "tax_year": {
+      "type": "number"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "w2",
+        "1099_nec",
+        "w4",
+        "w9",
+        "other"
+      ]
+    },
+    "document_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "requested",
+        "received",
+        "issued"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
