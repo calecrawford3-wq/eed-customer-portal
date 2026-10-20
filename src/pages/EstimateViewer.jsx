@@ -126,6 +126,10 @@ export default function EstimateViewer({ buildVersion }) {
   };
 
   const handlePayNow = () => {
+    if (data?.estimate?.status !== 'approved') {
+      setPayingError('Approve this estimate before making a payment.');
+      return;
+    }
     // Never follow legacy stored checkout sessions. The authenticated portal
     // creates a fresh, verified Stripe session against the current balance.
     const id = data?.estimate?.id;
@@ -510,21 +514,21 @@ export default function EstimateViewer({ buildVersion }) {
 
               {/* Required legal agreements are now served from this portal. */}
               {data.legal_document?.public_access_token && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-3 text-sm"><p className="font-semibold">Required agreement</p><p className="mt-1">{data.legal_document.status === 'fully_signed' ? 'Signed' : 'Please review and sign before payment.'}</p><a className="mt-2 inline-block font-semibold text-red-700 underline" href={'/legal/'+encodeURIComponent(data.legal_document.public_access_token)}>View agreement</a></div>}
-              {/* Action Buttons */}
-              <div className="flex gap-3">
+              {/* One primary action at a time: approve first, then pay. */}
+              <div className="flex flex-col gap-3">
                 {data.estimate?.status === "sent" && (
-                  <button 
+                  <button
                     onClick={handleApproveEstimate}
                     disabled={approving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-2 px-4 rounded-lg transition"
+                    className="w-full rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-5 transition"
                   >
                     {approving ? "Approving..." : "Approve Estimate"}
                   </button>
                 )}
-                {!payingError && (
-                  <button 
+                {data.estimate?.status === "approved" && (
+                  <button
                     onClick={handlePayNow}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 transition"
                   >
                     Pay Now
                   </button>
