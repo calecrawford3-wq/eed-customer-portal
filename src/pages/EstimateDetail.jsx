@@ -1329,31 +1329,11 @@ export default function EstimateDetail() {
       const publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       console.log(`[sendEstimate] Generated public_access_token: ${publicAccessToken}`);
       
-      // Generate Stripe checkout URL
-      const amount = form.deposit_required ? form.deposit_amount : form.total;
-      console.log(`[sendEstimate] Generating Stripe checkout URL for amount: $${amount}`);
-      const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
-        type: "estimate",
-        documentId: id,
-        amount,
-        description: `Estimate ${form.estimate_number} - ${form.deposit_required ? "Deposit" : "Full Payment"}`,
-        publicAccessToken,
-        customerEmail: customer.email,
-      });
-      
-      if (!stripeUrlRes?.data?.checkout_url) {
-        console.error("[sendEstimate] Stripe checkout URL generation failed:", stripeUrlRes);
-        toast.error("Failed to generate payment link");
-        setSending(false);
-        return;
-      }
-      console.log(`[sendEstimate] Stripe checkout URL generated successfully`);
-      
-      // Update estimate with public access token and stripe checkout URL
-      console.log(`[sendEstimate] Updating estimate with public_access_token and stripe_checkout_url`);
+      // Payment sessions are now created on demand inside the portal after
+      // approval. Do not create or store legacy checkout links when sending.
       await base44.entities.Estimate.update(id || "", {
         public_access_token: publicAccessToken,
-        stripe_checkout_url: stripeUrlRes.data.checkout_url,
+        stripe_checkout_url: null,
         status: "sent"
       });
 
@@ -1479,7 +1459,7 @@ export default function EstimateDetail() {
       console.log(`[sendEstimate] Email sent successfully to ${customer.email}`);
       
       qc.invalidateQueries({ queryKey: ["estimates"] });
-      setForm(f => ({ ...f, status: "sent", public_access_token: publicAccessToken, stripe_checkout_url: stripeUrlRes.data.checkout_url }));
+      setForm(f => ({ ...f, status: "sent", public_access_token: publicAccessToken, stripe_checkout_url: null }));
       toast.success(`Estimate sent to ${customer.email}`);
     } catch (err) {
       toast.error("Failed to send estimate");
