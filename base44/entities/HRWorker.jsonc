@@ -62,6 +62,10 @@
         "owner"
       ]
     },
+    "ownership_percentage": {
+      "type": "number",
+      "description": "Recorded legal/economic ownership percentage from 0 to 100. Owner profiles only; does not grant authentication permissions."
+    },
     "can_view_shop_jobs": {
       "type": "boolean",
       "default": false,
