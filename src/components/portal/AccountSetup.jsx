@@ -23,6 +23,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
   const [section,setSection] = useState('contact');
   const [saving,setSaving] = useState(false);
   const [error,setError] = useState('');
+  const [securityNotice,setSecurityNotice] = useState('');
   const saveField = async (key,value) => {
     try { const r=await base44.functions.invoke('updateCustomerProfile',{[key]:value});if(r?.data?.error)throw Error(r.data.error); }
     catch {setError('Some changes could not be saved. Use Save draft to retry.');}
@@ -69,7 +70,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={progress} aria-label="Account setup progress"><div className="h-full bg-red-600" style={{width:`${progress*25}%`}}/></div><p className="text-xs text-slate-500">{progress} of 4 profile steps completed. Your login is managed separately by Base44.</p>
     </CardHeader>
     <CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2">{[['contact','Contact'],['racing','Racing'],['finish','Cars & tour']].map(([key,title])=><Button key={key} variant={section===key?'default':'outline'} size="sm" onClick={()=>setSection(key)}>{title}</Button>)}</div>
+      <div className="flex flex-wrap gap-2">{[['contact','Contact'],['racing','Racing'],['finish','Cars & tour'],['security','Security']].map(([key,title])=><Button key={key} variant={section===key?'default':'outline'} size="sm" onClick={()=>setSection(key)}>{title}</Button>)}</div>
       {section==='contact' && <div className="space-y-3">
         <p className="text-sm">Confirm the information Elite has on file. Email: <strong>{customer?.email}</strong> (account email changes require verified assistance).</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{fields.filter(([k])=>!same || !k.startsWith('shipping_')).map(([key,title])=><div key={key}><Label htmlFor={key}>{title}{required.includes(key)?' *':''}</Label><Input id={key} className="mt-1 min-h-11" autoComplete={key==='first_name'?'given-name':key==='last_name'?'family-name':key==='phone'?'tel':key==='country'?'country-name':'on'} value={form[key] || ''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} onBlur={e=>saveField(key,e.target.value.trim())}/></div>)}</div>
