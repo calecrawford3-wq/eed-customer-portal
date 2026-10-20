@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
             }
           } catch (e) {
             console.error("[completeMachiningTask] History correction failed:", e);
-            return Response.json({ error: "Machining measurements saved, but service history update failed. Reconcile history before continuing." }, { status: 409 });
+            return Response.json({ error: "Service history update failed; machining measurement correction was not saved. Retry." }, { status: 409 });
           }
         }
         await base44.asServiceRole.entities.MachiningTask.update(taskId, {
