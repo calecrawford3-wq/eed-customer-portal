@@ -137,7 +137,9 @@ function sectionPages(section) {
 
 const formatCount = (n) => (n > 99 ? "99+" : String(n));
 
-export default function NavSidebar({ currentPageName, collapsed, onNavigate }) {
+export default function NavSidebar({ currentPageName, collapsed, onNavigate, allowedPages=null }) {
+  const canSee=page=>allowedPages===null||page==='EmployeePortal'||allowedPages.includes(page);
+  const visibleSections=allowedPages===null?navSections:navSections.map(section=>({...section,main:section.main&&canSee(section.main.page)?section.main:null,secondary:section.secondary.map(item=>item.submenu?{...item,items:item.items.filter(i=>canSee(i.page))}:item).filter(item=>item.submenu?item.items.length>0:canSee(item.page))})).filter(section=>section.main||section.secondary.length);
   const [expandedSections, setExpandedSections] = useState(() => new Set());
   const [expandedSubmenus, setExpandedSubmenus] = useState(() => new Set());
 
@@ -146,18 +148,22 @@ export default function NavSidebar({ currentPageName, collapsed, onNavigate }) {
     queryKey: ["nav-badge-messages"],
     queryFn: () => base44.entities.Message.count({ is_read: false, direction: "inbound" }),
     refetchInterval: 30000,
+    enabled: allowedPages===null,
   });
   const { data: approvalsCount = 0 } = useQuery({
     queryKey: ["nav-badge-approvals"],
     queryFn: () => base44.entities.Estimate.count({ status: "sent" }),
+    enabled: allowedPages===null,
   });
   const { data: refreshCount = 0 } = useQuery({
     queryKey: ["nav-badge-refresh"],
     queryFn: () => base44.entities.RefreshRequest.count({ status: "pending" }),
+    enabled: allowedPages===null,
   });
   const { data: exceptionsCount = 0 } = useQuery({
     queryKey: ["nav-badge-exceptions"],
     queryFn: () => base44.entities.ExceptionAlert.count({ status: "active" }),
+    enabled: allowedPages===null,
   });
 
   const badgeFor = (key) => {
@@ -195,14 +201,14 @@ export default function NavSidebar({ currentPageName, collapsed, onNavigate }) {
   if (collapsed) {
     return (
       <nav className="flex-1 py-3 px-2 overflow-y-auto">
-        {navSections.map((section, idx) => {
+        {visibleSections.map((section, idx) => {
           const targetPage = section.main ? section.main.page : section.secondary[0]?.page;
           if (!targetPage) return null;
           const isSectionActive = sectionPages(section).includes(currentPageName);
           const badgeKey = section.main?.badge;
           const count = badgeKey ? badgeFor(badgeKey) : 0;
           return (
-            <div key={section.label} className={cn("mb-1", section.bottom && idx === navSections.findIndex((s) => s.bottom) && "mt-4 pt-2 border-t border-slate-800")}>
+            <div key={section.label} className={cn("mb-1", section.bottom && idx === visibleSections.findIndex((s) => s.bottom) && "mt-4 pt-2 border-t border-slate-800")}>
               <Link
                 to={createPageUrl(targetPage)}
                 onClick={onNavigate}
@@ -228,7 +234,7 @@ export default function NavSidebar({ currentPageName, collapsed, onNavigate }) {
 
   return (
     <nav className="flex-1 py-3 px-3 overflow-y-auto">
-      {navSections.map((section, idx) => {
+      {visibleSections.map((section, idx) => {
         const pages = sectionPages(section);
         const isMainActive = section.main && currentPageName === section.main.page;
         const isSectionActive = pages.includes(currentPageName);
@@ -239,7 +245,7 @@ export default function NavSidebar({ currentPageName, collapsed, onNavigate }) {
         return (
           <div
             key={section.label}
-            className={cn("mb-1", section.bottom && idx === navSections.findIndex((s) => s.bottom) && "mt-4 pt-2 border-t border-slate-800")}
+            className={cn("mb-1", section.bottom && idx === visibleSections.findIndex((s) => s.bottom) && "mt-4 pt-2 border-t border-slate-800")}
           >
             {/* Section row */}
             {section.main ? (
