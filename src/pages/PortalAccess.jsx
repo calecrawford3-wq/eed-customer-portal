@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { portalDestination } from '@/lib/portal-entry';
+import {postLoginDestination} from '@/lib/post-login-destination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +31,11 @@ export default function PortalAccess({ initialMode }) {
   }, [resendAt]);
 
   useEffect(() => {
-    if (user && !isLoadingAuth) window.location.replace(destination);
+    if (user && !isLoadingAuth) {
+      let live=true;
+      postLoginDestination(destination).then(path=>{if(live)window.location.replace(path)}).catch(err=>{if(live)setError(err.message||'Unable to open your workspace')});
+      return ()=>{live=false};
+    }
   }, [user, isLoadingAuth, destination]);
 
   const changeMode = next => {
@@ -72,14 +77,14 @@ export default function PortalAccess({ initialMode }) {
         }
         setPassword('');
         setConfirmation('');
-        window.location.assign(destination);
+        window.location.assign(await postLoginDestination(destination));
       } else if (mode === 'forgot') {
         await base44.auth.resetPasswordRequest(address);
         setNotice('If this email has an account, you will receive password reset instructions. Check your spam folder too.');
       } else {
         await base44.auth.loginViaEmailPassword(address, password);
         setPassword('');
-        window.location.assign(destination);
+        window.location.assign(await postLoginDestination(destination));
       }
     } catch (err) {
       const status = err.status || err.response?.status;
@@ -113,7 +118,7 @@ export default function PortalAccess({ initialMode }) {
     }
   };
 
-  if (isLoadingAuth || isLoadingPublicSettings || user) {
+  if (isLoadingAuth || isLoadingPublicSettings || (user && !error)) {
     return (
       <main className="min-h-screen bg-slate-950 px-4 flex flex-col items-center justify-center gap-4 text-white" role="status">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-red-500" />
