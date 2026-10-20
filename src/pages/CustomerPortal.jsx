@@ -256,7 +256,7 @@ export default function CustomerPortal() {
             {/* Sign In */}
             <Button
               className="w-full bg-[#e20404] hover:bg-[#c00303] text-white mb-3"
-              onClick={() => base44.auth.redirectToLogin(window.location.href)}
+              onClick={() => window.location.assign(portalSignInUrl)}
             >
               Already registered? Sign In
             </Button>
@@ -265,7 +265,7 @@ export default function CustomerPortal() {
             <Button
               variant="outline"
               className="w-full border-[#e20404] text-[#e20404] hover:bg-red-50 mb-4"
-              onClick={() => base44.auth.redirectToLogin(window.location.href)}
+              onClick={() => window.location.assign(portalActivateUrl)}
             >
               First time here? Activate Your Account
             </Button>
@@ -273,7 +273,7 @@ export default function CustomerPortal() {
             {/* Forgot password */}
             <button
               className="w-full text-sm text-slate-500 hover:text-[#e20404] transition-colors mb-6"
-              onClick={() => base44.auth.redirectToLogin(window.location.href)}
+              onClick={() => window.location.assign(portalForgotUrl)}
             >
               Forgot Password?
             </button>
