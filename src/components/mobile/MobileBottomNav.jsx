@@ -79,6 +79,14 @@ const MORE_SECTIONS = [
     ],
   },
   {
+    label: "Human Resources",
+    items: [
+      { name: "HR Administration", page: "HRAdmin", icon: ShieldCheck },
+      { name: "Staff Workspace", page: "StaffWorkspace", icon: Briefcase },
+      { name: "Employee Portal", page: "EmployeePortal", icon: Users },
+    ],
+  },
+  {
     label: "Settings",
     items: [
       { name: "Settings", page: "Settings", icon: Settings2 },
