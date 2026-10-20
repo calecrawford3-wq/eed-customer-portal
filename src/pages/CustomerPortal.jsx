@@ -24,6 +24,7 @@ import PortalLegalDocument from "@/components/legal/PortalLegalDocument";
 import PortalDynoSheet from "@/components/engines/PortalDynoSheet";
 import PortalFindingsSection from "@/components/portal/PortalFindingsSection";
 import PortalDocumentDialog from '@/components/portal/PortalDocumentDialog';
+import AccountSetup, { accountContactComplete } from '@/components/portal/AccountSetup';
 import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_COLORS = {
@@ -84,6 +85,7 @@ export default function CustomerPortal() {
   };
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [accountSetupOpen, setAccountSetupOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({});
   const [refreshOpen, setRefreshOpen] = useState(false);
   const [refreshBuild, setRefreshBuild] = useState(null);
@@ -441,6 +443,7 @@ export default function CustomerPortal() {
           <p className="text-slate-500 mt-1">Your engine build & service history</p>
         </div>
 
+        {user?.role !== 'admin' && <div className="mb-6">{accountSetupOpen ? <AccountSetup customer={customer} onSaved={async () => { await qc.invalidateQueries({queryKey:['portal-data']}); }} onClose={()=>setAccountSetupOpen(false)} /> : <Card className="border-red-100"><CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><p className="font-semibold">{accountContactComplete(customer) ? 'My Account' : 'Account setup'}</p><p className="text-sm text-slate-600">{accountContactComplete(customer) ? 'Review your profile and racing information whenever you like.' : 'Confirm your contact information. You can still use all estimates, approvals and payments.'}</p></div><Button onClick={()=>setAccountSetupOpen(true)}>{accountContactComplete(customer) ? 'Review profile' : 'Continue setup'}</Button></CardContent></Card>}</div>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="border-0 shadow-sm bg-white">
             <CardContent className="p-5">
