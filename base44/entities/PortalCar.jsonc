@@ -1,0 +1,77 @@
+{
+  "name": "PortalCar",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "car_number": {
+      "type": "string"
+    },
+    "chassis": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "primary_track": {
+      "type": "string"
+    },
+    "track_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "driver_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "engine_id": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "archived": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "customer_id",
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
