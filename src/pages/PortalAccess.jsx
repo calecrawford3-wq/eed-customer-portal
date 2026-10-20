@@ -122,7 +122,7 @@ export default function PortalAccess({ initialMode }) {
     <main className="min-h-screen bg-slate-950 px-4 py-10 flex items-center justify-center">
       <section className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-xl">
         <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" alt="Elite Engine Development" className="h-12 max-w-full object-contain mx-auto mb-6" />
-        <h1 className="text-2xl font-bold text-slate-900">{mode === 'activate' ? 'Activate your portal' : mode === 'verify' ? 'Verify your email' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{mode === 'activate' ? 'Create your portal password' : mode === 'verify' ? 'Verify your email' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h1>
         <p className="mt-2 mb-6 text-sm text-slate-600">{mode === 'activate' ? 'Use the email address on your shop invitation. Choose a password, then enter the code we email you.' : mode === 'verify' ? `Enter the code sent to ${email}. Keep this page open while checking your email.` : mode === 'forgot' ? 'Enter the email address you used to register.' : 'Sign in to see your engines, estimates, invoices, and inspection findings.'}</p>
         <form onSubmit={submit} className="space-y-4">
           <div><Label htmlFor="portal-email">Email address</Label><Input id="portal-email" type="email" autoComplete="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} className="mt-1 h-11" /></div>
@@ -140,7 +140,7 @@ export default function PortalAccess({ initialMode }) {
           {mode === 'verify' && <Button variant="ghost" className="w-full min-h-11" disabled={busy || resendSeconds > 0 || !email.trim()} onClick={resend}>{resendSeconds > 0 ? `Request another code in ${resendSeconds}s` : 'Email me a new code'}</Button>}
           <Button variant="ghost" className="w-full min-h-11 whitespace-normal" disabled={busy} onClick={() => base44.auth.redirectToLogin(new URL(destination, window.location.origin).href)}>Use standard sign-in instead</Button>
         </div>
-        <p className="mt-5 text-xs text-slate-500">An invitation from the shop and a portal login are separate. If you already created a password, sign in instead of creating another account.</p>
+        <p className="mt-5 text-xs text-slate-500">Your identity and email verification are checked by Base44. This link does not verify your identity or reset an existing password. If you already registered, choose Sign In.</p>
       </section>
     </main>
   );
