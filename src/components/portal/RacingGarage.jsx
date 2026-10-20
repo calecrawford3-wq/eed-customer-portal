@@ -44,7 +44,6 @@ export default function RacingGarage({customerId,engines=[],onChange}) {
       const values = Object.fromEntries(Object.entries(form).filter(([key,value])=>key!=='id' && value!==null && value!==undefined));
       if(kind==='car') values.track_names=Array.isArray(values.track_names)?values.track_names:split(values.track_names);
       await invoke({kind,action:editing==='new'?'create':'update',id:editing==='new'?undefined:editing,values,customer_id:customerId});
-      if(kind==='car') await base44.functions.invoke('updateCustomerProfile',{onboarding_garage_completed:true,onboarding_cars_skipped:false});
       toast.success(kind==='car'?'Car saved':'Driver saved');
       setEditing(null);
       await refresh();

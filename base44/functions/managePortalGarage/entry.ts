@@ -101,6 +101,7 @@ export default async function(req: Request) {
       for (const old of active) await history.update(old.id,{ended_at:now});
       if (patch.engine_id) await history.create({customer_id:customerId,car_id:updated.id,engine_id:patch.engine_id,started_at:now,ended_at:''});
     }
+    if (kind==='car') await api.asServiceRole.entities.Customer.update(customerId,{onboarding_garage_completed:true,onboarding_cars_skipped:false});
     return Response.json({success:true,id:updated.id});
   } catch(e) {
     console.error('[managePortalGarage]',e?.message);
