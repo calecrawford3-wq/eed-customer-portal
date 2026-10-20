@@ -29,16 +29,22 @@ export default async function(req) {
     if (aw.status === 'approved' || aw.processed_at) {
       return Response.json({ error: 'This approval has already been processed by the shop' }, { status: 400 });
     }
+    if (aw.customer_response === 'approved' || aw.customer_response === 'declined') {
+      if (aw.customer_response === response) return Response.json({ ok: true, customer_response: response, already_recorded: true });
+      return Response.json({ error: 'This approval has already been answered. Ask the shop to issue a revised request.' }, { status: 409 });
+    }
     if (aw.status === 'canceled') {
       return Response.json({ error: 'This approval has been withdrawn' }, { status: 400 });
     }
 
+    if (aw.status !== 'pending') return Response.json({ error: 'Approval is no longer open' }, { status: 409 });
+    if (typeof note !== 'undefined' && (typeof note !== 'string' || note.length > 2000)) return Response.json({ error: 'Note is too long' }, { status: 400 });
     const now = new Date().toISOString();
-    await base44.asServiceRole.entities.AdditionalWork.update(aw.id, {
-      customer_response: response,
-      customer_response_at: now,
-      customer_note: note || '',
-    });
+    const result = await base44.asServiceRole.entities.AdditionalWork.updateMany({ id: aw.id, status: 'pending', processed_at: { $exists: false }, $or: [{ customer_response: 'pending' }, { customer_response: { $exists: false } }, { customer_response: null }] }, { $set: {
+      customer_response: response, customer_response_at: now, customer_note: note || '',
+      customer_approved_version: response === 'approved' ? Number(aw.version || 1) : 0,
+    } });
+    if (result?.updated !== 1) return Response.json({ error: 'Approval changed. Refresh and review the latest request.' }, { status: 409 });
 
     // Notify admin
     try {
