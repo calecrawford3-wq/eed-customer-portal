@@ -102,8 +102,8 @@ export default function Layout({ children, currentPageName }) {
         )}
       >
         {/* Mobile top bar — bottom nav replaces hamburger menu */}
-        <div className="md:hidden sticky top-0 z-30 bg-slate-900 text-white flex items-center justify-between px-4 h-14 border-b border-slate-800 print:hidden"
-             style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}>
+        <div className="md:hidden sticky top-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 min-h-14 border-b border-slate-800 print:hidden"
+             style={{ paddingTop: "env(safe-area-inset-top, 0px)", backgroundColor: "#0f172a", WebkitBackdropFilter: "none", backdropFilter: "none", isolation: "isolate" }}>
           <img
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
             alt="Elite Engine Development"
