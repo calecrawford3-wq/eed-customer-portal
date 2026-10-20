@@ -26,11 +26,22 @@ export default function GuestPayment() {
   });
   const choices = data?.payment_options || [];
   const selected = choices.find(c => c.value === option) || choices[0];
+  const { data: quote, isFetching: quoteLoading } = useQuery({
+    queryKey: ['guest-payment-quote', type, token, selected?.value, selected?.amount],
+    enabled: !!data?.can_pay && !!selected, retry: false, staleTime: 0,
+    queryFn: async () => {
+      const r = await base44Public.functions.invoke('getPortalPaymentQuote', { guestPaymentToken: token, documentType: type, amountOption: selected.value });
+      if (r.data?.error) throw new Error(r.data.error);
+      return r.data;
+    },
+  });
+  const methodQuote = quote?.methods?.find(m => m.method === paymentMethod);
+  const quoteReady = !!methodQuote?.enabled && !quoteLoading && quote.principalCents === Math.round(Number(selected?.amount) * 100);
   async function pay() {
-    if (busy || !selected) return;
+    if (busy || !selected || !quoteReady) return;
     setBusy(true); setError('');
     try {
-      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount, paymentMethod, expectedFeeCents: 0 });
+      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount, paymentMethod, expectedFeeCents: methodQuote.feeCents });
       if (r.data?.error || !r.data?.checkout_url) throw new Error();
       const url = new URL(r.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error();
@@ -54,8 +65,8 @@ export default function GuestPayment() {
           <h2 className="text-lg font-bold">{data.balance <= 0 || data.status === 'paid' ? 'Payment complete' : 'Choose a payment'}</h2>
           {data.payment_message && <p role="status" className="rounded-lg bg-slate-100 p-3 text-sm">{data.payment_message}</p>}
           {choices.map(c => <label key={c.value} className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="radio" name="amount" value={c.value} checked={selected?.value === c.value} onChange={() => setOption(c.value)} /><span className="min-w-0 flex-1">{c.label}</span><strong className="tabular-nums">{formatMoney(c.amount)}</strong></label>)}
-          {data.can_pay && selected && <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="guest-method">Payment method</label><select id="guest-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account">ACH bank payment (when enabled)</option><option value="affirm">Affirm (when enabled)</option></select><p className="text-xs text-slate-600">Invoice amount {formatMoney(selected.amount)} · Fee $0.00 currently quoted · Total {formatMoney(selected.amount)}. Additional fees are not charged until approved and displayed before checkout.</p></div>}
-          {data.can_pay && selected && !params.get('session_id') && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(selected.amount)}</Button>}
+          {data.can_pay && selected && <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="guest-method">Payment method</label><select id="guest-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account" disabled={!quote?.methods?.find(m => m.method === "us_bank_account")?.enabled}>ACH bank payment</option><option value="affirm" disabled={!quote?.methods?.find(m => m.method === "affirm")?.enabled}>Affirm</option></select><p className="text-xs text-slate-600">{quoteReady ? `Invoice amount ${formatMoney(methodQuote.principalCents / 100)} · Processing fee ${formatMoney(methodQuote.feeCents / 100)} · Total ${formatMoney(methodQuote.totalCents / 100)}` : "Checking payment method and fee availability…"}</p></div>}
+          {data.can_pay && selected && !params.get('session_id') && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy || !quoteReady} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(quoteReady ? methodQuote.totalCents / 100 : selected.amount)}</Button>}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <Button variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => { setOption(''); refetch(); }}>Refresh Payment Status</Button>
           <p className="text-xs text-slate-500">Payments reduce the customer's document balance. Payment does not authorize additional work.</p>
