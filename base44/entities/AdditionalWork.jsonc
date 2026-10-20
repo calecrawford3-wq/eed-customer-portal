@@ -155,6 +155,10 @@
       "default": "pending",
       "description": "Customer's response collected via the portal or public approval link. pending = not yet responded, approved = customer consented, declined = customer declined. The shop still applies the work via the admin Approve & Apply action."
     },
+    "customer_approved_version": {
+      "type": "number",
+      "description": "Exact version approved by customer; never apply if scope version changes"
+    },
     "customer_response_at": {
       "type": "string",
       "format": "date-time",
