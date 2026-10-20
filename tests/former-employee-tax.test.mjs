@@ -26,8 +26,8 @@ test('Tax-only invitation requires admin and confirmation of disabled company lo
 });
 test('Authenticated layout blocks terminated company users and isolates personal users',()=>{
  const s=f('src/App.jsx');
- assert.match(s,/staffAccess==='blocked'/);
- assert.match(s,/staffAccess==='tax_only'/);
+ assert.match(s,/staffAccess.access==='blocked'/);
+ assert.match(s,/staffAccess.access==='tax_only'/);
  assert.match(f('base44/functions/staffAccessGate/entry.ts'),/w.status==='terminated'/);
  assert.match(f('base44/functions/hrWorkspace/entry.ts'),/companyMatches.some\(w=>w.status==='terminated'\)/);
  assert.match(f('base44/functions/staffWorkspace/entry.ts'),/worker\?\.status==='terminated'/);
