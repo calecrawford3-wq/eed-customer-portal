@@ -1036,7 +1036,7 @@ export default function CustomerPortal() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <div><Label>First Name</Label><Input value={profileForm.first_name || ""} onChange={e => setProfileForm({ ...profileForm, first_name: e.target.value })} /></div>
             <div><Label>Last Name</Label><Input value={profileForm.last_name || ""} onChange={e => setProfileForm({ ...profileForm, last_name: e.target.value })} /></div>
-            <div className="sm:col-span-2"><Label>Email Address</Label><Input type="email" value={profileForm.email || ""} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} /></div>
+            <div className="sm:col-span-2"><Label>Email Address (verified account)</Label><Input type="email" value={profileForm.email || ""} readOnly aria-describedby="portal-email-help" /><p id="portal-email-help" className="text-xs text-slate-500 mt-1">For your security, email changes require verified account assistance from the shop.</p></div>
             <div><Label>Phone</Label><Input value={profileForm.phone || ""} onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })} /></div>
             <div><Label>Company</Label><Input value={profileForm.company_name || ""} onChange={e => setProfileForm({ ...profileForm, company_name: e.target.value })} /></div>
             <div className="sm:col-span-2"><Label>Address</Label><Input value={profileForm.address_line1 || ""} onChange={e => setProfileForm({ ...profileForm, address_line1: e.target.value })} /></div>
@@ -1048,7 +1048,7 @@ export default function CustomerPortal() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProfileOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => profileMutation.mutate(profileForm)} disabled={profileMutation.isPending}>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => { const { email, ...fields } = profileForm; profileMutation.mutate(fields); }} disabled={profileMutation.isPending}>
               {profileMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
