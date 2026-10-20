@@ -75,7 +75,7 @@ export default function AccountSetup({ customer, onSaved, onClose }) {
         {[[ 'racing_role','Your role (driver, owner, manager, other)' ],['racing_classes','Racing types and classes'],['racing_primary_track','Primary track'],['racing_tracks','Other preferred tracks (separate with commas)'],['racing_notes_public','Notes for Elite (visible to the shop)']].map(([key,title])=><div key={key}><Label htmlFor={key}>{title}</Label><Input id={key} value={form[key] || ''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} className="mt-1 min-h-11"/></div>)}
         <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={()=>saveRacing(false)}>Save racing profile</Button><Button variant="outline" disabled={saving} onClick={()=>saveRacing(true)}>Skip for now</Button></div>
       </div>}
-      {section==='finish' && <div className="space-y-3"><p className="text-sm">Car and driver management and the interactive portal tour are coming in the next development increment. You can use the rest of your portal now.</p><Button variant="outline" disabled={saving} onClick={async()=>{if(await save({onboarding_cars_skipped:true})) onClose?.();}}>Finish for now</Button></div>}
+      {section==='finish' && <div className="space-y-3"><p className="text-sm">Use the Cars & drivers and Portal tour buttons on your dashboard to complete your setup. Both can be revisited at any time.</p><Button variant="outline" disabled={saving} onClick={async()=>{if(await save({onboarding_cars_skipped:true})) onClose?.();}}>Finish for now</Button></div>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <Button variant="ghost" className="w-full" onClick={onClose}>Return to portal</Button>
     </CardContent>
