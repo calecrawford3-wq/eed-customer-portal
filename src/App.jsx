@@ -57,6 +57,8 @@ import PublicLegalViewer from './pages/PublicLegalViewer';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
+import {base44} from '@/api/base44Client';
+import FormerEmployeeTaxPortal from './pages/FormerEmployeeTaxPortal';
 
 const { Pages, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -80,6 +82,14 @@ function AdminLayout() {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
   const location = useLocation();
   const [splashGone, setSplashGone] = useState(false);
+  const [staffAccess,setStaffAccess]=useState('checking');
+  useEffect(()=>{
+    if(!user?.email){setStaffAccess('checking');return;}
+    let live=true;
+    setStaffAccess('checking');
+    base44.functions.invoke('staffAccessGate',{}).then(r=>{if(live)setStaffAccess(r.data?.access||'blocked')}).catch(()=>{if(live)setStaffAccess('blocked')});
+    return ()=>{live=false};
+  },[user?.email,user?.role]);
   const loading = isLoadingPublicSettings || isLoadingAuth;
 
   useEffect(() => {
@@ -103,6 +113,9 @@ function AdminLayout() {
     return <UserNotRegisteredError />;
   }
 
+  if(staffAccess==='checking') return <SplashScreen ready={false} />;
+  if(staffAccess==='blocked') return <main className="p-8 max-w-xl mx-auto"><h1 className="text-2xl font-bold">Account access disabled</h1><p>Your company login is no longer active, or your account requires an administrator review. Former employees must use their personal email to sign in for tax documents.</p></main>;
+  if(staffAccess==='tax_only') return <><NavigationTracker /><FormerEmployeeTaxPortal /></>;
   const isAdmin = user?.role === 'admin';
   const splashOverlay = !splashGone ? <SplashScreen ready={true} /> : null;
 
@@ -160,6 +173,7 @@ const routes = createRoutesFromElements(
       <Route path="PaymentMigration" element={<PaymentMigration />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
+      <Route path="FormerEmployeeTaxPortal" element={<FormerEmployeeTaxPortal />} />
       <Route path="StaffWorkspace" element={<StaffWorkspace />} />
       <Route path="HRAdmin" element={<HRAdmin />} />
       <Route path="OwnerEarnings" element={<OwnerEarnings />} />
