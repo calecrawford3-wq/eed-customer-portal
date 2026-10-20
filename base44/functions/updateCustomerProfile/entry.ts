@@ -52,6 +52,13 @@ export default async function (req) {
       const merged = {...cust,...patch};
       if (!['first_name','last_name','phone','address_line1','city','state','zip','country'].every(k => typeof merged[k] === 'string' && merged[k].trim())) return Response.json({error:'Complete required contact details first'}, {status:400});
     }
+    if (patch.onboarding_profile_completed === true) {
+      const completeContact = cust.onboarding_contact_confirmed === true && ['first_name','last_name','phone','address_line1','city','state','zip','country'].every(k => typeof cust[k] === 'string' && cust[k].trim());
+      const completeRacing = !!cust.racing_role || cust.onboarding_racing_skipped === true;
+      const completeGarage = cust.onboarding_garage_completed === true || cust.onboarding_cars_skipped === true;
+      const completeTour = cust.onboarding_tour_completed === true || cust.onboarding_tour_skipped === true;
+      if (!(completeContact && completeRacing && completeGarage && completeTour)) return Response.json({error:'Complete all four onboarding steps before finishing setup'}, {status:400});
+    }
     if (patch.preferred_contact_method && !['email','phone','sms'].includes(patch.preferred_contact_method)) return Response.json({error:'Invalid contact method'}, {status:400});
     const updated = await base44.asServiceRole.entities.Customer.update(cid, patch);
     const safe = {};
