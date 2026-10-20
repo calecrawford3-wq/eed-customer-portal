@@ -1,0 +1,66 @@
+{
+  "name": "HRPayStatement",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "period_start": {
+      "type": "string"
+    },
+    "period_end": {
+      "type": "string"
+    },
+    "pay_date": {
+      "type": "string"
+    },
+    "gross_pay": {
+      "type": "number"
+    },
+    "net_pay": {
+      "type": "number"
+    },
+    "taxes_withheld": {
+      "type": "number"
+    },
+    "deductions": {
+      "type": "number"
+    },
+    "statement_url": {
+      "type": "string"
+    },
+    "payroll_provider_reference": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "issued",
+        "void"
+      ]
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
