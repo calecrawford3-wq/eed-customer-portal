@@ -1,0 +1,43 @@
+{
+  "name": "HROwnerDistribution",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "declaration_date": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "ownership_percentage_at_declaration": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
