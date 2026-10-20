@@ -8,10 +8,22 @@ export default function PaymentMigration() {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
   const [session, setSession] = useState('');
+  const [fees, setFees] = useState(null);
+  const [providerGates, setProviderGates] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   if (user?.role !== 'admin') return <p>Staff access required.</p>;
+  async function manageFees(action) {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const r = await base44.functions.invoke('managePortalPaymentFees', { action, ...(action === 'save' ? { settings: fees } : {}) });
+      if (r.data?.error) throw new Error(r.data.error);
+      setFees(r.data.settings); setProviderGates(r.data.provider_gates);
+      setMessage(action === 'save' ? 'Fee settings saved. Stripe verification remains separate.' : 'Fee settings loaded.');
+    } catch (e) { setError(e.response?.data?.error || e.message || 'Unable to load fee settings'); }
+    finally { setBusy(false); }
+  }
   async function run(name, payload = {}) {
     setBusy(true); setError(''); setMessage('');
     try {
