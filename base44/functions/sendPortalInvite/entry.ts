@@ -23,12 +23,24 @@ Deno.serve(async req => {
     if (payload.customerEmail && String(payload.customerEmail).trim().toLowerCase() !== email) return Response.json({ error: 'Customer email changed. Refresh the customer record.' }, { status: 409 });
     const name = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || 'Valued Customer';
     try {
-      await base44.asServiceRole.users.inviteUser(email, 'user');
+      // Base44 documents users.inviteUser on the authenticated admin client.
+      // Some SDK versions do not expose users under asServiceRole.
+      const invite = typeof base44.asServiceRole?.users?.inviteUser === 'function'
+        ? base44.asServiceRole.users.inviteUser.bind(base44.asServiceRole.users)
+        : typeof base44.users?.inviteUser === 'function'
+          ? base44.users.inviteUser.bind(base44.users)
+          : typeof base44.auth?.inviteUser === 'function'
+            ? base44.auth.inviteUser.bind(base44.auth)
+            : null;
+      if (!invite) return Response.json({ error: 'Base44 user invitation is unavailable in this app SDK. Contact the app administrator.', stage: 'base44_invite', code: 'invite_method_unavailable' }, { status: 502 });
+      await invite(email, 'user');
     } catch (error) {
       const status = error.status || error.response?.status;
       if (status !== 409 && !(status === 400 && /already (exists|invited|registered)/i.test(error.message || ''))) {
         console.error('[sendPortalInvite] platform invitation failed', {status, message: String(error.message || '').slice(0,300)});
-        return Response.json({ error: status === 403 ? 'Base44 blocked the invitation. Check app access settings and admin permissions.' : status === 404 ? 'Base44 invitation service was not found. Check that the app is deployed and invitations are supported.' : `Base44 account invitation failed${status ? ` (HTTP ${status})` : ''}. Check app access settings.`, stage: 'base44_invite' }, { status: 502 });
+        const raw = String(error.message || error.response?.data?.message || '').slice(0,240);
+        const safeReason = raw.replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[email]').replace(/https?:\/\/\S+/g, '[url]').replace(/(token|secret|password|key)\s*[:=]\s*\S+/gi, '$1=[redacted]');
+        return Response.json({ error: status === 403 ? 'Base44 blocked the invitation (403). Check app access settings and admin permissions.' : status === 404 ? 'Base44 invitation service returned 404. Check deployment and invitation support.' : `Base44 account invitation failed${status ? ` (HTTP ${status})` : ''}${safeReason ? ': ' + safeReason : '. Check app access settings.'}`, stage: 'base44_invite' }, { status: 502 });
       }
     }
     const settingsResult = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
