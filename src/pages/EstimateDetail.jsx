@@ -1480,17 +1480,7 @@ export default function EstimateDetail() {
       if (!publicAccessToken) {
         publicAccessToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       }
-      if (!checkoutUrl) {
-        const amount = form.deposit_required ? form.deposit_amount : form.total;
-        try {
-          const stripeUrlRes = await base44.functions.invoke("generateStripeCheckoutUrl", {
-            type: "estimate", documentId: id, amount,
-            description: `Estimate ${form.estimate_number} - ${form.deposit_required ? "Deposit" : "Full Payment"}`,
-            publicAccessToken, customerEmail: customer.email,
-          });
-          if (stripeUrlRes?.data?.checkout_url) checkoutUrl = stripeUrlRes.data.checkout_url;
-        } catch { /* link still usable without checkout */ }
-      }
+      // No checkout session is generated until the customer chooses to pay.
       const status = form.status === "draft" ? "sent" : form.status;
       await base44.entities.Estimate.update(id, {
         public_access_token: publicAccessToken,
