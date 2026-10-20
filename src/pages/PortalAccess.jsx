@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function PortalAccess() {
-  const { user, isLoadingAuth } = useAuth();
+  const { user, isLoadingAuth, isLoadingPublicSettings } = useAuth();
   const params = new URLSearchParams(window.location.search);
   const destination = portalDestination(params.get('next'), window.location.origin);
   const [mode, setMode] = useState(params.get('mode') === 'activate' ? 'activate' : 'signin');
@@ -94,6 +94,15 @@ export default function PortalAccess() {
       setBusy(false);
     }
   };
+
+  if (isLoadingAuth || isLoadingPublicSettings || user) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-4 flex flex-col items-center justify-center gap-4 text-white" role="status">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-red-500" />
+        <p>Opening your portal…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 flex items-center justify-center">
