@@ -23,7 +23,7 @@ function buildBook({ role = 'user', storedCustomer = 'c1', requestedBuild = 'b1'
       Job: { filter: async () => [{ id: 'j1', build_id: 'b1', customer_id: jobCustomer, job_number: 'J-1', stage: 'machining' }] },
       BuildTask: { filter: async () => { state.getTasks++; return [{ id: 't1', build_id: 'b1', name: 'Valve job', status: 'complete', private_notes: 'secret pricing' }]; } },
       TeardownFinding: { filter: async () => [{ id: 'f1', job_id: 'j1', component: 'Valve', customer_description: 'Replacement needed', status: 'open', photos: ['https://private.test/photo'], measurements: 'PRIVATE', notes: 'PRIVATE' }, { id: 'f2', job_id: 'j1', status: 'declined', customer_description: 'hidden' }] },
-      ComponentReplacement: { filter: async () => [{ id: 'r1', component: 'Valve', replaced_at: '2026-01-01', internal_cost: 999 }] },
+      ComponentReplacement: { filter: async () => [{ id: 'r1', build_id: 'b1', component: 'Valve', replaced_at: '2026-01-01', internal_cost: 999 }] },
     } },
   };
   const { default: handler } = compile('base44/functions/getPortalBuildBook/entry.ts', {
