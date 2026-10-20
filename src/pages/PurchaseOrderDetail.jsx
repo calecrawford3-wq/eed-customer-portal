@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ export default function PurchaseOrderDetail() {
   });
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
+  const pendingReceiptId = useRef(null);
   const [receiveMode, setReceiveMode] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
   const [receiveCosts, setReceiveCosts] = useState({});
@@ -254,13 +255,24 @@ export default function PurchaseOrderDetail() {
         return;
       }
 
+      // Keep the same receipt identifier across network retries of this submission.
+      if (!pendingReceiptId.current) pendingReceiptId.current = crypto.randomUUID();
       const result = await base44.functions.invoke("receivePurchaseOrder", {
         po_id: id,
         received_items: receivedItems,
+        receipt_id: pendingReceiptId.current,
       });
 
       const data = result?.data || result;
       if (data.error) { toast.error(data.error); setReceiving(false); return; }
+      if (data.duplicate) {
+        pendingReceiptId.current = null;
+        qc.invalidateQueries({ queryKey: ["po", id] });
+        toast.info("Receipt was already processed. Refreshed purchase order.");
+        setReceiving(false);
+        return;
+      }
+      pendingReceiptId.current = null;
 
       const allocCount = (data.shortage_allocations || []).reduce((s, a) => s + a.allocations.length, 0);
       const jobsUpdated = (data.jobs_updated || []).length;
