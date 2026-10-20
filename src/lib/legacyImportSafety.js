@@ -21,7 +21,7 @@ export function validateLegacyInvoiceImport(rows, existingInvoices, { scannedLim
     const balance = Number(row.balance_due ?? (total - paid));
     if (![total, paid, balance].every(Number.isFinite) || [total, paid, balance].some(v => v < 0)) errors.push('Row ' + (index + 1) + ': invalid invoice amounts.');
     else if (Math.abs(total - paid - balance) > 0.02) errors.push('Row ' + (index + 1) + ': total, paid, and balance do not reconcile.');
-    if (String(row.status || '').toLowerCase() === 'paid' && Number.isFinite(balance) && balance > 0.01) errors.push('Row ' + (index + 1) + ': paid invoice has an open balance.');
+    if (['paid', 'closed', 'completed', 'settled'].includes(String(row.status || '').toLowerCase().trim()) && Number.isFinite(balance) && balance > 0.01) errors.push('Row ' + (index + 1) + ': paid invoice has an open balance.');
   }
   return { valid: errors.length === 0, errors };
 }
