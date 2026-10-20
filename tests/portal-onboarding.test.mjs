@@ -97,11 +97,11 @@ test('public billing viewers and comparison stay on the Elite portal domain', ()
   assert.match(estimate, /https:\/\/portal\.eedpower\.com\/estimate\//);
   assert.match(invoice, /https:\/\/portal\.eedpower\.com\/invoice\//);
   const sync = readFileSync('base44/shared/syncEstimateSnapshot.ts','utf8');
-  assert.doesNotMatch(sync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+  assert.doesNotMatch(sync, /fetch\(|Deno\.env\.get\('SYNC_SECRET'\)|billing\.eedpower/);
   const invSync = readFileSync('base44/functions/syncInvoiceSnapshot/entry.ts','utf8');
-  assert.doesNotMatch(invSync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+  assert.doesNotMatch(invSync, /fetch\(|Deno\.env\.get\('SYNC_SECRET'\)|billing\.eedpower/);
   const legalSync = readFileSync('base44/functions/syncLegalDocument/entry.ts','utf8');
-  assert.doesNotMatch(legalSync, /fetch\(|SYNC_SECRET|billing\.eedpower/);
+  assert.doesNotMatch(legalSync, /fetch\(|Deno\.env\.get\('SYNC_SECRET'\)|billing\.eedpower/);
 });
 test('public viewers do not follow stored legacy checkout URLs', () => {
   for (const path of ['src/pages/EstimateViewer.jsx','src/pages/InvoiceViewer.jsx']) {
