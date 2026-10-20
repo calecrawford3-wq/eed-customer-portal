@@ -1,82 +1,51 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.35";
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.35';
 
-Deno.serve(async (req) => {
+const escapeHtml = (value: string) => String(value).replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+
+Deno.serve(async req => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Only staff can send portal invitations' }, { status: 403 });
+    const payload = await req.json();
+    const email = String(payload.customer_email || payload.customerEmail || '').trim();
+    if (!email) return Response.json({ error: 'Customer email is required' }, { status: 400 });
+    const customerResult = await base44.asServiceRole.entities.Customer.filter({ email });
+    const matches = customerResult.items || customerResult || [];
+    if (matches.length !== 1) return Response.json({ error: matches.length ? 'Multiple customers use this email. Resolve the customer link before inviting.' : 'Save this email on the customer record before inviting.' }, { status: 409 });
+    const customer = matches[0];
+    const name = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || 'Valued Customer';
     try {
-        const base44 = createClientFromRequest(req);
-
-        // Requires an authenticated user context (called from frontend)
-        const user = await base44.auth.me();
-        if (!user) {
-            return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const payload = await req.json();
-        const customerEmail = payload.customer_email || payload.customerEmail;
-        const customerName = payload.customerName || payload.customer_name || "Valued Customer";
-
-        if (!customerEmail) {
-            console.error("sendPortalInvite: No email in payload", JSON.stringify(payload));
-            return Response.json({ error: "No email provided" }, { status: 400 });
-        }
-
-        // Only admins may send portal invites
-        if (user.role !== "admin") {
-            return Response.json({ error: "Only admins can send portal invites" }, { status: 403 });
-        }
-
-        // Invite the user through the platform so they are pre-registered and do not
-        // require manual approval when they sign in. The platform's built-in invite
-        // email links to the default base44.app domain, so we ALSO send a custom
-        // email with the correct portal.eedpower.com link for the customer to use.
-        try {
-            await base44.users.inviteUser(customerEmail, "user");
-            console.log(`sendPortalInvite: invited user ${customerEmail} via platform`);
-        } catch (inviteError) {
-            // 409 / "already invited" is expected if the customer was invited before — not fatal.
-            console.log(`sendPortalInvite: inviteUser result for ${customerEmail}:`, inviteError?.message || inviteError);
-        }
-
-        const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: "global" });
-        const settings = settingsList?.[0];
-        const signature = settings?.email_signature || "Elite Engine Development\nYour High-Performance Engine Specialists";
-        const companyName = settings?.company_name || "Elite Engine Development";
-
-        const signupUrl = `https://portal.eedpower.com/login`;
-
-        const text = `Hello ${customerName},\n\nYou've been invited to access the ${companyName} customer portal. Follow these steps to create your account and log in:\n\n1. Go to the login page: ${signupUrl}\n\n2. Click "Sign up" (or "Create account") — you don't have an account yet.\n\n3. Enter this email address (${customerEmail}) and choose a password.\n\n4. Check your inbox for a verification email and click the link inside to verify your address.\n\n5. Once verified, sign in at ${signupUrl} using your email and password.\n\nYou'll then see your engine builds, invoices, estimates, inspection findings, and documents — all tied to this email address automatically.\n\nIf you have any questions, please let us know.\n\n${signature}`;
-
-        const html = `
-          <p>Hello ${customerName},</p>
-          <p>You've been invited to access the ${companyName} customer portal. Follow these steps to create your account and log in:</p>
-          <ol style="margin:0 0 16px 0;padding-left:20px;line-height:1.7;">
-            <li>Go to the login page: <a href="${signupUrl}">${signupUrl}</a></li>
-            <li>Click <strong>"Sign up"</strong> (or "Create account") — you don't have an account yet.</li>
-            <li>Enter this email address (<strong>${customerEmail}</strong>) and choose a password.</li>
-            <li>Check your inbox for a verification email and click the link inside to verify your address.</li>
-            <li>Once verified, sign in at <a href="${signupUrl}">${signupUrl}</a> using your email and password.</li>
-          </ol>
-          <p>You'll then see your engine builds, invoices, estimates, inspection findings, and documents — all tied to this email address automatically.</p>
-          <p>If you have any questions, please let us know.</p>
-          <p>${signature.replace(/\n/g, "<br/>")}</p>
-        `;
-
-        const result = await base44.functions.invoke("sendSmtpEmail", {
-            to: customerEmail,
-            subject: `Your Customer Portal Access — ${companyName}`,
-            text,
-            html,
-            usePOSmtp: false,
-        });
-
-        if (result?.data?.error) {
-            console.error("sendPortalInvite: SMTP send failed:", result.data.error);
-            return Response.json({ error: result.data.error }, { status: 500 });
-        }
-
-        console.log(`Portal invite sent to ${customerEmail}`);
-        return Response.json({ message: "Portal invite sent successfully." });
+      await base44.users.inviteUser(email, 'user');
     } catch (error) {
-        console.error("Error sending portal invite:", error);
-        return Response.json({ error: error.message }, { status: 500 });
+      const status = error.status || error.response?.status;
+      if (status !== 409 && !(status === 400 && /already (exists|invited|registered)/i.test(error.message || ''))) {
+        console.error('[sendPortalInvite] platform invitation failed', status);
+        return Response.json({ error: 'The platform invitation could not be confirmed. Please try again.' }, { status: 502 });
+      }
     }
+    const settingsResult = await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' });
+    const settings = (settingsResult.items || settingsResult || [])[0] || {};
+    const company = settings.company_name || 'Elite Engine Development';
+    const signature = settings.email_signature || company;
+    const origin = new URL(Deno.env.get('PORTAL_BASE_URL') || 'https://portal.eedpower.com');
+    if (origin.protocol !== 'https:') throw new Error('Invalid portal origin');
+    // Keep invitations on the working platform login until custom-auth cutover.
+    const url = new URL('/login', origin.origin);
+    url.searchParams.set('from_url', new URL('/CustomerPortal', origin.origin).href);
+    const link = url.href;
+    const text = `Hello ${name},\n\nYour ${company} customer portal is ready.\n\nOpen your portal: ${link}\n\nFirst visit? Choose Create account or Sign up. Use ${email}, choose a password, and complete the email verification instructions. Your customer record is already at the shop, but you still need to create your login.\n\nAlready registered? Choose Sign in and use your existing password. You do not need another account. Forgotten your password? Choose Forgot password on the sign-in screen.\n\nAfter signing in, see your engines, estimates, invoices, and shared inspection findings.\n\n${signature}`;
+    const html = `<p>Hello ${escapeHtml(name)},</p><p>Your ${escapeHtml(company)} customer portal is ready.</p><p><a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 20px;background:#e20404;color:white;text-decoration:none;border-radius:8px">Open Customer Portal</a></p><p><strong>First visit?</strong> Choose <strong>Create account</strong> or <strong>Sign up</strong>. Use <strong>${escapeHtml(email)}</strong>, choose a password, and complete the email verification instructions. Your customer record is already at the shop, but you still need to create your login.</p><p><strong>Already registered?</strong> Choose <strong>Sign in</strong> with your existing password. You do not need another account. Use <strong>Forgot password</strong> if needed.</p><p>After signing in, see your engines, estimates, invoices, and shared inspection findings.</p><p>${escapeHtml(signature).replace(/\n/g, '<br/>')}</p>`;
+    const result = await base44.functions.invoke('sendSmtpEmail', {
+      to: email, subject: `Your Customer Portal Access — ${company}`, text, html, usePOSmtp: false,
+    });
+    if (result?.data?.error) return Response.json({ error: 'The invitation email could not be delivered. Please retry.' }, { status: 502 });
+    return Response.json({ message: 'Portal invitation sent successfully.' });
+  } catch (error) {
+    console.error('[sendPortalInvite]', error.message);
+    return Response.json({ error: 'Unable to send the portal invitation. Please try again.' }, { status: 500 });
+  }
 });

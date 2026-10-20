@@ -10,6 +10,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import CustomerPortal from './pages/CustomerPortal';
+import PortalAccess from './pages/PortalAccess';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
 import DebugServiceWorker from './pages/DebugServiceWorker';
@@ -121,6 +122,7 @@ const configPageRoutes = Object.entries(Pages).map(([path, Page]) =>
 const routes = createRoutesFromElements(
   <>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
+    <Route path="/PortalAccess" element={<PortalAccess />} />
     <Route path="/oauth/consent" element={<OAuthConsent />} />
     <Route path="/AdditionalWorkViewer/:token" element={<AdditionalWorkViewer />} />
     <Route path="/" element={<AdminLayout />}>
