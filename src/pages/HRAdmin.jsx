@@ -1,0 +1,31 @@
+import React,{useEffect,useState} from 'react';
+import {base44} from '@/api/base44Client';
+import {useAuth} from '@/lib/AuthContext';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+const money=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
+const call=async body=>{const r=await base44.functions.invoke('hrWorkspace',body);if(r.data?.error)throw Error(r.data.error);return r.data;};
+export default function HRAdmin(){
+ const {user}=useAuth();
+ const [data,setData]=useState(null),[tab,setTab]=useState('workers'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[draft,setDraft]=useState({worker_type:'w2',status:'active',pay_type:'hourly',access_level:'employee'}),[editing,setEditing]=useState(null);
+ const load=async()=>{try{setData(await call({action:'dashboard',adminView:true}));setError('');}catch(e){setError(e.message)}};
+ useEffect(()=>{if(user?.role==='admin')load()},[user?.role]);
+ const save=async()=>{setBusy(true);try{await call({action:editing?'update':'create',kind:tab,id:editing,values:draft});setDraft({});setEditing(null);await load()}catch(e){setError(e.message)}finally{setBusy(false)}};
+ if(user?.role!=='admin')return <p className="p-8">HR administrator access required.</p>;
+ const types={workers:['first_name','last_name','email','phone','worker_type','status','job_title','department','hire_date','pay_type','pay_rate','pto_hours_available','access_level'],time:['worker_id','clock_in','clock_out','break_minutes','status','notes'],leave:['worker_id','start_date','end_date','hours','leave_type','status','decision_note'],pay:['worker_id','period_start','period_end','pay_date','gross_pay','net_pay','taxes_withheld','deductions','statement_url','payroll_provider_reference','status'],benefits:['worker_id','benefit_name','provider','plan','coverage_start','coverage_end','employee_contribution','employer_contribution','status'],tax:['worker_id','tax_year','document_type','document_url','status']};
+ const workerName=id=>{const w=data?.workers?.find(x=>x.id===id);return w?`${w.first_name} ${w.last_name}`:id};
+ return <main className="mx-auto max-w-6xl space-y-5 p-4 md:p-8">
+  <header><h1 className="text-3xl font-bold">Human Resources</h1><p className="text-slate-600">Private staff records, time, leave, benefits and payroll statement tracking.</p><p className="text-sm text-amber-800">Payroll figures are records only. Direct deposit, withholding, tax filing, W-2 and 1099 issuance require a connected payroll provider. HR access level does not grant backend login permissions.</p></header>
+  <div className="flex flex-wrap gap-2">{Object.keys(types).map(t=><Button key={t} variant={tab===t?'default':'outline'} onClick={()=>{setTab(t);setDraft({});setEditing(null)}} className="capitalize">{({workers:'People',time:'Time Clock',leave:'Time Off',pay:'Pay Statements',benefits:'Benefits',tax:'Tax Documents'})[t]}</Button>)}</div>
+  {error&&<p role="alert" className="rounded bg-red-50 p-3 text-red-700">{error}</p>}
+  <section className="rounded-xl border bg-white p-5 space-y-3"><h2 className="font-semibold">{editing?'Edit':'Add'} {tab==='workers'?'worker':tab} record</h2>
+   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">{types[tab].map(k=><label key={k} className="text-sm"><span className="block mb-1 capitalize">{k.replaceAll('_',' ')}</span>
+    {k==='worker_id'?<select className="w-full rounded-md border p-2" value={draft[k]||''} onChange={e=>setDraft({...draft,[k]:e.target.value})}><option value="">Choose worker</option>{data?.workers?.map(w=><option key={w.id} value={w.id}>{w.first_name} {w.last_name}</option>)}</select>:
+    ['worker_type','access_level','pay_type','status','document_type'].includes(k)?<select className="w-full rounded-md border p-2" value={draft[k]||''} onChange={e=>setDraft({...draft,[k]:e.target.value})}><option value="">Select</option>{(k==='worker_type'?['w2','1099']:k==='access_level'?['employee','shop_staff','manager']:k==='pay_type'?['hourly','salary','contract']:k==='document_type'?['w2','1099_nec','w4','w9','other']:tab==='workers'?['invited','active','inactive']:tab==='leave'?['pending','approved','denied','cancelled']:tab==='pay'?['draft','issued','void']:tab==='time'?['open','closed','adjusted']:['requested','received','issued']).map(v=><option key={v} value={v}>{v}</option>)}</select>:
+    <Input type={['pay_rate','pto_hours_available','break_minutes','hours','gross_pay','net_pay','taxes_withheld','deductions','employee_contribution','employer_contribution','tax_year'].includes(k)?'number':['hire_date','start_date','end_date','period_start','period_end','pay_date','coverage_start','coverage_end'].includes(k)?'date':'text'} value={draft[k]??''} onChange={e=>setDraft({...draft,[k]:e.target.value})}/>}
+   </label>)}</div>
+   <div className="flex gap-2"><Button disabled={busy} onClick={save}>{busy?'Saving…':editing?'Save Changes':'Create Record'}</Button>{editing&&<Button variant="outline" onClick={()=>{setEditing(null);setDraft({})}}>Cancel</Button>}</div>
+  </section>
+  <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold mb-3">Records ({data?.[tab]?.length||0})</h2>{!data?<p>Loading HR records…</p>:<div className="space-y-2">{data[tab]?.map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{tab==='workers'?`${item.first_name} ${item.last_name}`:workerName(item.worker_id)}</p><p className="text-sm text-slate-500">{tab==='workers'?`${item.email} · ${item.worker_type} · ${item.status}`:tab==='pay'?`${item.period_start} to ${item.period_end} · Net ${money(item.net_pay)} · ${item.status}`:tab==='time'?`${item.clock_in||''} → ${item.clock_out||'Open'}`:tab==='leave'?`${item.start_date} to ${item.end_date} · ${item.status}`:tab==='benefits'?`${item.benefit_name} · ${item.status}`:`${item.document_type} · ${item.tax_year} · ${item.status}`}</p></div><Button variant="outline" onClick={()=>{setEditing(item.id);setDraft(Object.fromEntries(types[tab].map(k=>[k,item[k]??''])))}}>Edit</Button></div>)}{!data[tab]?.length&&<p className="text-slate-500">No records yet.</p>}</div>}</section>
+ </main>;
+}
