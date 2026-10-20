@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 export default function PaymentMigration() {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
+  const [launchReport, setLaunchReport] = useState(null);
   const [session, setSession] = useState('');
   const [fees, setFees] = useState(null);
   const [providerGates, setProviderGates] = useState(null);
@@ -30,6 +31,7 @@ export default function PaymentMigration() {
       const r = await base44.functions.invoke(name, payload);
       if (r.data?.error) throw new Error(r.data.error);
       if (name === 'getPortalPaymentReadiness') setReport(r.data);
+      else if (name === 'getPortalLaunchReadiness') setLaunchReport(r.data);
       else if (name === 'verifyAutomationCaller') setMessage(r.data.message);
       else setMessage(r.data.pending ? 'Stripe has not confirmed payment. No credit recorded.' : r.data.duplicate ? 'Payment was already recorded. Its document links were rechecked.' : 'Verified payment recorded on invoice ' + r.data.invoice_id + '.');
     } catch (e) { setError(e.response?.data?.error || e.message || 'Unable to continue.'); }
@@ -37,6 +39,19 @@ export default function PaymentMigration() {
   }
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <div><h1 className="text-2xl font-bold">Settings / Payments</h1><p className="mt-2 text-slate-600">Secure Stripe connection checks for the new portal. Existing billing remains active until cutover is verified.</p></div>
+    <section className="rounded-xl border border-slate-300 bg-slate-50 p-5 space-y-3">
+      <h2 className="font-semibold">Stage 13: Controlled launch preflight</h2>
+      <p className="text-sm">This is a read-only readiness check. It cannot publish the app, enable live Stripe, send invitations, or retire the old billing system. Owner acceptance and real environment testing are still required.</p>
+      <Button variant="outline" disabled={busy} onClick={() => run('getPortalLaunchReadiness')}>Run Launch Preflight</Button>
+      {launchReport && <div className="space-y-3 text-sm">
+        <p role="status" className="font-semibold text-amber-900">Launch authorization: NOT GRANTED. No deployment has been initiated.</p>
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">{[['Portal domain', launchReport.portal_domain || 'Not configured'], ['Stripe key mode', launchReport.config?.stripe_key_mode], ['HTTPS domain configured', launchReport.config?.domain_https_configured], ['Webhook secret configured', launchReport.config?.webhook_secret_present], ['Payment recording gate enabled', launchReport.flags?.payment_recording], ['Portal checkout gate enabled', launchReport.flags?.portal_payments], ['Owner approval flag', launchReport.config?.owner_release_acknowledged_in_environment]].map(([label, value]) => <div key={label} className="rounded-md border bg-white p-3"><dt className="text-slate-600">{label}</dt><dd className="mt-1 break-words font-medium">{typeof value === 'boolean' ? value ? 'Yes' : 'No' : value || 'Unknown'}</dd></div>)}</dl>
+        <h3 className="font-semibold">Configuration blockers</h3>
+        {launchReport.blockers?.length ? <ul className="list-disc space-y-1 pl-5">{launchReport.blockers.map(b => <li key={b}>{b}</li>)}</ul> : <p>Configuration blockers cleared. Real-world acceptance and owner sign-off are still required.</p>}
+        <h3 className="font-semibold">Required acceptance before launch</h3>
+        <ul className="list-disc space-y-1 pl-5">{launchReport.required_acceptance?.map(b => <li key={b}>{b}</li>)}</ul>
+      </div>}
+    </section>
     <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 space-y-3">
       <h2 className="font-semibold">Stage 8: Stripe setup and testing</h2>
       <p className="text-sm">Public launch is pending. Keep the app private and the new checkout controls off.</p>
