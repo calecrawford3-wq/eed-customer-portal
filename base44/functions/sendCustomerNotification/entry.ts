@@ -101,9 +101,9 @@ export default async function (req) {
       !customer.sms_opt_out;
 
     // If we have an existing record, check which channels still need sending
-    let emailStatus = "skipped";
+    let emailStatus = wantEmail ? "pending" : "skipped";
     let emailError = "";
-    let smsStatus = "skipped";
+    let smsStatus = wantSms ? "pending" : "skipped";
     let smsError = "";
     let smsMessageId = "";
 
