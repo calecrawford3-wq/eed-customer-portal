@@ -6,6 +6,30 @@
       "type": "string",
       "description": "Unique settings key, e.g. 'global'"
     },
+    "ach_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "affirm_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "ach_fee_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "ach_fee_percent": {
+      "type": "number",
+      "default": 0
+    },
+    "ach_fee_fixed_cents": {
+      "type": "number",
+      "default": 0
+    },
+    "ach_fee_cap_cents": {
+      "type": "number",
+      "default": 0
+    },
     "company_name": {
       "type": "string"
     },
