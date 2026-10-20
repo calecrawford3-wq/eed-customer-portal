@@ -81,7 +81,8 @@ export default async function(req) {
       { job_id: { $in: customerJobIds } },
       { limit: 500 }
     );
-    const findings = (fRes.items || fRes || []).filter((f: any) => f.status !== 'canceled' && f.status !== 'declined');
+    const allowedJobIds = new Set(customerJobIds);
+    const findings = (fRes.items || fRes || []).filter((f: any) => allowedJobIds.has(f.job_id) && f.status !== 'canceled' && f.status !== 'declined');
     const findingIds = findings.map((f: any) => f.id);
 
     // Shared photos for those findings
@@ -92,7 +93,8 @@ export default async function(req) {
         { limit: 1000 }
       );
       const photos = pRes.items || pRes || [];
-      const serialized = await serializePhotos(base44, photos, { shareOnly: true });
+      const verifiedFindingIds = new Set(findingIds);
+      const serialized = await serializePhotos(base44, photos.filter(p => verifiedFindingIds.has(p.finding_id)), { shareOnly: true });
       for (const p of serialized) {
         (photosByFinding[p.finding_id] ||= []).push(p);
       }
@@ -106,7 +108,7 @@ export default async function(req) {
         { job_id: { $in: jobIds }, customer_id: customerId },
         { limit: 200 }
       );
-      approvals = await Promise.all((awRes.items || awRes || []).filter((aw: any) => aw.submitted_at).map(async (aw: any) => ({
+      approvals = await Promise.all((awRes.items || awRes || []).filter((aw: any) => aw.submitted_at && aw.customer_id === customerId && allowedJobIds.has(aw.job_id)).map(async (aw: any) => ({
         ...publicAdditionalWork(aw), revision: await portalRevision(aw, 'additional_work'),
       })));
     }
@@ -125,9 +127,9 @@ export default async function(req) {
       invoice_ids: j.invoice_ids || [],
     }));
 
-    return Response.json({ findings: findingsOut, approvals, engines, estimates, invoices, jobs: jobsOut });
+    return Response.json({ findings: findingsOut, approvals, engines, estimates, invoices, jobs: jobsOut }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[getPortalFindings] error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to load customer findings' }, { status: 500 });
   }
 }
