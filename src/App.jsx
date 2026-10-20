@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import CustomerPortal from './pages/CustomerPortal';
 import PortalAccess from './pages/PortalAccess';
+import PortalResetPassword from './pages/PortalResetPassword';
 import RefreshRequests from './pages/RefreshRequests';
 import Credits from './pages/Credits';
 import DebugServiceWorker from './pages/DebugServiceWorker';
@@ -123,6 +124,8 @@ const routes = createRoutesFromElements(
   <>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
     <Route path="/PortalAccess" element={<PortalAccess />} />
+    <Route path="/forgot-password" element={<PortalAccess initialMode="forgot" />} />
+    <Route path="/reset-password" element={<PortalResetPassword />} />
     <Route path="/oauth/consent" element={<OAuthConsent />} />
     <Route path="/AdditionalWorkViewer/:token" element={<AdditionalWorkViewer />} />
     <Route path="/" element={<AdminLayout />}>

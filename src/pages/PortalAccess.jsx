@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function PortalAccess() {
+export default function PortalAccess({ initialMode }) {
   const { user, isLoadingAuth, isLoadingPublicSettings } = useAuth();
   const params = new URLSearchParams(window.location.search);
   const destination = portalDestination(params.get('next'), window.location.origin);
-  const [mode, setMode] = useState(params.get('mode') === 'activate' ? 'activate' : 'signin');
+  const [mode, setMode] = useState(initialMode || (params.get('mode') === 'activate' ? 'activate' : 'signin'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -19,6 +19,14 @@ export default function PortalAccess() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [resendAt, setResendAt] = useState(0);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  useEffect(() => {
+    const update = () => setResendSeconds(Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)));
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [resendAt]);
 
   useEffect(() => {
     if (user && !isLoadingAuth) window.location.replace(destination);
@@ -52,7 +60,13 @@ export default function PortalAccess() {
         setNotice('Check your email for a verification code.');
       } else if (mode === 'verify') {
         await base44.auth.verifyOtp({ email: address, otpCode: code.trim() });
-        await base44.auth.loginViaEmailPassword(address, password);
+        try {
+          await base44.auth.loginViaEmailPassword(address, password);
+        } catch {
+          changeMode('signin');
+          setNotice('Your email is verified. Sign in with your password to open the portal.');
+          return;
+        }
         setPassword('');
         setConfirmation('');
         window.location.assign(destination);
@@ -111,8 +125,8 @@ export default function PortalAccess() {
         <h1 className="text-2xl font-bold text-slate-900">{mode === 'activate' ? 'Activate your portal' : mode === 'verify' ? 'Verify your email' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h1>
         <p className="mt-2 mb-6 text-sm text-slate-600">{mode === 'activate' ? 'Use the email address on your shop invitation. Choose a password, then enter the code we email you.' : mode === 'verify' ? `Enter the code sent to ${email}. Keep this page open while checking your email.` : mode === 'forgot' ? 'Enter the email address you used to register.' : 'Sign in to see your engines, estimates, invoices, and inspection findings.'}</p>
         <form onSubmit={submit} className="space-y-4">
-          {mode !== 'verify' && <div><Label htmlFor="portal-email">Email address</Label><Input id="portal-email" type="email" autoComplete="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} className="mt-1 h-11" /></div>}
-          {(mode === 'signin' || mode === 'activate') && <div><Label htmlFor="portal-password">{mode === 'activate' ? 'Create a password' : 'Password'}</Label><Input id="portal-password" type="password" autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} required value={password} disabled={busy} onChange={e => setPassword(e.target.value)} className="mt-1 h-11" /></div>}
+          <div><Label htmlFor="portal-email">Email address</Label><Input id="portal-email" type="email" autoComplete="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} className="mt-1 h-11" /></div>
+          {mode !== 'forgot' && <div><Label htmlFor="portal-password">{mode === 'activate' ? 'Create a password' : 'Password'}</Label><Input id="portal-password" type="password" autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} required value={password} disabled={busy} onChange={e => setPassword(e.target.value)} className="mt-1 h-11" /></div>}
           {mode === 'activate' && <div><Label htmlFor="portal-confirm">Confirm password</Label><Input id="portal-confirm" type="password" autoComplete="new-password" required value={confirmation} disabled={busy} onChange={e => setConfirmation(e.target.value)} className="mt-1 h-11" /></div>}
           {mode === 'verify' && <div><Label htmlFor="portal-code">Email verification code</Label><Input id="portal-code" inputMode="numeric" autoComplete="one-time-code" required value={code} disabled={busy} onChange={e => setCode(e.target.value)} className="mt-1 h-11" /></div>}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
@@ -122,7 +136,8 @@ export default function PortalAccess() {
         <div className="mt-4 space-y-2">
           {mode !== 'signin' && <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('signin')}>Already registered? Sign In</Button>}
           {mode === 'signin' && <><Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('activate')}>First time here? Activate Account</Button><Button variant="ghost" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('forgot')}>Forgot Password?</Button></>}
-          {mode === 'verify' && <Button variant="ghost" className="w-full min-h-11" disabled={busy} onClick={resend}>Request another code (wait 60 seconds between requests)</Button>}
+          {mode === 'signin' && <Button variant="ghost" className="w-full min-h-11" disabled={busy} onClick={() => changeMode('verify')}>Already have a verification code?</Button>}
+          {mode === 'verify' && <Button variant="ghost" className="w-full min-h-11" disabled={busy || resendSeconds > 0 || !email.trim()} onClick={resend}>{resendSeconds > 0 ? `Request another code in ${resendSeconds}s` : 'Email me a new code'}</Button>}
           <Button variant="ghost" className="w-full min-h-11 whitespace-normal" disabled={busy} onClick={() => base44.auth.redirectToLogin(new URL(destination, window.location.origin).href)}>Use standard sign-in instead</Button>
         </div>
         <p className="mt-5 text-xs text-slate-500">An invitation from the shop and a portal login are separate. If you already created a password, sign in instead of creating another account.</p>
