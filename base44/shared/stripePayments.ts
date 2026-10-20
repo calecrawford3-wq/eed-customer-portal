@@ -22,10 +22,13 @@ export function verifiedPaymentFacts(session: any, appId: string, live: boolean)
   if (!['estimate', 'invoice'].includes(type) || !id) throw new PaymentError('Missing document reference', 400);
   if (session.payment_status !== 'paid') return null;
   const amount = Number(session.metadata.principal_cents);
-  if (!Number.isSafeInteger(amount) || amount <= 0 || amount !== session.amount_total) throw new PaymentError('Payment amount requires review', 409);
+  const fee = Number(session.metadata.fee_cents || '0');
+  if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(fee) || fee < 0 || amount + fee !== session.amount_total) throw new PaymentError('Payment amount or fee requires review', 409);
+  const method = session.metadata.payment_method || 'card';
+  if (!['card', 'us_bank_account', 'affirm'].includes(method)) throw new PaymentError('Unrecognized payment method', 409);
   const intent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
   if (!intent || !intent.startsWith('pi_')) throw new PaymentError('Missing payment reference', 409);
-  return { type, id, amount, sessionId: session.id, intent, live: session.livemode,
+  return { type, id, amount, fee, method, sessionId: session.id, intent, live: session.livemode,
     date: new Date((Number(session.created) || Date.now() / 1000) * 1000).toISOString().slice(0, 10) };
 }
 
@@ -48,8 +51,8 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
     const recorded = previous.reduce((sum: number, p: any) => sum + cents(p.amount), 0);
     // Do not silently discard a historical amount_paid with an incomplete array.
     if (recorded !== cents(invoice.amount_paid)) throw new PaymentError('Existing payment totals need staff reconciliation');
-    const payment = { amount: facts.amount / 100, method: 'card', date: facts.date,
-      note: 'Stripe payment ' + facts.sessionId + ' / ' + facts.intent,
+    const payment = { amount: facts.amount / 100, method: facts.method || 'card', date: facts.date,
+      note: 'Stripe payment ' + facts.sessionId + ' / ' + facts.intent + (facts.fee ? ' · processing fee $' + (facts.fee / 100).toFixed(2) + ' collected separately' : ''),
       stripe_session_id: facts.sessionId, stripe_payment_intent: facts.intent };
     const paid = recorded + facts.amount;
     const balance = Math.max(0, cents(invoice.total) - cents(invoice.applied_credits) - paid);
