@@ -73,9 +73,16 @@ export default async function(req) {
     if(action==='create'||action==='update') {
       const values=clean(body.values||{},fields[kind]);
       if(kind==='workers') {
-        if(values.email) values.email=String(values.email).trim().toLowerCase();
+        if(Object.prototype.hasOwnProperty.call(values,'email')) {
+          values.email=String(values.email||'').trim().toLowerCase();
+          if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(values.email)) return fail('Staff login email must be an @eedpower.com address');
+        }
         if(action==='create' && (!values.email || !values.first_name || !values.last_name || !['w2','1099','owner'].includes(values.worker_type))) return fail('Name, email and worker classification required');
         const prior=action==='update' ? await workers.get(body.id) : null;
+        if(action==='update' && !prior) return fail('Employee record not found',404);
+        const loginEmail=values.email ?? String(prior?.email||'').trim().toLowerCase();
+        if(!/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@eedpower\.com$/.test(loginEmail)) return fail('Staff login email must be an @eedpower.com address');
+        if(prior?.portal_invite_sent_at && values.email && values.email!==String(prior.email||'').trim().toLowerCase()) return fail('Login email cannot be changed after invitation. Update the Base44 account first.',409);
         const resultingType=values.worker_type || prior?.worker_type;
         if(prior?.worker_type==='owner' && resultingType!=='owner') return fail('Owner profiles cannot be converted to employees; contact the administrator',409);
         if(resultingType==='owner') values.access_level='owner';
