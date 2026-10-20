@@ -150,7 +150,7 @@ export default function PortalAccess({ initialMode }) {
           {isVerification && <div className="rounded-lg bg-slate-50 p-3 text-center" aria-live="polite">
             <p className="text-sm text-slate-600">{resendSeconds > 0 ? `You can resend your code in ${Math.floor(resendSeconds / 60)}:${String(resendSeconds % 60).padStart(2, '0')}` : 'Did not receive your verification code?'}</p>
             <Button type="button" variant="ghost" className="w-full min-h-11" disabled={busy || resendSeconds > 0 || !email.trim()} onClick={resend}>{resendSeconds > 0 ? 'Resend code (waiting)' : 'Resend verification code'}</Button>
-          </div>
+          </div>}
           <Button variant="ghost" className="w-full min-h-11 whitespace-normal" disabled={busy} onClick={() => base44.auth.redirectToLogin(new URL(destination, window.location.origin).href)}>Use standard sign-in instead</Button>
         </div>
         <p className="mt-5 text-xs text-slate-500">Your identity and email verification are checked by Base44. This link does not verify your identity or reset an existing password. If you already registered, choose Sign In.</p>
