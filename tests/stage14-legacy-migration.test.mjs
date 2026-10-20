@@ -27,6 +27,7 @@ test('legacy inventory detects outstanding links, pending approvals, duplicate n
   assert.equal(result.counts.legacy_invoices_open, 1);
   assert.equal(result.counts.open_invoice_balance_cents, 6000);
   assert.equal(result.counts.invoices_with_old_checkout_links, 1);
+  assert.equal(result.counts.invoices_with_any_checkout_links, 1);
   assert.equal(result.counts.invoices_paid_status_discrepancy, 1);
   assert.equal(result.counts.legacy_invoices_without_original_pdf, 1);
   assert.equal(result.duplicate_invoice_number_groups, 1);
