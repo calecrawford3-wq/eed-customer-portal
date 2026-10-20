@@ -46,6 +46,23 @@ test('shared customer email prevents inviting an ambiguous account', async () =>
   assert.equal((await h.call({ customerId: 'c1' })).status, 409);
   assert.equal(h.state.invited.length, 0);
 });
+test('onboarding embeds garage and blocks leaving an unsaved car or driver', () => {
+  const setup = readFileSync('src/components/portal/AccountSetup.jsx', 'utf8');
+  assert.match(setup, /<RacingGarage customerId=\{customer\?\.id\}/);
+  assert.match(setup, /onEditingChange=\{setGarageEditing\}/);
+  assert.match(setup, /if \(garageEditing\)/);
+  assert.match(setup, /Save & Start Tour/);
+  assert.match(setup, /Save & Skip Tour/);
+  assert.match(setup, /else setSection\('security'\)/);
+});
+test('onboarding tour returns to security after finishing or skipping', () => {
+  const portal = readFileSync('src/pages/CustomerPortal.jsx', 'utf8');
+  assert.match(portal, /onStartTour=\{\(\)=>\{setAccountSetupOpen\(false\);setTourFromOnboarding\(true\);setTourOpen\(true\);\}\}/);
+  assert.match(portal, /if\(tourFromOnboarding\)showOnboardingSecurity\(\)/);
+  assert.match(portal, /onboarding_tour_skipped:true/);
+  const api = readFileSync('base44/functions/updateCustomerProfile/entry.ts', 'utf8');
+  assert.match(api, /'onboarding_tour_skipped'/);
+});
 test('failed invitation email does not mark customer as invited', async () => {
   const h = inviteHarness({ smtpFailure: true });
   assert.equal((await h.call({ customerId: 'c1' })).status, 502);
