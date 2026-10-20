@@ -20,6 +20,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
   const [method, setMethod] = useState('check');
   const [delivery, setDelivery] = useState('drop_off');
   const [amountOption, setAmountOption] = useState('deposit');
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const [checkNumber, setCheckNumber] = useState('');
   const [tracking, setTracking] = useState('');
   const { data, isLoading, error: loadError, refetch } = useQuery({
@@ -75,7 +76,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount });
+      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount, paymentMethod, expectedFeeCents: 0 });
       if (result.data?.error || !result.data?.checkout_url) throw new Error(result.data?.error || 'Unable to open checkout.');
       const url = new URL(result.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Payment link could not be verified.');
@@ -141,6 +142,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
               {data.portalCheckoutEnabled ? <>
                 {data.amounts.deposit > 0 && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'deposit'} onChange={() => setAmountOption('deposit')} />Required deposit {formatMoney(data.amounts.deposit)}</label>}
                 <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'balance'} onChange={() => setAmountOption('balance')} />Full remaining balance {formatMoney(data.amounts.balance)}</label>
+                <label className="block text-sm" htmlFor="portal-method">Payment method</label><select id="portal-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account">ACH bank payment (when enabled)</option><option value="affirm">Affirm (when enabled)</option></select><p className="text-xs text-slate-600">Amount {formatMoney(chosenAmount)} · Processing fee $0.00 currently quoted · Total {formatMoney(chosenAmount)}. Any future fee must be shown and accepted before checkout.</p>
                 <Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={payInPortal}>Continue to Pay {formatMoney(chosenAmount)}</Button>
                 <p className="text-xs text-slate-500">Your payment is handled securely by Stripe. Applied account credits are already deducted.</p>
               </> : Number(doc.applied_credits) > 0 ? <p className="text-sm text-slate-600">Your balance includes account credits. Arrange online payment with the shop so the adjusted amount is charged correctly, or choose cash/check below.</p> : <><Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={() => act('payment_link')}>Continue to Secure Payment</Button><p className="text-xs text-slate-500">Choose deposit or full balance and review available payment methods and any fees on the secure billing page.</p></>}
