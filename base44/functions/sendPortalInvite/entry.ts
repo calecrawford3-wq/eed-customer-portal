@@ -16,7 +16,7 @@ Deno.serve(async req => {
     const customer = (byId.items || byId || [])[0];
     if (!customer) return Response.json({ error: 'Customer not found' }, { status: 404 });
     const email = String(customer.email || '').trim().toLowerCase();
-    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return Response.json({ error: 'Save a valid customer email before inviting' }, { status: 400 });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: 'Save a valid customer email before inviting' }, { status: 400 });
     const customerResult = await base44.asServiceRole.entities.Customer.filter({ email: customer.email });
     const matches = customerResult.items || customerResult || [];
     if (matches.length !== 1 || matches[0].id !== customer.id) return Response.json({ error: 'This email is shared by multiple customer records. Resolve the customer link before inviting.' }, { status: 409 });
