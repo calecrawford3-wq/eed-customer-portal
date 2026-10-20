@@ -59,6 +59,11 @@ export async function applyApprovedAdditionalWork(base44: any, aw: any, actor: s
     return { ok: true, already_processing: true, invoice_id: aw.invoice_id };
   }
 
+  if (claimed.customer_response !== 'approved' || Number(claimed.customer_approved_version || 0) !== Number(claimed.version || 1)) {
+    await base44.asServiceRole.entities.AdditionalWork.update(aw.id, { processing_claim_token: '', processing_state: 'not_started' });
+    return { ok: false, error: 'Approval changed; customer must approve the current scope' };
+  }
+
   const jobRes = await base44.asServiceRole.entities.Job.filter({ id: aw.job_id });
   const job = (jobRes.items || jobRes || [])[0];
   if (!job) {
