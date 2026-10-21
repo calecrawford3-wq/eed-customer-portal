@@ -337,6 +337,7 @@ test('paid deposit is not offered again and remaining amount stays server-calcul
   const doc=state.rows.Estimate[0];
   doc.public_access_token='approved-estimate-token';
   doc.deposit_paid=true;
+  doc.status='partial';
   doc.amount_paid=300;
   doc.payments=[{amount:300,method:'card'}];
   const body={documentType:'estimate',publicAccessToken:doc.public_access_token};
