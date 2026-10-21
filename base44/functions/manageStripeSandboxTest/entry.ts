@@ -99,8 +99,10 @@ export default async function(req) {
         if(session.livemode!==false||session.metadata?.source!=='eed_sandbox_invoice_v1'||session.metadata?.document_id!==invoice.id)
           return Response.json({error:'Sandbox invoice session mismatch'},{status:403});
         const {verifiedPaymentFacts,creditInvoice,PORTAL_STRIPE_SOURCE}=await import('../../shared/stripePayments.ts');
+        console.info('[sandbox replay] payment verification', {session:session.id,paid:session.payment_status,mode:session.mode,livemode:session.livemode,app_id_present:!!Deno.env.get('BASE44_APP_ID')});
         const facts=verifiedPaymentFacts({...session,metadata:{...session.metadata,source:PORTAL_STRIPE_SOURCE}},Deno.env.get('BASE44_APP_ID'),false);
         if(!facts) return Response.json({pending:true,sandbox_only:true});
+        console.info('[sandbox replay] starting isolated invoice credit', {invoice_id:invoice.id,amount_cents:facts.amount});
         const result=await creditInvoice(base44,invoice.id,'elite_sandbox_only',facts,entity);
         return Response.json({duplicate:result.duplicate,amount_paid:result.invoice.amount_paid,balance_due:result.invoice.balance_due,status:result.invoice.status,sandbox_only:true});
       }
