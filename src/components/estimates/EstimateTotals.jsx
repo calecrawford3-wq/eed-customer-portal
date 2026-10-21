@@ -16,6 +16,7 @@ export default function EstimateTotals({ form, customer, setForm, updateTaxRate,
           if (selAddons.length === 0) return null;
           return <div className="flex justify-between text-amber-700"><span className="flex items-center gap-1">✦ Selected Addons ({selAddons.length})</span><span>${selAddons.reduce((s, a) => s + (Number(a.price) || 0), 0).toFixed(2)}</span></div>;
         })()}
+        {Number(form.pricing_allowance_amount)>0&&<div className="flex justify-between text-slate-600"><span>Pricing allowance ({form.pricing_allowance_rate}%)</span><span>${Number(form.pricing_allowance_amount).toFixed(2)}</span></div>}
         <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
         {(() => {
           const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0) - Number(form.applied_credits || 0);
