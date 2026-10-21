@@ -844,6 +844,8 @@ export default function EstimateDetail() {
       labor_items: [...(form.labor_items || []), ...expandSelectedAddonLines(form.addons).laborItems],
       machining_items: [...(form.machining_items || []), ...expandSelectedAddonLines(form.addons).machiningItems],
       subtotal: form.subtotal,
+      pricing_allowance_rate: Number(form.pricing_allowance_rate)||0,
+      pricing_allowance_amount: Number(form.pricing_allowance_amount)||0,
       tax_rate: form.tax_rate,
       tax_amount: form.tax_amount,
       total: form.total,
