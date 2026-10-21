@@ -13,6 +13,26 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
  const navigate=useNavigate();
  const pageScroller=useRef(null);
  useEffect(()=>{pageScroller.current?.scrollTo(0,0);},[currentPageName]);
+ useEffect(()=>{
+   // Installed iOS web apps can report a CSS viewport taller than the visible area.
+   // Measure the visual viewport and size the shared shell to that real height.
+   const shell=document.querySelector('.elite-app-shell');
+   if(!shell)return;
+   const syncViewport=()=>{
+     const viewport=window.visualViewport;
+     const height=viewport?.height||window.innerHeight;
+     if(height>0) shell.style.setProperty('--elite-visible-height',`${height}px`);
+   };
+   syncViewport();
+   window.addEventListener('resize',syncViewport);
+   window.visualViewport?.addEventListener('resize',syncViewport);
+   window.addEventListener('orientationchange',syncViewport);
+   return ()=>{
+     window.removeEventListener('resize',syncViewport);
+     window.visualViewport?.removeEventListener('resize',syncViewport);
+     window.removeEventListener('orientationchange',syncViewport);
+   };
+ },[]);
  usePushNotifications();
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
