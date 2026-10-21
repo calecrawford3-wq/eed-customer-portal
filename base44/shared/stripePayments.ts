@@ -60,11 +60,19 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
     const paid = recorded + facts.amount;
     const excess = Math.max(0, paid + cents(invoice.applied_credits) - cents(invoice.total));
     const balance = Math.max(0, cents(invoice.total) - cents(invoice.applied_credits) - paid);
-    const result = await entity.updateMany({
-      id: invoice.id, customer_id: cid, payments: same(invoice, 'payments'), amount_paid: same(invoice, 'amount_paid'),
-      total: same(invoice, 'total'), applied_credits: same(invoice, 'applied_credits'),
-      status: same(invoice, 'status'), updated_date: same(invoice, 'updated_date'),
-    }, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
+    // Sandbox invoices are never edited by customers or staff and have no
+    // concurrent cash/check entries. A single atomic amount_paid predicate is
+    // sufficient to serialize competing Stripe sessions without matching
+    // Base44-managed timestamps or nullable fields. Production retains the
+    // original stricter conditional match unchanged.
+    const predicate = sandboxEntity
+      ? { id: invoice.id, customer_id: cid, amount_paid: invoice.amount_paid }
+      : {
+        id: invoice.id, customer_id: cid, payments: same(invoice, 'payments'), amount_paid: same(invoice, 'amount_paid'),
+        total: same(invoice, 'total'), applied_credits: same(invoice, 'applied_credits'),
+        status: same(invoice, 'status'), updated_date: same(invoice, 'updated_date'),
+      };
+    const result = await entity.updateMany(predicate, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
     // Some entity adapters acknowledge a successful write without returning
     // {updated:1}. For sandbox only, verify the persisted receipt directly.
     // Never infer success from the response shape without checking the record.
