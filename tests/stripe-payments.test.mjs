@@ -331,6 +331,30 @@ test('public one-click checkout ignores browser prices and selects Stripe-manage
   assert.equal((await call('startPublicDocumentCheckout',{...body,publicAccessToken:'invalid'})).status,404);
 });
 
+test('paid deposit is not offered again and remaining amount stays server-calculated', async () => {
+  const { state, call, estimate } = setup();
+  estimate();
+  const doc=state.rows.Estimate[0];
+  doc.public_access_token='approved-estimate-token';
+  doc.deposit_paid=true;
+  doc.amount_paid=300;
+  doc.payments=[{amount:300,method:'card'}];
+  const body={documentType:'estimate',publicAccessToken:doc.public_access_token};
+  assert.equal((await call('startPublicDocumentCheckout',{...body,amountOption:'deposit'})).status,400);
+  assert.equal((await call('startPublicDocumentCheckout',{...body,amountOption:'balance',expectedAmount:1})).status,200);
+  assert.equal(state.requests[0].data.metadata.principal_cents,'67500');
+});
+
+test('automatic Stripe method records within allowed payment enum after signed webhook', async () => {
+  const { state, payment, deliver } = setup();
+  const id=payment('cs_test_dynamic','invoice',30000);
+  state.sessions[id].metadata.payment_method='automatic';
+  state.sessions[id].payment_method_types=['card','affirm'];
+  assert.equal((await deliver(id)).status,200);
+  assert.equal(state.rows.Invoice[0].payments[0].method,'other');
+  assert.equal((await deliver(id)).body.duplicate,true);
+});
+
 test('full balance becomes paid and the receipt reports the recorded provider amount', async () => {
   const { state, call, payment, deliver } = setup();
   const id = payment('cs_test_full', 'invoice', 97500);
