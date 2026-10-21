@@ -20,7 +20,7 @@ const CATEGORY_LABELS = {
  * Prints a sheet of storage location labels (Avery 18163, 4in × 2in).
  * Accepts either a single location or an array of locations.
  *
- * @param {Object|Array} opts
+ * @param {{name?: string, category?: string, startPos?: number, copies?: number, locations?: Array<{name: string, category?: string}>}} opts
  * @param {string} opts.name        — The location name to print (e.g. "Cart 1", "ES1")
  * @param {string} opts.category   — One of: engines, carts, stands, parts
  * @param {number} opts.startPos   — Starting label position (1-10) on the sheet
