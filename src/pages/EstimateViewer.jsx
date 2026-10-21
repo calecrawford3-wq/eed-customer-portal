@@ -23,6 +23,11 @@ export default function EstimateViewer({ buildVersion }) {
   const [approvingError, setApprovingError] = useState(null);
   const [approvingSuccess, setApprovingSuccess] = useState(false);
   const [payingError, setPayingError] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentChoice, setPaymentChoice] = useState('deposit');
+  const [paymentStep, setPaymentStep] = useState('choose');
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const [selectedOptionalUids, setSelectedOptionalUids] = useState([]);
   const [updatingAddons, setUpdatingAddons] = useState(false);
   const [addonError, setAddonError] = useState(null);
@@ -83,8 +88,9 @@ export default function EstimateViewer({ buildVersion }) {
           ...prev,
           estimate: { ...prev.estimate, status: "approved" }
         }));
-        // Approval persists even when guest checkout has not been enabled.
-        await openPortalCheckout();
+        // Approval is complete. Let the customer explicitly choose Pay Now.
+        setPaymentModalOpen(false);
+        setPaymentStep('choose');
       } else {
         const errorMsg = response?.data?.error || "Failed to approve estimate";
         console.error("Approval failed:", errorMsg);
@@ -127,13 +133,23 @@ export default function EstimateViewer({ buildVersion }) {
     }
   };
 
-  const openPortalCheckout = async () => {
+  const openPortalCheckout = async (shareOnly = false) => {
+    setPaymentBusy(true);
+    setPayingError(null);
     try {
-      setPayingError(null);
       const result = await base44Public.functions.invoke('openPublicDocumentPayment', {documentType:'estimate',publicAccessToken:token});
       if (!result?.data?.url) throw new Error(result?.data?.error||'Payment link unavailable');
-      window.location.assign(result.data.url);
+      const url = new URL(result.data.url, window.location.origin);
+      if (url.origin !== window.location.origin || !url.pathname.startsWith('/guest/estimate/')) throw new Error('Invalid payment destination');
+      if (shareOnly) {
+        setShareUrl(url.href);
+        setPaymentStep('share');
+      } else {
+        url.searchParams.set('option', paymentChoice);
+        window.location.assign(url.href);
+      }
     } catch (error) {setPayingError(error?.response?.data?.error||error?.message||'Online payment is not available yet.');}
+    finally {setPaymentBusy(false);}
   };
 
   const handlePayNow = () => {
@@ -141,8 +157,11 @@ export default function EstimateViewer({ buildVersion }) {
       setPayingError('Approve this estimate before making a payment.');
       return;
     }
-    // Use a scoped payment-only guest token, never a customer sign-in redirect.
-    openPortalCheckout();
+    setPaymentChoice(Number(data.estimate.deposit_amount)>0&&!data.estimate.deposit_paid?'deposit':'balance');
+    setPaymentStep('choose');
+    setShareUrl('');
+    setPayingError(null);
+    setPaymentModalOpen(true);
   };
 
   return (
@@ -529,7 +548,7 @@ export default function EstimateViewer({ buildVersion }) {
                     disabled={approving}
                     className="w-full rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-5 transition"
                   >
-                    {approving ? "Approving & continuing..." : "Approve & Pay"}
+                    {approving ? "Approving..." : "Approve & Pay"}
                   </button>
                 )}
                 {data.estimate?.status === "approved" && (
@@ -553,6 +572,19 @@ export default function EstimateViewer({ buildVersion }) {
           </div>
         )}
       </div>
+      {paymentModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!paymentBusy)setPaymentModalOpen(false);}}>
+        <section role="dialog" aria-modal="true" aria-labelledby="estimate-payment-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+          <div className="flex items-start justify-between gap-4"><div><h2 id="estimate-payment-title" className="text-xl font-bold text-slate-900">{paymentStep==='share'?'Send payment link':paymentStep==='confirm'?'Review payment':'Payment options'}</h2><p className="text-sm text-slate-500">Estimate {data?.estimate?.estimate_number}</p></div><button aria-label="Close payment options" onClick={()=>setPaymentModalOpen(false)} className="rounded-lg px-2 py-1 text-2xl text-slate-500 hover:bg-slate-100">×</button></div>
+          {paymentStep==='choose' && <><p className="text-sm text-slate-600">Select how you would like to pay, or share a secure payment link with someone else.</p>
+            {Number(data?.estimate?.deposit_amount)>0&&!data?.estimate?.deposit_paid&&<label className={'flex cursor-pointer items-center justify-between rounded-xl border p-4 '+(paymentChoice==='deposit'?'border-blue-600 bg-blue-50':'border-slate-200')}><span><input type="radio" className="mr-3" name="estimate-payment-option" checked={paymentChoice==='deposit'} onChange={()=>setPaymentChoice('deposit')}/>Pay deposit</span><strong>{formatMoney(Math.min(Number(data.estimate.deposit_amount),Math.max(0,Number(data.estimate.total)-Number(data.estimate.amount_paid||0)-Number(data.estimate.applied_credits||0))))}</strong></label>}
+            <label className={'flex cursor-pointer items-center justify-between rounded-xl border p-4 '+(paymentChoice==='balance'?'border-blue-600 bg-blue-50':'border-slate-200')}><span><input type="radio" className="mr-3" name="estimate-payment-option" checked={paymentChoice==='balance'} onChange={()=>setPaymentChoice('balance')}/>Pay in full</span><strong>{formatMoney(Math.max(0,Number(data?.estimate?.total||0)-Number(data?.estimate?.amount_paid||0)-Number(data?.estimate?.applied_credits||0)))}</strong></label>
+            <button disabled={paymentBusy} onClick={()=>setPaymentStep('confirm')} className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Continue</button>
+            <button disabled={paymentBusy} onClick={()=>openPortalCheckout(true)} className="w-full rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50">{paymentBusy?'Preparing link...':'Send to guest / Share payment link'}</button></>}
+          {paymentStep==='confirm' && <><p className="text-sm text-slate-600">You selected <strong>{paymentChoice==='deposit'?'deposit':'full remaining balance'}</strong>. Stripe will securely process your payment. No payment has been made yet.</p><p className="text-2xl font-bold">{formatMoney(paymentChoice==='deposit'?Math.min(Number(data?.estimate?.deposit_amount||0),Math.max(0,Number(data?.estimate?.total||0)-Number(data?.estimate?.amount_paid||0)-Number(data?.estimate?.applied_credits||0))):Math.max(0,Number(data?.estimate?.total||0)-Number(data?.estimate?.amount_paid||0)-Number(data?.estimate?.applied_credits||0)))}</p><button disabled={paymentBusy} onClick={()=>openPortalCheckout(false)} className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-60">{paymentBusy?'Preparing payment...':'Proceed to Payment Processing'}</button><button onClick={()=>setPaymentStep('choose')} className="w-full rounded-lg border px-4 py-2">Back</button></>}
+          {paymentStep==='share' && <><p className="text-sm text-slate-600">Anyone with this link can view the limited payment request and pay it. Share it only with the intended payer. This does not give access to your portal account.</p><input aria-label="Guest payment link" className="w-full rounded-lg border p-3 text-sm" readOnly value={shareUrl}/><button className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white" onClick={async()=>{try{await navigator.clipboard.writeText(shareUrl);}catch{setPayingError('Could not copy automatically. Select and copy the link above.');}}}>Copy payment link</button><button onClick={()=>setPaymentStep('choose')} className="w-full rounded-lg border px-4 py-2">Back</button></>}
+          {payingError&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{payingError}</p>}
+        </section>
+      </div>}
     </div>
   );
 }
