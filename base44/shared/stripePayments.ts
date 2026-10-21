@@ -23,12 +23,12 @@ export function verifiedPaymentFacts(session: any, appId: string, live: boolean)
   const fee = Number(session.metadata.fee_cents || '0');
   if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(fee) || fee < 0 || amount + fee !== session.amount_total) throw new PaymentError('Payment amount or fee requires review', 409);
   const method = session.metadata.payment_method || 'card';
-  if (!['card', 'us_bank_account', 'affirm'].includes(method)) throw new PaymentError('Unrecognized payment method', 409);
+  if (!['card', 'us_bank_account', 'affirm', 'automatic'].includes(method)) throw new PaymentError('Unrecognized payment method', 409);
   const actualTypes = session.payment_method_types;
-  if (Array.isArray(actualTypes) && !actualTypes.includes(method)) throw new PaymentError('Stripe payment method differs from checkout', 409);
+  if (method !== 'automatic' && Array.isArray(actualTypes) && !actualTypes.includes(method)) throw new PaymentError('Stripe payment method differs from checkout', 409);
   const intent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
   if (!intent || !intent.startsWith('pi_')) throw new PaymentError('Missing payment reference', 409);
-  return { type, id, amount, fee, method, sessionId: session.id, intent, live: session.livemode,
+  return { type, id, amount, fee, method: method === 'automatic' ? 'stripe_checkout' : method, sessionId: session.id, intent, live: session.livemode,
     date: new Date((Number(session.created) || Date.now() / 1000) * 1000).toISOString().slice(0, 10) };
 }
 
