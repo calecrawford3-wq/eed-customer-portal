@@ -15,7 +15,7 @@ import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
 import NotificationSettingsPanel from "@/components/settings/NotificationSettingsPanel";
 import WorkflowTemplatesPanel from "@/components/settings/WorkflowTemplatesPanel";
 import StorageLocationsPanel from "@/components/settings/StorageLocationsPanel";
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import PaymentMigration from './PaymentMigration';
 import SettingsHome,{SettingsLinks,SETTINGS_CATEGORIES} from '@/components/settings/SettingsHome';
 import Platforms from './Platforms';
@@ -68,6 +68,7 @@ function ConfigurationEditor({title,children}){
 
 export default function Settings() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams,setSearchParams] = useSearchParams();
   const activeTab = ['overview','company','billing','payments','employees','engines','shop','inventory','portal','communications','system','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
   const openTab = tab=>setSearchParams(tab==='overview'?{}:{tab});
@@ -275,6 +276,11 @@ export default function Settings() {
         </TabsContent>
         <TabsContent value="system" className="space-y-4">
           <SettingsLinks title="System administration" description="Available diagnostics and operational reports. A consolidated audit trail for all changes is not implemented yet." links={[{label:'Payment & Stripe Diagnostics',to:'/Settings?tab=payments'},{label:'Workflow Templates',to:'/Settings?tab=workflows'},{label:'Business Reports',to:'/Reports'},{label:'Exceptions',to:'/ExceptionDashboard'},{label:'Human Resources',to:'/HRAdmin'}]}/>
+          <section className="rounded-lg border bg-white p-4 space-y-2">
+            <h3 className="font-semibold">Mobile Layout Diagnostics</h3>
+            <p className="text-sm text-slate-500">Check the iPhone Home Screen app viewport and bottom scroll area. A temporary measurement overlay appears on the dashboard.</p>
+            <Button type="button" variant="outline" onClick={()=>navigate('/Dashboard?layoutDebug=1')}>Run Mobile Layout Diagnostic</Button>
+          </section>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">System-wide audit history, automation error monitoring and integration health checks require separate backend instrumentation. No false health or audit status is displayed.</div>
         </TabsContent>
 
