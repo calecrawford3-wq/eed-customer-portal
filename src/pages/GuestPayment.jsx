@@ -60,6 +60,7 @@ export default function GuestPayment() {
         </section>
         {params.get('payment') === 'success' && <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">You returned from checkout. Payment is confirmed only after the payment provider verifies it. Refresh below to check the balance.</p>}
         <PortalPaymentReceipt type={type} token={token} onRefresh={refetch} />
+        {params.get('payment') === 'success' && <a className="inline-block rounded-lg border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-900 hover:bg-slate-100" href={'/PortalAccess?mode=signin&next='+encodeURIComponent('/CustomerPortal')}>Return to Customer Portal (sign in)</a>}
         <section className="rounded-xl bg-white p-5 shadow-sm"><DocumentCharges doc={data} /><dl className="mt-5 space-y-2 border-t pt-4">{[['Document total', data.total], ['Payments received', data.amount_paid], ['Credits applied', data.applied_credits], ['Balance remaining', data.balance]].map(([label, amount]) => <div key={label} className="flex flex-wrap justify-between gap-2"><dt>{label}</dt><dd className="font-semibold tabular-nums">{formatMoney(amount)}</dd></div>)}</dl></section>
         <section className="rounded-xl bg-white p-5 shadow-sm space-y-4">
           <h2 className="text-lg font-bold">{data.balance <= 0 || data.status === 'paid' ? 'Payment complete' : 'Choose a payment'}</h2>
