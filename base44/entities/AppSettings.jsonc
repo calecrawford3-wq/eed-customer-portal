@@ -30,6 +30,16 @@
       "type": "number",
       "default": 0
     },
+    "international_allowance_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable international customer pricing allowance"
+    },
+    "international_allowance_percent": {
+      "type": "number",
+      "default": 2.5,
+      "description": "One international pricing allowance rate, not a card surcharge"
+    },
     "card_processing_percent": {
       "type": "number",
       "default": 0,
