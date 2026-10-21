@@ -59,7 +59,7 @@ export default function MobileSaveBar({ dirty = false, onSave, isSaving = false,
   return (
     <>
       {/* In-flow spacer reserves scroll space so the final fields, totals, and
-          controls can scroll fully above the fixed bar and bottom navigation,
+          controls can scroll fully above the fixed save bar,
           including the iPhone safe-area inset. Only on mobile, only when the
           bar is visible — no unnecessary desktop padding. */}
       {visible && (
@@ -68,7 +68,7 @@ export default function MobileSaveBar({ dirty = false, onSave, isSaving = false,
       {visible && createPortal(
         <div
           className="md:hidden fixed left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-lg print:hidden"
-          style={{ bottom: "calc(50px + env(safe-area-inset-bottom))" }}
+          style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           <div className="flex items-center gap-3 px-4 py-2.5">
             {/* Status indicator — priority: Saving > Failed > Unsaved > Saved */}
