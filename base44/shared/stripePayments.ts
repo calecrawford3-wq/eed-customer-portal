@@ -76,6 +76,7 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
     // Some entity adapters acknowledge a successful write without returning
     // {updated:1}. For sandbox only, verify the persisted receipt directly.
     // Never infer success from the response shape without checking the record.
+    if (sandboxEntity && attempt === 0) console.info('[sandbox invoice CAS]', {invoice_id:invoice.id, updated:result?.updated, result_keys:result&&typeof result==='object'?Object.keys(result):[], expected_amount_paid:invoice.amount_paid});
     if (result?.updated === 1 || sandboxEntity) {
       const fresh = portalItems(await entity.filter({ id: invoice.id, customer_id: cid }))[0];
       if (sandboxEntity && fresh && !hasStripePayment(fresh.payments, facts)) continue;
