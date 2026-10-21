@@ -15,7 +15,8 @@ import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
 import NotificationSettingsPanel from "@/components/settings/NotificationSettingsPanel";
 import WorkflowTemplatesPanel from "@/components/settings/WorkflowTemplatesPanel";
 import StorageLocationsPanel from "@/components/settings/StorageLocationsPanel";
-import { Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import PaymentMigration from './PaymentMigration';
 
 const defaultSettings = {
   key: "global",
@@ -53,6 +54,8 @@ const defaultSettings = {
 
 export default function Settings() {
   const qc = useQueryClient();
+  const [searchParams,setSearchParams] = useSearchParams();
+  const activeTab = ['company','billing','payments','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'company';
   const [form, setForm] = useState(defaultSettings);
 
   const { data: settingsData } = useQuery({
@@ -122,10 +125,11 @@ export default function Settings() {
         </Button>
       </div>
 
-      <Tabs defaultValue="company">
+      <Tabs value={activeTab} onValueChange={tab=>setSearchParams(tab==='company'?{}:{tab})}>
         <TabsList className="mb-6 flex overflow-x-auto">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1" /> Company</TabsTrigger>
           <TabsTrigger value="billing"><Receipt className="w-4 h-4 mr-1" /> Billing</TabsTrigger>
+          <TabsTrigger value="payments"><Receipt className="w-4 h-4 mr-1" /> Payments</TabsTrigger>
           <TabsTrigger value="email"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
           <TabsTrigger value="templates"><FileText className="w-4 h-4 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="workflows"><ListChecks className="w-4 h-4 mr-1" /> Workflows</TabsTrigger>
@@ -185,7 +189,7 @@ export default function Settings() {
           <div className="mb-4 rounded-xl border bg-white p-4">
             <h2 className="font-semibold">Portal Payments</h2>
             <p className="mt-1 mb-3 text-sm text-slate-600">Verify your Stripe account, test or live mode, webhooks, and checkout readiness. Secure keys remain in Base44 server-side secrets; existing billing stays active.</p>
-            <Button asChild variant="outline"><Link to="/PaymentMigration">Open Settings → Payments</Link></Button>
+            <Button variant="outline" onClick={()=>setSearchParams({tab:"payments"})}>Open Payment Setup</Button>
           </div>
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Billing Defaults</CardTitle></CardHeader>
@@ -220,6 +224,8 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="payments"><PaymentMigration embedded /></TabsContent>
 
         {/* Email Setup */}
         <TabsContent value="email">
