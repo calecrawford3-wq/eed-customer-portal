@@ -152,12 +152,10 @@ export default function Dashboard() {
         </Link>)}
       </div>
       <div className="mb-7"><AppLauncher/></div>
+      <TodayAlertsBar />
       <details className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
         <summary className="cursor-pointer font-semibold text-slate-800">Detailed work queue, alerts & reports</summary>
         <div className="mt-5">
-
-      {/* Today action items — exceptions, approvals, overdue, follow-ups */}
-      <TodayAlertsBar />
 
       {/* Owner exception queue — triage inline without leaving Today */}
       <OwnerExceptionQueue />
