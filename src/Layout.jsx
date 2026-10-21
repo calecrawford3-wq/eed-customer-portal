@@ -15,10 +15,10 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
  const canUse=page=>!staffMode||staffAllowedPages.includes(page);
- return <div className="min-h-screen bg-slate-50 overflow-x-hidden">
+ return <div className="min-h-screen bg-slate-50">
    {!staffMode&&<GlobalBarcodeListener/>}
    {!staffMode&&<GlobalSearch/>}
-   <header className="sticky top-0 z-40 bg-slate-900 text-white border-b border-slate-800 print:hidden" style={{paddingTop:'env(safe-area-inset-top, 0px)',backgroundColor:'#0f172a',WebkitBackdropFilter:'none',backdropFilter:'none'}}>
+   <header className="fixed inset-x-0 top-0 z-[100] bg-[#0f172a] text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#0f172a",backgroundImage:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none",transform:"translateZ(0)"}}>
     <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
       <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
       <div className="flex items-center gap-1 sm:gap-2">
@@ -30,6 +30,7 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
       </div>
     </div>
    </header>
+   <div aria-hidden="true" className="print:hidden" style={{height:"calc(56px + env(safe-area-inset-top, 0px))",backgroundColor:"#0f172a"}} />
    {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
    <main className="mx-auto max-w-screen-2xl min-w-0" style={{paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>{children}</main>
  </div>;
