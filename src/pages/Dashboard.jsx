@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
-import { Monitor, Wrench, Users, Receipt, Package } from "lucide-react";
+import { Monitor, Wrench, Users, Receipt, Package, ShoppingCart, TrendingDown, Settings2, ArrowRight, LogOut } from "lucide-react";
+import { Link } from 'react-router-dom';
+import {AppLauncher} from '@/components/navigation/AppLauncher';
+import StaffSignOut from '@/components/hr/StaffSignOut';
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import ActionItemsRow from "@/components/dashboard/ActionItemsRow";
 import RecentBuilds from "@/components/dashboard/RecentBuilds";
@@ -123,21 +126,35 @@ export default function Dashboard() {
   ];
 
   const isLoading = loadingPlatforms || loadingBuilds;
+  const poCounts = Object.fromEntries(['sent','acknowledged','ready'].map(status=>[status,purchaseOrders.filter(po=>po.status===status).length]));
+  const headlineCards = [
+    {label:'Builds in progress',value:activeBuilds.length,icon:Wrench,to:'/Builds',color:'text-red-600 bg-red-50'},
+    {label:'POs sent',value:poCounts.sent,icon:ShoppingCart,to:'/PurchaseOrders',color:'text-blue-600 bg-blue-50'},
+    {label:'POs acknowledged',value:poCounts.acknowledged,icon:ShoppingCart,to:'/PurchaseOrders',color:'text-violet-600 bg-violet-50'},
+    {label:'POs ready',value:poCounts.ready,icon:Package,to:'/PurchaseOrders',color:'text-teal-600 bg-teal-50'},
+    {label:'POs to expense',value:pendingExpensePOs.length,icon:TrendingDown,to:'/Expenses',color:'text-amber-600 bg-amber-50'},
+    {label:'Outstanding invoices',value:formatMoney(outstandingBalance),icon:Receipt,to:'/Invoices',color:'text-emerald-600 bg-emerald-50'},
+    {label:'Low stock parts',value:lowStockCount,icon:Package,to:'/Inventory',color:'text-orange-600 bg-orange-50'},
+    {label:'Refresh requests',value:pendingRefreshes.length,icon:Users,to:'/RefreshRequests',color:'text-indigo-600 bg-indigo-50'},
+  ];
 
   return (
     <div className="p-4 md:p-8">
-      {/* Header */}
-      <PageHeader title="Today" subtitle="Your shop's work queue and next actions">
-        <a
-          href={createPageUrl("ShopDisplay")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <Monitor className="w-4 h-4" />
-          Shop Display
-        </a>
-      </PageHeader>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div><h1 className="text-2xl font-bold text-slate-900">Today at Elite</h1><p className="text-sm text-slate-500">Your shop at a glance</p></div>
+        <div className="flex gap-2 items-center"><Link to="/Settings" aria-label="Settings" title="Settings" className="inline-flex items-center justify-center h-11 w-11 rounded-xl border bg-white hover:bg-slate-100"><Settings2 className="h-5 w-5"/></Link><StaffSignOut/></div>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-label="Shop overview">
+        {headlineCards.map(card=><Link key={card.label} to={card.to} className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+          <span className={'inline-flex p-2 rounded-xl mb-3 '+card.color}><card.icon className="h-5 w-5"/></span>
+          <div className="text-2xl font-bold text-slate-900">{isLoading?'…':card.value}</div>
+          <div className="text-xs sm:text-sm text-slate-500 mt-1">{card.label}</div>
+        </Link>)}
+      </div>
+      <div className="mb-7"><AppLauncher/></div>
+      <details className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+        <summary className="cursor-pointer font-semibold text-slate-800">Detailed work queue, alerts & reports</summary>
+        <div className="mt-5">
 
       {/* Today action items — exceptions, approvals, overdue, follow-ups */}
       <TodayAlertsBar />
@@ -186,6 +203,7 @@ export default function Dashboard() {
 
       {/* Automation activity — recent run summaries with safe retry */}
       <AutomationSummaryCard />
+      </div></details>
 
     </div>
   );
