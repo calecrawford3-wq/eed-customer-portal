@@ -34,12 +34,12 @@ export default function PaymentMigration({embedded=false}) {
         :{invoice_id:testInvoice?.invoice_id,...(action==='invoice_checkout'?{method:sandboxMethod,payment_option:testInvoiceOption}:{}),
           ...(action==='replay_invoice'?{session_id:testInvoiceSession.trim()}:{})};
       const r=await base44.functions.invoke('manageStripeSandboxTest',{action,...payload});
-      if(r.data?.error) throw new Error([r.data.error,r.data.diagnostic_type,r.data.diagnostic].filter(Boolean).join(' | '));
+      if(r.data?.error) throw new Error([r.data.error,r.data.stage,r.data.diagnostic_type,r.data.diagnostic].filter(Boolean).join(' | '));
       if(action==='create_invoice') {setTestInvoice(r.data);setTestInvoiceSession('');setMessage('Isolated sandbox invoice created.');}
       if(action==='invoice_checkout') {setTestInvoiceSession(r.data.session_id);window.open(r.data.url,'_blank','noopener,noreferrer');setMessage('Sandbox invoice checkout opened for $'+r.data.amount.toFixed(2));}
       if(action==='invoice_status') {setTestInvoice(r.data);setMessage('Sandbox invoice status refreshed.');}
       if(action==='replay_invoice') {setMessage(r.data.pending?'Payment is not paid yet.':r.data.duplicate?'Duplicate prevented. Payment recorded only once.':'Verified sandbox payment recorded.');await runSandboxInvoiceStatus();}
-    } catch(e) {const detail=e.response?.data||{};setError([detail.error,detail.diagnostic_type,detail.diagnostic,e.message].filter(Boolean).join(' | ')||'Sandbox invoice test failed');}
+    } catch(e) {const detail=e.response?.data||{};setError([detail.error,detail.stage,detail.diagnostic_type,detail.diagnostic,e.message].filter(Boolean).join(' | ')||'Sandbox invoice test failed');}
     finally {setBusy(false);}
   }
   async function runSandboxInvoiceStatus() {
