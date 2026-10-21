@@ -2,6 +2,25 @@
   "name": "Customer",
   "type": "object",
   "properties": {
+    "stripe_vault_customer_id": {
+      "type": "string",
+      "description": "Stripe customer ID only; never store card numbers or CVC"
+    },
+    "card_auto_collect_authorized": {
+      "type": "boolean",
+      "default": false
+    },
+    "card_auto_collect_consent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "card_auto_collect_consent_version": {
+      "type": "string"
+    },
+    "card_auto_collect_revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "first_name": {
       "type": "string"
     },
