@@ -21,3 +21,8 @@ test('guest payment link uses shared calculated balance instead of stale stored 
   assert.match(guest, /portalAmounts\(doc,documentType\)\.balance<=0/);
   assert.doesNotMatch(guest, /Number\(doc\.balance_due\)/);
 });
+
+test('returning engines never reuse completed jobs', () => {
+  assert.match(engine, /j\.stage !== "picked_up" && !j\.archived && !j\.completed_at/);
+  assert.match(engine, /openJobs\.length > 1/);
+});

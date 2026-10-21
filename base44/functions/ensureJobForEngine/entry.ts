@@ -4,9 +4,9 @@ import { generateJobNumber, computePartsReadiness } from "../../shared/jobLifecy
 // Create a Job for a checked-in engine that has no estimate yet, so it appears
 // in the "Checked In — Needs Estimate" column on the Jobs board.
 //
-// Idempotent: if a job already exists for this engine (by customer_engine_id)
-// with no estimate_id, returns it without creating a duplicate. If a job exists
-// with this engine AND an estimate, the engine is already tracked — returns it.
+// Reuse only an open job for this engine. Completed visits remain historical;
+// a returned engine can have a new job. Database-level visit uniqueness is
+// still needed to guarantee concurrency safety.
 //
 // POST { customer_engine_id, invoice_id?: string }
 //   - Loads the CustomerEngine, creates a Job with stage "awaiting_approval".
@@ -53,9 +53,11 @@ Deno.serve(async (req) => {
     const jobRes = await base44.asServiceRole.entities.Job.filter({ customer_engine_id: engineId });
     const existingJobs = jobRes.items || jobRes || [];
 
-    // If any job exists for this engine, return the first (engine is already tracked)
-    if (existingJobs.length > 0) {
-      const existing = existingJobs[0];
+    // Never attach new work to a previously picked-up/completed/archived visit.
+    const openJobs = existingJobs.filter(j => j.stage !== "picked_up" && !j.archived && !j.completed_at);
+    if (openJobs.length > 1) return Response.json({ error: "Multiple open jobs exist for this engine; staff reconciliation required" }, { status: 409 });
+    if (openJobs.length === 1) {
+      const existing = openJobs[0];
       // If an invoice_id was provided and isn't already linked, add it
       if (invoiceId && !(existing.invoice_ids || []).includes(invoiceId)) {
         const updated = await base44.asServiceRole.entities.Job.update(existing.id, {
