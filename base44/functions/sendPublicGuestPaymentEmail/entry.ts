@@ -32,7 +32,35 @@ export default async function(req) {
     // Reserve the send slot before calling the mail provider to limit repeated requests.
     await entity.update(doc.id,{guest_payment_token:token,guest_payment_email_sent_at:new Date().toISOString()});
     const subject='Payment Request from '+customerName+' | Elite Engine Development';
-    const html='<div style="margin:0;background:#f1f5f9;padding:36px 14px;font-family:Arial,sans-serif;color:#0f172a"><div style="max-width:560px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0"><div style="background:#000;padding:26px;text-align:center;color:white"><div style="font-size:23px;font-weight:800;letter-spacing:1px">ELITE</div><div style="font-size:12px;letter-spacing:2px">ENGINE DEVELOPMENT</div></div><div style="padding:30px"><h2 style="margin:0 0 16px">A payment request from '+esc(customerName)+'</h2><p>'+esc(customerName)+' has shared a secure payment link so you can make a payment on their behalf with Elite Engine Development.</p><p>Use the button below to review the '+esc(documentType)+' and choose a payment amount. Payment is securely processed through Stripe.</p><p style="text-align:center;margin:28px 0"><a href="'+esc(link)+'" style="background:#e20404;color:white;text-decoration:none;padding:15px 25px;border-radius:8px;display:inline-block;font-weight:bold">View &amp; Pay Securely</a></p><p style="font-size:13px;color:#64748b">This payment-only link does not provide access to the customer account or permission to approve work. If you were not expecting this request, you can ignore this email.</p></div><div style="background:#f8fafc;padding:18px;text-align:center;font-size:12px;color:#64748b">Elite Engine Development</div></div></div>';
+    const settings=portalItems(await base44.asServiceRole.entities.AppSettings.filter({key:'global'}))[0]||{};
+    const company=settings.company_name||'Elite Engine Development';
+    const number=doc.estimate_number||doc.invoice_number||'';
+    const money=(v:any)=>'$'+Number(v||0).toFixed(2);
+    const balance=Math.max(0,Number(doc.total||0)-Number(doc.amount_paid||0)-Number(doc.applied_credits||0));
+    const logo='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;background:#f8f9fa}
+      .container{max-width:600px;margin:0 auto;background:#fff}
+      .header{background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 100%);padding:40px 32px;text-align:center;border-bottom:4px solid #e20404}
+      .logo{height:40px;margin-bottom:20px;display:inline-block}
+      .header-title{font-size:32px;font-weight:700;margin:12px 0 4px;color:#fff}
+      .header-subtitle{font-size:14px;color:#e20404;font-weight:600;letter-spacing:1px;margin:0}
+      .content{padding:40px 32px}.greeting{font-size:18px;font-weight:600;color:#1a1a1a;margin:0 0 16px}
+      .description{font-size:15px;color:#4a5568;line-height:1.6;margin:0 0 24px}
+      .amount-box{background:#f8f9fa;border-left:4px solid #e20404;padding:20px;margin:32px 0;border-radius:4px}
+      .amount-label{font-size:12px;color:#718096;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px}
+      .amount-value{font-size:32px;color:#1a1a1a;font-weight:700;margin:0}
+      .cta-button{display:inline-block;background:#e20404;color:#fff;text-decoration:none;padding:16px 48px;border-radius:6px;font-weight:600;font-size:16px;margin:32px 0}
+      .cta-wrapper{text-align:center}.footer{background:#f8f9fa;padding:32px;border-top:1px solid #e2e8f0;text-align:center;color:#718096;font-size:13px;line-height:1.6}
+      .company-info{color:#1a1a1a;font-weight:600;margin-bottom:12px}.divider{border-top:1px solid #e2e8f0;margin:24px 0}
+    </style></head><body><div class="container"><div class="header"><img src="${logo}" alt="${esc(company)}" class="logo"/><h1 class="header-title">Payment Request</h1><p class="header-subtitle">${esc(number)}</p></div>
+    <div class="content"><p class="greeting">Hello,</p><p class="description"><strong>${esc(customerName)}</strong> has sent you a secure payment link to pay on their behalf with ${esc(company)}.</p>
+    <p class="description">You can review the ${esc(documentType)} and securely make a payment using the link below.</p>
+    <div class="amount-box"><p class="amount-label">Remaining Balance</p><p class="amount-value">${money(balance)}</p></div>
+    <div class="cta-wrapper"><a href="${esc(link)}" class="cta-button">View &amp; Make Payment</a></div>
+    <p style="font-size:13px;color:#718096;text-align:center;margin:24px 0 0">Can't click? Copy and paste this link:<br/><span style="color:#4a5568;word-break:break-all">${esc(link)}</span></p>
+    <p class="description" style="font-size:13px;margin-top:28px">This link allows payment only. It does not grant access to the customer's account or permission to approve work. If you weren't expecting this request, you can ignore this email.</p></div>
+    <div class="footer"><p class="company-info">${esc(company)}</p>${settings.company_phone?'<p>'+esc(settings.company_phone)+'</p>':''}${settings.company_email?'<p>'+esc(settings.company_email)+'</p>':''}<div class="divider"></div><p>${esc(settings.email_signature||'Thank you for your business!').replace(/\n/g,'<br/>')}</p></div></div></body></html>`;
     const text=customerName+' has sent you a secure link to pay on their behalf with Elite Engine Development.\n\nReview and pay: '+link+'\n\nYou cannot approve work or access their account with this link. If unexpected, ignore this email.';
     const clientId=Deno.env.get('ZOHO_CLIENT_ID'),clientSecret=Deno.env.get('ZOHO_CLIENT_SECRET'),refreshToken=Deno.env.get('ZOHO_REFRESH_TOKEN'),accountId=Deno.env.get('ZOHO_ACCOUNT_ID');
     if(!clientId||!clientSecret||!refreshToken||!accountId)throw Error('Mail service not configured');
