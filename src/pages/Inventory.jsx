@@ -429,7 +429,7 @@ export default function Inventory() {
             <div><Label>Supplier Part #</Label><Input value={partForm.supplier_part_number} onChange={e => setPartForm({...partForm, supplier_part_number: e.target.value})} /></div>
             <div><Label>Storage Location</Label><Input value={partForm.location} onChange={e => setPartForm({...partForm, location: e.target.value})} placeholder="e.g. Shelf A3" /></div>
             <div>
-              <Label>Unit Cost ($)</Label>
+              <Label>Purchase Cost per Item ($)</Label>
               <Input
                 type="number"
                 value={partForm.unit_cost}
@@ -442,7 +442,7 @@ export default function Inventory() {
               />
             </div>
             <div>
-              <Label>Shipping ($)</Label>
+              <Label>Shipping / Landed Cost per Item ($)</Label>
               <Input
                 type="number"
                 value={partForm.shipping_cost}
@@ -458,7 +458,7 @@ export default function Inventory() {
               />
             </div>
             <div>
-              <Label>Total Cost ($)</Label>
+              <Label>Total Landed Cost ($)</Label>
               <Input
                 value={((Number(partForm.unit_cost) || 0) + (Number(partForm.shipping_cost) || 0)).toFixed(2)}
                 disabled
@@ -467,7 +467,7 @@ export default function Inventory() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <Label>Sell Price ($)</Label>
+                <Label>Base Sell Price ($)</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">% Markup</span>
                   <Switch
