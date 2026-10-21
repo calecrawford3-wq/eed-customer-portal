@@ -52,9 +52,10 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
         </div>
         <div style={{ backgroundColor: "#f8f8f8", padding: "16px", borderRadius: "8px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span>Subtotal:</span>
+            <span>Subtotal (including pricing allowance):</span>
             <span>${Number(estimate.subtotal || 0).toFixed(2)}</span>
           </div>
+          {Number(estimate.pricing_allowance_amount)>0&&<div style={{fontSize:"11px",color:"#666",marginBottom:"8px"}}>Includes {estimate.pricing_allowance_rate}% pricing allowance: ${Number(estimate.pricing_allowance_amount).toFixed(2)}</div>}
           {Number(estimate.tax_amount) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
               <span>Tax ({estimate.tax_rate}%):</span>
