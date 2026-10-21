@@ -61,6 +61,27 @@
       "type": "number",
       "default": 0
     },
+    "default_estimate_expiry_days": {
+      "type": "number",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 365,
+      "description": "Default expiry days applied to new estimates"
+    },
+    "default_invoice_due_days": {
+      "type": "number",
+      "default": 30,
+      "minimum": 0,
+      "maximum": 365,
+      "description": "Default due days applied to new invoices"
+    },
+    "default_estimate_deposit_percent": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Default percentage deposit on new estimates; zero disables default deposit"
+    },
     "default_payment_terms": {
       "type": "string"
     },
