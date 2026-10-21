@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import GuestPaymentShare from "@/components/portal/GuestPaymentShare";
 import InitialFindingsEditor from '@/components/estimates/InitialFindingsEditor';
 import { base44 } from "@/api/base44Client";
 import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
