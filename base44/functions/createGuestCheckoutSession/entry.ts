@@ -15,6 +15,6 @@ export default async function (req) {
     const doc = portalItems(await entity.filter({ guest_payment_token: body.guestPaymentToken }))[0];
     if (!doc) return Response.json({ error: 'Document not found' }, { status: 404 });
     const stripe = new Stripe(Deno.env.get('PORTAL_STRIPE_SECRET_KEY'));
-    return Response.json(await createPortalCheckout(base44, stripe, doc, body.documentType, body, '/guest/' + body.documentType + '/' + encodeURIComponent(body.guestPaymentToken)));
+    return Response.json(await createPortalCheckout(base44, stripe, doc, body.documentType, { amountOption: body.amountOption, serverPriced: true }, '/guest/' + body.documentType + '/' + encodeURIComponent(body.guestPaymentToken)));
   } catch (error) { return Response.json({ error: error.status ? error.message : 'Unable to start payment' }, { status: error.status || 500 }); }
 }
