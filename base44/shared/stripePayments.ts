@@ -28,7 +28,7 @@ export function verifiedPaymentFacts(session: any, appId: string, live: boolean)
   if (method !== 'automatic' && Array.isArray(actualTypes) && !actualTypes.includes(method)) throw new PaymentError('Stripe payment method differs from checkout', 409);
   const intent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
   if (!intent || !intent.startsWith('pi_')) throw new PaymentError('Missing payment reference', 409);
-  return { type, id, amount, fee, method: method === 'automatic' ? 'stripe_checkout' : method, sessionId: session.id, intent, live: session.livemode,
+  return { type, id, amount, fee, method: method === 'automatic' ? (Array.isArray(actualTypes) && actualTypes.length === 1 && ['card','affirm','us_bank_account'].includes(actualTypes[0]) ? actualTypes[0] : 'other') : method, sessionId: session.id, intent, live: session.livemode,
     date: new Date((Number(session.created) || Date.now() / 1000) * 1000).toISOString().slice(0, 10) };
 }
 
