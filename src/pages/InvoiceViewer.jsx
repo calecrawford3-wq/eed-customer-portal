@@ -173,39 +173,8 @@ export default function InvoiceViewer() {
                 {/* Payment Section */}
                 <div className="bg-slate-50 p-4 rounded-lg mb-4">
                   <h3 className="font-bold text-sm mb-3">Make a Payment</h3>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stripe">💳 Credit/Debit Card (Stripe)</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {paymentMethod && paymentMethod !== "stripe" && (
-                    <div className="mt-3">
-                      <label className="text-xs font-medium text-slate-600">Amount</label>
-                      <input
-                        type="number"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                        placeholder={inv.balance_due.toFixed(2)}
-                        className="w-full mt-1 px-3 py-2 border border-slate-200 rounded text-sm"
-                        min="0"
-                        max={inv.balance_due}
-                        step="0.01"
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Max: ${Number(inv.balance_due).toFixed(2)}</p>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handlePayment}
-                    disabled={!paymentMethod || processingPayment}
-                    className="w-full mt-3 bg-[#e20404] hover:bg-[#c00303] text-white"
-                  >
-                    {processingPayment ? "Processing..." : `Pay ${paymentMethod === "stripe" ? `$${Number(inv.balance_due).toFixed(2)}` : "Now"}`}
-                  </Button>
+                  <Button onClick={()=>setPaymentModalOpen(true)} className="w-full bg-[#e20404] hover:bg-[#c00303] text-white">Pay Now</Button>
+                  {paymentModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={e=>{if(e.target===e.currentTarget&&!processingPayment)setPaymentModalOpen(false);}}><section role="dialog" aria-modal="true" aria-labelledby="invoice-payment-title" className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="invoice-payment-title" className="text-xl font-black text-slate-900">ELITE Secure Payment</h2><p className="text-sm text-slate-500">Invoice {inv.invoice_number}</p></div><button aria-label="Close" onClick={()=>setPaymentModalOpen(false)} className="text-2xl text-slate-500">×</button></div><p className="text-sm text-slate-600">Select an amount to open Stripe Checkout. Payment methods are selected in Stripe.</p>{Number(inv.deposit_amount||0)>0&&!inv.deposit_paid&&Math.max(0,Number(inv.deposit_amount||0)-Number(inv.amount_paid||0)-Number(inv.applied_credits||0))>0&&<Button disabled={processingPayment} variant="outline" className="flex min-h-14 w-full justify-between" onClick={()=>handlePayment('deposit')}><span>Pay Deposit</span><strong>${Math.min(Math.max(0,Number(inv.deposit_amount)-Number(inv.amount_paid||0)-Number(inv.applied_credits||0)),Math.max(0,Number(inv.total)-Number(inv.amount_paid||0)-Number(inv.applied_credits||0))).toFixed(2)}</strong></Button>}<Button disabled={processingPayment} className="flex min-h-14 w-full justify-between bg-red-700 hover:bg-red-800" onClick={()=>handlePayment('balance')}><span>Pay in Full</span><strong>${Math.max(0,Number(inv.total||0)-Number(inv.amount_paid||0)-Number(inv.applied_credits||0)).toFixed(2)}</strong></Button></section></div>}
                 </div>
               </>
             )}
