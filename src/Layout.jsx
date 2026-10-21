@@ -35,10 +35,10 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
  const canUse=page=>!staffMode||staffAllowedPages.includes(page);
- return <div className="elite-app-shell fixed inset-0 flex flex-col overflow-hidden print:static print:overflow-visible" style={{backgroundColor:'#0f172a'}}>
+ return <div className="elite-app-shell fixed inset-0 flex flex-col overflow-hidden print:static print:overflow-visible" style={{backgroundColor:'#000000'}}>
    {!staffMode&&<GlobalBarcodeListener/>}
    {!staffMode&&<GlobalSearch/>}
-   <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#0f172a",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
+   <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#000000",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
     <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
       <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
       <div className="flex items-center gap-1 sm:gap-2">
