@@ -65,8 +65,12 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
       total: same(invoice, 'total'), applied_credits: same(invoice, 'applied_credits'),
       status: same(invoice, 'status'), updated_date: same(invoice, 'updated_date'),
     }, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
-    if (result?.updated === 1) {
+    // Some entity adapters acknowledge a successful write without returning
+    // {updated:1}. For sandbox only, verify the persisted receipt directly.
+    // Never infer success from the response shape without checking the record.
+    if (result?.updated === 1 || sandboxEntity) {
       const fresh = portalItems(await entity.filter({ id: invoice.id, customer_id: cid }))[0];
+      if (sandboxEntity && fresh && !hasStripePayment(fresh.payments, facts)) continue;
       if (!fresh || !hasStripePayment(fresh.payments, facts)) throw new PaymentError('Payment write could not be confirmed', 503);
       return { invoice: fresh, duplicate: false };
     }
