@@ -179,7 +179,7 @@ const routes = createRoutesFromElements(
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
       <Route path="Credits" element={<Credits />} />
-      <Route path="PaymentMigration" element={<PaymentMigration />} />
+      <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
       <Route path="FormerEmployeeTaxPortal" element={<FormerEmployeeTaxPortal />} />
