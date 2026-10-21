@@ -16,7 +16,9 @@ test('Configuration editors remain accessible from settings and legacy routes ar
  const page=f('src/pages/Settings.jsx');
  for(const name of ['Platforms','SpecSheets','ReplacementRules','CannedJobs','Addons'])assert.match(page,new RegExp('<'+name+'\s*\/>'));
  const app=f('src/App.jsx');
- for(const name of ['Platforms','SpecSheets','ReplacementRules','CannedJobs','Addons'])assert.match(app,new RegExp('path="'+name+'"'));
+ for(const name of ['ReplacementRules','CannedJobs','Addons'])assert.match(app,new RegExp('path="'+name+'"'));
+ const pages=f('src/pages.config.js');
+ for(const name of ['Platforms','SpecSheets'])assert.match(pages,new RegExp('"'+name+'":'));
 });
 test('Invoice and estimate creation read configured default policy',()=>{
  const schema=JSON.parse(f('base44/entities/AppSettings.jsonc'));
