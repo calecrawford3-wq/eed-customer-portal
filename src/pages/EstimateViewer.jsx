@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PublicGuestPaymentShare from "@/components/portal/PublicGuestPaymentShare";
 import { useParams } from "react-router-dom";
 import { base44Public } from "@/api/base44Client";
 
@@ -557,6 +558,7 @@ export default function EstimateViewer({ buildVersion }) {
                     Pay Now
                   </button>
                 )}
+                {["sent","approved","partial"].includes(data.estimate?.status) && <PublicGuestPaymentShare documentType="estimate" publicAccessToken={token} />}
               </div>
             </div>
 
