@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Wrench, ArrowLeft, ScanLine, RefreshCw } from "lucide-react";
+import { Wrench, ArrowLeft, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import MachiningTaskCard from "@/components/machining/MachiningTaskCard";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";

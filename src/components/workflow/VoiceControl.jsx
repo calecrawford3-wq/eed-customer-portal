@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { Mic, MicOff, Loader2, Ear, AudioLines, Volume2 } from "lucide-react";
+import { MicOff, Loader2, Ear, AudioLines } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -496,7 +496,7 @@ export default function VoiceControl({
       if (cmdTimerRef.current) clearTimeout(cmdTimerRef.current);
       try { rec.abort(); } catch {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Start/stop recognition when always-on is toggled.

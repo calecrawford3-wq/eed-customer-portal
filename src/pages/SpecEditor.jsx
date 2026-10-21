@@ -6,10 +6,8 @@ import { createPageUrl } from "@/utils";
 import {
   ArrowLeft,
   Save,
-  History,
   GitCompare,
   Copy,
-  CheckCircle,
   AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

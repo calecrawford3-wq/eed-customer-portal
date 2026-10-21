@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Plus, ClipboardList, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
-import { formatMoney } from "@/lib/money";
+import { Plus, ClipboardList, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import FindingCard from "@/components/jobs/FindingCard";
 import FindingEditor from "@/components/jobs/FindingEditor";

@@ -94,7 +94,7 @@ export default function BarcodeScan() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (code) lookup(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   return (

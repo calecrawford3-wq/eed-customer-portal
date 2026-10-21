@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createPageUrl } from "@/utils";
-import { Monitor, Wrench, Users, Receipt, Package, ShoppingCart, TrendingDown, Settings2, ArrowRight, LogOut } from "lucide-react";
+import { Wrench, Users, Receipt, Package, ShoppingCart, TrendingDown, Settings2 } from "lucide-react";
 import { Link } from 'react-router-dom';
 import {AppLauncher} from '@/components/navigation/AppLauncher';
 import StaffSignOut from '@/components/hr/StaffSignOut';
@@ -15,7 +14,6 @@ import BuildPipeline from "@/components/dashboard/BuildPipeline";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import RevenueInsights from "@/components/dashboard/RevenueInsights";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
-import PageHeader from "@/components/PageHeader";
 import TodayAlertsBar from "@/components/dashboard/TodayAlertsBar";
 import OwnerExceptionQueue from "@/components/dashboard/OwnerExceptionQueue";
 import AutomationSummaryCard from "@/components/dashboard/AutomationSummaryCard";

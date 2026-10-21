@@ -1,6 +1,6 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
-import {Briefcase,Users,Package,ShoppingCart,Receipt,MessageSquare,Wrench,ClipboardList,Calendar,ChartNoAxesCombined,FlaskConical,ShieldCheck,FolderOpen,ScanLine,Monitor,LifeBuoy,Settings,ArrowRight,Home,Clock} from 'lucide-react';
+import {Briefcase,Users,Package,ShoppingCart,Receipt,MessageSquare,Calendar,ChartNoAxesCombined,FlaskConical,ShieldCheck} from 'lucide-react';
 
 export const APP_AREAS=[
  {name:'Jobs & Builds',icon:Briefcase,tone:'bg-red-50 text-red-700',description:'Jobs, engines and build progress',pages:[['Jobs','All Jobs'],['Builds','Engine Builds'],['BuildWorkflow','Build Workflow'],['MachiningStation','Machining'],['ShopDisplay','Shop Display'],['BarcodeScan','Scan Engine']]},

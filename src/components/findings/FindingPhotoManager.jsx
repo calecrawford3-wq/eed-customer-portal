@@ -5,7 +5,7 @@ import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
 import SmartImage from "@/components/findings/SmartImage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Upload, X, Loader2, RotateCw, Star, Eye, EyeOff, Camera, AlertCircle } from "lucide-react";
+import { X, Loader2, RotateCw, Star, Eye, EyeOff, Camera, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const MAX_BYTES = 1300 * 1024; // ~1.3MB — enough detail for damage inspection, fast on mobile

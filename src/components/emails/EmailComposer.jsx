@@ -71,7 +71,7 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       setActiveDraftId(draft.id || null);
       const match = fromOptions.find((o) => o.value === draft.from_address);
       if (match) setFromKey(match.key);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+       
       return;
     }
     setActiveDraftId(null);
@@ -101,7 +101,7 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       setSubject(`Re: ${baseSubject}`);
       setBody(`\n\n${quote}`);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open, draft, mode, sourceMessage]);
 
   const sendMut = useMutation({

@@ -83,7 +83,7 @@ export default function Messaging() {
       revokeAttachmentPreviews(attachments);
       revokeAttachmentPreviews(composeAttachments);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const { data: customers = [] } = useQuery({

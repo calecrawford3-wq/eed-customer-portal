@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   MAX_ATTACHMENTS,
   buildAttachmentsFromFiles,
-  revokeAttachmentPreviews,
 } from "@/lib/messagingUtils";
 import AttachmentPreviewList from "./AttachmentPreviewList";
 

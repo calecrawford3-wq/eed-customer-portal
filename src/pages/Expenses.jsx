@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Search, Trash2, Edit, ShoppingCart, Receipt, TrendingDown, AlertCircle, Camera, Loader2 } from "lucide-react";
+import { Plus, Search, Trash2, Edit, ShoppingCart, TrendingDown, AlertCircle, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIES = [

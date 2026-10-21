@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, Trash2, Check, UserCheck } from "lucide-react";
+import { Sparkles, Trash2, UserCheck } from "lucide-react";
 
 export default function EstimateAddonsSection({ addons = [], onTogglePreselected, onRemove }) {
   if (!addons || addons.length === 0) return null;

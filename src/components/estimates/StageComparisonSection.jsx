@@ -3,12 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Layers, Plus, Trash2, Copy, RefreshCw, Send, CheckCircle, Star, Link2, X, GripVertical,
+  Layers, Copy, RefreshCw, Send, CheckCircle, Star, Link2, X, GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { buildComparisonEmailHtml, comparisonEmailSubject } from "@/lib/comparisonEmail";

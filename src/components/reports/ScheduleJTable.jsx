@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { SCHEDULE_J_CATEGORIES, addMoney } from "@/lib/okTaxRules";
 
 /**

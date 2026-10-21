@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Mail, Receipt, FileText, ShoppingCart, Save, Send, Phone, Bell, ListChecks, MapPin } from "lucide-react";
+import { FileText, ShoppingCart, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 import FromAddressesEditor from "@/components/settings/FromAddressesEditor";
 import VoipPhonebookPanel from "@/components/settings/VoipPhonebookPanel";

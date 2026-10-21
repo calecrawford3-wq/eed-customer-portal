@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  Play, Ban, CheckCircle2, RotateCcw, Pencil, AlertTriangle, History,
+  Play, Ban, CheckCircle2, RotateCcw, AlertTriangle, History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TYPE_LABELS, TaskFields, formatInch } from "@/components/machining/MachiningTaskFields";

@@ -35,7 +35,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
       stopCamera();
     }
     return () => stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [mode]);
 
   const startCamera = async () => {

@@ -1,7 +1,7 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Wrench, Clock, Package, MapPin, Cpu, ClipboardList, CheckCircle2, Truck } from "lucide-react";
+import { Wrench, Clock, Package, MapPin, ClipboardList, CheckCircle2 } from "lucide-react";
 
 export default function ShopDisplay() {
   const { data: builds = [] } = useQuery({

@@ -1,5 +1,5 @@
 import React from "react";
-import { STS_FORM_LINES, addMoney, subMoney, calcStateTax, OK_STATE_TAX_RATE } from "@/lib/okTaxRules";
+import { STS_FORM_LINES, addMoney, calcStateTax, OK_STATE_TAX_RATE } from "@/lib/okTaxRules";
 
 /**
  * STS-20002-C Oklahoma Sales Tax Return worksheet.

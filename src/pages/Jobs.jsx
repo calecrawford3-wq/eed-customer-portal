@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, RotateCcw, Tag, Cpu } from "lucide-react";
+import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, Tag, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

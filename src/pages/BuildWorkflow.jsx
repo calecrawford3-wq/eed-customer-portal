@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Wrench, ScanLine, X, CheckCircle2, ClipboardList, ArrowRight } from "lucide-react";
+import { Wrench, ScanLine, ClipboardList } from "lucide-react";
 import BuildTaskList from "@/components/workflow/BuildTaskList";
 import BuildSelectorList from "@/components/workflow/BuildSelectorList";
 import VoiceControl from "@/components/workflow/VoiceControl";

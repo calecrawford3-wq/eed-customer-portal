@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
-import { Package, Receipt, ListChecks, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Package, Receipt, ListChecks } from "lucide-react";
 import CompletionBillingAudit from "@/components/jobs/CompletionBillingAudit";
 import { billingSummary } from "@/lib/jobBillingStatus";
 

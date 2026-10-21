@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ensureDisplayableUrl, isHeicUrl } from "@/lib/heicUtils";
+import { isHeicUrl } from "@/lib/heicUtils";
 
 /**
  * Smart image component that handles HEIC files transparently.

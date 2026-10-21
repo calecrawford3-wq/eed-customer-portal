@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitCompare, CheckCircle2, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
+import { GitCompare, AlertTriangle } from "lucide-react";
 
 export default function RevisionCompareModal({ open, onClose, revisionA, revisionB, labelA = "Baseline (actual)", labelB = "Proposed (simulated)" }) {
   const { data: revA } = useQuery({

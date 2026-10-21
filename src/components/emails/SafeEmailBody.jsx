@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, FileText } from "lucide-react";
 import { sanitizeEmailHtmlForDisplay, htmlHasImages } from "@/lib/sanitizeEmailHtml";
 

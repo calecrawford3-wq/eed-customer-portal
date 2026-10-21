@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Save, FileText } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 
 const TRUST = { 1: "1 · Verified controlled", 2: "2 · Verified build", 3: "3 · External structured", 4: "4 · External reference", 5: "5 · Estimated/digitized", 6: "6 · Unverified" };

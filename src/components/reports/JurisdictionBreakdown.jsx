@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { calcStateTax, calcJurisdictionTax, addMoney, OK_STATE_TAX_RATE } from "@/lib/okTaxRules";
+import { addMoney, OK_STATE_TAX_RATE } from "@/lib/okTaxRules";
 
 /**
  * STS-20021 jurisdiction breakdown.

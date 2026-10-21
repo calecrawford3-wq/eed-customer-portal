@@ -149,7 +149,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
         setDrafts([blankDraft()]);
       }
     }
-  }, [open, sourceItems]); // eslint-disable-line
+  }, [open, sourceItems]);  
 
   const blankDraft = () => ({
     _id: Math.random().toString(36).slice(2),

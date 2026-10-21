@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Phone, PhoneCall, PhoneOff, Clock, CalendarPlus, FilePlus2, Wrench, CheckCircle2, Loader2, Copy } from "lucide-react";
+import { Phone, PhoneCall, Clock, CalendarPlus, FilePlus2, Wrench, CheckCircle2, Copy } from "lucide-react";
 import { SATISFACTION_OPTIONS, nextWeekdayStr, isWeekend } from "@/lib/customerSuccess";
 
 const OUTCOMES = [
@@ -56,7 +55,7 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
     setCopied(false);
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   const copyNumber = async () => {

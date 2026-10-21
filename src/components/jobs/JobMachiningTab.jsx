@@ -29,7 +29,7 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
       next.delete("plan");
       setSearchParams(next, { replace: true });
     }
-  }, [autoOpenPlan]); // eslint-disable-line
+  }, [autoOpenPlan]);  
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
   const [showHistory, setShowHistory] = useState(false);

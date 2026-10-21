@@ -3,14 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { goodsSubtotal } from "@/lib/money";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, TrendingDown, DollarSign, FileText, Download, Printer, Package } from "lucide-react";
+import { FileText, Printer, Package } from "lucide-react";
 import OktapFilingWizard from "@/components/reports/OktapFilingWizard";
 import SalesTaxMonthDrilldown from "@/components/reports/SalesTaxMonthDrilldown";
 

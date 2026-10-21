@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, AlertTriangle, CheckCircle2, PackageCheck, Loader2, ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
 
 // Compute SHA-256 hash of a file for duplicate detection
 async function computeFileHash(file) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { EVENT_TYPE_META, dateToStr, todayStr } from "@/lib/customerSuccess";
+import { dateToStr, todayStr } from "@/lib/customerSuccess";
 import EventChip from "./EventChip";
 import { Lock } from "lucide-react";
 

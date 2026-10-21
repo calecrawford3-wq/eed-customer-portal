@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Mail, Phone, MapPin, Edit, Wrench,
-  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor, KeyRound,
+  ClipboardList, Receipt, Plus, Link2, Unlink, ExternalLink, Monitor,
   ChevronDown, ChevronUp, CalendarClock
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";

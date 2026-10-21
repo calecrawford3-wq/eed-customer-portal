@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { guestVisible } from '../../shared/guestAccess.ts';
 import { guestTokenExpired } from '../../shared/guestFields.ts';
-import { portalItems } from '../../shared/portalDocument.ts';
+import { portalItems, portalAmounts } from '../../shared/portalDocument.ts';
 
 const esc=(s:string)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export default async function(req) {
@@ -29,14 +29,19 @@ export default async function(req) {
     const origin=new URL(Deno.env.get('PORTAL_BASE_URL')||'https://portal.eedpower.com');
     if(origin.protocol!=='https:'||origin.username||origin.password)throw Error('Invalid portal URL');
     const link=origin.origin+'/guest/'+documentType+'/'+encodeURIComponent(token);
-    // Reserve the send slot before calling the mail provider to limit repeated requests.
-    await entity.update(doc.id,{guest_payment_token:token,guest_payment_email_sent_at:new Date().toISOString()});
+    // Atomically claim the cooldown slot. A concurrent request cannot also send.
+    const sentAt=new Date().toISOString();
+    const previous=doc.guest_payment_email_sent_at;
+    const predicate:any={id:doc.id,public_access_token:publicAccessToken};
+    predicate.guest_payment_email_sent_at=previous===undefined?{$exists:false}:previous;
+    const claimed=await entity.updateMany(predicate,{$set:{guest_payment_token:token,guest_payment_email_sent_at:sentAt}});
+    if(claimed?.updated!==1)return Response.json({error:'Another payment email request is being processed. Please retry later.'},{status:429});
     const subject='Payment Request from '+customerName+' | Elite Engine Development';
     const settings=portalItems(await base44.asServiceRole.entities.AppSettings.filter({key:'global'}))[0]||{};
     const company=settings.company_name||'Elite Engine Development';
     const number=doc.estimate_number||doc.invoice_number||'';
     const money=(v:any)=>'$'+Number(v||0).toFixed(2);
-    const balance=Math.max(0,Number(doc.total||0)-Number(doc.amount_paid||0)-Number(doc.applied_credits||0));
+    const balance=portalAmounts(doc,documentType).balance;
     const logo='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
       body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;background:#f8f9fa}

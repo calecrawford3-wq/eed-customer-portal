@@ -85,7 +85,7 @@ export default function MobileItemEditor({
         setShowDiscardConfirm(false);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [item, open]);
 
   // Reset the skip flag whenever the editor closes so the next open syncs.

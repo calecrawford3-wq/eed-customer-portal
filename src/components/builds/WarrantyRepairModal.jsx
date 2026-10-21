@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Search, Plus, Trash2, Package, Boxes, FileText, X } from "lucide-react";
+import { ShieldCheck, Search, Trash2, Package, FileText, X } from "lucide-react";
 import { toast } from "sonner";
 import InventoryBrowseModal from "./InventoryBrowseModal";
 import POBrowseModal from "./POBrowseModal";

@@ -5,12 +5,10 @@ import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
 import {
-  Gauge, Briefcase, MessageSquare, Receipt, MoreHorizontal,
-  Search, X, ChevronRight,
+  Gauge, Briefcase, MessageSquare, Receipt, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, ClipboardList, DollarSign,
-  Award, TrendingDown, BarChart2, Layers, FileText, Boxes,
-  Sparkles, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
+  Award, TrendingDown, BarChart2, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
   ClipboardCheck, ScanLine,
 } from "lucide-react";
 

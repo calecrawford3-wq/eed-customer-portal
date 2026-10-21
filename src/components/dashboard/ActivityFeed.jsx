@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Users,
   Clock,
-  ArrowRight,
 } from "lucide-react";
 
 function timeAgo(dateStr) {

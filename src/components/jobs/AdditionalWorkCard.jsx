@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, XCircle, Clock, Ban, Loader2, FileText, Link2, Eye, Mail, MessageSquare } from "lucide-react";
 import { formatMoney } from "@/lib/money";
