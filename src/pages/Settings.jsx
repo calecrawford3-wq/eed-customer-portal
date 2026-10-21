@@ -61,6 +61,11 @@ const defaultSettings = {
   po_smtp_from_email: "",
 };
 
+function ConfigurationEditor({title,children}){
+  const [open,setOpen]=useState(false);
+  return <section className="rounded-lg border bg-white p-4"><button type="button" className="flex w-full items-center justify-between text-left font-semibold" aria-expanded={open} onClick={()=>setOpen(v=>!v)}>{title}<span aria-hidden="true">{open?'−':'+'}</span></button>{open&&<div className="mt-4">{children}</div>}</section>;
+}
+
 export default function Settings() {
   const qc = useQueryClient();
   const [searchParams,setSearchParams] = useSearchParams();
@@ -247,14 +252,14 @@ export default function Settings() {
         </TabsContent>
         <TabsContent value="engines" className="space-y-4">
           <SettingsLinks title="Engine configuration" description="Manage your supported platforms, technical specifications, and replacement schedules without leaving Settings." links={[{label:'Platforms',to:'/Platforms'},{label:'Spec Sheets',to:'/SpecSheets'},{label:'Replacement Rules',to:'/ReplacementRules'}]}/>
-          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage engine platforms here</summary><Platforms/></details>
-          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage spec sheets here</summary><SpecSheets/></details>
-          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage replacement rules here</summary><ReplacementRules/></details>
+          <ConfigurationEditor title="Manage engine platforms"><Platforms/></ConfigurationEditor>
+          <ConfigurationEditor title="Manage spec sheets"><SpecSheets/></ConfigurationEditor>
+          <ConfigurationEditor title="Manage replacement rules"><ReplacementRules/></ConfigurationEditor>
         </TabsContent>
         <TabsContent value="shop" className="space-y-4">
           <SettingsLinks title="Job and workflow configuration" links={[{label:'Canned Jobs',to:'/CannedJobs'},{label:'Addons',to:'/Addons'},{label:'Build Workflow',to:'/BuildWorkflow',detail:'Daily operations, not a setting'},{label:'Machining Station',to:'/MachiningStation',detail:'Daily operations, not a setting'}]}/>
-          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage canned jobs</summary><CannedJobs/></details>
-          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage addons</summary><Addons/></details>
+          <ConfigurationEditor title="Manage canned jobs"><CannedJobs/></ConfigurationEditor>
+          <ConfigurationEditor title="Manage addons"><Addons/></ConfigurationEditor>
           <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Workflow templates</h3><WorkflowTemplatesPanel/></section>
         </TabsContent>
         <TabsContent value="inventory" className="space-y-4">
