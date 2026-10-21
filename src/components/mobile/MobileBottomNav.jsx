@@ -91,11 +91,7 @@ const MORE_SECTIONS = [
     label: "Settings",
     items: [
       { name: "Settings", page: "Settings", icon: Settings2 },
-      { name: "Platforms", page: "Platforms", icon: Layers },
-      { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-      { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
-      { name: "Addons", page: "Addons", icon: Sparkles },
-      { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
+      // Configuration editors are now available under the Settings control center.
     ],
   },
   {
