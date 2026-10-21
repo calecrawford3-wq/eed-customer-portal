@@ -104,6 +104,19 @@ test('public billing viewers and comparison stay on the Elite portal domain', ()
   const legalSync = readFileSync('base44/functions/syncLegalDocument/entry.ts','utf8');
   assert.doesNotMatch(legalSync, /fetch\(|Deno\.env\.get\('SYNC_SECRET'\)|billing\.eedpower/);
 });
+test('public estimate only offers balance after a paid deposit and displays initial findings', () => {
+  const viewer=readFileSync('src/pages/EstimateViewer.jsx','utf8');
+  const endpoint=readFileSync('base44/functions/getPublicEstimate/entry.ts','utf8');
+  const editor=readFileSync('src/pages/EstimateDetail.jsx','utf8');
+  const print=readFileSync('src/components/PrintableEstimate.jsx','utf8');
+  assert.match(viewer,/payment_amounts\?\.deposit/);
+  assert.match(viewer,/payment_amounts\?\.balance/);
+  assert.match(endpoint,/payment_amounts: portalAmounts\(est, 'estimate'\)/);
+  assert.match(endpoint,/initial_findings:/);
+  assert.match(viewer,/Initial Findings & Concerns/);
+  assert.match(editor,/InitialFindingsEditor/);
+  assert.match(print,/estimate.initial_findings/);
+});
 test('public viewers do not follow stored legacy checkout URLs', () => {
   for (const path of ['src/pages/EstimateViewer.jsx','src/pages/InvoiceViewer.jsx']) {
     const content=readFileSync(path,'utf8');
