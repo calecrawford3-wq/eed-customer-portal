@@ -8,6 +8,18 @@
     "label": {
       "type": "string"
     },
+    "linked_estimate_id": {
+      "type": "string"
+    },
+    "linked_estimate_number": {
+      "type": "string"
+    },
+    "linked_customer_id": {
+      "type": "string"
+    },
+    "test_deposit_amount": {
+      "type": "number"
+    },
     "total": {
       "type": "number"
     },
