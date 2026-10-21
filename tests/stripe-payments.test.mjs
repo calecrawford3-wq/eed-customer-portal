@@ -327,7 +327,7 @@ test('public one-click checkout ignores browser prices and selects Stripe-manage
   assert.equal(state.requests[0].data.payment_method_types,undefined);
   assert.equal(state.requests[0].data.metadata.payment_method,'automatic');
   assert.equal(state.writes.length,0);
-  assert.equal((await call('startPublicDocumentCheckout',{...body,amountOption:'deposit'})).status,400+9);
+  assert.equal((await call('startPublicDocumentCheckout',{...body,amountOption:'deposit'})).status,400);
   assert.equal((await call('startPublicDocumentCheckout',{...body,publicAccessToken:'invalid'})).status,404);
 });
 
