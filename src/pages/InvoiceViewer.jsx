@@ -53,10 +53,15 @@ export default function InvoiceViewer() {
     }
 
     if (paymentMethod === "stripe") {
-      // Existing Stripe URLs can point at the retired billing app or an
-      // outdated balance. Sign in and use the portal's verified checkout.
-      const next = '/CustomerPortal?document=invoice&id=' + encodeURIComponent(inv.id);
-      window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
+      // A public invoice link may open a scoped payment-only guest view.
+      // Checkout remains blocked until the launch gates are explicitly enabled.
+      setProcessingPayment(true);
+      try {
+        const result = await base44Public.functions.invoke('openPublicDocumentPayment', {documentType:'invoice',publicAccessToken});
+        if (!result?.data?.url) throw new Error(result?.data?.error||'Payment link unavailable');
+        window.location.assign(result.data.url);
+      } catch (error) {toast.error(error?.response?.data?.error||error?.message||'Online payment is not available yet.');}
+      finally {setProcessingPayment(false);}
       return;
     }
 
