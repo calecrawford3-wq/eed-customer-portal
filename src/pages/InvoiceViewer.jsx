@@ -16,8 +16,7 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function InvoiceViewer() {
   const { token: publicAccessToken } = useParams();
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
@@ -39,41 +38,18 @@ export default function InvoiceViewer() {
   const customerEngine = viewerData?.customerEngine;
   const platform = viewerData?.platform;
 
-  const handlePayment = async () => {
-    if (!paymentMethod) {
-      toast.error("Please select a payment method");
-      return;
-    }
-
-    const amount = paymentMethod === "stripe" ? inv.balance_due : Number(paymentAmount) || inv.balance_due;
-
-    if (amount <= 0) {
-      toast.error("Payment amount must be greater than 0");
-      return;
-    }
-
-    if (paymentMethod === "stripe") {
-      // A public invoice link may open a scoped payment-only guest view.
-      // Checkout remains blocked until the launch gates are explicitly enabled.
-      setProcessingPayment(true);
-      try {
-        const result = await base44Public.functions.invoke('openPublicDocumentPayment', {documentType:'invoice',publicAccessToken});
-        if (!result?.data?.url) throw new Error(result?.data?.error||'Payment link unavailable');
-        window.location.assign(result.data.url);
-      } catch (error) {toast.error(error?.response?.data?.error||error?.message||'Online payment is not available yet.');}
-      finally {setProcessingPayment(false);}
-      return;
-    }
-
-    // Cash/check payments are staff-only. Guests may not declare a payment
-    // successful or record cash/check payments themselves — only a verified
-    // provider event (card) or an authorized staff entry may record a payment.
-    if (paymentMethod === "cash" || paymentMethod === "check") {
-      toast.error("Cash/check payments must be recorded by our staff. Please contact us to arrange payment.");
-      setPaymentMethod("");
-      setPaymentAmount("");
-      return;
-    }
+  const handlePayment = async (amountOption) => {
+    if (processingPayment) return;
+    setProcessingPayment(true);
+    try {
+      const result = await base44Public.functions.invoke('startPublicDocumentCheckout',{documentType:'invoice',publicAccessToken,amountOption});
+      const destination = result?.data?.checkout_url;
+      if (!destination) throw new Error(result?.data?.error||'Payment unavailable');
+      const url = new URL(destination);
+      if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Invalid Stripe destination');
+      window.location.assign(url.href);
+    } catch(error) {toast.error(error?.response?.data?.error||error?.message||'Unable to start secure payment');}
+    finally {setProcessingPayment(false);}
   };
 
   if (invoiceLoading) {
