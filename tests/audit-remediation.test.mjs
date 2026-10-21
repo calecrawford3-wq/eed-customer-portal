@@ -14,7 +14,7 @@ test('engine job creation requires an admin before service-role reads or writes'
 
 test('engine job creation validates invoice ownership before linking', () => {
   assert.match(engine, /Invoice\.filter\(\{ id: invoiceId, customer_id: engine\.customer_id \}\)/);
-  assert.ok(engine.indexOf('Invoice.filter(') < engine.indexOf('Job.filter('));
+  assert.ok(engine.indexOf('Invoice.filter(') < engine.indexOf('base44.asServiceRole.entities.Job.filter('));
 });
 
 test('guest payment link uses shared calculated balance instead of stale stored balance', () => {
