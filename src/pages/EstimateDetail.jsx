@@ -1788,6 +1788,8 @@ export default function EstimateDetail() {
         setHistoryOpen={setHistoryOpen}
       />
 
+      {id && form.customer_id && ["sent","approved","partial"].includes(form.status) && <div className="mb-4"><GuestPaymentShare type="estimate" id={id} /></div>}
+
       {/* Next Step guidance banner */}
       {id && form.status === "draft" && (
         <NextStepBanner
