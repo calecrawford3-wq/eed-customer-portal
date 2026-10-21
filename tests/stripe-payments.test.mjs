@@ -317,6 +317,20 @@ test('portal checkout uses stored ownership, live price, quote revision and stab
   assert.equal((await call('createPortalCheckoutSession', { ...body, revision: read.body.revision })).status, 404);
 });
 
+test('public one-click checkout ignores browser prices and selects Stripe-managed methods', async () => {
+  const { state, call } = setup();
+  state.rows.Invoice[0].public_access_token='public-test-invoice';
+  const body={documentType:'invoice',publicAccessToken:'public-test-invoice',amountOption:'balance',expectedAmount:1,paymentMethod:'affirm'};
+  const response=await call('startPublicDocumentCheckout',body);
+  assert.equal(response.status,200);
+  assert.equal(state.requests[0].data.metadata.principal_cents,'97500');
+  assert.equal(state.requests[0].data.payment_method_types,undefined);
+  assert.equal(state.requests[0].data.metadata.payment_method,'automatic');
+  assert.equal(state.writes.length,0);
+  assert.equal((await call('startPublicDocumentCheckout',{...body,amountOption:'deposit'})).status,400+9);
+  assert.equal((await call('startPublicDocumentCheckout',{...body,publicAccessToken:'invalid'})).status,404);
+});
+
 test('full balance becomes paid and the receipt reports the recorded provider amount', async () => {
   const { state, call, payment, deliver } = setup();
   const id = payment('cs_test_full', 'invoice', 97500);
