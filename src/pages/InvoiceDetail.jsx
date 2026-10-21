@@ -1454,6 +1454,7 @@ export default function InvoiceDetail() {
           <div className="flex justify-between"><span className="text-slate-600">Parts Subtotal</span><span>${(form.line_items || []).reduce((s, l) => s + (l.total || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Labor Subtotal</span><span>${(form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0).toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-slate-600">Machining Subtotal</span><span>${(form.machining_items || []).reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0).toFixed(2)}</span></div>
+          {Number(form.pricing_allowance_amount)>0&&<div className="flex justify-between text-slate-600"><span>Pricing allowance ({form.pricing_allowance_rate}%)</span><span>${Number(form.pricing_allowance_amount).toFixed(2)}</span></div>}
           <div className="flex justify-between font-medium border-t border-slate-200 pt-2"><span className="text-slate-600">Subtotal</span><span>${Number(form.subtotal || 0).toFixed(2)}</span></div>
           {(() => {
             const revenue = Number(form.subtotal || 0) - Number(form.discount_amount || 0) - Number(form.applied_credits || 0);
