@@ -11,7 +11,6 @@ export default function GuestPayment() {
   const { type, token } = useParams();
   const [params] = useSearchParams();
   const [option, setOption] = useState(() => new URLSearchParams(window.location.search).get('option') === 'balance' ? 'balance' : new URLSearchParams(window.location.search).get('option') === 'deposit' ? 'deposit' : '');
-  const [paymentMethod, setPaymentMethod] = useState('card');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const valid = ['estimate', 'invoice'].includes(type) && !!token;
@@ -26,22 +25,11 @@ export default function GuestPayment() {
   });
   const choices = data?.payment_options || [];
   const selected = choices.find(c => c.value === option) || choices[0];
-  const { data: quote, isFetching: quoteLoading } = useQuery({
-    queryKey: ['guest-payment-quote', type, token, selected?.value, selected?.amount],
-    enabled: !!data?.can_pay && !!selected, retry: false, staleTime: 0,
-    queryFn: async () => {
-      const r = await base44Public.functions.invoke('getPortalPaymentQuote', { guestPaymentToken: token, documentType: type, amountOption: selected.value });
-      if (r.data?.error) throw new Error(r.data.error);
-      return r.data;
-    },
-  });
-  const methodQuote = quote?.methods?.find(m => m.method === paymentMethod);
-  const quoteReady = !!methodQuote?.enabled && !quoteLoading && quote.principalCents === Math.round(Number(selected?.amount) * 100);
-  async function pay() {
-    if (busy || !selected || !quoteReady) return;
+  async function pay(amountOption) {
+    if (busy || !data?.can_pay || !choices.some(c=>c.value===amountOption)) return;
     setBusy(true); setError('');
     try {
-      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption: selected.value, expectedAmount: selected.amount, paymentMethod, expectedFeeCents: methodQuote.feeCents });
+      const r = await base44Public.functions.invoke('createGuestCheckoutSession', { guestPaymentToken: token, documentType: type, amountOption });
       if (r.data?.error || !r.data?.checkout_url) throw new Error();
       const url = new URL(r.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error();
@@ -49,7 +37,7 @@ export default function GuestPayment() {
     } catch { setError('Payment could not be started. Refresh to check the current balance, then try again.'); setBusy(false); }
   }
   return <main className="min-h-screen bg-slate-50 text-slate-900">
-    <header className="bg-slate-950 px-5 py-5 text-white"><div className="mx-auto max-w-2xl"><p className="font-bold tracking-wide">ELITE ENGINE DEVELOPMENT</p><p className="mt-1 text-sm text-slate-300">Secure payment request</p></div></header>
+    <header className="border-b-4 border-red-700 bg-slate-950 px-5 py-6 text-white"><div className="mx-auto max-w-2xl"><p className="text-xl font-black tracking-wider">ELITE <span className="text-red-500">ENGINE DEVELOPMENT</span></p><p className="mt-1 text-sm text-slate-300">Secure guest payment · Powered by Stripe</p></div></header>
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-12">
       {!valid || loadError ? <section className="rounded-xl bg-white p-6 shadow-sm"><h1 className="text-xl font-bold">This link is unavailable</h1><p className="mt-2 text-slate-600">It may have expired or been disabled. Ask the customer for a new payment link.</p><Button className="mt-4" variant="outline" onClick={() => refetch()}>Try Again</Button></section> : isLoading ? <p role="status">Loading payment request…</p> : data && <>
         <section className="rounded-xl bg-white p-5 shadow-sm space-y-2">
@@ -65,9 +53,8 @@ export default function GuestPayment() {
         <section className="rounded-xl bg-white p-5 shadow-sm space-y-4">
           <h2 className="text-lg font-bold">{data.balance <= 0 || data.status === 'paid' ? 'Payment complete' : 'Choose a payment'}</h2>
           {data.payment_message && <p role="status" className="rounded-lg bg-slate-100 p-3 text-sm">{data.payment_message}</p>}
-          {choices.map(c => <label key={c.value} className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="radio" name="amount" value={c.value} checked={selected?.value === c.value} onChange={() => setOption(c.value)} /><span className="min-w-0 flex-1">{c.label}</span><strong className="tabular-nums">{formatMoney(c.amount)}</strong></label>)}
-          {data.can_pay && selected && <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="guest-method">Payment method</label><select id="guest-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="us_bank_account" disabled={!quote?.methods?.find(m => m.method === "us_bank_account")?.enabled}>ACH bank payment</option><option value="affirm" disabled={!quote?.methods?.find(m => m.method === "affirm")?.enabled}>Affirm</option></select><p className="text-xs text-slate-600">{quoteReady ? `Invoice amount ${formatMoney(methodQuote.principalCents / 100)} · Processing fee ${formatMoney(methodQuote.feeCents / 100)} · Total ${formatMoney(methodQuote.totalCents / 100)}` : "Checking payment method and fee availability…"}</p></div>}
-          {data.can_pay && selected && !params.get('session_id') && <Button className="min-h-12 w-full bg-red-600 hover:bg-red-700" disabled={busy || !quoteReady} onClick={pay}>{busy ? 'Opening secure checkout…' : 'Continue to Pay ' + formatMoney(quoteReady ? methodQuote.totalCents / 100 : selected.amount)}</Button>}
+          {data.can_pay && !params.get('session_id') && choices.map(c => <Button key={c.value} className={'flex min-h-14 w-full justify-between px-4 '+(c.value==='balance'?'bg-red-700 hover:bg-red-800':'bg-slate-900 hover:bg-slate-800')} disabled={busy} onClick={()=>pay(c.value)}><span>{c.value==='deposit'?'Pay Deposit':'Pay in Full'}</span><strong>{formatMoney(c.amount)}</strong></Button>)}
+          {data.can_pay && <p className="text-xs text-slate-600">Choose an amount to continue directly to Stripe. Available payment methods are shown securely by Stripe.</p>}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <Button variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => { setOption(''); refetch(); }}>Refresh Payment Status</Button>
           <p className="text-xs text-slate-500">Payments reduce the customer's document balance. Payment does not authorize additional work.</p>
