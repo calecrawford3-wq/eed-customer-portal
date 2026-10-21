@@ -152,8 +152,8 @@ export default function EstimateViewer({ buildVersion }) {
   };
 
   const handlePayNow = () => {
-    if (data?.estimate?.status !== 'approved') {
-      setPayingError('Approve this estimate before making a payment.');
+    if (data?.estimate?.status !== 'approved' || Number(data?.estimate?.payment_amounts?.balance || 0) <= 0) {
+      setPayingError('This estimate is not eligible for another payment.');
       return;
     }
     setPaymentStep('choose');
@@ -549,7 +549,7 @@ export default function EstimateViewer({ buildVersion }) {
                     {approving ? "Approving..." : "Approve & Pay"}
                   </button>
                 )}
-                {data.estimate?.status === "approved" && (
+                {data.estimate?.status === "approved" && Number(data.estimate?.payment_amounts?.balance || 0) > 0 && (
                   <button
                     onClick={handlePayNow}
                     className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 transition"
