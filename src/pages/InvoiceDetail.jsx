@@ -335,8 +335,11 @@ export default function InvoiceDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (isNew && settingsData && settingsData[0] && settingsData[0].default_tax_rate) {
-      setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
+    if (isNew && settingsData?.[0]) {
+      const settings=settingsData[0];
+      const days=Math.max(0,Math.min(365,Number(settings.default_invoice_due_days??30)));
+      const due=new Date(); due.setDate(due.getDate()+days);
+      setForm(f=>({...f,tax_rate:settings.default_tax_rate??f.tax_rate,due_date:due.toISOString().split('T')[0]}));
     }
   }, [settingsData, isNew]);
 
