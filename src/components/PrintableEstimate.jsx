@@ -179,6 +179,7 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
           </div>
         );
       })()}
+      {Array.isArray(estimate.initial_findings) && estimate.initial_findings.length > 0 && <div style={{ marginBottom: '24px' }}><h3 style={{ fontSize:'12px', fontWeight:'bold', textTransform:'uppercase', color:'#666', marginBottom:'8px' }}>Initial Findings &amp; Concerns</h3><p style={{ fontSize:'11px', color:'#666' }}>Associated work is already included in the estimate total.</p>{estimate.initial_findings.map((f,i)=><div key={f.id||i} style={{ padding:'10px', border:'1px solid #ddd', marginTop:'8px', breakInside:'avoid' }}><strong style={{ fontSize:'12px' }}>{f.title || `Finding ${i+1}`}</strong>{f.description&&<p style={{ fontSize:'12px', whiteSpace:'pre-wrap' }}>{f.description}</p>}<div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>{(f.photo_urls||[]).map((url,j)=><img key={j} src={url} alt={`Finding ${i+1} photo ${j+1}`} style={{ width:'115px', height:'90px', objectFit:'cover' }}/>)}</div></div>)}</div>}
       {estimate.notes && (
         <div style={{ marginBottom: "24px", backgroundColor: "#fafafa", padding: "12px", borderRadius: "4px" }}>
           <h3 style={{ fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", color: "#666", marginBottom: "6px" }}>Notes</h3>
