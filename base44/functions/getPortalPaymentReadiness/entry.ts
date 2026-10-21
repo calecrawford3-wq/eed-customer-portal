@@ -29,12 +29,12 @@ export default async function (req) {
       customer_checkout_ready: false,
       guest_checkout_ready: false,
       setup_method: 'Base44 server-side environment secrets (one-time setup)',
-      requested_payment_methods: ['card', 'us_bank_account', 'affirm'],
+      requested_payment_methods: ['card', 'affirm'],
       configured_payment_methods: ['card'],
       customer_pays_processing_fees: true,
       processing_fee_configuration_ready: false,
       payment_method_configuration_ready: false,
-      fee_policy_note: 'Debit card surcharges are prohibited; credit surcharges and ACH fees require applicable rules and disclosures; Affirm terms may prohibit customer fee pass-through.',
+      fee_policy_note: 'No card or Affirm customer surcharges are added by this integration. Affirm requires provider approval and eligibility.',
       runtime_checks_still_required: ['Signed Stripe test delivery', 'Base44 conditional update concurrency', 'Deposit and full payment', 'Duplicate delivery and interrupted conversion recovery', 'Old in-flight checkout and link compatibility'],
     };
     if (key) {
@@ -56,9 +56,9 @@ export default async function (req) {
       } catch { report.account_check = 'unavailable'; }
     }
     const feeSettings = await readPortalFeeSettings(base44);
-    report.configured_payment_methods = ['card', ...(feeSettings.ach_enabled === true && Deno.env.get('PORTAL_ENABLE_ACH') === 'true' ? ['us_bank_account'] : []), ...(feeSettings.affirm_enabled === true && Deno.env.get('PORTAL_ENABLE_AFFIRM') === 'true' ? ['affirm'] : [])];
-    report.payment_method_configuration_ready = report.configured_payment_methods.length === 3;
-    report.processing_fee_configuration_ready = feeSettings.ach_fee_approved === true && Number.isFinite(feeSettings.ach_fee_percent) && Number.isSafeInteger(feeSettings.ach_fee_fixed_cents) && Number.isSafeInteger(feeSettings.ach_fee_cap_cents);
+    report.configured_payment_methods = ['card', ...(feeSettings.affirm_enabled === true && Deno.env.get('PORTAL_ENABLE_AFFIRM') === 'true' ? ['affirm'] : [])];
+    report.payment_method_configuration_ready = report.configured_payment_methods.length === 2;
+    report.processing_fee_configuration_ready = true; // No customer-paid processing fees for cards or Affirm; ACH is not offered.
     // Readiness is intentionally conservative: configuration is not proof of
     // a signed webhook delivery or a successfully recorded test payment.
     report.payment_recording_ready = report.account_check === 'complete' && report.account_charges_enabled && report.signing_secret_configured && report.endpoint_registered && report.endpoint_event_coverage && report.recording_ready_flag;
