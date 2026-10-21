@@ -309,7 +309,10 @@ test('portal checkout uses stored ownership, live price, quote revision and stab
   assert.equal(state.requests[0].opts.idempotencyKey, state.requests[1].opts.idempotencyKey);
   assert.equal(state.requests[0].data.metadata.principal_cents, '97500');
   assert.equal(state.requests[0].data.customer_email, undefined);
-  assert.equal((await call('createPortalCheckoutSession', { ...body, expectedAmount: 1, revision: read.body.revision })).status, 409);
+  assert.equal((await call('createPortalCheckoutSession', { ...body, expectedAmount: 1, paymentMethod:'affirm', revision: read.body.revision })).status, 200);
+  assert.equal(state.requests[2].data.metadata.principal_cents, '97500');
+  assert.equal(state.requests[2].data.metadata.payment_method, 'automatic');
+  assert.equal(state.requests[2].data.payment_method_types, undefined);
   state.rows.User[0].customer_id = 'B';
   assert.equal((await call('createPortalCheckoutSession', { ...body, revision: read.body.revision })).status, 404);
 });
