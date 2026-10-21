@@ -30,6 +30,26 @@
       "type": "number",
       "default": 0
     },
+    "card_processing_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated merchant card processing cost percent, not a customer surcharge"
+    },
+    "card_processing_fixed_cents": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated merchant card processing cost per transaction in cents"
+    },
+    "affirm_processing_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated merchant Affirm processing cost percent, not a customer surcharge"
+    },
+    "affirm_processing_fixed_cents": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated merchant Affirm processing cost per transaction in cents"
+    },
     "company_name": {
       "type": "string"
     },
