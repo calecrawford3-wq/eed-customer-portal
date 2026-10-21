@@ -112,6 +112,31 @@ test('sandbox invoice credit uses production CAS logic without touching real inv
   assert.equal(state.rows.Invoice[0].amount_paid,0);
   assert.equal(state.rows.Invoice[0].payments.length,0);
 });
+test('production invoice credits with missing optional fields and adapter acknowledgement without updated count', async () => {
+  const { state, helpers } = setup();
+  const invoice = state.rows.Invoice[0];
+  delete invoice.applied_credits;
+  const match = (row,q) => Object.entries(q).every(([key,value]) => JSON.stringify(row[key]) === JSON.stringify(value));
+  const entity = {
+    filter: async q => structuredClone(state.rows.Invoice.filter(row => match(row,q))),
+    updateMany: async (q,op) => {
+      assert.equal(Object.hasOwn(q,'payments'),false);
+      assert.equal(Object.hasOwn(q,'updated_date'),false);
+      assert.equal(Object.hasOwn(q,'applied_credits'),false);
+      const row=state.rows.Invoice.find(row=>match(row,q));
+      if (row) Object.assign(row,structuredClone(op.$set));
+      return {success:true};
+    },
+  };
+  const base44={asServiceRole:{entities:{Invoice:entity}}};
+  const facts=(id,amount)=>({type:'invoice',id:'invA',amount,fee:0,method:'card',sessionId:id,intent:'pi_'+id,live:false,date:'2026-10-21'});
+  assert.equal((await helpers.creditInvoice(base44,'invA','A',facts('cs_test_a',25000))).duplicate,false);
+  assert.equal((await helpers.creditInvoice(base44,'invA','A',facts('cs_test_a',25000))).duplicate,true);
+  assert.equal((await helpers.creditInvoice(base44,'invA','A',facts('cs_test_b',75000))).duplicate,false);
+  assert.equal(invoice.amount_paid,1000);
+  assert.equal(invoice.payments.length,2);
+});
+
 test('invalid signatures cannot write and legacy sources are ignored', async () => {
   const { state, payment, deliver } = setup(); const id = payment();
   assert.equal((await deliver(id, 'checkout.session.completed', 'invalid')).status, 400);
