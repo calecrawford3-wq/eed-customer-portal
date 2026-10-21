@@ -192,6 +192,7 @@ export default function Settings() {
             <p className="mt-1 mb-3 text-sm text-slate-600">Verify your Stripe account, test or live mode, webhooks, and checkout readiness. Secure keys remain in Base44 server-side secrets; existing billing stays active.</p>
             <Button variant="outline" onClick={()=>openTab("payments")}>Open Payment Setup</Button>
           </div>
+          <SettingsLinks title="Document templates" description="Configure invoice, estimate and purchase order notes." links={[{label:'Invoice & Estimate Templates',to:'/Settings?tab=templates'}]}/>
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Billing Defaults</CardTitle></CardHeader>
             <CardContent className="space-y-4">
