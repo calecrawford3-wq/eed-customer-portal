@@ -8,7 +8,7 @@ test('opaque iPhone header remains outside scrolling content to prevent scroll-e
  assert.match(layout,/data-elite-page-scroll/);
  assert.match(layout,/flex-1 min-h-0 overflow-y-auto/);
  assert.match(layout,/relative z-\[100\] flex-none/);
- assert.match(layout,/backgroundColor:"#0f172a"/);
+ assert.match(layout,/backgroundColor:"#000000"/);
  assert.match(layout,/WebkitBackdropFilter:"none"/);
  assert.doesNotMatch(layout,/fixed inset-x-0 top-0/);
 });

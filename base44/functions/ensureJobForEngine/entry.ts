@@ -31,16 +31,23 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (user.role !== "admin") return Response.json({ error: "Admin required" }, { status: 403 });
 
     const body = await req.json();
     const engineId = body.customer_engine_id;
-    if (!engineId) return Response.json({ error: "customer_engine_id required" }, { status: 400 });
+    if (typeof engineId !== "string" || !engineId || engineId.length > 200) return Response.json({ error: "Valid customer_engine_id required" }, { status: 400 });
     const invoiceId = body.invoice_id || null;
+    if (invoiceId && (typeof invoiceId !== "string" || invoiceId.length > 200)) return Response.json({ error: "Invalid invoice_id" }, { status: 400 });
 
     // Load the engine
     const engRes = await base44.asServiceRole.entities.CustomerEngine.filter({ id: engineId });
     const engine = (engRes.items || engRes || [])[0];
     if (!engine) return Response.json({ error: "Engine not found" }, { status: 404 });
+
+    if (invoiceId) {
+      const invoiceRes = await base44.asServiceRole.entities.Invoice.filter({ id: invoiceId, customer_id: engine.customer_id });
+      if (!(invoiceRes.items || invoiceRes || []).length) return Response.json({ error: "Invoice does not belong to engine customer" }, { status: 400 });
+    }
 
     // Check for an existing job for this engine
     const jobRes = await base44.asServiceRole.entities.Job.filter({ customer_engine_id: engineId });

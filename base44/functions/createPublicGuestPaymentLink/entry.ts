@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { guestVisible } from '../../shared/guestAccess.ts';
 import { guestTokenExpired } from '../../shared/guestFields.ts';
-import { portalItems } from '../../shared/portalDocument.ts';
+import { portalItems, portalAmounts } from '../../shared/portalDocument.ts';
 
 // A public document link is a bearer capability. It may only issue a
 // narrower payment-only link, never grant approval or account access.
@@ -16,7 +16,7 @@ export default async function(req) {
     const entity=base44.asServiceRole.entities[documentType==='estimate'?'Estimate':'Invoice'];
     const doc=portalItems(await entity.filter({public_access_token:publicAccessToken}))[0];
     if(!doc||!guestVisible(doc,documentType)) return Response.json({error:'Document unavailable'},{status:404});
-    if(doc.status==='paid'||Number(doc.balance_due)===0)
+    if(doc.status==='paid'||portalAmounts(doc,documentType).balance<=0)
       return Response.json({error:'No payment remaining'},{status:409});
     let token=doc.guest_payment_token;
     if(guestTokenExpired(token)) {
