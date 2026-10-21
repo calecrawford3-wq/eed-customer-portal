@@ -119,7 +119,7 @@ export default function PaymentMigration({embedded=false}) {
         <p className="break-all">Sandbox invoice: <code>{testInvoice.invoice_id}</code></p>
         <div className="grid grid-cols-2 gap-2"><p>Total: <strong>${Number(testInvoice.total||0).toFixed(2)}</strong></p><p>Status: <strong>{testInvoice.status}</strong></p><p>Paid: <strong>${Number(testInvoice.amount_paid||0).toFixed(2)}</strong></p><p>Balance: <strong>${Number(testInvoice.balance_due||0).toFixed(2)}</strong></p></div>
         <label className="block">Payment amount<select className="mt-1 block w-full rounded-md border p-2" value={testInvoiceOption} onChange={e=>setTestInvoiceOption(e.target.value)}><option value="deposit">25% deposit</option><option value="balance">Remaining balance</option></select></label>
-        <p>Payment method: <strong>{sandboxMethod==='affirm'?'Affirm':'Card'}</strong> (choose in Sandbox Test Payments section above).</p>
+        <p>Payment method: <strong>{sandboxMethod==='affirm'?'Affirm':'Card'}</strong> (choose in Sandbox Test Payments section below).</p>
         <Button disabled={busy||Number(testInvoice.balance_due)<=0} onClick={()=>runSandboxInvoice('invoice_checkout')}>Open Sandbox Invoice Checkout</Button>
         <label className="block">Test checkout session ID<Input className="mt-1" placeholder="cs_test_..." value={testInvoiceSession} onChange={e=>setTestInvoiceSession(e.target.value)}/></label>
         <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={()=>runSandboxInvoice('invoice_status')}>Refresh Invoice Balance</Button><Button variant="outline" disabled={busy||!testInvoiceSession} onClick={()=>runSandboxInvoice('replay_invoice')}>Verify / Replay Payment</Button></div>
