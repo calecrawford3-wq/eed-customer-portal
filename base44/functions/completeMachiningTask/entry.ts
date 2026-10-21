@@ -60,10 +60,28 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
+    // A prior request can mark the task complete before history is linked.
+    // Repair that partial completion instead of treating it as a correction.
     const wasComplete = task.status === "complete" && !!task.completed_at;
+    if (wasComplete && task.customer_engine_id && !task.history_entry_id) {
+      const priorRes = await base44.asServiceRole.entities.ServiceHistoryEntry.filter({
+        source_id: taskId, entry_type: "machining_task",
+      });
+      const prior = (priorRes.items || priorRes || [])[0];
+      if (prior) {
+        await base44.asServiceRole.entities.MachiningTask.update(taskId, { history_entry_id: prior.id });
+        task.history_entry_id = prior.id;
+      } else {
+        // Resume the first completion using the persisted measurements.
+        // If caller supplied different values, they must retry as a correction.
+        if (JSON.stringify(task.measurements || {}) !== JSON.stringify(measurements)) {
+          return Response.json({ error: "Completion history is pending repair. Retry with the saved measurements first." }, { status: 409 });
+        }
+      }
+    }
     const oldMeasurements = task.measurements || {};
 
-    if (wasComplete) {
+    if (wasComplete && (!task.customer_engine_id || task.history_entry_id)) {
       // CORRECTION: record audit trail for changed fields
       const diffs = diffMeasurements(oldMeasurements, measurements);
       if (diffs.length > 0) {
@@ -115,13 +133,20 @@ Deno.serve(async (req) => {
     }
 
     // INITIAL COMPLETION
-    await base44.asServiceRole.entities.MachiningTask.update(taskId, {
+    const claim = await base44.asServiceRole.entities.MachiningTask.updateMany({
+      id: taskId,
+      status: task.status,
+      completed_at: task.completed_at === undefined ? { $exists: false } : task.completed_at,
+    }, { $set: {
       status: "complete",
       completed_at: now,
       completed_by: userName,
       measurements,
       blocked_reason: "",
-    });
+    } });
+    if (claim?.updated !== 1 && !wasComplete) {
+      return Response.json({ error: "Task changed during completion. Refresh and retry." }, { status: 409 });
+    }
 
     // Create the service history entry (idempotent via source_id = task_id)
     let historyEntry = null;
