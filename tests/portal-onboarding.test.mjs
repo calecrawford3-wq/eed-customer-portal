@@ -112,12 +112,15 @@ test('public viewers do not follow stored legacy checkout URLs', () => {
     assert.doesNotMatch(content, /PortalAccess\?mode=signin/);
   }
 });
-test('Approve & Pay saves approval before launching portal checkout', () => {
+test('Approve & Pay saves approval before offering explicit payment options', () => {
   const viewer = readFileSync('src/pages/EstimateViewer.jsx','utf8');
   const dialog = readFileSync('src/components/portal/PortalDocumentDialog.jsx','utf8');
   assert.match(viewer, /Approve & Pay/);
   assert.match(viewer, /if \(response\?\.data\?\.success\)/);
-  assert.match(viewer, /openPortalCheckout\(\)/);
+  assert.match(viewer, /setPaymentModalOpen\(false\)/);
+  assert.match(viewer, /setPaymentModalOpen\(true\)/);
+  assert.match(viewer, /Proceed to Payment Processing/);
+  assert.match(viewer, /Send to guest \/ Share payment link/);
   assert.match(viewer, /openPublicDocumentPayment/);
   assert.match(viewer, /data\.estimate\?\.status === "approved"/);
   assert.match(dialog, /Approve & Pay/);
