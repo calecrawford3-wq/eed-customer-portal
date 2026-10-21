@@ -24,7 +24,6 @@ export default function EstimateViewer({ buildVersion }) {
   const [approvingSuccess, setApprovingSuccess] = useState(false);
   const [payingError, setPayingError] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentChoice, setPaymentChoice] = useState('deposit');
   const [paymentStep, setPaymentStep] = useState('choose');
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
@@ -133,19 +132,19 @@ export default function EstimateViewer({ buildVersion }) {
     }
   };
 
-  const openPortalCheckout = async (shareOnly = false) => {
+  const openPortalCheckout = async (shareOnly = false, amountOption = 'balance') => {
     setPaymentBusy(true);
     setPayingError(null);
     try {
-      const result = await base44Public.functions.invoke('openPublicDocumentPayment', {documentType:'estimate',publicAccessToken:token});
-      if (!result?.data?.url) throw new Error(result?.data?.error||'Payment link unavailable');
-      const url = new URL(result.data.url, window.location.origin);
-      if (url.origin !== window.location.origin || !url.pathname.startsWith('/guest/estimate/')) throw new Error('Invalid payment destination');
+      const result = await base44Public.functions.invoke(shareOnly ? 'openPublicDocumentPayment' : 'startPublicDocumentCheckout', {documentType:'estimate',publicAccessToken:token,...(!shareOnly ? {amountOption} : {})});
+      const destination = shareOnly ? result?.data?.url : result?.data?.checkout_url;
+      if (!destination) throw new Error(result?.data?.error||'Payment link unavailable');
+      const url = new URL(destination, window.location.origin);
+      if (shareOnly ? (url.origin !== window.location.origin || !url.pathname.startsWith('/guest/estimate/')) : (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com')) throw new Error('Invalid payment destination');
       if (shareOnly) {
         setShareUrl(url.href);
         setPaymentStep('share');
       } else {
-        url.searchParams.set('option', paymentChoice);
         window.location.assign(url.href);
       }
     } catch (error) {setPayingError(error?.response?.data?.error||error?.message||'Online payment is not available yet.');}
@@ -157,7 +156,6 @@ export default function EstimateViewer({ buildVersion }) {
       setPayingError('Approve this estimate before making a payment.');
       return;
     }
-    setPaymentChoice(Number(data.estimate.deposit_amount)>0&&!data.estimate.deposit_paid?'deposit':'balance');
     setPaymentStep('choose');
     setShareUrl('');
     setPayingError(null);
