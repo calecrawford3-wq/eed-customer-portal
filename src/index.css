@@ -133,6 +133,14 @@
     min-height: 0;
     flex: 1 1 0%;
   }
+  /* iOS installed Home Screen app: extend the shared scrollable shell into
+     the ~50px bottom strip observed beneath the fixed diagnostic overlay.
+     Keep this workaround out of Safari, desktop and printable views. */
+  @media (display-mode: standalone) and (max-width: 767px) {
+    .elite-app-shell {
+      bottom: -50px;
+    }
+  }
   @media print {
     html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
       height: auto;
