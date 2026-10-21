@@ -24,7 +24,6 @@ export default async function(req) {
       portal_payments: isOn('PORTAL_PAYMENTS_ENABLED'),
       payment_recording: isOn('PORTAL_STRIPE_RECORDING_READY'),
       guest_checkout: isOn('GUEST_CHECKOUT_ENABLED'),
-      ach: isOn('PORTAL_ENABLE_ACH'),
       affirm: isOn('PORTAL_ENABLE_AFFIRM'),
     };
     const config = {
@@ -47,7 +46,7 @@ export default async function(req) {
     // real-device behavior. Those are non-waivable manual launch checks.
     const requiredAcceptance = [
       'Stage 8 Stripe account, fee disclosures, methods and signed test webhooks',
-      'Stage 9 deposits, duplicate/concurrent payments, pending ACH and recovery',
+      'Stage 9 deposits, duplicate/concurrent card and Affirm payments, and recovery',
       'Stage 10 finding approvals, revisions, task/invoice synchronization',
       'Stage 11 onboarding, email/SMS delivery and opt-out behavior',
       'Stage 12 two-customer RLS isolation, private photos and mobile browsers',
