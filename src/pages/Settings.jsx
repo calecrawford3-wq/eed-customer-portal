@@ -17,6 +17,12 @@ import WorkflowTemplatesPanel from "@/components/settings/WorkflowTemplatesPanel
 import StorageLocationsPanel from "@/components/settings/StorageLocationsPanel";
 import { useSearchParams } from 'react-router-dom';
 import PaymentMigration from './PaymentMigration';
+import SettingsHome,{SettingsLinks,SETTINGS_CATEGORIES} from '@/components/settings/SettingsHome';
+import Platforms from './Platforms';
+import SpecSheets from './SpecSheets';
+import ReplacementRules from './ReplacementRules';
+import CannedJobs from './CannedJobs';
+import Addons from './Addons';
 
 const defaultSettings = {
   key: "global",
@@ -55,7 +61,8 @@ const defaultSettings = {
 export default function Settings() {
   const qc = useQueryClient();
   const [searchParams,setSearchParams] = useSearchParams();
-  const activeTab = ['company','billing','payments','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'company';
+  const activeTab = ['overview','company','billing','payments','employees','engines','shop','inventory','portal','communications','system','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+  const openTab = tab=>setSearchParams(tab==='overview'?{}:{tab});
   const [form, setForm] = useState(defaultSettings);
 
   const { data: settingsData } = useQuery({
@@ -125,18 +132,12 @@ export default function Settings() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={tab=>setSearchParams(tab==='company'?{}:{tab})}>
-        <TabsList className="mb-6 flex overflow-x-auto">
-          <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1" /> Company</TabsTrigger>
-          <TabsTrigger value="billing"><Receipt className="w-4 h-4 mr-1" /> Billing</TabsTrigger>
-          <TabsTrigger value="payments"><Receipt className="w-4 h-4 mr-1" /> Payments</TabsTrigger>
-          <TabsTrigger value="email"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
-          <TabsTrigger value="templates"><FileText className="w-4 h-4 mr-1" /> Templates</TabsTrigger>
-          <TabsTrigger value="workflows"><ListChecks className="w-4 h-4 mr-1" /> Workflows</TabsTrigger>
-          <TabsTrigger value="storage"><MapPin className="w-4 h-4 mr-1" /> Storage</TabsTrigger>
-          <TabsTrigger value="telephony"><Phone className="w-4 h-4 mr-1" /> Telephony</TabsTrigger>
-          <TabsTrigger value="notifications"><Bell className="w-4 h-4 mr-1" /> Notifications</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={openTab}>
+        <TabsList className="mb-6 flex max-w-full flex-wrap h-auto gap-1 bg-transparent p-0">
+          <TabsTrigger value="overview">All Settings</TabsTrigger>
+          {SETTINGS_CATEGORIES.map(c=><TabsTrigger key={c.tab} value={c.tab}>{c.name}</TabsTrigger>)}
         </TabsList>
+        <TabsContent value="overview"><SettingsHome open={openTab}/></TabsContent>
 
         {/* Company Info */}
         <TabsContent value="company">
@@ -189,7 +190,7 @@ export default function Settings() {
           <div className="mb-4 rounded-xl border bg-white p-4">
             <h2 className="font-semibold">Portal Payments</h2>
             <p className="mt-1 mb-3 text-sm text-slate-600">Verify your Stripe account, test or live mode, webhooks, and checkout readiness. Secure keys remain in Base44 server-side secrets; existing billing stays active.</p>
-            <Button variant="outline" onClick={()=>setSearchParams({tab:"payments"})}>Open Payment Setup</Button>
+            <Button variant="outline" onClick={()=>openTab("payments")}>Open Payment Setup</Button>
           </div>
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base">Billing Defaults</CardTitle></CardHeader>
@@ -226,6 +227,38 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="payments"><PaymentMigration embedded /></TabsContent>
+
+        <TabsContent value="employees" className="space-y-4">
+          <SettingsLinks title="Employee administration" description="Staff profiles, employee-level page permissions, onboarding and time records remain managed in HR Administration." links={[{label:'HR Administration & Page Permissions',to:'/HRAdmin',detail:'Edit each employee and their allowed pages'},{label:'Employee Portal',to:'/EmployeePortal',detail:'Time clock and employee self-service'},{label:'Staff Workspace',to:'/StaffWorkspace',detail:'Restricted operational job queue'}]}/>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Advanced view/edit/delete permissions are not yet available. Page permissions do not grant backend access to protected financial records.</div>
+        </TabsContent>
+        <TabsContent value="engines" className="space-y-4">
+          <SettingsLinks title="Engine configuration" description="Manage your supported platforms, technical specifications, and replacement schedules without leaving Settings." links={[{label:'Platforms',to:'/Platforms'},{label:'Spec Sheets',to:'/SpecSheets'},{label:'Replacement Rules',to:'/ReplacementRules'}]}/>
+          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage engine platforms here</summary><Platforms/></details>
+          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage spec sheets here</summary><SpecSheets/></details>
+          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage replacement rules here</summary><ReplacementRules/></details>
+        </TabsContent>
+        <TabsContent value="shop" className="space-y-4">
+          <SettingsLinks title="Job and workflow configuration" links={[{label:'Canned Jobs',to:'/CannedJobs'},{label:'Addons',to:'/Addons'},{label:'Build Workflow',to:'/BuildWorkflow',detail:'Daily operations, not a setting'},{label:'Machining Station',to:'/MachiningStation',detail:'Daily operations, not a setting'}]}/>
+          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage canned jobs</summary><CannedJobs/></details>
+          <details className="rounded-lg border bg-white p-4"><summary className="font-semibold cursor-pointer">Manage addons</summary><Addons/></details>
+          <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Workflow templates</h3><WorkflowTemplatesPanel/></section>
+        </TabsContent>
+        <TabsContent value="inventory" className="space-y-4">
+          <SettingsLinks title="Inventory administration" links={[{label:'Inventory',to:'/Inventory',detail:'Manage stock and reorder levels'},{label:'Suppliers',to:'/Suppliers'},{label:'Purchase Orders',to:'/PurchaseOrders'}]}/>
+          <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Storage locations</h3><StorageLocationsPanel/></section>
+        </TabsContent>
+        <TabsContent value="portal" className="space-y-4">
+          <SettingsLinks title="Customer portal administration" description="Customer accounts and the existing onboarding workflow are managed in their respective areas. Additional required-field toggles and customer feature flags need backend integration before they can be enforced." links={[{label:'Customer Portal',to:'/CustomerPortal'},{label:'Customer Records',to:'/Customers'},{label:'Refresh Requests',to:'/RefreshRequests'},{label:'Customer Success',to:'/CustomerSuccess'}]}/>
+        </TabsContent>
+        <TabsContent value="communications" className="space-y-4">
+          <SettingsLinks title="Communication settings" description="Configure email delivery, phone integrations and alerts." links={[{label:'Email Configuration',to:'/Settings?tab=email'},{label:'Phone Configuration',to:'/Settings?tab=telephony'},{label:'Notifications',to:'/Settings?tab=notifications'}]}/>
+          <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Notification preferences</h3><NotificationSettingsPanel form={form} set={set}/></section>
+        </TabsContent>
+        <TabsContent value="system" className="space-y-4">
+          <SettingsLinks title="System administration" description="Available diagnostics and operational reports. A consolidated audit trail for all changes is not implemented yet." links={[{label:'Payment & Stripe Diagnostics',to:'/Settings?tab=payments'},{label:'Workflow Templates',to:'/Settings?tab=workflows'},{label:'Business Reports',to:'/Reports'},{label:'Exceptions',to:'/ExceptionDashboard'},{label:'Human Resources',to:'/HRAdmin'}]}/>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">System-wide audit history, automation error monitoring and integration health checks require separate backend instrumentation. No false health or audit status is displayed.</div>
+        </TabsContent>
 
         {/* Email Setup */}
         <TabsContent value="email">
