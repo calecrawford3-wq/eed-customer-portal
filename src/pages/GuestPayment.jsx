@@ -10,7 +10,7 @@ import PortalPaymentReceipt from '@/components/portal/PortalPaymentReceipt';
 export default function GuestPayment() {
   const { type, token } = useParams();
   const [params] = useSearchParams();
-  const [option, setOption] = useState('');
+  const [option, setOption] = useState(() => new URLSearchParams(window.location.search).get('option') === 'balance' ? 'balance' : new URLSearchParams(window.location.search).get('option') === 'deposit' ? 'deposit' : '');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
