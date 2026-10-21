@@ -17,12 +17,36 @@ export default function PaymentMigration({embedded=false}) {
   const [sandboxAmount, setSandboxAmount] = useState(100);
   const [sandboxSession, setSandboxSession] = useState('');
   const [sandboxResult, setSandboxResult] = useState(null);
+  const [testInvoice, setTestInvoice] = useState(null);
+  const [testInvoiceAmount, setTestInvoiceAmount] = useState(1000);
+  const [testInvoiceOption, setTestInvoiceOption] = useState('deposit');
+  const [testInvoiceSession, setTestInvoiceSession] = useState('');
   const [fees, setFees] = useState(null);
   const [providerGates, setProviderGates] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   if (user?.role !== 'admin') return <p>Staff access required.</p>;
+  async function runSandboxInvoice(action) {
+    setBusy(true);setError('');setMessage('');
+    try {
+      const payload=action==='create_invoice'?{total_cents:Math.round(Number(testInvoiceAmount)*100)}
+        :{invoice_id:testInvoice?.invoice_id,...(action==='invoice_checkout'?{method:sandboxMethod,payment_option:testInvoiceOption}:{}),
+          ...(action==='replay_invoice'?{session_id:testInvoiceSession.trim()}:{})};
+      const r=await base44.functions.invoke('manageStripeSandboxTest',{action,...payload});
+      if(r.data?.error) throw new Error(r.data.error);
+      if(action==='create_invoice') {setTestInvoice(r.data);setTestInvoiceSession('');setMessage('Isolated sandbox invoice created.');}
+      if(action==='invoice_checkout') {setTestInvoiceSession(r.data.session_id);window.open(r.data.url,'_blank','noopener,noreferrer');setMessage('Sandbox invoice checkout opened for $'+r.data.amount.toFixed(2));}
+      if(action==='invoice_status') {setTestInvoice(r.data);setMessage('Sandbox invoice status refreshed.');}
+      if(action==='replay_invoice') {setMessage(r.data.pending?'Payment is not paid yet.':r.data.duplicate?'Duplicate prevented. Payment recorded only once.':'Verified sandbox payment recorded.');await runSandboxInvoiceStatus();}
+    } catch(e) {setError(e.response?.data?.error||e.message||'Sandbox invoice test failed');}
+    finally {setBusy(false);}
+  }
+  async function runSandboxInvoiceStatus() {
+    const r=await base44.functions.invoke('manageStripeSandboxTest',{action:'invoice_status',invoice_id:testInvoice?.invoice_id});
+    if(r.data?.error) throw new Error(r.data.error);
+    setTestInvoice(r.data);
+  }
   async function runSandbox(action) {
     setBusy(true);setError('');setMessage('');
     try {
@@ -85,6 +109,24 @@ export default function PaymentMigration({embedded=false}) {
       <Button variant="outline" disabled={busy||!sandboxSession.trim()} onClick={()=>runSandbox('status')}>Check Test Payment Status</Button>
       {sandboxResult && <p className="text-sm rounded-md bg-white border p-3">Stripe status: <strong>{sandboxResult.status}</strong>. Payment: <strong>{sandboxResult.payment_status}</strong>. Test amount: ${((sandboxResult.amount_total||0)/100).toFixed(2)}. Elite financial records changed: <strong>No</strong>.</p>}
       <p className="text-xs text-amber-900">Signed webhook delivery must also be verified in Stripe's test webhook delivery log. Successful sandbox checkout alone does not authorize live checkout.</p>
+    </section>
+    <section className="rounded-xl border border-indigo-300 bg-indigo-50 p-5 space-y-3">
+      <h2 className="font-semibold">Sandbox invoice integration tests</h2>
+      <p className="text-sm">Tests the shared production invoice-crediting logic against an isolated sandbox-only invoice entity. No real invoices, customers, estimates, or revenue are touched. A sandbox invoice is not a real customer invoice.</p>
+      <label className="block text-sm">Test invoice total (USD)<Input className="mt-1" type="number" min="50" max="100000" step="1" value={testInvoiceAmount} onChange={e=>setTestInvoiceAmount(e.target.value)}/></label>
+      <Button variant="outline" disabled={busy||!(Number(testInvoiceAmount)>=50&&Number(testInvoiceAmount)<=100000)} onClick={()=>runSandboxInvoice('create_invoice')}>Create Isolated Test Invoice</Button>
+      {testInvoice && <div className="space-y-3 rounded-lg border bg-white p-3 text-sm">
+        <p className="break-all">Sandbox invoice: <code>{testInvoice.invoice_id}</code></p>
+        <div className="grid grid-cols-2 gap-2"><p>Total: <strong>${Number(testInvoice.total||0).toFixed(2)}</strong></p><p>Status: <strong>{testInvoice.status}</strong></p><p>Paid: <strong>${Number(testInvoice.amount_paid||0).toFixed(2)}</strong></p><p>Balance: <strong>${Number(testInvoice.balance_due||0).toFixed(2)}</strong></p></div>
+        <label className="block">Payment amount<select className="mt-1 block w-full rounded-md border p-2" value={testInvoiceOption} onChange={e=>setTestInvoiceOption(e.target.value)}><option value="deposit">25% deposit</option><option value="balance">Remaining balance</option></select></label>
+        <p>Payment method: <strong>{sandboxMethod==='affirm'?'Affirm':'Card'}</strong> (choose in Sandbox Test Payments section above).</p>
+        <Button disabled={busy||Number(testInvoice.balance_due)<=0} onClick={()=>runSandboxInvoice('invoice_checkout')}>Open Sandbox Invoice Checkout</Button>
+        <label className="block">Test checkout session ID<Input className="mt-1" placeholder="cs_test_..." value={testInvoiceSession} onChange={e=>setTestInvoiceSession(e.target.value)}/></label>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={()=>runSandboxInvoice('invoice_status')}>Refresh Invoice Balance</Button><Button variant="outline" disabled={busy||!testInvoiceSession} onClick={()=>runSandboxInvoice('replay_invoice')}>Verify / Replay Payment</Button></div>
+        {testInvoice.payments?.length>0 && <div><p className="font-semibold">Recorded sandbox payments</p>{testInvoice.payments.map(p=><p key={p.session_id} className="break-all">{p.method}: ${Number(p.amount).toFixed(2)} | {p.session_id}</p>)}</div>}
+        {testInvoice.estimated_processing_costs && <p>Estimated merchant processing expense: <strong>${Number(testInvoice.estimated_total_processing_cost||0).toFixed(2)}</strong> (from your saved card/Affirm rates, not an actual Stripe fee or customer surcharge).</p>}
+      </div>}
+      <p className="text-xs text-amber-900">Verify deposit, balance, duplicate replay and canceled/declined payment. Test invoices live only in StripeSandboxInvoice; production estimate conversion, live customer authorization, and Stripe actual fee reconciliation still need separate acceptance testing.</p>
     </section>
     <section className="rounded-xl border border-slate-300 bg-white p-5 space-y-3">
       <h2 className="font-semibold">Stage 14: Legacy billing migration audit</h2>
