@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 const layout=readFileSync('src/Layout.jsx','utf8');
 const css=readFileSync('src/index.css','utf8');
 test('opaque iPhone header remains outside scrolling content to prevent scroll-edge fade',()=>{
- assert.match(layout,/elite-app-shell flex flex-col/);
+ assert.match(layout,/elite-app-shell fixed inset-0 flex flex-col/);
  assert.match(layout,/data-elite-page-scroll/);
  assert.match(layout,/flex-1 min-h-0 overflow-y-auto/);
  assert.match(layout,/relative z-\[100\] flex-none/);
