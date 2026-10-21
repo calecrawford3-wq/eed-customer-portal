@@ -21,11 +21,6 @@ const CATEGORY_LABELS = {
  * Accepts either a single location or an array of locations.
  *
  * @param {{name?: string, category?: string, startPos?: number, copies?: number, locations?: Array<{name: string, category?: string}>}} opts
- * @param {string} opts.name        — The location name to print (e.g. "Cart 1", "ES1")
- * @param {string} opts.category   — One of: engines, carts, stands, parts
- * @param {number} opts.startPos   — Starting label position (1-10) on the sheet
- * @param {number} opts.copies     — Number of labels to print (1-10)  [single-location mode only]
- * @param {Array}  opts.locations  — Array of { name, category } to print multiple locations on one sheet
  */
 export function printStorageLocationLabel(opts) {
   // Normalize into a flat list of { name, category } entries
