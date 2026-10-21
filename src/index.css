@@ -121,6 +121,14 @@
   .elite-app-shell {
     inset: 0;
     width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    bottom: auto;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  @supports (-webkit-touch-callout: none) {
+    .elite-app-shell { height: 100dvh; }
   }
   [data-elite-page-scroll] {
     min-height: 0;
