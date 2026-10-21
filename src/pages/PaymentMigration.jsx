@@ -35,7 +35,7 @@ export default function PaymentMigration({embedded=false}) {
           ...(action==='replay_invoice'?{session_id:testInvoiceSession.trim()}:{})};
       const r=await base44.functions.invoke('manageStripeSandboxTest',{action,...payload});
       if(r.data?.error) throw new Error([r.data.error,r.data.stage,r.data.diagnostic_type,r.data.diagnostic].filter(Boolean).join(' | '));
-      if(action==='create_invoice') {setTestInvoice(r.data);setTestInvoiceSession('');setMessage('Isolated sandbox invoice created.');}
+      if(action==='create_invoice'||action==='link_estimate_test') {setTestInvoice(r.data);setTestInvoiceSession('');setMessage(action==='link_estimate_test'?'Linked safe sandbox mirror to EST-727124. Original estimate remains unchanged.':'Isolated sandbox invoice created.');}
       if(action==='invoice_checkout') {setTestInvoiceSession(r.data.session_id);window.open(r.data.url,'_blank','noopener,noreferrer');setMessage('Sandbox invoice checkout opened for $'+r.data.amount.toFixed(2));}
       if(action==='invoice_status') {setTestInvoice(r.data);setMessage('Sandbox invoice status refreshed.');}
       if(action==='replay_invoice') {setMessage(r.data.pending?'Payment is not paid yet.':r.data.duplicate?'Duplicate prevented. Payment recorded only once.':'Verified sandbox payment recorded.');await runSandboxInvoiceStatus();}
@@ -112,13 +112,14 @@ export default function PaymentMigration({embedded=false}) {
     </section>
     <section className="rounded-xl border border-indigo-300 bg-indigo-50 p-5 space-y-3">
       <h2 className="font-semibold">Sandbox invoice integration tests</h2>
+      <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 space-y-2"><p className="font-semibold text-amber-950">TEST MODE · Existing estimate EST-727124</p><p className="text-sm text-amber-950">Use the real estimate as a read-only reference. Test payments are recorded in an isolated mirror, never against the actual $1,085 estimate, its $250 deposit, customer, jobs, revenue, or taxes. This does not yet validate real estimate approval and job transitions.</p><Button variant="outline" disabled={busy} onClick={()=>runSandboxInvoice('link_estimate_test')}>Load EST-727124 Test Mirror</Button></div>
       <p className="text-sm">Tests the shared production invoice-crediting logic against an isolated sandbox-only invoice entity. No real invoices, customers, estimates, or revenue are touched. A sandbox invoice is not a real customer invoice.</p>
       <label className="block text-sm">Test invoice total (USD)<Input className="mt-1" type="number" min="50" max="100000" step="1" value={testInvoiceAmount} onChange={e=>setTestInvoiceAmount(e.target.value)}/></label>
       <Button variant="outline" disabled={busy||!(Number(testInvoiceAmount)>=50&&Number(testInvoiceAmount)<=100000)} onClick={()=>runSandboxInvoice('create_invoice')}>Create Isolated Test Invoice</Button>
       {testInvoice && <div className="space-y-3 rounded-lg border bg-white p-3 text-sm">
-        <p className="break-all">Sandbox invoice: <code>{testInvoice.invoice_id}</code></p>
+        <p className="break-all">Sandbox invoice: <code>{testInvoice.invoice_id}</code>{testInvoice.linked_estimate_number&&<strong className="ml-2">Linked read-only: {testInvoice.linked_estimate_number}</strong>}</p>
         <div className="grid grid-cols-2 gap-2"><p>Total: <strong>${Number(testInvoice.total||0).toFixed(2)}</strong></p><p>Status: <strong>{testInvoice.status}</strong></p><p>Paid: <strong>${Number(testInvoice.amount_paid||0).toFixed(2)}</strong></p><p>Balance: <strong>${Number(testInvoice.balance_due||0).toFixed(2)}</strong></p></div>
-        <label className="block">Payment amount<select className="mt-1 block w-full rounded-md border p-2" value={testInvoiceOption} onChange={e=>setTestInvoiceOption(e.target.value)}><option value="deposit">25% deposit</option><option value="balance">Remaining balance</option></select></label>
+        <label className="block">Payment amount<select className="mt-1 block w-full rounded-md border p-2" value={testInvoiceOption} onChange={e=>setTestInvoiceOption(e.target.value)}><option value="deposit">{testInvoice.linked_estimate_number?'Estimate deposit ($'+Number(testInvoice.deposit_amount||0).toFixed(2)+')':'25% deposit'}</option><option value="balance">Remaining balance</option></select></label>
         <p>Payment method: <strong>{sandboxMethod==='affirm'?'Affirm':'Card'}</strong> (choose in Sandbox Test Payments section below).</p>
         <Button disabled={busy||Number(testInvoice.balance_due)<=0} onClick={()=>runSandboxInvoice('invoice_checkout')}>Open Sandbox Invoice Checkout</Button>
         <label className="block">Test checkout session ID<Input className="mt-1" placeholder="cs_test_..." value={testInvoiceSession} onChange={e=>setTestInvoiceSession(e.target.value)}/></label>
