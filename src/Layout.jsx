@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{useEffect,useRef} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import {Home,Settings2,Search,ScanLine} from 'lucide-react';
 import {createPageUrl} from './utils';
@@ -11,14 +11,16 @@ import {AppSectionNav} from '@/components/navigation/AppLauncher';
 const LOGO='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
 export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
  const navigate=useNavigate();
+ const pageScroller=useRef(null);
+ useEffect(()=>{pageScroller.current?.scrollTo(0,0);},[currentPageName]);
  usePushNotifications();
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
  const canUse=page=>!staffMode||staffAllowedPages.includes(page);
- return <div className="min-h-screen bg-slate-50">
+ return <div className="elite-app-shell flex flex-col bg-slate-50" style={{height:"100dvh",minHeight:0}}>
    {!staffMode&&<GlobalBarcodeListener/>}
    {!staffMode&&<GlobalSearch/>}
-   <header className="fixed inset-x-0 top-0 z-[100] text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",background:"#0f172a",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
+   <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#0f172a",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
     <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
       <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
       <div className="flex items-center gap-1 sm:gap-2">
@@ -30,8 +32,9 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
       </div>
     </div>
    </header>
-   <div aria-hidden="true" className="print:hidden" style={{height:"calc(56px + env(safe-area-inset-top, 0px))",backgroundColor:"#0f172a"}} />
-   {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
-   <main className="mx-auto max-w-screen-2xl min-w-0" style={{paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>{children}</main>
+   <div ref={pageScroller} data-elite-page-scroll className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50" style={{WebkitOverflowScrolling:"touch"}}>
+    {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
+    <main className="mx-auto max-w-screen-2xl min-w-0" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>{children}</main>
+   </div>
  </div>;
 }
