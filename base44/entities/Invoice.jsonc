@@ -352,6 +352,16 @@
         }
       }
     },
+    "pricing_allowance_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "One-time percentage included in subtotal for new documents; inherited on estimate conversion"
+    },
+    "pricing_allowance_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "One-time pricing allowance included in subtotal"
+    },
     "subtotal": {
       "type": "number"
     },
