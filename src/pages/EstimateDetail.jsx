@@ -93,6 +93,7 @@ export default function EstimateDetail() {
     machining_items: [],
     discount_type: "none", discount_value: 0, discount_amount: 0,
     shipping_cost: 0,
+    pricing_allowance_rate: 5, pricing_allowance_amount: 0,
     tax_rate: 0, notes: "", internal_notes: ""
   });
 
@@ -367,8 +368,10 @@ export default function EstimateDetail() {
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
     const selectedAddonTotal = (addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected').reduce((s, a) => s + (Number(a.price) || 0), 0);
-    const subtotal = partTotal + laborTotal + machiningTotal + selectedAddonTotal;
-    const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
+    const baseSubtotal = partTotal + laborTotal + machiningTotal + selectedAddonTotal;
+    const pricing_allowance_amount = Math.round(Math.max(0, baseSubtotal) * (Number(form.pricing_allowance_rate) || 0)) / 100;
+    const subtotal = baseSubtotal + pricing_allowance_amount;
+    const tax_amount = partTotal * (1 + (Number(form.pricing_allowance_rate) || 0) / 100) * (Number(taxRate) / 100); // tax on parts including their allocated allowance
     let discount_amount = 0;
     if (discountType === "amount") {
       discount_amount = Math.min(Number(discountValue) || 0, subtotal);
@@ -376,7 +379,7 @@ export default function EstimateDetail() {
       discount_amount = subtotal * ((Number(discountValue) || 0) / 100);
     }
     const shipping = shippingCost !== undefined ? (Number(shippingCost) || 0) : (Number(form.shipping_cost) || 0);
-    return { subtotal, tax_amount, discount_amount, total: subtotal + tax_amount - discount_amount + shipping };
+    return { subtotal, pricing_allowance_amount, tax_amount, discount_amount, total: subtotal + tax_amount - discount_amount + shipping };
   };
 
   const handleCustomerChange = (v) => {
