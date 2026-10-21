@@ -1,4 +1,4 @@
-import React,{useEffect,useRef} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import {Home,Settings2,Search,ScanLine} from 'lucide-react';
 import {createPageUrl} from './utils';
@@ -12,6 +12,23 @@ const LOGO='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/ba
 export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
  const navigate=useNavigate();
  const pageScroller=useRef(null);
+ const debugLayout=new URLSearchParams(window.location.search).has('layoutDebug');
+ const [layoutMetrics,setLayoutMetrics]=useState(null);
+ useEffect(()=>{
+  if(!debugLayout)return;
+  const measure=()=>{
+   const shell=document.querySelector('.elite-app-shell');
+   const scroller=pageScroller.current;
+   const a=shell?.getBoundingClientRect();
+   const b=scroller?.getBoundingClientRect();
+   const y=window.innerHeight-30;
+   const hit=document.elementFromPoint(window.innerWidth/2,y);
+   setLayoutMetrics({innerHeight:window.innerHeight,visualHeight:window.visualViewport?.height,visualOffset:window.visualViewport?.offsetTop,shellBottom:a?.bottom,scrollBottom:b?.bottom,scrollHeight:scroller?.scrollHeight,clientHeight:scroller?.clientHeight,hit:hit?.tagName+'.'+String(hit?.className||'').slice(0,55)});
+  };
+  measure();window.addEventListener('resize',measure);
+  const timer=setInterval(measure,1500);
+  return()=>{window.removeEventListener('resize',measure);clearInterval(timer)};
+ },[debugLayout]);
  useEffect(()=>{pageScroller.current?.scrollTo(0,0);},[currentPageName]);
 
  usePushNotifications();
@@ -37,5 +54,6 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
     {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
     <main className="mx-auto max-w-screen-2xl min-w-0 min-h-full">{children}</main>
    </div>
+   {debugLayout&&<div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:99999,background:'#111827',color:'white',fontSize:12,padding:'8px 12px',fontFamily:'monospace',pointerEvents:'none'}}>{JSON.stringify(layoutMetrics)}</div>}
  </div>;
 }
