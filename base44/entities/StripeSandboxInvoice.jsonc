@@ -1,0 +1,100 @@
+{
+  "name": "StripeSandboxInvoice",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "total": {
+      "type": "number"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "applied_credits": {
+      "type": "number",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "partial",
+        "paid",
+        "void"
+      ],
+      "default": "sent"
+    },
+    "payments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "processing_fee_amount": {
+            "type": "number"
+          },
+          "gross_charge_amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "stripe_session_id": {
+            "type": "string"
+          },
+          "stripe_payment_intent": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "payment_overage_amount": {
+      "type": "number"
+    },
+    "payment_overage_review_required": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "customer_id",
+    "total"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
