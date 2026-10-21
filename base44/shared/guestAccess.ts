@@ -10,7 +10,7 @@ export async function ownedGuestDocument(base44: any, user: any, type: string, i
   return { doc, entity };
 }
 export function guestVisible(doc: any, type: string) {
-  return !!doc.customer_id && (type === 'estimate' ? ['sent', 'approved'].includes(doc.status) : ['sent', 'partial', 'paid', 'overdue'].includes(doc.status));
+  return !!doc.customer_id && (type === 'estimate' ? ['sent', 'approved', 'partial', 'paid'].includes(doc.status) : ['sent', 'partial', 'paid', 'overdue'].includes(doc.status));
 }
 // Shared preview/checkout gate. Payers cannot approve work or sign agreements.
 export async function guestPaymentState(base44: any, doc: any, type: string) {
@@ -19,7 +19,7 @@ export async function guestPaymentState(base44: any, doc: any, type: string) {
   if (!guestVisible(doc, type)) reason = 'This document is unavailable.';
   else if (doc.status === 'paid' || amounts.balance <= 0) reason = 'This document has been paid. No payment is needed.';
   else if (type === 'estimate' && portalExpired(doc.expiry_date)) reason = 'This estimate has expired. Please ask the customer to contact the shop.';
-  else if (type === 'estimate' && doc.status !== 'approved') reason = 'The customer must approve this estimate before payment.';
+  else if (type === 'estimate' && !['approved', 'partial'].includes(doc.status)) reason = 'The customer must approve this estimate before payment.';
   else if (type === 'invoice' && doc.combined_parent_id) reason = 'Please ask the customer to share the combined invoice instead.';
   if (!reason && type === 'estimate') {
     const invoices = portalItems(await base44.asServiceRole.entities.Invoice.filter({ customer_id: doc.customer_id, estimate_id: doc.id }));
