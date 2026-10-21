@@ -2,6 +2,30 @@
   "name": "Estimate",
   "type": "object",
   "properties": {
+    "initial_findings": {
+      "type": "array",
+      "description": "Initial concerns included in original estimate pricing, separate from mid-build findings.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "photo_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "stripe_conversion_claim": {
       "type": "string",
       "description": "Server-owned invoice conversion claim; never automatically expired"
