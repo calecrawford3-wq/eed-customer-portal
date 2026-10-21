@@ -109,7 +109,7 @@
   }
 
   html {
-    background-color: #0f172a;
+    background-color: #f8fafc;
     overscroll-behavior-y: none;
   }
   html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
@@ -126,7 +126,7 @@
   }
   body {
     @apply text-foreground;
-    background-color: #0f172a;
+    background-color: #f8fafc;
     overflow-x: hidden;
     overscroll-behavior-y: none;
   }
