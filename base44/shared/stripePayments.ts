@@ -60,29 +60,26 @@ export async function creditInvoice(base44: any, invoiceId: string, cid: string,
     const paid = recorded + facts.amount;
     const excess = Math.max(0, paid + cents(invoice.applied_credits) - cents(invoice.total));
     const balance = Math.max(0, cents(invoice.total) - cents(invoice.applied_credits) - paid);
-    // Sandbox invoices are never edited by customers or staff and have no
-    // concurrent cash/check entries. A single atomic amount_paid predicate is
-    // sufficient to serialize competing Stripe sessions without matching
-    // Base44-managed timestamps or nullable fields. Production retains the
-    // original stricter conditional match unchanged.
-    const predicate = sandboxEntity
-      ? { id: invoice.id, customer_id: cid, amount_paid: invoice.amount_paid }
-      : {
-        id: invoice.id, customer_id: cid, payments: same(invoice, 'payments'), amount_paid: same(invoice, 'amount_paid'),
-        total: same(invoice, 'total'), applied_credits: same(invoice, 'applied_credits'),
-        status: same(invoice, 'status'), updated_date: same(invoice, 'updated_date'),
-      };
-    const result = await entity.updateMany(predicate, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
-    // Some entity adapters acknowledge a successful write without returning
-    // {updated:1}. For sandbox only, verify the persisted receipt directly.
-    // Never infer success from the response shape without checking the record.
-    if (sandboxEntity && attempt === 0) console.info('[sandbox invoice CAS]', {invoice_id:invoice.id, updated:result?.updated, result_keys:result&&typeof result==='object'?Object.keys(result):[], expected_amount_paid:invoice.amount_paid});
-    if (result?.updated === 1 || sandboxEntity) {
-      const fresh = portalItems(await entity.filter({ id: invoice.id, customer_id: cid }))[0];
-      if (sandboxEntity && fresh && !hasStripePayment(fresh.payments, facts)) continue;
-      if (!fresh || !hasStripePayment(fresh.payments, facts)) throw new PaymentError('Payment write could not be confirmed', 503);
-      return { invoice: fresh, duplicate: false };
+    // Match stable scalar financial state. Base44's adapter does not reliably
+    // match arrays or managed timestamps in updateMany predicates; those
+    // previously caused false 503s. Amount paid is advanced atomically with
+    // the receipt, serializing concurrent provider and staff payments.
+    // Keep the total, credits and status checks when they are present to
+    // reject writes against changed document financial terms.
+    const predicate: any = { id: invoice.id, customer_id: cid, amount_paid: invoice.amount_paid };
+    if (!sandboxEntity) {
+      if (invoice.total !== undefined) predicate.total = invoice.total;
+      if (invoice.applied_credits !== undefined) predicate.applied_credits = invoice.applied_credits;
+      if (invoice.status !== undefined) predicate.status = invoice.status;
     }
+    const result = await entity.updateMany(predicate, { $set: { payments: [...previous, payment], amount_paid: paid / 100, balance_due: balance / 100, payment_overage_amount: excess / 100, payment_overage_review_required: excess > 0, status: balance === 0 ? 'paid' : 'partial' } });
+    // Adapter acknowledgements vary. Always confirm the persisted provider
+    // receipt rather than treating a success flag as proof of payment.
+    const fresh = portalItems(await entity.filter({ id: invoice.id, customer_id: cid }))[0];
+    if (fresh && hasStripePayment(fresh.payments, facts)) return { invoice: fresh, duplicate: false };
+    if (result?.updated === 1) throw new PaymentError('Payment write could not be confirmed', 503);
+    // Predicate lost a race, or adapter returned no update count. Reload and retry.
+    continue;
   }
   throw new PaymentError('Payment update is busy; retry delivery', 503);
 }
