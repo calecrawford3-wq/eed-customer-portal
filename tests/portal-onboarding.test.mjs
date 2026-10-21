@@ -122,7 +122,7 @@ test('Approve & Pay saves approval before offering explicit payment options', ()
   assert.doesNotMatch(viewer, /Proceed to Payment Processing|>Continue<|setPaymentStep\('confirm'\)/);
   assert.match(viewer, /Pay Deposit/);
   assert.match(viewer, /Pay in Full/);
-  assert.match(viewer, /Share secure payment link/);
+  assert.doesNotMatch(viewer, /Share secure payment link/);
   assert.match(viewer, /openPublicDocumentPayment/);
   assert.match(viewer, /data\.estimate\?\.status === "approved"/);
   assert.match(dialog, /Approve & Pay/);
