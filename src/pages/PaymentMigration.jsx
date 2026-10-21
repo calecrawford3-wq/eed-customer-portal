@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/AuthContext';
 
-export default function PaymentMigration() {
+export default function PaymentMigration({embedded=false}) {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
   const [launchReport, setLaunchReport] = useState(null);
@@ -39,8 +39,8 @@ export default function PaymentMigration() {
     } catch (e) { setError(e.response?.data?.error || e.message || 'Unable to continue.'); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-    <div><h1 className="text-2xl font-bold">Settings / Payments</h1><p className="mt-2 text-slate-600">Secure Stripe connection checks for the new portal. Existing billing remains active until cutover is verified.</p></div>
+  return <main className={embedded?"space-y-6":"mx-auto max-w-3xl space-y-6 p-4 md:p-8"}>
+    <div>{!embedded&&<h1 className="text-2xl font-bold">Settings / Payments</h1>}<p className="mt-2 text-slate-600">Secure Stripe connection checks for the new portal. Existing billing remains active until cutover is verified.</p></div>
     <section className="rounded-xl border border-slate-300 bg-white p-5 space-y-3">
       <h2 className="font-semibold">Stage 14: Legacy billing migration audit</h2>
       <p className="text-sm text-slate-600">Read-only inventory of legacy invoices, unpaid balances, pending approvals, payment links and migration risks. The old billing viewer remains active. This does not import records, change URLs, or authorize redirects.</p>
