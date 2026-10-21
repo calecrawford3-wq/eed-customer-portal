@@ -46,6 +46,7 @@ const DialogContent = React.forwardRef(/** @param {React.ComponentPropsWithoutRe
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
+/** @param {React.HTMLAttributes<HTMLDivElement>} props */
 const DialogHeader = ({
   className,
   ...props
@@ -56,6 +57,7 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+/** @param {React.HTMLAttributes<HTMLDivElement>} props */
 const DialogFooter = ({
   className,
   ...props
