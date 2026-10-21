@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/AuthContext';
 export default function PaymentMigration({embedded=false}) {
   const { user } = useAuth();
   const [report, setReport] = useState(null);
+  const [readinessOpen, setReadinessOpen] = useState(false);
+  const [readinessCheckedAt, setReadinessCheckedAt] = useState(null);
   const [launchReport, setLaunchReport] = useState(null);
   const [legacyReport, setLegacyReport] = useState(null);
   const [session, setSession] = useState('');
@@ -26,12 +28,12 @@ export default function PaymentMigration({embedded=false}) {
     } catch (e) { setError(e.response?.data?.error || e.message || 'Unable to load fee settings'); }
     finally { setBusy(false); }
   }
-  async function run(name, payload = {}) {
+  async function run(name, payload = {}, showReadiness = false) {
     setBusy(true); setError(''); setMessage('');
     try {
       const r = await base44.functions.invoke(name, payload);
       if (r.data?.error) throw new Error(r.data.error);
-      if (name === 'getPortalPaymentReadiness') setReport(r.data);
+      if (name === 'getPortalPaymentReadiness') { setReport(r.data); setReadinessOpen(showReadiness); setReadinessCheckedAt(new Date().toLocaleTimeString()); setMessage(showReadiness ? 'Payment readiness checked. See the checklist below.' : 'Stripe connection refreshed.'); }
       else if (name === 'getPortalLaunchReadiness') setLaunchReport(r.data);
       else if (name === 'getLegacyMigrationReadiness') setLegacyReport(r.data);
       else if (name === 'verifyAutomationCaller') setMessage(r.data.message);
@@ -85,7 +87,23 @@ export default function PaymentMigration({embedded=false}) {
         <li>Test two separate customers and a signed-out guest, then verify old links and in-flight payments before retiring billing.</li>
       </ul>
     </section>
-    <section className="rounded-xl border bg-white p-5 space-y-4"><h2 className="font-semibold">Stripe connection and payment readiness</h2><p className="text-sm text-slate-600">Stripe credentials are stored as Base44 server-side secrets, not in browser settings. One-time secret configuration is required in Base44 until a supported secure in-app secret manager is available. Never paste Stripe secret keys into company settings.</p><div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => run('getPortalPaymentReadiness')}>Test Connection</Button><Button variant="outline" disabled={busy} onClick={() => run('getPortalPaymentReadiness')}>Check Payment Readiness</Button></div>
+    <section className="rounded-xl border bg-white p-5 space-y-4"><h2 className="font-semibold">Stripe connection and payment readiness</h2><p className="text-sm text-slate-600">Stripe credentials are stored as Base44 server-side secrets, not in browser settings. One-time secret configuration is required in Base44 until a supported secure in-app secret manager is available. Never paste Stripe secret keys into company settings.</p><div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => run('getPortalPaymentReadiness')}>Test Connection</Button><Button variant="outline" disabled={busy} onClick={() => run('getPortalPaymentReadiness', {}, true)}>Check Payment Readiness</Button></div>
+      {report && readinessOpen && <section aria-label="Payment readiness checklist" className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm">
+        <h3 className="font-semibold text-base">Payment readiness checklist</h3>
+        <p>Checked {readinessCheckedAt}. This is a configuration check only. It does not activate payments or prove a successful test charge.</p>
+        <div className="space-y-2">{[
+          ['Stripe API connection',report.account_check==='complete','Check the Stripe API key in Base44 server secrets.'],
+          ['Live charges and payouts',report.account_charges_enabled&&report.account_payouts_enabled,'Complete Stripe account verification.'],
+          ['Webhook signing secret',report.signing_secret_configured,'Set PORTAL_STRIPE_WEBHOOK_SECRET in Base44 server secrets.'],
+          ['Webhook URL and events',report.endpoint_registered&&report.endpoint_event_coverage,'Verify the webhook URL and both Checkout events in Stripe.'],
+          ['Signed payment delivery and recording',report.recording_ready_flag,'NOT VERIFIED: test signed webhook delivery, invoice recording, duplicate handling and recovery before setting PORTAL_STRIPE_RECORDING_READY=true.'],
+          ['Payment methods',report.payment_method_configuration_ready,'Card is configured; ACH and Affirm are still pending their individual settings and provider verification.'],
+          ['ACH fee policy',report.processing_fee_configuration_ready,'Approve and save the ACH fee configuration before the full multi-method readiness gate can pass.'],
+          ['Customer checkout',report.customer_checkout_ready,'Keep PORTAL_PAYMENTS_ENABLED=false until all payment acceptance tests pass.'],
+          ['Guest checkout',report.guest_checkout_ready,'Keep GUEST_CHECKOUT_ENABLED=false until guest access and payment flows have been tested.']
+        ].map(([label,ok,action])=><div key={label} className="rounded border bg-white p-3"><div className="font-medium">{ok?'✓':'○'} {label}: {ok?'Configured':'Pending'}</div>{!ok&&<p className="mt-1 text-slate-600">{action}</p>}</div>)}</div>
+        <p className="font-medium">Automatic card-on-file overdue collection remains disabled separately, regardless of these checks.</p>
+      </section>}
       {report && <><dl className="space-y-2">{[['Stripe mode', report.mode], ['Stripe account', report.account_id || 'Not connected'], ['Business name', report.account_business_name || 'Not available'], ['Stripe account check', report.account_check], ['Account can accept charges', report.account_charges_enabled], ['Payouts enabled', report.account_payouts_enabled], ['Account details submitted', report.account_details_submitted], ['Webhook signing secret configured', report.signing_secret_configured], ['Webhook endpoint registered', report.endpoint_registered], ['Required webhook events enabled', report.endpoint_event_coverage], ['Payment recording flag', report.recording_ready_flag], ['Payment recording configuration ready', report.payment_recording_ready], ['Customer checkout configuration ready', report.customer_checkout_ready], ['Guest checkout configuration ready', report.guest_checkout_ready]].map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-2 border-b py-2"><dt>{label}</dt><dd className="font-medium">{typeof value === 'boolean' ? value ? 'Yes' : 'No' : value}</dd></div>)}</dl>
         <p className="break-all text-sm">New webhook: {report.webhook_url}</p>
         <p className="text-sm">Required events: {report.required_events.join(', ')}</p><p className="text-sm">Remaining verification: {report.runtime_checks_still_required.join('; ')}.</p><p className="text-sm">To replace a key, update the corresponding server-side Base44 secret. Existing secrets are never displayed here.</p>
