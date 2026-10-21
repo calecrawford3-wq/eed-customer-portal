@@ -37,6 +37,9 @@ const defaultSettings = {
   company_logo_url: "",
   default_tax_rate: 0,
   default_payment_terms: "Net 30",
+  default_estimate_expiry_days: 30,
+  default_invoice_due_days: 30,
+  default_estimate_deposit_percent: 0,
   invoice_notes_template: "Thank you for your business!",
   estimate_notes_template: "This estimate is valid for 30 days.",
   po_notes_template: "",
@@ -205,6 +208,15 @@ export default function Settings() {
                 <div>
                   <Label>Default Payment Terms</Label>
                   <Input value={form.default_payment_terms} onChange={e => set("default_payment_terms", e.target.value)} placeholder="Net 30" />
+                </div>
+              </div>
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <h4 className="text-sm font-medium text-slate-700">New Document Defaults</h4>
+                <p className="text-xs text-slate-500">Applied when creating new estimates and invoices. Existing documents are unchanged.</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="text-sm">Estimate valid for (days)<Input type="number" min={1} max={365} value={form.default_estimate_expiry_days??30} onChange={e=>set("default_estimate_expiry_days",Math.min(365,Math.max(1,Number(e.target.value)||1)))}/></label>
+                  <label className="text-sm">Invoice due in (days)<Input type="number" min={0} max={365} value={form.default_invoice_due_days??30} onChange={e=>set("default_invoice_due_days",Math.min(365,Math.max(0,Number(e.target.value)||0)))}/></label>
+                  <label className="text-sm">Default estimate deposit (%)<Input type="number" min={0} max={100} value={form.default_estimate_deposit_percent??0} onChange={e=>set("default_estimate_deposit_percent",Math.min(100,Math.max(0,Number(e.target.value)||0)))}/></label>
                 </div>
               </div>
               <div className="pt-4 border-t border-slate-100">
