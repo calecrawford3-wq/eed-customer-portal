@@ -102,11 +102,11 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
     payInPortal();
   }, [autoCheckout, busy, canPay, paymentQuoteReady, paymentMethod, data?.revision]);
 
-  async function payInPortal() {
-    if (busy || !paymentQuoteReady) return;
+  async function payInPortal(option = chosenOption) {
+    if (busy || !canPay) return;
     setBusy(true); setError('');
     try {
-      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: chosenOption, expectedAmount: chosenAmount, paymentMethod, expectedFeeCents: selectedQuote.feeCents });
+      const result = await base44.functions.invoke('createPortalCheckoutSession', { documentType: selection.type, documentId: selection.id, revision: data.revision, amountOption: option });
       if (result.data?.error || !result.data?.checkout_url) throw new Error(result.data?.error || 'Unable to open checkout.');
       const url = new URL(result.data.checkout_url);
       if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Payment link could not be verified.');
@@ -171,10 +171,9 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {canPay && <section className="rounded-xl border p-4 space-y-3">
               <h3 className="font-semibold">{data.amounts.deposit > 0 ? `Deposit due: ${formatMoney(data.amounts.deposit)}` : `Balance due: ${formatMoney(data.amounts.balance)}`}</h3>
               {data.portalCheckoutEnabled ? <>
-                {data.amounts.deposit > 0 && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'deposit'} onChange={() => setAmountOption('deposit')} />Required deposit {formatMoney(data.amounts.deposit)}</label>}
-                <label className="flex min-h-11 items-center gap-2 text-sm"><input type="radio" name="portal-amount" checked={chosenOption === 'balance'} onChange={() => setAmountOption('balance')} />Full remaining balance {formatMoney(data.amounts.balance)}</label>
-                <label className="block text-sm" htmlFor="portal-method">Payment method</label><select id="portal-method" className="w-full rounded-md border p-3" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="card">Credit or debit card</option><option value="affirm" disabled={!paymentQuote?.methods?.find(m => m.method === "affirm")?.enabled}>Affirm</option></select><p className="text-xs text-slate-600">{paymentQuoteReady ? `Amount ${formatMoney(selectedQuote.principalCents / 100)} · Processing fee ${formatMoney(selectedQuote.feeCents / 100)} · Total ${formatMoney(selectedQuote.totalCents / 100)}` : "Checking payment method and fee availability…"}</p>
-                <Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy || !paymentQuoteReady} onClick={payInPortal}>Continue to Pay {formatMoney(paymentQuoteReady ? selectedQuote.totalCents / 100 : chosenAmount)}</Button>
+                <p className="text-sm text-slate-600">Choose an amount to open Stripe Checkout. Available payment methods are selected in Stripe.</p>
+                {data.amounts.deposit > 0 && <Button variant="outline" className="flex w-full min-h-12 justify-between" disabled={busy} onClick={()=>payInPortal('deposit')}><span>Pay Deposit</span><strong>{formatMoney(data.amounts.deposit)}</strong></Button>}
+                <Button className="flex w-full min-h-12 justify-between bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={()=>payInPortal('balance')}><span>Pay in Full</span><strong>{formatMoney(data.amounts.balance)}</strong></Button>
                 <p className="text-xs text-slate-500">Your payment is handled securely by Stripe. Applied account credits are already deducted.</p>
               </> : Number(doc.applied_credits) > 0 ? <p className="text-sm text-slate-600">Your balance includes account credits. Arrange online payment with the shop so the adjusted amount is charged correctly, or choose cash/check below.</p> : <><Button className="w-full min-h-12 bg-[#e20404] hover:bg-red-700" disabled={busy} onClick={() => act('payment_link')}>Continue to Secure Payment</Button><p className="text-xs text-slate-500">Choose deposit or full balance and review available payment methods and any fees on the secure billing page.</p></>}
               <Button variant="outline" className="w-full min-h-11" disabled={busy} onClick={() => setManual(!manual)}>I want to pay by cash or check</Button>
