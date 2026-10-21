@@ -10,7 +10,19 @@ export default async function (req) {
     const user = await base44.auth.me().catch(() => null);
     if (user?.role !== 'admin') return Response.json({ error: 'Staff access required' }, { status: 403 });
     const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+    // Only return classifications, never raw environment secret values.
+    const flagStatus = (name: string) => {
+      const value = Deno.env.get(name);
+      return value === undefined ? 'missing' : value === 'true' ? 'enabled' : value === 'false' ? 'disabled' : 'invalid_value';
+    };
     const report: any = {
+      readiness_version: '2026-10-21-runtime-flags-v2',
+      runtime_flag_status: {
+        GUEST_CHECKOUT_ENABLED: flagStatus('GUEST_CHECKOUT_ENABLED'),
+        PORTAL_PAYMENTS_ENABLED: flagStatus('PORTAL_PAYMENTS_ENABLED'),
+        PORTAL_STRIPE_RECORDING_READY: flagStatus('PORTAL_STRIPE_RECORDING_READY'),
+        PORTAL_ENABLE_AFFIRM: flagStatus('PORTAL_ENABLE_AFFIRM'),
+      },
       mode: key?.startsWith('sk_live_') ? 'live' : key ? 'test' : 'missing',
       portal_checkout_enabled: portalCheckoutEnabled(),
       guest_flag_enabled: Deno.env.get('GUEST_CHECKOUT_ENABLED') === 'true',
@@ -64,7 +76,8 @@ export default async function (req) {
     report.payment_recording_ready = report.account_check === 'complete' && report.account_charges_enabled && report.signing_secret_configured && report.endpoint_registered && report.endpoint_event_coverage && report.recording_ready_flag;
     // Configuration readiness does not imply a tested provider integration.
     // Customer-paid card and Affirm surcharges remain disabled by design.
-    report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled && report.payment_method_configuration_ready && report.processing_fee_configuration_ready;
+    // Card checkout must not be blocked by optional Affirm onboarding.
+    report.customer_checkout_ready = report.payment_recording_ready && report.portal_checkout_enabled && report.processing_fee_configuration_ready;
     report.guest_checkout_ready = report.customer_checkout_ready && report.guest_flag_enabled;
     return Response.json(report, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return Response.json({ error: 'Unable to check payment readiness' }, { status: 500 }); }
