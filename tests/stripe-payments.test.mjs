@@ -90,6 +90,28 @@ function setup() {
   return { state, token, call, payment, deliver, estimate, helpers: load(path.resolve('base44/shared/stripePayments.ts')) };
 }
 
+test('sandbox invoice credit uses production CAS logic without touching real invoices', async () => {
+  const { state, helpers } = setup();
+  state.rows.StripeSandboxInvoice=[{id:'sandbox-1',customer_id:'elite_sandbox_only',status:'sent',total:1000,amount_paid:0,applied_credits:0,balance_due:1000,payments:[]}];
+  const entity={
+    filter: async q => structuredClone(state.rows.StripeSandboxInvoice.filter(r=>Object.entries(q).every(([k,v])=>r[k]===v))),
+    updateMany: async(q,op)=>{
+      const row=state.rows.StripeSandboxInvoice[0];
+      if(q.id!==row.id||q.customer_id!==row.customer_id||JSON.stringify(q.payments)!==JSON.stringify(row.payments)) return {updated:0};
+      Object.assign(row,structuredClone(op.$set));return {updated:1};
+    }
+  };
+  const base44={asServiceRole:{entities:{StripeSandboxInvoice:entity}}};
+  const facts=(id,amount)=>({type:'invoice',id:'sandbox-1',amount,fee:0,method:'card',sessionId:id,intent:'pi_'+id,live:false,date:'2026-10-20'});
+  assert.equal((await helpers.creditInvoice(base44,'sandbox-1','elite_sandbox_only',facts('cs_test_deposit',25000),entity)).duplicate,false);
+  assert.equal(state.rows.StripeSandboxInvoice[0].balance_due,750);
+  assert.equal((await helpers.creditInvoice(base44,'sandbox-1','elite_sandbox_only',facts('cs_test_deposit',25000),entity)).duplicate,true);
+  assert.equal((await helpers.creditInvoice(base44,'sandbox-1','elite_sandbox_only',facts('cs_test_balance',75000),entity)).duplicate,false);
+  assert.equal(state.rows.StripeSandboxInvoice[0].status,'paid');
+  assert.equal(state.rows.StripeSandboxInvoice[0].payments.length,2);
+  assert.equal(state.rows.Invoice[0].amount_paid,0);
+  assert.equal(state.rows.Invoice[0].payments.length,0);
+});
 test('invalid signatures cannot write and legacy sources are ignored', async () => {
   const { state, payment, deliver } = setup(); const id = payment();
   assert.equal((await deliver(id, 'checkout.session.completed', 'invalid')).status, 400);
