@@ -106,5 +106,5 @@ export default async function(req) {
       }
     }
     return Response.json({error:'Invalid action'},{status:400});
-  } catch(e) { console.error('[manageStripeSandboxTest]',e?.type||'error'); return Response.json({error:'Stripe sandbox request failed. Check sandbox configuration or Stripe dashboard.'},{status:502}); }
+  } catch(e) { console.error('[manageStripeSandboxTest]',{type:e?.type||e?.name||'error',message:String(e?.message||'').slice(0,240)}); return Response.json({error:e?.name==='PaymentError'?String(e.message):'Stripe sandbox request failed. Check Base44 function logs.',diagnostic_type:e?.name||'Error'},{status:e?.status||502}); }
 }
