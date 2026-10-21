@@ -72,6 +72,7 @@ export default function InvoiceDetail() {
     machining_items: [],
     discount_type: "none", discount_value: 0, discount_amount: 0,
     shipping_cost: 0,
+    pricing_allowance_rate: 5, pricing_allowance_amount: 0,
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
   });
 
@@ -397,8 +398,10 @@ export default function InvoiceDetail() {
     const partTotal = lineItems.reduce((s, l) => s + (l.total || 0), 0);
     const laborTotal = laborItems.reduce((s, l) => s + (Number(l.price) || 0), 0);
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
-    const subtotal = partTotal + laborTotal + machiningTotal;
-    const tax_amount = partTotal * (Number(taxRate) / 100); // tax on parts only
+    const baseSubtotal = partTotal + laborTotal + machiningTotal;
+    const pricing_allowance_amount = Math.round(Math.max(0, baseSubtotal) * (Number(form.pricing_allowance_rate) || 0)) / 100;
+    const subtotal = baseSubtotal + pricing_allowance_amount;
+    const tax_amount = partTotal * (1 + (Number(form.pricing_allowance_rate) || 0) / 100) * (Number(taxRate) / 100); // tax on parts including their allocated allowance
     let discount_amount = 0;
     if (discountType === "amount") {
       discount_amount = Math.min(Number(discountValue) || 0, subtotal);
@@ -408,7 +411,7 @@ export default function InvoiceDetail() {
     const shipping = shippingCost !== undefined ? (Number(shippingCost) || 0) : (Number(form.shipping_cost) || 0);
     const total = subtotal + tax_amount - discount_amount + shipping;
     const balance_due = Math.max(0, total - (Number(appliedCredits) || 0) - (Number(amountPaid) || 0));
-    return { subtotal, tax_amount, discount_amount, total, balance_due };
+    return { subtotal, pricing_allowance_amount, tax_amount, discount_amount, total, balance_due };
   };
 
   const handleCustomerChange = (v) => {
