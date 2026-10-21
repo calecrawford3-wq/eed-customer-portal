@@ -23,7 +23,7 @@ export async function portalRevision(doc: any, type: string): Promise<string> {
 const cents = (value: any) => Math.round((Number(value) || 0) * 100);
 export function portalAmounts(doc: any, type: string) {
   const balance = Math.max(0, cents(doc.total) - cents(doc.applied_credits) - cents(doc.amount_paid));
-  const deposit = type === 'estimate' && doc.deposit_required && !doc.deposit_paid
+  const deposit = doc.deposit_required && !doc.deposit_paid
     ? Math.min(balance, Math.max(0, cents(doc.deposit_amount) - cents(doc.amount_paid) - cents(doc.applied_credits))) : 0;
   return { balance: balance / 100, deposit: deposit / 100 };
 }
