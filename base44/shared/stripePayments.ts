@@ -42,8 +42,9 @@ export function hasStripePayment(payments: any[], facts: any) {
 // One database conditional update writes the receipt AND derived totals together.
 // Matching the previous array/amount/updated_date prevents lost updates from
 // concurrent sessions or staff cash/check entries. Retry with a fresh snapshot.
-export async function creditInvoice(base44: any, invoiceId: string, cid: string, facts: any) {
-  const entity = base44.asServiceRole.entities.Invoice;
+export async function creditInvoice(base44: any, invoiceId: string, cid: string, facts: any, sandboxEntity: any = null) {
+  // Sandbox passes its own isolated entity; production defaults to Invoice.
+  const entity = sandboxEntity || base44.asServiceRole.entities.Invoice;
   for (let attempt = 0; attempt < 6; attempt++) {
     const invoice = portalItems(await entity.filter({ id: invoiceId, customer_id: cid }))[0];
     if (!invoice) throw new PaymentError('Invoice not found', 404);
