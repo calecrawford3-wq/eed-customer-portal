@@ -35,7 +35,7 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
  const canUse=page=>!staffMode||staffAllowedPages.includes(page);
- return <div className="elite-app-shell fixed inset-0 flex flex-col overflow-hidden bg-slate-50 print:static print:overflow-visible" style={{backgroundColor:'#f8fafc'}}>
+ return <div className="elite-app-shell fixed inset-0 flex flex-col overflow-hidden print:static print:overflow-visible" style={{backgroundColor:'#0f172a'}}>
    {!staffMode&&<GlobalBarcodeListener/>}
    {!staffMode&&<GlobalSearch/>}
    <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#0f172a",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
