@@ -17,3 +17,8 @@ test('inventory demand ignores nonpositive quantities', () => {
   const demand = aggregateDemand({line_items:[{part_id:'zero',quantity:0},{part_id:'negative',quantity:-3}]});
   assert.equal(demand.size,0);
 });
+
+test('reservation reconciliation re-reads the estimate reservation while holding the part lock', () => {
+  assert.match(code, /const result = await withPartLock[\s\S]*?PartReservation\.filter\(\{[\s\S]*?estimate_id: estimateId, part_id: partId/);
+  assert.match(code, /if \(current\) \{/);
+});

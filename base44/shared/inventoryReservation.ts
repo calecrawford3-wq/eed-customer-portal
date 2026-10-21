@@ -187,8 +187,6 @@ async function reservePartsForEstimate(base44, { estimate, operation_id }) {
   // reservations for the same part cannot both see the same available stock.
   for (const [partId, d] of demand) {
     const requiredQty = d.quantity;
-    const existing = existingByPart.get(partId);
-
     const result = await withPartLock(base44, partId, operation_id, async () => {
       // Re-read this estimate's reservation after acquiring the part lock.
       // The pre-lock snapshot can be stale when two approval events race.
