@@ -104,13 +104,7 @@ const navSections = [
     label: "Settings",
     icon: Settings2,
     main: { name: "Settings", page: "Settings" },
-    secondary: [
-      { name: "Platforms", page: "Platforms", icon: Layers },
-      { name: "Spec Sheets", page: "SpecSheets", icon: FileText },
-      { name: "Canned Jobs", page: "CannedJobs", icon: Boxes },
-      { name: "Addons", page: "Addons", icon: Sparkles },
-      { name: "Replacement Rules", page: "ReplacementRules", icon: Wrench },
-    ],
+    secondary: [],
     bottom: true,
   },
   {
