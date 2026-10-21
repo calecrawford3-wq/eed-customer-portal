@@ -15,6 +15,6 @@ export default async function (req) {
     if (typeof body.revision !== 'string' || !body.revision) return Response.json({ error: 'Refresh and review the document first' }, { status: 409 });
     const stripe = new Stripe(Deno.env.get('PORTAL_STRIPE_SECRET_KEY'));
     const path = '/CustomerPortal?document=' + body.documentType + '&id=' + encodeURIComponent(owned.doc.id);
-    return Response.json(await createPortalCheckout(base44, stripe, owned.doc, body.documentType, { ...body, serverPriced: false }, path));
+    return Response.json(await createPortalCheckout(base44, stripe, owned.doc, body.documentType, { amountOption: body.amountOption, revision: body.revision, serverPriced: true }, path));
   } catch (error) { return Response.json({ error: error.status ? error.message : 'Unable to start payment' }, { status: error.status || 500 }); }
 }
