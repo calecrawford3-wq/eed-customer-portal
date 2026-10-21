@@ -136,7 +136,7 @@
   /* Match the iOS standalone status-bar backdrop to the Elite header. */
   @media (display-mode: standalone) {
     html, body, #root {
-      background-color: #0f172a;
+      background-color: #000000;
     }
   }
   @media print {
