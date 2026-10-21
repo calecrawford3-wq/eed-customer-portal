@@ -108,9 +108,15 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    background-color: #0f172a;
+    overscroll-behavior-y: none;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #0f172a;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
   }
 }
 
@@ -128,7 +134,7 @@
   }
 
   body {
-    background: #0f172a !important;
+    background: white !important;
   }
 
   /* Remove browser header/footer (URL, date, page number) */
