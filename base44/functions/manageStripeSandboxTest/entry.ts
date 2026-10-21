@@ -4,14 +4,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 // Admin-only, entirely isolated Stripe sandbox diagnostics. Never touch Base44 financial records.
 export default async function(req) {
   if (req.method !== 'POST') return Response.json({error:'Method not allowed'},{status:405});
+  let diagnosticStage='initialize';
   try {
     const base44=createClientFromRequest(req);
+    diagnosticStage='admin_auth';
     const user=await base44.auth.me().catch(()=>null);
     if(user?.role!=='admin') return Response.json({error:'Admin required'},{status:403});
     const body=await req.json().catch(()=>({}));
     const key=Deno.env.get('PORTAL_STRIPE_TEST_SECRET_KEY')||'';
     const signingSecret=Deno.env.get('PORTAL_STRIPE_TEST_WEBHOOK_SECRET')||'';
     if(!key.startsWith('sk_test_')) return Response.json({error:'PORTAL_STRIPE_TEST_SECRET_KEY must be a Stripe test-mode secret key. Live keys are prohibited.'},{status:503});
+    diagnosticStage='stripe_initialize';
     const stripe=new Stripe(key);
     if(body.action==='check') {
       const account=await stripe.accounts.retrieve();
@@ -58,6 +61,7 @@ export default async function(req) {
       const invoiceId=String(body.invoice_id||'');
       if(!/^[a-zA-Z0-9_-]{8,128}$/.test(invoiceId)) return Response.json({error:'Invalid sandbox invoice ID'},{status:400});
       const entity=base44.asServiceRole.entities.StripeSandboxInvoice;
+      diagnosticStage='sandbox_invoice_lookup';
       const rows=await entity.filter({id:invoiceId,customer_id:'elite_sandbox_only'});
       const invoice=(Array.isArray(rows)?rows:rows?.items||rows?.data||[])[0];
       if(!invoice) return Response.json({error:'Sandbox invoice not found'},{status:404});
@@ -95,18 +99,22 @@ export default async function(req) {
       if(body.action==='replay_invoice') {
         const sessionId=String(body.session_id||'');
         if(!/^cs_test_[a-zA-Z0-9]+$/.test(sessionId)) return Response.json({error:'Valid sandbox session ID required'},{status:400});
+        diagnosticStage='stripe_session_retrieve';
         const session=await stripe.checkout.sessions.retrieve(sessionId);
         if(session.livemode!==false||session.metadata?.source!=='eed_sandbox_invoice_v1'||session.metadata?.document_id!==invoice.id)
           return Response.json({error:'Sandbox invoice session mismatch'},{status:403});
+        diagnosticStage='payment_module_import';
         const {verifiedPaymentFacts,creditInvoice,PORTAL_STRIPE_SOURCE}=await import('../../shared/stripePayments.ts');
         console.info('[sandbox replay] payment verification', {session:session.id,paid:session.payment_status,mode:session.mode,livemode:session.livemode,app_id_present:!!Deno.env.get('BASE44_APP_ID')});
+        diagnosticStage='stripe_payment_validation';
         const facts=verifiedPaymentFacts({...session,metadata:{...session.metadata,source:PORTAL_STRIPE_SOURCE}},Deno.env.get('BASE44_APP_ID'),false);
         if(!facts) return Response.json({pending:true,sandbox_only:true});
         console.info('[sandbox replay] starting isolated invoice credit', {invoice_id:invoice.id,amount_cents:facts.amount});
+        diagnosticStage='sandbox_invoice_database_credit';
         const result=await creditInvoice(base44,invoice.id,'elite_sandbox_only',facts,entity);
         return Response.json({duplicate:result.duplicate,amount_paid:result.invoice.amount_paid,balance_due:result.invoice.balance_due,status:result.invoice.status,sandbox_only:true});
       }
     }
     return Response.json({error:'Invalid action'},{status:400});
-  } catch(e) { console.error('[manageStripeSandboxTest]',{type:e?.type||e?.name||'error',message:String(e?.message||'').slice(0,240)}); return Response.json({error:e?.name==='PaymentError'?String(e.message):'Stripe sandbox request failed. Check Base44 function logs.',diagnostic_type:e?.name||'Error'},{status:e?.status||502}); }
+  } catch(e) { const type=String(e?.type||e?.name||'Error'); const detail=String(e?.message||'Unknown failure').replace(/sk_(live|test)_[A-Za-z0-9]+|whsec_[A-Za-z0-9]+/g,'[redacted]').slice(0,220); console.error('[manageStripeSandboxTest]',{stage:diagnosticStage,type,message:detail}); return Response.json({error:'Sandbox operation failed',stage:diagnosticStage,diagnostic_type:type,diagnostic:detail},{status:e?.status||502}); }
 }
