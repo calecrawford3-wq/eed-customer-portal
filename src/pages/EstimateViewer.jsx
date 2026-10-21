@@ -83,8 +83,8 @@ export default function EstimateViewer({ buildVersion }) {
           ...prev,
           estimate: { ...prev.estimate, status: "approved" }
         }));
-        // Continue straight into portal checkout after server-confirmed approval.
-        openPortalCheckout();
+        // Approval persists even when guest checkout has not been enabled.
+        await openPortalCheckout();
       } else {
         const errorMsg = response?.data?.error || "Failed to approve estimate";
         console.error("Approval failed:", errorMsg);
@@ -127,11 +127,13 @@ export default function EstimateViewer({ buildVersion }) {
     }
   };
 
-  const openPortalCheckout = () => {
-    const id = data?.estimate?.id;
-    if (!id) {setPayingError('Unable to locate this estimate. Please contact Elite.');return;}
-    const next = '/CustomerPortal?document=estimate&id=' + encodeURIComponent(id) + '&payment=checkout';
-    window.location.assign('/PortalAccess?mode=signin&next=' + encodeURIComponent(next));
+  const openPortalCheckout = async () => {
+    try {
+      setPayingError(null);
+      const result = await base44Public.functions.invoke('openPublicDocumentPayment', {documentType:'estimate',publicAccessToken:token});
+      if (!result?.data?.url) throw new Error(result?.data?.error||'Payment link unavailable');
+      window.location.assign(result.data.url);
+    } catch (error) {setPayingError(error?.response?.data?.error||error?.message||'Online payment is not available yet.');}
   };
 
   const handlePayNow = () => {
@@ -139,8 +141,7 @@ export default function EstimateViewer({ buildVersion }) {
       setPayingError('Approve this estimate before making a payment.');
       return;
     }
-    // Never follow legacy stored checkout sessions. The authenticated portal
-    // creates a fresh, verified Stripe session against the current balance.
+    // Use a scoped payment-only guest token, never a customer sign-in redirect.
     openPortalCheckout();
   };
 
