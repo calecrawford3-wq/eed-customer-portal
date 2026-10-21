@@ -15,7 +15,7 @@ export default async function(req) {
     const entity=base44.asServiceRole.entities[body.documentType==='estimate'?'Estimate':'Invoice'];
     const doc=portalItems(await entity.filter({public_access_token:body.publicAccessToken}))[0];
     if(!doc||!guestVisible(doc,body.documentType)) return Response.json({error:'Document unavailable'},{status:404});
-    if(body.documentType==='estimate'&&doc.status!=='approved') return Response.json({error:'Approve the estimate before paying'},{status:409});
+    if(body.documentType==='estimate'&&!['approved','partial'].includes(doc.status)) return Response.json({error:'Approve the estimate before paying'},{status:409});
     // Do not silently activate customer checkout: all existing launch gates remain enforced.
     const enabled=Deno.env.get('GUEST_CHECKOUT_ENABLED')==='true'&&Deno.env.get('PORTAL_PAYMENTS_ENABLED')==='true'&&Deno.env.get('PORTAL_STRIPE_RECORDING_READY')==='true'&&!!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET');
     if(!enabled) return Response.json({error:'Online guest checkout is not enabled yet. Your approval has been saved; no sign-in is required to approve.'},{status:403});
