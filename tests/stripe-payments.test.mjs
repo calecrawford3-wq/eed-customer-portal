@@ -97,7 +97,7 @@ test('sandbox invoice credit uses production CAS logic without touching real inv
     filter: async q => structuredClone(state.rows.StripeSandboxInvoice.filter(r=>Object.entries(q).every(([k,v])=>r[k]===v))),
     updateMany: async(q,op)=>{
       const row=state.rows.StripeSandboxInvoice[0];
-      if(q.id!==row.id||q.customer_id!==row.customer_id||JSON.stringify(q.payments)!==JSON.stringify(row.payments)) return {updated:0};
+      if(q.id!==row.id||q.customer_id!==row.customer_id||q.amount_paid!==row.amount_paid) return {updated:0};
       Object.assign(row,structuredClone(op.$set));return {updated:1};
     }
   };
