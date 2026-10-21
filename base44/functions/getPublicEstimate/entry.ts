@@ -1,4 +1,5 @@
 import { guestEstimateLineItems, guestLaborItems, guestMachiningItems } from '../../shared/guestFields.ts';
+import { portalAmounts } from '../../shared/portalDocument.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
@@ -69,6 +70,14 @@ Deno.serve(async (req) => {
       deposit_required: est.deposit_required,
       deposit_amount: est.deposit_amount,
       deposit_paid: est.deposit_paid,
+      amount_paid: est.amount_paid || 0,
+      applied_credits: est.applied_credits || 0,
+      payment_amounts: portalAmounts(est, 'estimate'),
+      initial_findings: (Array.isArray(est.initial_findings) ? est.initial_findings : []).map((f: any) => ({
+        title: String(f.title || '').slice(0,250),
+        description: String(f.description || '').slice(0,4000),
+        photo_urls: (Array.isArray(f.photo_urls) ? f.photo_urls : []).filter((url: any) => typeof url === 'string' && /^https:\/\//.test(url)).slice(0,15),
+      })),
       stripe_checkout_url: est.stripe_checkout_url,
       contains_illegal_parts: est.contains_illegal_parts || false,
     };
