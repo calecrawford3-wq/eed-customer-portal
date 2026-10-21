@@ -292,8 +292,12 @@ export default function EstimateDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (isNew && settingsData?.[0]?.default_tax_rate) {
-      setForm(f => ({ ...f, tax_rate: settingsData[0].default_tax_rate }));
+    if (isNew && settingsData?.[0]) {
+      const settings=settingsData[0];
+      const days=Math.max(1,Math.min(365,Number(settings.default_estimate_expiry_days)||30));
+      const pct=Math.max(0,Math.min(100,Number(settings.default_estimate_deposit_percent)||0));
+      const expiry=new Date(); expiry.setDate(expiry.getDate()+days);
+      setForm(f=>({...f,tax_rate:settings.default_tax_rate??f.tax_rate,expiry_date:expiry.toISOString().split('T')[0],deposit_required:pct>0,deposit_type:pct>0?'percent':f.deposit_type,deposit_percent:pct}));
     }
   }, [settingsData, isNew]);
 
