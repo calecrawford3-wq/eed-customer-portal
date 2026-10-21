@@ -87,6 +87,7 @@
       "type": "string",
       "description": "Secure random token for public viewing without authentication. This token is approval-capable (approvePublicEstimate) and is preserved for backward compatibility with existing viewer links and the legacy viewer app."
     },
+    "guest_payment_email_sent_at": {"type":"string","description":"Timestamp of last guest payment email request for cooldown protection"},
     "guest_payment_token": {
       "type": "string",
       "description": "Distinct payment-only token for guest (no-login) viewing/payment of this estimate. Can NEVER authorize approval, account activation, or portal access \u2014 only the restricted getGuestEstimate / createGuestCheckoutSession endpoints accept it, and those return only the allowlisted guest fields with a server-calculated payment amount. Separate from public_access_token so a payment link cannot be used to approve work."
