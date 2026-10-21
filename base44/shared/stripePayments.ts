@@ -5,8 +5,6 @@ export const PORTAL_STRIPE_SOURCE = 'eed_portal_v1';
 // Separate key so testing the new integration cannot replace legacy live keys.
 export function portalStripeKey() { return Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || ''; }
 export const cents = (value: any) => Math.round((Number(value) || 0) * 100);
-const missing = { $exists: false };
-const same = (row: any, field: string) => row[field] === undefined ? missing : row[field];
 export class PaymentError extends Error {
   status: number;
   constructor(message: string, status = 409) { super(message); this.status = status; }
@@ -40,8 +38,8 @@ export function hasStripePayment(payments: any[], facts: any) {
 }
 
 // One database conditional update writes the receipt AND derived totals together.
-// Matching the previous array/amount/updated_date prevents lost updates from
-// concurrent sessions or staff cash/check entries. Retry with a fresh snapshot.
+// Matching the previous amount and stable scalar financial fields prevents
+// lost updates from concurrent sessions or staff entries. Retry from a fresh snapshot.
 export async function creditInvoice(base44: any, invoiceId: string, cid: string, facts: any, sandboxEntity: any = null) {
   // Sandbox passes its own isolated entity; production defaults to Invoice.
   const entity = sandboxEntity || base44.asServiceRole.entities.Invoice;
