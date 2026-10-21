@@ -147,7 +147,7 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {['estimate', 'invoice'].includes(selection.type) && !['void', 'declined', 'expired'].includes(doc.status) && <GuestPaymentShare type={selection.type} id={selection.id} />}
             <dl className="space-y-2 text-sm border-t pt-4">
               <Total label="Subtotal" value={doc.subtotal} />
-              {Number(doc.pricing_allowance_amount)>0&&<p className="text-xs text-slate-500">Subtotal includes {doc.pricing_allowance_rate}% pricing allowance (${Number(doc.pricing_allowance_amount).toFixed(2)}).</p>
+              {Number(doc.pricing_allowance_amount)>0&&<p className="text-xs text-slate-500">Subtotal includes {doc.pricing_allowance_rate}% pricing allowance (${Number(doc.pricing_allowance_amount).toFixed(2)}).</p>}
               {Number(doc.discount_amount) > 0 && <Total label="Discount" value={-Number(doc.discount_amount)} />}
               <Total label="Tax" value={doc.tax_amount} />
               {Number(doc.shipping_cost) > 0 && <Total label="Shipping" value={doc.shipping_cost} />}
