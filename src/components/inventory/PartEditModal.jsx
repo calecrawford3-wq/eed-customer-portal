@@ -82,7 +82,7 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
           <div><Label>Supplier Part #</Label><Input value={form.supplier_part_number ?? ""} onChange={e => setForm({ ...form, supplier_part_number: e.target.value })} /></div>
           <div><Label>Storage Location</Label><Input value={form.location ?? ""} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="e.g. Shelf A3" /></div>
           <div>
-            <Label>Unit Cost ($)</Label>
+            <Label>Purchase Cost per Item ($)</Label>
             <Input
               type="number"
               value={form.unit_cost ?? ""}
@@ -95,7 +95,7 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
             />
           </div>
           <div>
-            <Label>Shipping ($)</Label>
+            <Label>Shipping / Landed Cost per Item ($)</Label>
             <Input
               type="number"
               value={form.shipping_cost ?? ""}
@@ -109,12 +109,12 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
             />
           </div>
           <div>
-            <Label>Total Cost ($)</Label>
+            <Label>Total Landed Cost ($)</Label>
             <Input value={((Number(form.unit_cost) || 0) + (Number(form.shipping_cost) || 0)).toFixed(2)} disabled className="bg-slate-50 text-slate-500" />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <Label>Sell Price ($)</Label>
+              <Label>Base Sell Price ($)</Label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500">% Markup</span>
                 <Switch
