@@ -112,6 +112,18 @@
     background-color: #0f172a;
     overscroll-behavior-y: none;
   }
+  html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
+  @media print {
+    html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
+      height: auto;
+      overflow: visible;
+    }
+    .elite-app-shell { height: auto !important; display: block !important; }
+    [data-elite-page-scroll] { overflow: visible !important; }
+  }
   body {
     @apply text-foreground;
     background-color: #0f172a;
