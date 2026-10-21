@@ -73,6 +73,7 @@ export default function PaymentMigration({embedded=false}) {
         <ul className="list-disc space-y-1 pl-5">{launchReport.required_acceptance?.map(b => <li key={b}>{b}</li>)}</ul>
       </div>}
     </section>
+    <section className="rounded-xl border bg-white p-5 space-y-2"><h2 className="font-semibold">Card on file and overdue collections</h2><p className="text-sm">Customers can explicitly opt in to Stripe-hosted card storage and separately authorize overdue collection from Customer Portal → Invoices. Both checkboxes start unchecked.</p><dl className="grid grid-cols-2 gap-2 text-sm"><div className="rounded border p-2"><dt>Overdue threshold</dt><dd className="font-semibold">3 days after due date</dd></div><div className="rounded border p-2"><dt>Advance reminder</dt><dd className="font-semibold">Required before charging</dd></div></dl><p className="text-sm font-medium text-amber-800">Automatic overdue charging is hard-disabled in code. Reminder scheduling, off-session payment handling, customer notices and live acceptance testing must be completed before any future activation. Saving a card does not trigger a charge.</p></section>
     <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 space-y-3">
       <h2 className="font-semibold">Stage 8: Stripe setup and testing</h2>
       <p className="text-sm">Public launch is pending. Keep the app private and the new checkout controls off.</p>
