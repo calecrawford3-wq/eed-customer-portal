@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { readPortalFeeSettings } from '../../shared/portalFees.ts';
 
-const fields = ['affirm_enabled', 'card_processing_percent', 'card_processing_fixed_cents', 'affirm_processing_percent', 'affirm_processing_fixed_cents'];
+const fields = ['affirm_enabled', 'international_allowance_enabled', 'international_allowance_percent', 'card_processing_percent', 'card_processing_fixed_cents', 'affirm_processing_percent', 'affirm_processing_fixed_cents'];
 export default async function(req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   try {
