@@ -108,7 +108,7 @@ test('public viewers do not follow stored legacy checkout URLs', () => {
   for (const path of ['src/pages/EstimateViewer.jsx','src/pages/InvoiceViewer.jsx']) {
     const content=readFileSync(path,'utf8');
     assert.doesNotMatch(content, /window\.location\.href = .*stripe_checkout_url/);
-    assert.match(content, /openPublicDocumentPayment/);
+    assert.match(content, /startPublicDocumentCheckout/);
     assert.doesNotMatch(content, /PortalAccess\?mode=signin/);
   }
 });
@@ -119,8 +119,10 @@ test('Approve & Pay saves approval before offering explicit payment options', ()
   assert.match(viewer, /if \(response\?\.data\?\.success\)/);
   assert.match(viewer, /setPaymentModalOpen\(false\)/);
   assert.match(viewer, /setPaymentModalOpen\(true\)/);
-  assert.match(viewer, /Proceed to Payment Processing/);
-  assert.match(viewer, /Send to guest \/ Share payment link/);
+  assert.doesNotMatch(viewer, /Proceed to Payment Processing|>Continue<|setPaymentStep\('confirm'\)/);
+  assert.match(viewer, /Pay Deposit/);
+  assert.match(viewer, /Pay in Full/);
+  assert.match(viewer, /Share secure payment link/);
   assert.match(viewer, /openPublicDocumentPayment/);
   assert.match(viewer, /data\.estimate\?\.status === "approved"/);
   assert.match(dialog, /Approve & Pay/);
