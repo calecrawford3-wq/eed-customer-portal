@@ -38,7 +38,7 @@ export default async function(req) {
     return Response.json({received:true,verified:true,test_only:true,duplicate:result.duplicate,invoice_id:facts.id,financial_records_written:false,sandbox_invoice_updated:true});
   } catch(e) {
     console.error('[portalStripeTestWebhook] sandbox invoice recording failed', {event_id:event.id,stage,error_type:e?.name||'Error',error_message:String(e?.message||'Unknown').slice(0,240)});
-    const known=e?.name==='PaymentError';
-    return Response.json({error:'Sandbox invoice recording requires retry',stage,diagnostic:known?String(e.message).slice(0,180):'Unexpected sandbox recording error; inspect Base44 function logs',error_type:e?.name||'Error'},{status:e?.status||503});
+    const diagnostic=String(e?.message||'Unknown sandbox error').replace(/sk_(live|test)_[A-Za-z0-9]+|whsec_[A-Za-z0-9]+/g,'[redacted]').slice(0,200);
+    return Response.json({error:'Sandbox invoice recording requires retry',stage,diagnostic,error_type:e?.name||'Error'},{status:e?.status||503});
   }
 }
