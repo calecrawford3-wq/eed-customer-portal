@@ -215,9 +215,10 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
 
         <div className="inv-totals">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-            <span>Subtotal:</span>
+            <span>Subtotal (including pricing allowance):</span>
             <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
           </div>
+          {Number(invoice.pricing_allowance_amount)>0&&<div style={{fontSize:"10px",color:"#666",marginBottom:"4px"}}>Includes {invoice.pricing_allowance_rate}% pricing allowance: ${Number(invoice.pricing_allowance_amount).toFixed(2)}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
             <span>Tax{invoice.tax_rate ? ` (${invoice.tax_rate}%)` : ""}:</span>
             <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>
