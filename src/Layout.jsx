@@ -1,170 +1,36 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "./utils";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ScanLine,
-  X,
-} from "lucide-react";
-import { Search } from "lucide-react";
-import { cn } from "@/lib/utils";
-import usePushNotifications from "@/hooks/usePushNotifications";
-import NotificationBell from "@/components/NotificationBell";
-import GlobalSearch from "@/components/GlobalSearch";
-import GlobalBarcodeListener from "@/components/GlobalBarcodeListener";
-import NavSidebar from "@/components/NavSidebar";
-import MobileBottomNav from "@/components/mobile/MobileBottomNav";
+import React from 'react';
+import {Link,useNavigate} from 'react-router-dom';
+import {Home,Settings2,Search,ScanLine} from 'lucide-react';
+import {createPageUrl} from './utils';
+import usePushNotifications from '@/hooks/usePushNotifications';
+import NotificationBell from '@/components/NotificationBell';
+import GlobalSearch from '@/components/GlobalSearch';
+import GlobalBarcodeListener from '@/components/GlobalBarcodeListener';
+import {AppSectionNav} from '@/components/navigation/AppLauncher';
 
-export default function Layout({ children, currentPageName, staffMode=false, staffAllowedPages=[] }) {
-  const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  // Register push notification service worker globally on all admin pages
-  usePushNotifications();
-
-  // On the Build Workflow page the nav sidebar is hidden on desktop and revealed on hover.
-  const isWorkflow = currentPageName === "BuildWorkflow" || currentPageName === "MachiningStation";
-  const [sidebarHovered, setSidebarHovered] = useState(false);
-  const hoverTimerRef = useRef(null);
-  const enterSidebar = () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); setSidebarHovered(true); };
-  const leaveSidebar = () => { hoverTimerRef.current = setTimeout(() => setSidebarHovered(false), 250); };
-
-
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
-      {!staffMode&&<GlobalBarcodeListener />}
-      {!staffMode&&<GlobalSearch />}
-      {/* Mobile backdrop */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
-      )}
-      {/* Hover trigger to reveal the hidden sidebar on the Build Workflow page (desktop only) */}
-      {isWorkflow && (
-        <div
-          className="hidden md:block fixed left-0 top-0 h-full w-3 z-50"
-          onMouseEnter={enterSidebar}
-          onMouseLeave={leaveSidebar}
-        />
-      )}
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 h-full bg-slate-900 text-white transition-all duration-300 z-50 flex flex-col w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          isWorkflow
-            ? (sidebarHovered ? "md:translate-x-0" : "md:-translate-x-full")
-            : "md:translate-x-0",
-          collapsed && "md:w-16"
-        )}
-        onMouseEnter={isWorkflow ? enterSidebar : undefined}
-        onMouseLeave={isWorkflow ? leaveSidebar : undefined}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-2 border-b border-slate-800">
-          <div className="flex items-center justify-center flex-1">
-            <img 
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" 
-              alt="Elite Engine Development" 
-              className={collapsed ? "h-6 object-contain" : "h-10 object-contain max-w-full"}
-            />
-          </div>
-          <button onClick={() => setMobileOpen(false)} className="md:hidden text-slate-400 hover:text-white p-1">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <NavSidebar
-          currentPageName={currentPageName}
-          collapsed={collapsed}
-          onNavigate={() => setMobileOpen(false)}
-          allowedPages={staffMode?staffAllowedPages:null}
-        />
-
-        {/* Collapse Button */}
-        <div className="p-3 border-t border-slate-800 hidden md:block">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-            {!collapsed && <span className="text-sm">Collapse</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main
-        className={cn(
-          "flex-1 min-w-0 transition-all duration-300",
-          isWorkflow ? "md:ml-0" : (collapsed ? "md:ml-16" : "md:ml-64")
-        )}
-      >
-        {/* Mobile top bar — bottom nav replaces hamburger menu */}
-        <div className="md:hidden sticky top-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 min-h-14 border-b border-slate-800 print:hidden"
-             style={{ paddingTop: "env(safe-area-inset-top, 0px)", backgroundColor: "#0f172a", WebkitBackdropFilter: "none", backdropFilter: "none", isolation: "isolate" }}>
-          <img
-            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
-            alt="Elite Engine Development"
-            className="h-7 object-contain"
-          />
-          <div className="flex items-center gap-1">
-            {!staffMode&&<button
-              onClick={() => navigate(createPageUrl("BarcodeScan"))}
-              className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
-            >
-              <ScanLine className="w-5 h-5" />
-            </button>}
-            {!staffMode&&<button
-              onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
-              className="h-9 w-9 flex items-center justify-center text-slate-300 hover:text-white"
-            >
-              <Search className="w-5 h-5" />
-            </button>}
-            {!staffMode&&<NotificationBell />}
-          </div>
-        </div>
-        {/* Desktop sticky bar — hidden on Build Workflow (full-screen dark mode); Back button shown on non-Dashboard pages */}
-        {!isWorkflow && (
-          <div className="hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-4 md:px-8 h-12 items-center justify-between print:hidden">
-            {currentPageName !== "Dashboard" ? (
-              <button
-                onClick={() => navigate(-1)}
-                className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-[#e20404] transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Back
-              </button>
-            ) : (
-              <div />
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate(createPageUrl("BarcodeScan"))}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-[#e20404] hover:border-slate-300 transition-colors text-sm"
-              >
-                <ScanLine className="w-4 h-4" />
-                <span className="hidden lg:inline">Scan</span>
-              </button>
-              <button
-                onClick={() => { const e = new KeyboardEvent("keydown", { metaKey: true, key: "k" }); document.dispatchEvent(e); }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors text-sm"
-              >
-                <Search className="w-4 h-4" />
-                <span className="hidden lg:inline">Search</span>
-                <kbd className="hidden lg:inline-block text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1 py-0.5">⌘K</kbd>
-              </button>
-              <NotificationBell />
-            </div>
-          </div>
-        )}
-        <div className="md:pb-0" style={{ paddingBottom: "calc(60px + env(safe-area-inset-bottom))" }}>{children}</div>
-      </main>
-
-      {/* Mobile bottom navigation */}
-      <MobileBottomNav allowedPages={staffMode?staffAllowedPages:null} />
+const LOGO='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
+export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
+ const navigate=useNavigate();
+ usePushNotifications();
+ const isHome=currentPageName==='Dashboard';
+ const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
+ const canUse=page=>!staffMode||staffAllowedPages.includes(page);
+ return <div className="min-h-screen bg-slate-50 overflow-x-hidden">
+   {!staffMode&&<GlobalBarcodeListener/>}
+   {!staffMode&&<GlobalSearch/>}
+   <header className="sticky top-0 z-40 bg-slate-900 text-white border-b border-slate-800 print:hidden" style={{paddingTop:'env(safe-area-inset-top, 0px)',backgroundColor:'#0f172a',WebkitBackdropFilter:'none',backdropFilter:'none'}}>
+    <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
+      <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
+      <div className="flex items-center gap-1 sm:gap-2">
+        {!isHome&&<Link to={staffMode?'/EmployeePortal':'/Dashboard'} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-slate-800" aria-label="Home"><Home className="h-5 w-5"/><span className="hidden sm:inline">Home</span></Link>}
+        {!staffMode&&<button aria-label="Search" title="Search" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>document.dispatchEvent(new KeyboardEvent('keydown',{metaKey:true,key:'k'}))}><Search className="h-5 w-5"/></button>}
+        {!staffMode&&canUse('BarcodeScan')&&<button aria-label="Scan" title="Scan engine" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>navigate(createPageUrl('BarcodeScan'))}><ScanLine className="h-5 w-5"/></button>}
+        {!staffMode&&<NotificationBell/>}
+        {!staffMode&&!isHome&&<Link to="/Settings" aria-label="Settings" title="Settings" className="rounded-lg p-2.5 hover:bg-slate-800"><Settings2 className="h-5 w-5"/></Link>}
+      </div>
     </div>
-  );
+   </header>
+   {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
+   <main className="mx-auto max-w-screen-2xl min-w-0" style={{paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>{children}</main>
+ </div>;
 }
