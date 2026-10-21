@@ -48,6 +48,18 @@ export default async function(req) {
       if(session.metadata?.source!=='eed_admin_sandbox_test_v1'||session.client_reference_id!=='elite_sandbox_test'||session.livemode!==false) return Response.json({error:'This session is not an Elite sandbox test'},{status:403});
       return Response.json({mode:'test',session_id:session.id,status:session.status,payment_status:session.payment_status,amount_total:session.amount_total,currency:session.currency,method:session.payment_method_types?.[0],recorded_in_elite:false});
     }
+    if(body.action==='link_estimate_test') {
+      const estimateId='6ad7b9fa44ef87d7b4e9aca9';
+      const expectedCustomer='6ad7a1628e3224e3c6b330b7';
+      const rows=await base44.asServiceRole.entities.Estimate.filter({id:estimateId,customer_id:expectedCustomer});
+      const estimate=(Array.isArray(rows)?rows:rows?.items||[])[0];
+      if(!estimate||estimate.estimate_number!=='EST-727124') return Response.json({error:'Approved estimate identity mismatch'},{status:409});
+      const entity=base44.asServiceRole.entities.StripeSandboxInvoice;
+      const existing=await entity.filter({linked_estimate_id:estimateId,customer_id:'elite_sandbox_only'});
+      const current=(Array.isArray(existing)?existing:existing?.items||[])[0];
+      const shadow=current||await entity.create({customer_id:'elite_sandbox_only',label:'SANDBOX MIRROR EST-727124 - NOT REAL',linked_estimate_id:estimateId,linked_estimate_number:'EST-727124',linked_customer_id:expectedCustomer,test_deposit_amount:Number(estimate.deposit_amount||0),total:Number(estimate.total),amount_paid:0,applied_credits:0,balance_due:Number(estimate.total),status:'sent',payments:[]});
+      return Response.json({invoice_id:shadow.id,total:shadow.total,amount_paid:shadow.amount_paid,balance_due:shadow.balance_due,status:shadow.status,linked_estimate_number:'EST-727124',deposit_amount:shadow.test_deposit_amount,real_estimate_unchanged:true,sandbox_only:true});
+    }
     if(body.action==='create_invoice') {
       const total=Number(body.total_cents);
       if(!Number.isSafeInteger(total)||total<5000||total>10000000) return Response.json({error:'Test invoice must be $50 to $100,000'},{status:400});
@@ -75,13 +87,13 @@ export default async function(req) {
           const fixed=Number(fees[method+'_processing_fixed_cents']||0);
           return {session_id:p.stripe_session_id,method,amount:p.amount,estimated_merchant_cost:Math.round((Number(p.amount)*percent/100+fixed/100)*100)/100};
         });
-        return Response.json({invoice_id:invoice.id,total:invoice.total,amount_paid:invoice.amount_paid,balance_due:invoice.balance_due,status:invoice.status,payments:payments.map(p=>({session_id:p.stripe_session_id,amount:p.amount,method:p.method})),estimated_processing_costs:estimatedCosts,estimated_total_processing_cost:Math.round(estimatedCosts.reduce((n,p)=>n+p.estimated_merchant_cost,0)*100)/100,sandbox_only:true});
+        return Response.json({invoice_id:invoice.id,total:invoice.total,amount_paid:invoice.amount_paid,balance_due:invoice.balance_due,status:invoice.status,linked_estimate_number:invoice.linked_estimate_number||null,deposit_amount:invoice.test_deposit_amount||null,real_estimate_unchanged:true,payments:payments.map(p=>({session_id:p.stripe_session_id,amount:p.amount,method:p.method})),estimated_processing_costs:estimatedCosts,estimated_total_processing_cost:Math.round(estimatedCosts.reduce((n,p)=>n+p.estimated_merchant_cost,0)*100)/100,sandbox_only:true});
       }
       if(body.action==='invoice_checkout') {
         const method=String(body.method||'');
         if(!['card','affirm'].includes(method)) return Response.json({error:'Only card and Affirm are supported'},{status:400});
         const balance=Math.round(Number(invoice.balance_due||0)*100);
-        const amount=body.payment_option==='deposit'?Math.round(Math.round(Number(invoice.total)*100)*0.25):balance;
+        const amount=body.payment_option==='deposit'?(invoice.linked_estimate_id?Math.round(Number(invoice.test_deposit_amount||0)*100):Math.round(Math.round(Number(invoice.total)*100)*0.25)):balance;
         if(amount<=0||amount>balance) return Response.json({error:'No eligible amount remains'},{status:409});
         const baseUrl=Deno.env.get('PORTAL_BASE_URL')||'https://portal.eedpower.com';
         const url=new URL(baseUrl);
@@ -92,7 +104,7 @@ export default async function(req) {
           success_url:new URL('/Settings?tab=payments&stripe_test_result=success',url).href,
           cancel_url:new URL('/Settings?tab=payments&stripe_test_result=canceled',url).href,
           client_reference_id:'elite_sandbox_only',
-          metadata:{source:'eed_sandbox_invoice_v1',base44_app_id:Deno.env.get('BASE44_APP_ID')||'',document_type:'invoice',document_id:invoice.id,principal_cents:String(amount),fee_cents:'0',payment_method:method,payment_option:body.payment_option==='deposit'?'deposit':'balance'},
+          metadata:{source:'eed_sandbox_invoice_v1',base44_app_id:Deno.env.get('BASE44_APP_ID')||'',document_type:'invoice',document_id:invoice.id,linked_estimate_id:invoice.linked_estimate_id||'',principal_cents:String(amount),fee_cents:'0',payment_method:method,payment_option:body.payment_option==='deposit'?'deposit':'balance'},
         });
         return Response.json({session_id:session.id,url:session.url,amount:amount/100,mode:'test',sandbox_only:true});
       }
