@@ -20,6 +20,7 @@ export default async function(req) {
   const source=event.data.object.metadata?.source;
   if(source==='eed_admin_sandbox_test_v1') return Response.json({received:true,verified:true,test_only:true,financial_records_written:false});
   if(source!==SOURCE) return Response.json({received:true,ignored:true,test_only:true});
+  let stage='stripe_session_retrieval';
   try {
     const session=await stripe.checkout.sessions.retrieve(event.data.object.id);
     if(session.livemode!==false||session.metadata?.source!==SOURCE||session.client_reference_id!==CUSTOMER)
@@ -27,14 +28,17 @@ export default async function(req) {
     const appId=Deno.env.get('BASE44_APP_ID');
     // Only substitute the source label for shared validation; all other
     // payment facts remain the Stripe-retrieved values.
+    stage='validate_payment_facts';
     const facts=verifiedPaymentFacts({...session,metadata:{...session.metadata,source:PORTAL_STRIPE_SOURCE}},appId,false);
     if(!facts) return Response.json({received:true,pending:true,test_only:true});
     if(facts.type!=='invoice'||facts.fee!==0) return Response.json({error:'Sandbox invoice metadata invalid'},{status:409});
+    stage='sandbox_invoice_recording';
     const base44=createClientFromRequest(req);
     const result=await creditInvoice(base44,facts.id,CUSTOMER,facts,base44.asServiceRole.entities.StripeSandboxInvoice);
     return Response.json({received:true,verified:true,test_only:true,duplicate:result.duplicate,invoice_id:facts.id,financial_records_written:false,sandbox_invoice_updated:true});
   } catch(e) {
-    console.error('[portalStripeTestWebhook] sandbox invoice recording requires retry',event.id);
-    return Response.json({error:'Sandbox invoice recording requires retry'},{status:e?.status||503});
+    console.error('[portalStripeTestWebhook] sandbox invoice recording failed', {event_id:event.id,stage,error_type:e?.name||'Error',error_message:String(e?.message||'Unknown').slice(0,240)});
+    const known=e?.name==='PaymentError';
+    return Response.json({error:'Sandbox invoice recording requires retry',stage,diagnostic:known?String(e.message).slice(0,180):'Unexpected sandbox recording error; inspect Base44 function logs',error_type:e?.name||'Error'},{status:e?.status||503});
   }
 }
