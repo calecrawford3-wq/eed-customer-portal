@@ -17,7 +17,7 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
  const isHome=currentPageName==='Dashboard';
  const isFullScreen=currentPageName==='BuildWorkflow'||currentPageName==='MachiningStation';
  const canUse=page=>!staffMode||staffAllowedPages.includes(page);
- return <div className="elite-app-shell flex flex-col bg-slate-50" style={{height:"100dvh",minHeight:0}}>
+ return <div className="elite-app-shell flex flex-col bg-slate-50" style={{height:"100dvh",minHeight:0,backgroundColor:'#f8fafc'}}>
    {!staffMode&&<GlobalBarcodeListener/>}
    {!staffMode&&<GlobalSearch/>}
    <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#0f172a",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
@@ -32,9 +32,9 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
       </div>
     </div>
    </header>
-   <div ref={pageScroller} data-elite-page-scroll className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50" style={{WebkitOverflowScrolling:"touch"}}>
+   <div ref={pageScroller} data-elite-page-scroll className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50" style={{WebkitOverflowScrolling:"touch",paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>
     {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
-    <main className="mx-auto max-w-screen-2xl min-w-0" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>{children}</main>
+    <main className="mx-auto max-w-screen-2xl min-w-0">{children}</main>
    </div>
  </div>;
 }
