@@ -133,6 +133,12 @@
     min-height: 0;
     flex: 1 1 0%;
   }
+  /* Match the iOS standalone status-bar backdrop to the Elite header. */
+  @media (display-mode: standalone) {
+    html, body, #root {
+      background-color: #0f172a;
+    }
+  }
   @media print {
     html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
       height: auto;
