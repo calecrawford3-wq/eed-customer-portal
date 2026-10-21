@@ -54,6 +54,6 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
     {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
     <main className="mx-auto max-w-screen-2xl min-w-0 min-h-full">{children}</main>
    </div>
-   {debugLayout&&<div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:99999,background:'#111827',color:'white',fontSize:12,padding:'8px 12px',fontFamily:'monospace',pointerEvents:'none'}}>{JSON.stringify(layoutMetrics)}</div>}
+   {debugLayout&&<div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:99999,background:'#111827',color:'white',fontSize:12,padding:'8px 12px',fontFamily:'monospace',pointerEvents:'none'}}>{JSON.stringify(layoutMetrics)}</div>}
  </div>;
 }
