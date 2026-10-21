@@ -49,7 +49,7 @@ const SelectScrollDownButton = React.forwardRef(/** @param {React.ComponentProps
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
-const SelectContent = React.forwardRef(/** @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Portal >} props */ ({ className, children, position = "popper", ...props }, ref) => (
+const SelectContent = React.forwardRef(/** @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content >} props */ ({ className, children, position = "popper", ...props }, ref) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
