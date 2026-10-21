@@ -1520,6 +1520,8 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
+      {id && form.customer_id && ["sent","partial","overdue"].includes(form.status) && <div id="invoice-guest-payment-share" className="mb-5"><GuestPaymentShare type="invoice" id={id} /></div>}
+
       {/* Payment History */}
       {(form.payments || []).length > 0 && (
         <Card className="border-0 shadow-sm mb-6">
