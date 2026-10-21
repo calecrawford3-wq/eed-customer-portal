@@ -8,7 +8,7 @@ test('new estimate and invoice default to 5 percent, with one allowance added to
   assert.match(source,/pricing_allowance_rate: 5, pricing_allowance_amount: 0/);
   assert.match(source,/const baseSubtotal = partTotal \+ laborTotal \+ machiningTotal/);
   assert.match(source,/const subtotal = baseSubtotal \+ pricing_allowance_amount/);
-  assert.match(source,/Number\(form\.pricing_allowance_rate\)\|\|0/);
+  assert.match(source,/Number\(form\.pricing_allowance_rate\)\s*\|\|\s*0/);
   assert.match(source,/return \{ subtotal, pricing_allowance_amount/);
  }
 });
