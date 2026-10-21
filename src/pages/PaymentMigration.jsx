@@ -12,12 +12,33 @@ export default function PaymentMigration({embedded=false}) {
   const [launchReport, setLaunchReport] = useState(null);
   const [legacyReport, setLegacyReport] = useState(null);
   const [session, setSession] = useState('');
+  const [sandbox, setSandbox] = useState(null);
+  const [sandboxMethod, setSandboxMethod] = useState('card');
+  const [sandboxAmount, setSandboxAmount] = useState(100);
+  const [sandboxSession, setSandboxSession] = useState('');
+  const [sandboxResult, setSandboxResult] = useState(null);
   const [fees, setFees] = useState(null);
   const [providerGates, setProviderGates] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   if (user?.role !== 'admin') return <p>Staff access required.</p>;
+  async function runSandbox(action) {
+    setBusy(true);setError('');setMessage('');
+    try {
+      const payload=action==='create'?{method:sandboxMethod,amount_cents:Math.round(Number(sandboxAmount)*100)}:action==='status'?{session_id:sandboxSession.trim()}:{};
+      const r=await base44.functions.invoke('manageStripeSandboxTest',{action,...payload});
+      if(r.data?.error) throw new Error(r.data.error);
+      if(action==='check') {setSandbox(r.data);setMessage('Stripe test connection checked.');}
+      if(action==='create') {
+        setSandboxSession(r.data.session_id);
+        setMessage('Test checkout created. Stripe test session: '+r.data.session_id);
+        window.open(r.data.url,'_blank','noopener,noreferrer');
+      }
+      if(action==='status') {setSandboxResult(r.data);setMessage('Stripe test payment status retrieved. No Elite financial records were changed.');}
+    } catch(e) {setError(e.response?.data?.error||e.message||'Unable to run Stripe sandbox test');}
+    finally {setBusy(false);}
+  }
   async function manageFees(action) {
     setBusy(true); setError(''); setMessage('');
     try {
@@ -43,6 +64,28 @@ export default function PaymentMigration({embedded=false}) {
   }
   return <main className={embedded?"space-y-6":"mx-auto max-w-3xl space-y-6 p-4 md:p-8"}>
     <div>{!embedded&&<h1 className="text-2xl font-bold">Settings / Payments</h1>}<p className="mt-2 text-slate-600">Secure Stripe connection checks for the new portal. Existing billing remains active until cutover is verified.</p></div>
+    <section className="rounded-xl border border-blue-300 bg-blue-50 p-5 space-y-3">
+      <h2 className="font-semibold">Stripe sandbox test payments</h2>
+      <p className="text-sm">Admin-only test payments using a separate Stripe test key. Never charges a real card or modifies Elite customers, estimates, invoices, balances, or revenue. This does NOT test live invoice recording.</p>
+      <Button variant="outline" disabled={busy} onClick={()=>runSandbox('check')}>Check Sandbox Connection</Button>
+      {sandbox && <div className="text-sm space-y-1">
+        <p>Mode: <strong>{sandbox.mode}</strong></p>
+        <p>Sandbox webhook signing secret: {sandbox.webhook_secret_configured?'Configured':'Missing'}</p>
+        <p>Webhook registered: {sandbox.webhook_registered?'Yes':'No'}</p>
+        <p>Required webhook events: {sandbox.webhook_events_configured?'Configured':'Not confirmed'}</p>
+        <p className="break-all">Webhook destination: <code>{sandbox.webhook_url}</code></p>
+      </div>}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">Payment method<select className="mt-1 block w-full rounded-md border bg-white p-2" value={sandboxMethod} onChange={e=>setSandboxMethod(e.target.value)}><option value="card">Credit / debit card</option><option value="affirm">Affirm</option></select></label>
+        <label className="text-sm">Test amount (USD)<Input className="mt-1" type="number" min="50" max="1000" step="1" value={sandboxAmount} onChange={e=>setSandboxAmount(e.target.value)}/></label>
+      </div>
+      <Button disabled={busy||!(Number(sandboxAmount)>=50&&Number(sandboxAmount)<=1000)} onClick={()=>runSandbox('create')}>Open Test Checkout</Button>
+      <p className="text-xs text-slate-600">For cards, Stripe test number 4242 4242 4242 4242 succeeds and 4000 0000 0000 0002 declines. Use any future expiration and any three-digit CVC. Affirm uses Stripe's sandbox approval flow. A new tab opens to Stripe Checkout.</p>
+      <label className="block text-sm">Sandbox Checkout Session ID<Input className="mt-1" placeholder="cs_test_..." value={sandboxSession} onChange={e=>setSandboxSession(e.target.value)}/></label>
+      <Button variant="outline" disabled={busy||!sandboxSession.trim()} onClick={()=>runSandbox('status')}>Check Test Payment Status</Button>
+      {sandboxResult && <p className="text-sm rounded-md bg-white border p-3">Stripe status: <strong>{sandboxResult.status}</strong>. Payment: <strong>{sandboxResult.payment_status}</strong>. Test amount: ${((sandboxResult.amount_total||0)/100).toFixed(2)}. Elite financial records changed: <strong>No</strong>.</p>}
+      <p className="text-xs text-amber-900">Signed webhook delivery must also be verified in Stripe's test webhook delivery log. Successful sandbox checkout alone does not authorize live checkout.</p>
+    </section>
     <section className="rounded-xl border border-slate-300 bg-white p-5 space-y-3">
       <h2 className="font-semibold">Stage 14: Legacy billing migration audit</h2>
       <p className="text-sm text-slate-600">Read-only inventory of legacy invoices, unpaid balances, pending approvals, payment links and migration risks. The old billing viewer remains active. This does not import records, change URLs, or authorize redirects.</p>
