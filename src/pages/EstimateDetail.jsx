@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import InitialFindingsEditor from '@/components/estimates/InitialFindingsEditor';
 import { base44 } from "@/api/base44Client";
 import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -94,7 +95,7 @@ export default function EstimateDetail() {
     discount_type: "none", discount_value: 0, discount_amount: 0,
     shipping_cost: 0,
     pricing_allowance_rate: 5, pricing_allowance_amount: 0,
-    tax_rate: 0, notes: "", internal_notes: ""
+    tax_rate: 0, notes: "", internal_notes: "", initial_findings: []
   });
 
   // --- Navigation guard: detect unsaved edits and prompt before leaving ---
@@ -2201,6 +2202,7 @@ export default function EstimateDetail() {
         availableCreditBalance={availableCreditBalance}
       />
 
+      <InitialFindingsEditor findings={form.initial_findings || []} onChange={initial_findings=>setForm(f=>({...f,initial_findings}))}/>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div><Label>Customer Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Notes visible to customer..." /></div>
         <div><Label>Internal Notes</Label><Textarea value={form.internal_notes} onChange={e => setForm({...form, internal_notes: e.target.value})} rows={4} placeholder="Internal only..." /></div>
