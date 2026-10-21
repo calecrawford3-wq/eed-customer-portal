@@ -190,6 +190,13 @@ async function reservePartsForEstimate(base44, { estimate, operation_id }) {
     const existing = existingByPart.get(partId);
 
     const result = await withPartLock(base44, partId, operation_id, async () => {
+      // Re-read this estimate's reservation after acquiring the part lock.
+      // The pre-lock snapshot can be stale when two approval events race.
+      const latestRes = await base44.entities.PartReservation.filter({
+        estimate_id: estimateId, part_id: partId,
+        status: { $in: ["reserved", "partially_consumed"] },
+      });
+      const current = (latestRes.items || latestRes || [])[0] || null;
       const parts = await base44.entities.Part.filter({ id: partId });
       const part = (parts.items || parts || [])[0];
       const onHand = part ? roundQty(part.quantity_on_hand) : 0;
@@ -201,19 +208,19 @@ async function reservePartsForEstimate(base44, { estimate, operation_id }) {
       const newReserved = roundQty(Math.min(requiredQty, available));
       const newShort = roundQty(Math.max(0, requiredQty - available));
 
-      if (existing) {
+      if (current) {
         // Reconcile: adjust reserved/short to match current demand
         const changed =
-          existing.quantity_required !== requiredQty ||
-          existing.quantity_reserved !== newReserved ||
-          existing.quantity_short !== newShort;
+          current.quantity_required !== requiredQty ||
+          current.quantity_reserved !== newReserved ||
+          current.quantity_short !== newShort;
         if (changed) {
-          await base44.entities.PartReservation.update(existing.id, {
+          await base44.entities.PartReservation.update(current.id, {
             quantity_required: requiredQty,
             quantity_reserved: newReserved,
             quantity_short: newShort,
-            part_number: d.part_number || existing.part_number,
-            part_name: d.name || existing.part_name,
+            part_number: d.part_number || current.part_number,
+            part_name: d.name || current.part_name,
             operation_id,
           });
         }
