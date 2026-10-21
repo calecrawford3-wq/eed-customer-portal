@@ -30,6 +30,6 @@ export default async function(req) {
       else await entity.create({ key: 'portal_payment_fees', ...update });
     } else if (body.action !== 'read') return Response.json({ error: 'Invalid action' }, { status: 400 });
     const settings = await readPortalFeeSettings(base44);
-    return Response.json({ settings: Object.fromEntries(fields.map(k => [k, settings[k] ?? (k.endsWith('_enabled') ? false : 0)])), provider_gates: { affirm: Deno.env.get('PORTAL_ENABLE_AFFIRM') === 'true' }, note: 'Card and Affirm processing rates are merchant cost estimates only. They do not charge customers or create expense records. Customer surcharges remain disabled.' }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ settings: Object.fromEntries(fields.map(k => [k, settings[k] ?? (k.endsWith('_enabled') ? false : k === 'international_allowance_percent' ? 2.5 : 0)])), provider_gates: { affirm: Deno.env.get('PORTAL_ENABLE_AFFIRM') === 'true' }, note: 'Card and Affirm processing rates are merchant cost estimates only. They do not charge customers or create expense records. Customer surcharges remain disabled.' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return Response.json({ error: 'Unable to manage payment settings' }, { status: 500 }); }
 }
