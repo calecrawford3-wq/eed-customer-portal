@@ -1000,6 +1000,7 @@ export default function InvoiceDetail() {
         <Button variant="outline" size="sm" onClick={sendInvoiceByText} disabled={sending || !form.customer_id} title="Send invoice link via text message">
           <MessageSquare className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Text"}
         </Button>
+        {id && form.customer_id && ["sent","partial","overdue"].includes(form.status) && <Button variant="outline" size="sm" onClick={() => document.getElementById("invoice-guest-payment-share")?.scrollIntoView({behavior:"smooth",block:"center"})}>Guest Payment Link</Button>}
         {["draft","sent","partial","overdue"].includes(form.status) && (
           <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700" onClick={() => setPaymentModalOpen(true)}>
             <DollarSign className="w-4 h-4 mr-1" /> Record Payment
