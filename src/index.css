@@ -121,14 +121,13 @@
   .elite-app-shell {
     inset: 0;
     width: 100%;
-    height: 100vh;
-    height: var(--elite-visible-height, 100dvh);
-    bottom: auto;
+    /* Let fixed positioning fill the actual standalone app viewport.
+       Explicit height overrides previously left a dead strip on iOS. */
+    height: auto;
+    top: 0;
+    bottom: 0;
     padding-bottom: 0 !important;
     margin-bottom: 0 !important;
-  }
-  @supports (-webkit-touch-callout: none) {
-    .elite-app-shell { height: var(--elite-visible-height, 100dvh); }
   }
   [data-elite-page-scroll] {
     min-height: 0;
