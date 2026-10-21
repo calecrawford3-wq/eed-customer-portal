@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import GuestPaymentShare from "@/components/portal/GuestPaymentShare";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
