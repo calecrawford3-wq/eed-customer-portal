@@ -116,12 +116,15 @@
     height: 100%;
     overflow: hidden;
   }
-  /* iOS home-screen PWAs can exclude the home-indicator inset from 100dvh.
-     Give the real scrolling workspace that space, not a blank footer. */
-  @media (display-mode: standalone) and (max-width: 767px) {
-    .elite-app-shell {
-      height: calc(100dvh + env(safe-area-inset-bottom, 0px)) !important;
-    }
+  /* Pin the actual scroll container to the visual viewport on iOS.
+     Avoid extending 100dvh by a safe-area amount, which can leave a dead strip. */
+  .elite-app-shell {
+    inset: 0;
+    width: 100%;
+  }
+  [data-elite-page-scroll] {
+    min-height: 0;
+    flex: 1 1 0%;
   }
   @media print {
     html:has(.elite-app-shell), body:has(.elite-app-shell), #root:has(.elite-app-shell) {
