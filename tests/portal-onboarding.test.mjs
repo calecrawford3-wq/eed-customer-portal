@@ -66,10 +66,13 @@ test('onboarding tour returns to security after finishing or skipping', () => {
 test('guided tour highlights real portal controls and scrolls them into view', () => {
   const tour = readFileSync('src/components/portal/PortalTour.jsx', 'utf8');
   const portal = readFileSync('src/pages/CustomerPortal.jsx', 'utf8');
-  for (const target of ['engines','builds','estimates','invoices','findings','account','garage']) {
+  for (const target of ['home','engines','documents','account']) {
     assert.match(tour, new RegExp("target:'"+target+"'"));
     assert.match(portal, new RegExp('data-tour="'+target+'"'));
   }
+  assert.match(tour, /Documents & Payments/);
+  assert.match(portal, /Build History/);
+  assert.match(portal, /Cars & drivers/);
   assert.match(tour, /window\.scrollTo/);
   assert.match(tour, /\[role="tabpanel"\]\[data-state="active"\]/);
   assert.match(tour, /max-h-\[36dvh\]/);
@@ -84,8 +87,8 @@ test('profile completion hides redundant dashboard card but preserves profile an
   const safe = readFileSync('base44/shared/portalAllowlists.ts', 'utf8');
   assert.match(setup, /Finish Profile Setup/);
   assert.match(setup, /save\(\{onboarding_profile_completed:true\}\)/);
-  assert.match(portal, /!customer\?\.onboarding_profile_completed \|\| accountSetupOpen/);
-  for (const label of ['My Account','Cars & drivers','Portal tour']) assert.match(portal, new RegExp(label));
+  assert.match(portal, /!customer\?\.onboarding_profile_completed && portalSection !== 'account'/);
+  for (const label of ['Account details','Cars & drivers','Portal tour']) assert.match(portal, new RegExp(label));
   assert.match(api, /Complete all four onboarding steps before finishing setup/);
   assert.match(safe, /onboarding_profile_completed: c.onboarding_profile_completed/);
 });
