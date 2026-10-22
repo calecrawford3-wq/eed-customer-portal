@@ -62,6 +62,26 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   });
   const catalog = Array.isArray(catalogData) ? catalogData : (catalogData?.items || []);
 
+  const { data: serializedComponents = [] } = useQuery({
+    queryKey: ["machining-components", engine?.id, engine?.current_head_component_id, engine?.current_case_component_id],
+    queryFn: async () => {
+      const ids = [engine?.current_head_component_id, engine?.current_case_component_id].filter(Boolean);
+      const linked = engine?.id ? await base44.entities.EngineComponent.filter({ current_customer_engine_id: engine.id }, "-created_date", 50) : [];
+      const direct = [];
+      for (const id of ids) {
+        const found = await base44.entities.EngineComponent.filter({ id });
+        if (found?.[0]) direct.push(found[0]);
+      }
+      return [...linked, ...direct].filter((c, i, a) => a.findIndex(x => x.id === c.id) === i);
+    },
+    enabled: !!engine?.id && open,
+  });
+  const componentForType = (taskType) => taskType === "deck_case"
+    ? serializedComponents.find(c => c.component_type === "engine_case")
+    : ["shave_head", "valve_work", "polishing"].includes(taskType)
+      ? serializedComponents.find(c => c.component_type === "cylinder_head")
+      : null;
+
   // Fetch the machining items from the linked estimate and invoice(s) so we
   // can pre-populate drafts. Only items actually on the documents are used —
   // we never invent tasks that aren't billed. These are "linked" (already
@@ -124,11 +144,15 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       if (sourceItems.length > 0) {
         setDrafts(sourceItems.map(item => {
           const taskType = nameToTaskType(item.name);
+          const component = componentForType(taskType);
           return {
             _id: Math.random().toString(36).slice(2),
             task_type: taskType,
+            component_id: component?.id || "",
+            component_code: component?.component_code || "",
+            component_type: component?.component_type || "",
             task_label: item.name,
-            affected_component: "",
+            affected_component: component?.component_code || "",
             instructions: item.description || "",
             include_in_customer_docs: false,
             is_required: true,
@@ -151,11 +175,16 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
     }
   }, [open, sourceItems]);  
 
-  const blankDraft = () => ({
+  const blankDraft = () => {
+    const component = componentForType("shave_head");
+    return ({
     _id: Math.random().toString(36).slice(2),
     task_type: "shave_head",
     task_label: "",
-    affected_component: "",
+    component_id: component?.id || "",
+    component_code: component?.component_code || "",
+    component_type: component?.component_type || "",
+    affected_component: component?.component_code || "",
     instructions: "",
     include_in_customer_docs: false,
     is_required: true,
@@ -171,6 +200,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
     source_type: "manual",
     source_id: "",
   });
+  };
 
   const addDraft = () => setDrafts([...drafts, blankDraft()]);
 
@@ -181,6 +211,8 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       if (patch.task_type && patch.task_type !== d.task_type) {
         next.measurements = defaultMeasurements(patch.task_type);
         next.task_label = "";
+        const component = componentForType(patch.task_type);
+        if (component) { next.component_id = component.id; next.component_code = component.component_code; next.component_type = component.component_type; next.affected_component = component.component_code; }
       }
       return next;
     }));
@@ -229,7 +261,10 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
         customer_id: job.customer_id || "",
         task_type: d.task_type,
         task_label: d.task_label || (d.task_type === "other" ? "Custom Machining" : TYPE_LABELS[d.task_type]),
-        affected_component: d.affected_component || "",
+        component_id: d.component_id || "",
+        component_code: d.component_code || "",
+        component_type: d.component_type || "",
+        affected_component: d.affected_component || d.component_code || "",
         instructions: d.instructions || "",
         include_in_customer_docs: !!d.include_in_customer_docs,
         is_required: !!d.is_required,
@@ -273,7 +308,10 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
     setEditDraft({
       task_type: task.task_type,
       task_label: task.task_label || "",
-      affected_component: task.affected_component || "",
+      component_id: task.component_id || "",
+      component_code: task.component_code || "",
+      component_type: task.component_type || "",
+      affected_component: task.affected_component || task.component_code || "",
       instructions: task.instructions || "",
       include_in_customer_docs: !!task.include_in_customer_docs,
       is_required: !!task.is_required,
@@ -300,6 +338,9 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
       await base44.entities.MachiningTask.update(taskId, {
         task_type: ed.task_type,
         task_label: ed.task_label,
+        component_id: ed.component_id || "",
+        component_code: ed.component_code || "",
+        component_type: ed.component_type || "",
         affected_component: ed.affected_component,
         instructions: ed.instructions,
         include_in_customer_docs: ed.include_in_customer_docs,
@@ -363,12 +404,13 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
             {existingTasks.map(t => (
               <div key={t.id} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
                 {editingId === t.id ? (
-                  <TaskEditForm draft={editDraft} setDraft={setEditDraft} onSave={() => saveEdit(t.id)} onCancel={() => { setEditingId(null); setEditDraft(null); }} saving={saving} />
+                  <TaskEditForm draft={editDraft} setDraft={setEditDraft} components={serializedComponents} onSave={() => saveEdit(t.id)} onCancel={() => { setEditingId(null); setEditDraft(null); }} saving={saving} />
                 ) : (
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge className="text-xs bg-purple-100 text-purple-700 border-0">{TYPE_LABELS[t.task_type]}</Badge>
+                        {t.component_code && <Badge variant="outline" className="font-mono text-xs">{t.component_code}</Badge>}
                         {t.affected_component && <span className="text-sm font-medium text-slate-800">{t.affected_component}</span>}
                         {t.is_required ? <Badge variant="outline" className="text-xs text-red-600 border-red-200">Required</Badge> : <Badge variant="outline" className="text-xs text-slate-400">Optional</Badge>}
                         <StatusBadge status={t.status} />
@@ -403,7 +445,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
                   <span className="text-xs font-semibold text-slate-400">Task {idx + 1}</span>
                   <button onClick={() => removeDraft(d._id)} className="p-1 text-slate-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
-                <TaskEditForm draft={d} setDraft={(patch) => updateDraft(d._id, patch)} onSave={null} onCancel={null} hideButtons catalog={catalog} onCatalogSelect={(itemId) => onCatalogSelect(d._id, itemId)} />
+                <TaskEditForm draft={d} setDraft={(patch) => updateDraft(d._id, patch)} components={serializedComponents} onSave={null} onCancel={null} hideButtons catalog={catalog} onCatalogSelect={(itemId) => onCatalogSelect(d._id, itemId)} />
               </div>
             ))}
           </div>
@@ -434,7 +476,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   );
 }
 
-function TaskEditForm({ draft, setDraft, onSave, onCancel, hideButtons = false, saving = false, catalog = [], onCatalogSelect = (..._args) => {} }) {
+function TaskEditForm({ draft, setDraft, components = [], onSave, onCancel, hideButtons = false, saving = false, catalog = [], onCatalogSelect = (..._args) => {} }) {
   const update = (patch) => setDraft({ ...draft, ...patch });
   const isLinked = draft.source_type === "estimate" || draft.source_type === "invoice";
   return (
@@ -459,6 +501,14 @@ function TaskEditForm({ draft, setDraft, onSave, onCancel, hideButtons = false, 
           <span>Linked to an existing {draft.source_type} charge — not re-charged to the customer.</span>
         </div>
       )}
+
+      <div>
+        <Label className="text-xs font-medium text-slate-600">Serialized component (recommended for head/case work)</Label>
+        <select value={draft.component_id || ""} onChange={e => { const c = components.find(x => x.id === e.target.value); update(c ? { component_id:c.id, component_code:c.component_code, component_type:c.component_type, affected_component:c.component_code } : { component_id:"", component_code:"", component_type:"" }); }} className="mt-0.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="">— No serialized component —</option>
+          {components.map(c => <option key={c.id} value={c.id}>{c.component_code} · {c.component_type === "cylinder_head" ? "Cylinder Head" : "Engine Case"}</option>)}
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
