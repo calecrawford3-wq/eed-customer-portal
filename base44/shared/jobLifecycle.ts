@@ -125,7 +125,9 @@ async function computePartsReadiness(base44, estimateId, buildId) {
 async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, activate }) {
   if (!estimate || !estimate.id) throw new Error("estimate required");
 
-  // Find existing job by estimate_id
+  // Find existing job by estimate_id first. If an engine was transferred or
+  // an estimate was reassigned before the job link was updated, safely recover
+  // the one open job for that physical engine instead of creating a duplicate.
   let job = null;
   const existing = await base44.entities.Job.filter({ estimate_id: estimate.id });
   const matchingJobs = existing.items || existing || [];
@@ -133,6 +135,14 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
     throw new Error(`Multiple jobs linked to estimate ${estimate.id}; manual reconciliation required`);
   }
   job = matchingJobs[0] || null;
+  if (!job && estimate.customer_engine_id) {
+    const byEngineRes = await base44.entities.Job.filter({ customer_engine_id: estimate.customer_engine_id });
+    const openEngineJobs = (byEngineRes.items || byEngineRes || []).filter((j) => !j.archived && !j.completed_at && j.stage !== "picked_up");
+    if (openEngineJobs.length > 1) {
+      throw new Error(`Multiple open jobs exist for engine ${estimate.customer_engine_id}; manual reconciliation required`);
+    }
+    if (openEngineJobs.length === 1) job = openEngineJobs[0];
+  }
 
   const { stage, blocking, is_active } = deriveStageAndBlocking(estimate, build, job?.manual_stage_override);
   const depositMet = isDepositMet(estimate);
