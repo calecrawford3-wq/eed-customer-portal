@@ -1,36 +1,72 @@
+import {invalidateEngineVerification,recordIdentityEvent,syncSerializedCoreQuantity} from './identityAudit.ts';
 const rows=(v:any)=>Array.isArray(v)?v:v?.items||[];
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function randomChars(n:number){const bytes=new Uint8Array(n);crypto.getRandomValues(bytes);return Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');}
-async function uniqueValue(entity:any, field:string, make:()=>string){for(let i=0;i<30;i++){const value=make();const found=rows(await entity.filter({[field]:value}));if(!found.length)return value;}throw new Error(`Could not allocate unique ${field}`);}
 function randomDigits(n:number){const bytes=new Uint32Array(n);crypto.getRandomValues(bytes);return Array.from(bytes,b=>String(b%10)).join('');}
+async function uniqueValue(entity:any,field:string,make:()=>string){for(let i=0;i<60;i++){const value=make();const found=rows(await entity.filter({[field]:value}));if(!found.length)return value;}throw new Error(`Could not allocate unique ${field}`);}
+async function ensureTagVersion(service:any,{ownerType,engineId='',component:any,identityDisplay,tagCode,templateVersion='elite-tag-v1',widthMm=60,heightMm=25}:any){
+ const existing=rows(await service.entities.IdentityTagVersion.filter({tag_code:tagCode}));
+ if(existing.length){const same=existing.find((v:any)=>(engineId&&v.customer_engine_id===engineId)||(component?.id&&v.component_id===component.id));if(same)return same;throw new Error('Scan token collision detected. Regenerate the tag token.');}
+ const versions=ownerType==='customer_engine'?rows(await service.entities.IdentityTagVersion.filter({customer_engine_id:engineId})):rows(await service.entities.IdentityTagVersion.filter({component_id:component?.id}));
+ return service.entities.IdentityTagVersion.create({owner_type:ownerType,customer_engine_id:engineId,component_id:component?.id||'',component_type:component?.component_type||'engine_case',identity_display:identityDisplay,tag_code:tagCode,version_number:(Math.max(0,...versions.map((v:any)=>Number(v.version_number)||0))+1),status:'active',template_version:templateVersion,width_mm:widthMm,height_mm:heightMm,generated_at:new Date().toISOString(),generated_by:'Elite'});
+}
 export async function newTagCode(service:any,prefix:string){
- const engineEntity=service.entities.CustomerEngine; const componentEntity=service.entities.EngineComponent;
- for(let i=0;i<30;i++){const code=`${prefix}-${randomChars(12)}`;const [e,c]=await Promise.all([engineEntity.filter({tag_code:code}),componentEntity.filter({tag_code:code})]);if(!rows(e).length&&!rows(c).length)return code;}throw new Error('Could not allocate unique scan tag');
+ const engineEntity=service.entities.CustomerEngine,componentEntity=service.entities.EngineComponent,tagEntity=service.entities.IdentityTagVersion;
+ for(let i=0;i<60;i++){const code=`${prefix}-${randomChars(12)}`;const [e,c,t]=await Promise.all([engineEntity.filter({tag_code:code}),componentEntity.filter({tag_code:code}),tagEntity.filter({tag_code:code})]);if(!rows(e).length&&!rows(c).length&&!rows(t).length)return code;}throw new Error('Could not allocate unique scan tag');
 }
 export async function newHeadCode(service:any){return uniqueValue(service.entities.EngineComponent,'component_code',()=>`HD-${randomDigits(6)}`);}
-export async function pairHead(service:any,{componentId,engineId,jobId='',reason=''}:{componentId:string,engineId:string,jobId?:string,reason?:string}){
- const Component=service.entities.EngineComponent, Engine=service.entities.CustomerEngine, Pairing=service.entities.EngineComponentPairing;
- const component=rows(await Component.filter({id:componentId}))[0]; const engine=rows(await Engine.filter({id:engineId}))[0];
- if(!component||component.component_type!=='cylinder_head')throw new Error('Cylinder head not found'); if(!engine)throw new Error('Engine not found');
- if(component.current_customer_engine_id===engineId&&engine.current_head_component_id===componentId){const existing=rows(await Pairing.filter({component_id:componentId,customer_engine_id:engineId,status:'active'}))[0]||null;if(existing)return {pairing:existing,component,engine,no_op:true};const repaired=await Pairing.create({component_id:componentId,component_code:component.component_code,customer_engine_id:engineId,engine_eed_id:engine.eed_id||'',job_id:jobId,paired_at:new Date().toISOString(),status:'active',reason:reason||'Pairing history repaired'});return {pairing:repaired,component,engine,repaired:true};}
- const now=new Date().toISOString();
- // Close any active history rows involving either this head or this bottom end.
- const [byHead,byEngine]=await Promise.all([Pairing.filter({component_id:componentId,status:'active'}),Pairing.filter({customer_engine_id:engineId,status:'active'})]);
+export async function newCaseCode(service:any){return uniqueValue(service.entities.EngineComponent,'component_code',()=>`CS-${randomDigits(6)}`);}
+function assertPairable(component:any){if(['retired','scrapped'].includes(component?.lifecycle_status))throw new Error(`${component.component_code} is ${component.lifecycle_status} and cannot be paired. Reactivate it first.`);}
+export async function ensureCaseComponent(service:any,engine:any){
+ if(engine.current_case_component_id){const c=rows(await service.entities.EngineComponent.filter({id:engine.current_case_component_id}))[0];if(c)return c;}
+ const existing=rows(await service.entities.EngineComponent.filter({current_customer_engine_id:engine.id,component_type:'engine_case'}))[0];
+ if(existing){await service.entities.CustomerEngine.update(engine.id,{current_case_component_id:existing.id,tag_code:existing.tag_code||engine.tag_code});return existing;}
+ const tagCode=engine.tag_code||await newTagCode(service,'CASE');
+ const component=await service.entities.EngineComponent.create({component_code:engine.eed_id,component_type:'engine_case',tag_code:tagCode,physical_serial_number:engine.engine_serial_number||'',platform_id:engine.platform_id||'',origin_customer_engine_id:engine.id,current_customer_engine_id:engine.id,status:'paired',lifecycle_status:'active',inventory_state:'customer_owned',storage_location:engine.storage_location||'',notes:'Permanent physical case identity'});
+ const tag=await ensureTagVersion(service,{ownerType:'engine_component',component,identityDisplay:engine.eed_id,tagCode});
+ await service.entities.EngineComponent.update(component.id,{current_tag_version_id:tag.id});
+ await service.entities.CustomerEngine.update(engine.id,{current_case_component_id:component.id,tag_code:tagCode,current_tag_version_id:tag.id});
+ return {...component,current_tag_version_id:tag.id};
+}
+export async function pairHead(service:any,{componentId,engineId,jobId='',reason='',reasonCode='other',allowTransfer=false,actor='Admin'}:{componentId:string,engineId:string,jobId?:string,reason?:string,reasonCode?:string,allowTransfer?:boolean,actor?:string}){
+ const Component=service.entities.EngineComponent,Engine=service.entities.CustomerEngine,Pairing=service.entities.EngineComponentPairing;
+ const component=rows(await Component.filter({id:componentId}))[0],engine=rows(await Engine.filter({id:engineId}))[0];
+ if(!component||component.component_type!=='cylinder_head')throw new Error('Cylinder head not found');if(!engine)throw new Error('Engine not found');assertPairable(component);
+ if(component.current_customer_engine_id&&component.current_customer_engine_id!==engineId&&!allowTransfer){
+  const other=rows(await Engine.filter({id:component.current_customer_engine_id}))[0];
+  const err:any=new Error(`${component.component_code} is already paired to ${other?.eed_id||'another engine'}. Use Transfer/Re-pair and record a reason.`);err.code='PAIRING_CONFLICT';err.current_engine=other;throw err;
+ }
+ if(component.current_customer_engine_id===engineId&&engine.current_head_component_id===componentId){
+  const existing=rows(await Pairing.filter({component_id:componentId,customer_engine_id:engineId,status:'active'}))[0]||null;
+  if(existing)return {pairing:existing,component,engine,no_op:true};
+  const repaired=await Pairing.create({component_id:componentId,component_code:component.component_code,component_type:'cylinder_head',customer_engine_id:engineId,engine_eed_id:engine.eed_id||'',job_id:jobId,paired_at:new Date().toISOString(),status:'active',reason,reason_code:reasonCode,reason_note:reason});return {pairing:repaired,component,engine,repaired:true};
+ }
+ const now=new Date().toISOString();const priorCoreIds=new Set<string>();if(component.engine_core_id)priorCoreIds.add(component.engine_core_id);
+ const [byHead,byEngine]=await Promise.all([Pairing.filter({component_id:componentId,status:'active'}),Pairing.filter({customer_engine_id:engineId,status:'active',component_type:'cylinder_head'})]);
  const active=[...rows(byHead),...rows(byEngine)].filter((x:any,i:number,a:any[])=>a.findIndex(y=>y.id===x.id)===i);
- for(const p of active){await Pairing.update(p.id,{status:'historical',unpaired_at:now});if(p.component_id!==componentId){await Component.update(p.component_id,{current_customer_engine_id:'',status:'unpaired'});}if(p.customer_engine_id!==engineId){await Engine.update(p.customer_engine_id,{current_head_component_id:''});}}
- // Also clear stale direct pointers if history was incomplete.
+ for(const p of active){await Pairing.update(p.id,{status:'historical',unpaired_at:now});if(p.component_id!==componentId){const old=rows(await Component.filter({id:p.component_id}))[0];if(old?.engine_core_id)priorCoreIds.add(old.engine_core_id);await Component.update(p.component_id,{current_customer_engine_id:'',status:'unpaired',inventory_state:old?.engine_core_id?'in_stock':(old?.inventory_state||'not_inventory'),lifecycle_status:['retired','scrapped','damaged'].includes(old?.lifecycle_status)?old.lifecycle_status:(old?.engine_core_id?'spare':old?.lifecycle_status||'active')});}if(p.customer_engine_id!==engineId)await Engine.update(p.customer_engine_id,{current_head_component_id:''});}
  if(component.current_customer_engine_id&&component.current_customer_engine_id!==engineId)await Engine.update(component.current_customer_engine_id,{current_head_component_id:''});
- if(engine.current_head_component_id&&engine.current_head_component_id!==componentId)await Component.update(engine.current_head_component_id,{current_customer_engine_id:'',status:'unpaired'});
- await Component.update(componentId,{current_customer_engine_id:engineId,status:'paired',platform_id:component.platform_id||engine.platform_id||''});
+ if(engine.current_head_component_id&&engine.current_head_component_id!==componentId){const old=rows(await Component.filter({id:engine.current_head_component_id}))[0];if(old?.engine_core_id)priorCoreIds.add(old.engine_core_id);await Component.update(engine.current_head_component_id,{current_customer_engine_id:'',status:'unpaired',inventory_state:old?.engine_core_id?'in_stock':(old?.inventory_state||'not_inventory'),lifecycle_status:['retired','scrapped','damaged'].includes(old?.lifecycle_status)?old.lifecycle_status:(old?.engine_core_id?'spare':old?.lifecycle_status||'active')});}
+ await Component.update(componentId,{current_customer_engine_id:engineId,status:'paired',platform_id:component.platform_id||engine.platform_id||'',inventory_state:component.engine_core_id?'installed':(component.inventory_state||'not_inventory'),lifecycle_status:['spare','in_machining','waiting_on_parts'].includes(component.lifecycle_status)?'active':(component.lifecycle_status||'active')});
  await Engine.update(engineId,{current_head_component_id:componentId});
- const pairing=await Pairing.create({component_id:componentId,component_code:component.component_code,customer_engine_id:engineId,engine_eed_id:engine.eed_id||'',job_id:jobId,paired_at:now,status:'active',reason});
+ const pairing=await Pairing.create({component_id:componentId,component_code:component.component_code,component_type:'cylinder_head',customer_engine_id:engineId,engine_eed_id:engine.eed_id||'',job_id:jobId,paired_at:now,status:'active',reason,reason_code:reasonCode,reason_note:reason});
+ await invalidateEngineVerification(service,{engineId,componentId,jobId,reason:`Cylinder head pairing changed to ${component.component_code}: ${reasonCode}`,actor});
+ await recordIdentityEvent(service,{eventType:'pair_changed',engineId,componentId,componentCode:component.component_code,jobId,eventKey:`pair:${engineId}:${componentId}:${now}`,details:{reason_code:reasonCode,reason,previous_engine_id:component.current_customer_engine_id||''},actor,dedupeSeconds:0});
+ for(const coreId of priorCoreIds)await syncSerializedCoreQuantity(service,coreId);if(component.engine_core_id)await syncSerializedCoreQuantity(service,component.engine_core_id);
  return {pairing,component:{...component,current_customer_engine_id:engineId,status:'paired'},engine:{...engine,current_head_component_id:componentId}};
 }
-export async function createHead(service:any,{engineId='',platformId='',notes='',pair=true,jobId='',reason='Initial engine identity'}:any={}){
- const Component=service.entities.EngineComponent;
- const component_code=await newHeadCode(service); const tag_code=await newTagCode(service,'HEAD');
- let engine:any=null;if(engineId)engine=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||null;
- const head=await Component.create({component_code,component_type:'cylinder_head',tag_code,platform_id:platformId||engine?.platform_id||'',origin_customer_engine_id:engineId||'',current_customer_engine_id:'',status:'unpaired',notes});
- if(pair&&engineId)return {...await pairHead(service,{componentId:head.id,engineId,jobId,reason}),head:{...head,current_customer_engine_id:engineId,status:'paired'}};
- return {head};
+export async function createHead(service:any,{engineId='',platformId='',notes='',pair=true,jobId='',reason='Initial engine identity',reasonCode='initial',engineCoreId='',inventoryState='not_inventory',coreCreditValue=0}:any={}){
+ const component_code=await newHeadCode(service),tag_code=await newTagCode(service,'HEAD');let engine:any=null;if(engineId)engine=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||null;
+ const head=await service.entities.EngineComponent.create({component_code,component_type:'cylinder_head',tag_code,platform_id:platformId||engine?.platform_id||'',origin_customer_engine_id:engineId||'',current_customer_engine_id:'',status:'unpaired',lifecycle_status:engineId&&pair?'active':'spare',engine_core_id:engineCoreId,inventory_state:engineId&&pair?(engineCoreId?'installed':'not_inventory'):inventoryState,core_credit_value:coreCreditValue,notes});
+ const tag=await ensureTagVersion(service,{ownerType:'engine_component',component:head,identityDisplay:component_code,tagCode:tag_code});await service.entities.EngineComponent.update(head.id,{current_tag_version_id:tag.id});
+ if(pair&&engineId)return {...await pairHead(service,{componentId:head.id,engineId,jobId,reason,reasonCode,allowTransfer:true}),head:{...head,current_customer_engine_id:engineId,status:'paired',current_tag_version_id:tag.id}};
+ if(engineCoreId)await syncSerializedCoreQuantity(service,engineCoreId);return {head:{...head,current_tag_version_id:tag.id}};
+}
+export async function createCaseCore(service:any,{platformId='',physicalSerialNumber='',notes='',engineCoreId='',inventoryState='in_stock',coreCreditValue=0,componentCode=''}:any={}){
+ const code=componentCode||await newCaseCode(service),tag_code=await newTagCode(service,'CASE');
+ const component=await service.entities.EngineComponent.create({component_code:code,component_type:'engine_case',tag_code,physical_serial_number:physicalSerialNumber,platform_id:platformId,current_customer_engine_id:'',origin_customer_engine_id:'',status:'unpaired',lifecycle_status:'spare',engine_core_id:engineCoreId,inventory_state:inventoryState,core_credit_value:coreCreditValue,notes});
+ const tag=await ensureTagVersion(service,{ownerType:'engine_component',component,identityDisplay:code,tagCode:tag_code});await service.entities.EngineComponent.update(component.id,{current_tag_version_id:tag.id});if(engineCoreId)await syncSerializedCoreQuantity(service,engineCoreId);return {...component,current_tag_version_id:tag.id};
+}
+export async function createInitialTagVersion(service:any,{component,engine}:any){
+ const tag=await ensureTagVersion(service,{ownerType:'engine_component',component,identityDisplay:component.component_code||engine?.eed_id,tagCode:component.tag_code||engine?.tag_code});await service.entities.EngineComponent.update(component.id,{current_tag_version_id:tag.id});if(engine?.id&&component.component_type==='engine_case')await service.entities.CustomerEngine.update(engine.id,{current_tag_version_id:tag.id});return tag;
 }
