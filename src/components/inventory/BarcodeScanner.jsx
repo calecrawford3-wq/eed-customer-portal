@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, CameraOff, ScanLine } from "lucide-react";
+import { Camera, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
 const isMobileViewport = () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
