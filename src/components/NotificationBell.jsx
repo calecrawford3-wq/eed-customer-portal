@@ -8,7 +8,7 @@ import { Bell, CheckCheck, Trash2, ExternalLink, BellRing, Volume2, VolumeX } fr
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import {useCompanyLogo} from "@/hooks/useCompanyLogo";
+import {usePublicCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const TYPE_META = {
   estimate_accepted: { label: "Estimate Accepted", color: "bg-emerald-100 text-emerald-700" },
@@ -45,7 +45,7 @@ function playChime() {
 
 export default function NotificationBell() {
   const qc = useQueryClient();
-  const {logoUrl}=useCompanyLogo("light");
+  const {logoUrl}=usePublicCompanyLogo("light");
   const [open, setOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(() => {
     try {

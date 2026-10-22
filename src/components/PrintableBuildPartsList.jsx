@@ -1,10 +1,10 @@
 import React from "react";
-import {useCompanyLogo} from "@/hooks/useCompanyLogo";
+import {usePublicCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
 export default function PrintableBuildPartsList({ form, customer, customerEngine, platform, specSheet }) {
-  const {logoUrl}=useCompanyLogo();
+  const {logoUrl}=usePublicCompanyLogo();
   const docNumber = form.invoice_number || form.estimate_number || "";
   const stageLabel = specSheet
     ? (specSheet.custom_name || STAGE_LABELS[specSheet.spec_type] || specSheet.spec_type)

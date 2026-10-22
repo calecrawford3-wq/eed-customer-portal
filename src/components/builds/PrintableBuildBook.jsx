@@ -31,7 +31,7 @@ export default function PrintableBuildBook({
   build, platform, specSheet, customer, job, tasks = [], findings = [],
   replacements = [], profitability = null, invoice = null, findingPhotos = {},
 }) {
-  const {logoUrl}=useCompanyLogo();
+  const {logoUrl}=usePublicCompanyLogo();
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type || "N/A";
 
   const completedTasks = tasks.filter(t => t.status === "complete");

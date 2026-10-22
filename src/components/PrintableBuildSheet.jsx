@@ -1,5 +1,5 @@
 import React from "react";
-import {useCompanyLogo} from "@/hooks/useCompanyLogo";
+import {usePublicCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const SPEC_TYPES = [
   { value: "stock", label: "Stock" },
@@ -13,7 +13,7 @@ const SPEC_TYPES = [
 export default function PrintableBuildSheet({ build, platform, specSheet }) {
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type;
 
-  const {logoUrl}=useCompanyLogo();
+  const {logoUrl}=usePublicCompanyLogo();
 
   return (
     <div style={{ fontFamily: "Arial, sans-serif", padding: "24px", maxWidth: "800px", margin: "0 auto" }}>

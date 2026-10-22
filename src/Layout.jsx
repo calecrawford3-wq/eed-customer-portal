@@ -9,11 +9,11 @@ import GlobalBarcodeListener from '@/components/GlobalBarcodeListener';
 import {AppSectionNav} from '@/components/navigation/AppLauncher';
 import MobileBottomNav from '@/components/mobile/MobileBottomNav';
 import GlobalCreateMenu from '@/components/GlobalCreateMenu';
-import {useCompanyLogo} from '@/hooks/useCompanyLogo';
+import {usePublicCompanyLogo} from '@/hooks/useCompanyLogo';
 
 export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
  const navigate=useNavigate();
- const {logoUrl}=useCompanyLogo('dark');
+ const {logoUrl}=usePublicCompanyLogo('dark');
  const pageScroller=useRef(null);
  const debugLayout=new URLSearchParams(window.location.search).has('layoutDebug');
  const [layoutMetrics,setLayoutMetrics]=useState(null);
