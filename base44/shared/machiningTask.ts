@@ -144,6 +144,10 @@ function buildHistoryMeasurements(task, measurements) {
       if (m.operations) out["Operations"] = { value: (m.operations || []).join(", ") };
       if (m.side) out["Side"] = { value: m.side };
       if (m.affected_positions) out["Affected positions"] = { value: m.affected_positions };
+      if (m.valve_job_type) out["Valve job type"] = { value: m.valve_job_type };
+      if (m.valve_job_notes) out["Valve job notes"] = { value: m.valve_job_notes };
+      if (m.seat_replacement_positions) out["Valve seats replaced"] = { value: m.seat_replacement_positions };
+      if (m.guide_replacement_positions) out["Valve guides replaced"] = { value: m.guide_replacement_positions };
       if (m.lash_measurements) {
         const lash = {};
         for (const [k, v] of Object.entries(m.lash_measurements)) {

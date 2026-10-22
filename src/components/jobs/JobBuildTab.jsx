@@ -152,7 +152,9 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   const handleVerified = async () => {
     try {
       await base44.entities.EngineBuild.update(build.id, localChanges);
+      try { await base44.functions.invoke("syncBuildComponentSpecs", { build_id: build.id, job_id: job.id }); } catch (e) { console.warn("Component spec sync needs retry:", e); }
       qc.invalidateQueries({ queryKey: ["job-linked", "EngineBuild", build.id] });
+      qc.invalidateQueries({ queryKey: ["component-spec-sheets"] });
       qc.invalidateQueries({ queryKey: ["build", build.id] });
       setLocalChanges({});
       toast.success("Build updated");

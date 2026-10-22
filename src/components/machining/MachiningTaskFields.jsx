@@ -53,6 +53,10 @@ export function defaultMeasurements(taskType) {
         operations: [],
         side: "",
         affected_positions: "",
+        valve_job_type: "",
+        valve_job_notes: "",
+        seat_replacement_positions: "",
+        guide_replacement_positions: "",
         lash_measurements: {},
         completion_notes: "",
       };
@@ -189,6 +193,35 @@ export function TaskFields({ taskType, values, onChange, mode = "all" }) {
               <Input value={v.affected_positions || ""} onChange={e => set("affected_positions", e.target.value)} placeholder="e.g. Cyl 1-4, Intake valves 1-8" className="mt-0.5 text-sm" />
             </div>
           </div>
+          {(v.operations || []).includes("valve_job") && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-medium text-slate-600">Valve job type</Label>
+                <select value={v.valve_job_type || ""} onChange={e => set("valve_job_type", e.target.value)} className="mt-0.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Select type...</option>
+                  <option value="radius">Radius</option>
+                  <option value="5_angle">5-Angle</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-slate-600">Valve job notes</Label>
+                <Input value={v.valve_job_notes || ""} onChange={e => set("valve_job_notes", e.target.value)} placeholder="Seat widths, cutter setup, notes..." className="mt-0.5 text-sm" />
+              </div>
+            </div>
+          )}
+          {(v.operations || []).includes("seat_replacement") && (
+            <div>
+              <Label className="text-xs font-medium text-slate-600">Valve seats replaced</Label>
+              <Input value={v.seat_replacement_positions || ""} onChange={e => set("seat_replacement_positions", e.target.value)} placeholder="e.g. EX 2, EX 3 or all exhaust" className="mt-0.5 text-sm" />
+            </div>
+          )}
+          {(v.operations || []).includes("guide_replacement") && (
+            <div>
+              <Label className="text-xs font-medium text-slate-600">Valve guides replaced</Label>
+              <Input value={v.guide_replacement_positions || ""} onChange={e => set("guide_replacement_positions", e.target.value)} placeholder="e.g. IN 1, EX 4 or all" className="mt-0.5 text-sm" />
+            </div>
+          )}
           {(v.operations || []).includes("lash_setup") && showActual && (
             <div>
               <Label className="text-xs font-medium text-slate-600">Valve lash measurements (in)</Label>

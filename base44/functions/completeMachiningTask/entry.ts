@@ -6,6 +6,7 @@ import {
   buildHistoryMeasurements,
   diffMeasurements,
 } from "../../shared/machiningTask.ts";
+import { syncSpecFromMachining } from "../../shared/componentSpec.ts";
 
 // Complete a machining task: validate required measurements, mark the task
 // complete, and write (or update) a permanent ServiceHistoryEntry on the
@@ -123,6 +124,9 @@ Deno.serve(async (req) => {
           measurements,
           corrections,
         });
+        if (task.component_id) {
+          await syncSpecFromMachining(base44.asServiceRole, task, measurements, userName);
+        }
       }
       return Response.json({
         success: true,
@@ -194,6 +198,10 @@ Deno.serve(async (req) => {
         // Link the history entry back to the task
         await base44.asServiceRole.entities.MachiningTask.update(taskId, { history_entry_id: created.id });
       }
+    }
+
+    if (task.component_id) {
+      await syncSpecFromMachining(base44.asServiceRole, task, measurements, userName);
     }
 
     return Response.json({
