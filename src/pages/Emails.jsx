@@ -309,7 +309,7 @@ export default function Emails() {
   const selectedThread = filteredThreads.find((t) => t.key === selectedKey) || null;
 
   const syncMut = useMutation({
-    mutationFn: (vars) => base44.functions.invoke("syncZohoMail", vars || {}),
+    mutationFn: /** @param {Record<string, any>} vars */ (vars) => base44.functions.invoke("syncZohoMail", vars || {}),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["emails"] });
       qc.invalidateQueries({ queryKey: ["email-threads"] });

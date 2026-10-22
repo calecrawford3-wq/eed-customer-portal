@@ -452,7 +452,7 @@ export default function EmailLinkPanel({ open, onClose, email }) {
             ) : (
               <>
                 <div className="flex gap-2 mt-2">
-                  <Select value={selectedDocId || "none"} onValueChange={(v) => setSelectedDocId(v === "none" ? "" : v)} className="flex-1">
+                  <Select value={selectedDocId || "none"} onValueChange={(v) => setSelectedDocId(v === "none" ? "" : v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No specific document</SelectItem>

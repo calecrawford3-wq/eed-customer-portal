@@ -121,7 +121,7 @@ export default function PartCsvImportModal({ open, onClose }) {
   const [failedCount, setFailedCount] = useState(0);
   const [selectedPlatformIds, setSelectedPlatformIds] = useState(new Set());
   const [platformSearch, setPlatformSearch] = useState("");
-  const fileRef = useRef();
+  const fileRef = useRef(null);
   const qc = useQueryClient();
 
   const { data: platforms = [] } = useQuery({

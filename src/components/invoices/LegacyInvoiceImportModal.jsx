@@ -140,7 +140,7 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
   const [engineMap, setEngineMap] = useState({});
   const [importedCount, setImportedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
-  const fileRef = useRef();
+  const fileRef = useRef(null);
   const qc = useQueryClient();
 
   const { data: customers = [] } = useQuery({
@@ -212,7 +212,7 @@ export default function LegacyInvoiceImportModal({ open, onClose }) {
       const existing = await base44.entities.Invoice.list("-created_date", 500);
       const preflight = validateLegacyInvoiceImport(
         toImport.map(r => ({ ...r, customer_id: getEffectiveCustomerId(r) })),
-        Array.isArray(existing) ? existing : existing?.items,
+        existing,
         { scannedLimit: 500 }
       );
       if (!preflight.valid) throw new Error(preflight.errors.slice(0, 5).join(" ") + (preflight.errors.length > 5 ? " Review all selected rows." : ""));

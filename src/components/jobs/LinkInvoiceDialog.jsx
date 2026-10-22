@@ -19,7 +19,7 @@ export default function LinkInvoiceDialog({ open, onClose, job }) {
     queryFn: () =>
       base44.entities.Invoice.filter(
         { customer_id: job.customer_id, status: { $ne: "void" } },
-        { sort: "-issue_date", limit: 100, fields: ["invoice_number", "status", "total", "balance_due", "issue_date"] }
+        { sort: "-issue_date", limit: 100, fields: ["invoice_number", "status", "total", "balance_due", "issue_date", "id"] }
       ),
     enabled: !!job?.customer_id && open,
   });

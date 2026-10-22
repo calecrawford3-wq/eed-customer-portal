@@ -24,7 +24,7 @@ export default function ExceptionDashboard() {
         { status: { $in: ["active", "snoozed"] } },
         { sort: "-created_date", limit: 500 }
       );
-      return res?.items || res || [];
+      return Array.isArray(res) ? res : (res?.items || []);
     },
     refetchInterval: 60000,
   });

@@ -16,15 +16,15 @@ import { cn } from "@/lib/utils";
  */
 export default function CallButton({
   customer,
-  customerId,
-  customerName,
-  customerPhone,
-  customerSuccessTask,
-  builds,
-  onSaved,
+  customerId = null,
+  customerName = "",
+  customerPhone = "",
+  customerSuccessTask = null,
+  builds = [],
+  onSaved = () => {},
   size = "sm",
-  className,
-  label,
+  className = "",
+  label = "",
   iconOnly = false,
 }) {
   const [open, setOpen] = useState(false);

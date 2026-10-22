@@ -109,7 +109,7 @@ export default function JobCard() {
       for (const p of photos) { (map[p.finding_id] ||= []).push(p); }
       return map;
     },
-    enabled: !!job?.id && printBuildBook && bookFindings.length > 0,
+    enabled: !!job?.id && printBuildBook && (Array.isArray(bookFindingsData) ? bookFindingsData.length : (bookFindingsData?.items?.length || 0)) > 0,
   });
 
   const handlePrintBuildBook = () => {

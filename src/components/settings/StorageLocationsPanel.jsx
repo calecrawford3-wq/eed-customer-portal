@@ -65,7 +65,7 @@ export default function StorageLocationsPanel() {
   }, [settingsData]);
 
   const saveMutation = useMutation({
-    mutationFn: async (locs) => {
+    mutationFn: /** @param {Record<string, any>} locs */ async (locs) => {
       const json = JSON.stringify(locs);
       if (settingsData?.[0]) {
         return base44.entities.AppSettings.update(settingsData[0].id, { storage_locations: json });

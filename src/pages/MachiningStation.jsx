@@ -32,7 +32,7 @@ export default function MachiningStation() {
     queryFn: () => base44.entities.Job.filter({ stage: "machining", is_active: true }, { sort: "-created_date", limit: 100 }),
     refetchInterval: 10000,
   });
-  const jobs = jobsData?.items || jobsData || [];
+  const jobs = Array.isArray(jobsData) ? jobsData : (jobsData?.items || []);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],

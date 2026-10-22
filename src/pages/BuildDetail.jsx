@@ -65,7 +65,7 @@ export default function BuildDetail() {
   const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);
   const [showPickupScan, setShowPickupScan] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
-  const printRef = useRef();
+  const printRef = useRef(null);
 
   const queryClient = useQueryClient();
 

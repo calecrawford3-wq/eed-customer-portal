@@ -102,7 +102,7 @@ export default function CustomerCsvImportModal({ open, onClose }) {
   const [selected, setSelected] = useState(new Set());
   const [importedCount, setImportedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
-  const fileRef = useRef();
+  const fileRef = useRef(null);
   const qc = useQueryClient();
 
   const reset = () => {

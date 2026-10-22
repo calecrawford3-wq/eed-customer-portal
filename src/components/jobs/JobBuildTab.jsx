@@ -40,7 +40,7 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showLinkBuild, setShowLinkBuild] = useState(false);
-  const printRef = useRef();
+  const printRef = useRef(null);
 
   const { data: specSheets = [] } = useQuery({
     queryKey: ["specSheets"],
