@@ -113,6 +113,13 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
           </Button>
         )}
         {scanning && <p className="text-xs text-slate-400 text-center">Camera is ready. Point it at any Elite tag or supported barcode.</p>}
+        <details className="w-full max-w-sm">
+          <summary className="cursor-pointer text-xs text-center text-slate-500">Tag unreadable? Enter the printed ID manually</summary>
+          <form onSubmit={submitManual} className="flex gap-2 mt-2">
+            <Input className="font-mono" placeholder={placeholder} value={manual} onChange={e=>setManual(e.target.value)} />
+            <Button type="submit" variant="outline">Enter</Button>
+          </form>
+        </details>
       </div>
     );
   }
