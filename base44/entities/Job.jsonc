@@ -46,6 +46,7 @@
     "stage": {
       "type": "string",
       "enum": [
+        "needs_estimate",
         "awaiting_approval",
         "awaiting_deposit",
         "queued",
@@ -57,8 +58,8 @@
         "ready_for_pickup",
         "picked_up"
       ],
-      "default": "awaiting_approval",
-      "description": "Lifecycle stage. awaiting_approval/awaiting_deposit are pre-activation. The rest are active-shop stages."
+      "default": "needs_estimate",
+      "description": "Lifecycle stage. needs_estimate = no estimate or draft estimate; awaiting_approval = estimate has been sent; awaiting_deposit = approved but deposit is still due. The rest are active-shop stages."
     },
     "manual_stage_override": {
       "type": "string",
@@ -85,7 +86,7 @@
         "waiting_on_approval",
         "waiting_on_customer"
       ],
-      "default": "awaiting_approval",
+      "default": "none",
       "description": "Separate from stage \u2014 a job can be in machining while also waiting_on_parts"
     },
     "secondary_tags": {
