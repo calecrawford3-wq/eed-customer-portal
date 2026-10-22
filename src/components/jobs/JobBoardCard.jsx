@@ -19,7 +19,7 @@ const TAG_LABELS = {
 
 // Draggable job card for the Kanban board. Shows customer, platform, location,
 // secondary tags, and blocking condition. Tags are preserved during moves.
-export default function JobBoardCard({ job, customerName, platformLabel, engine, onClick }) {
+export default function JobBoardCard({ job, customerName, platformLabel, engine, assignment, onClick }) {
   const parts = PARTS_LABELS[job.parts_readiness] || PARTS_LABELS.unknown;
   const tags = job.secondary_tags || [];
   const hasBlocking = job.blocking_condition && job.blocking_condition !== "none";
@@ -38,6 +38,13 @@ export default function JobBoardCard({ job, customerName, platformLabel, engine,
       {engine?.eed_id && (
         <p className="text-xs text-slate-400 truncate mt-0.5">
           <span className="font-mono">{engine.eed_id}</span> · {engine.engine_serial_number}
+        </p>
+      )}
+      {(assignment?.carLabel || assignment?.driverName) && (
+        <p className="text-xs font-medium text-slate-600 truncate mt-0.5">
+          {assignment?.carLabel ? `Car: ${assignment.carLabel}` : ""}
+          {assignment?.carLabel && assignment?.driverName ? " · " : ""}
+          {assignment?.driverName ? `Driver: ${assignment.driverName}` : ""}
         </p>
       )}
       {job.storage_location && (
