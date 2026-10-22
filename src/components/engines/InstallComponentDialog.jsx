@@ -36,5 +36,5 @@ export default function InstallComponentDialog({open,onClose,component,onDone=()
   <div><Label>Reason *</Label><Select value={reasonCode} onValueChange={setReasonCode}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{REASONS.map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
   <div><Label>Note {reasonCode==='other'?'*':'(optional)'}</Label><Input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Short install / swap reason"/></div>
   <p className="text-xs text-slate-500">Elite updates pairing history, inventory state, location/lifecycle context, and invalidates old component verification automatically.</p>
- </div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button className="bg-[#e20404] hover:bg-red-700" disabled={!engineId||busy||(reasonCode==='other'&&!reason.trim())} onClick={install}>{busy?'Installing…':'Install on Engine'}</Button></DialogFooter></Dialog>;
+ </div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button className="bg-[#e20404] hover:bg-red-700" disabled={!engineId||busy||(reasonCode==='other'&&!reason.trim())} onClick={install}>{busy?'Installing…':'Install on Engine'}</Button></DialogFooter></DialogContent></Dialog>;
 }
