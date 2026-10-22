@@ -171,6 +171,11 @@ export default function JobStageMover({ job, build }) {
     // Non-terminal stage (forward or backward)
     setMoving(true);
     try {
+      const stageOrder = ["queued","teardown","machining","assembly","testing","ready_for_pickup","picked_up"];
+      const movingBackwardToPhysicalWork = ["teardown","machining","assembly"].includes(newStage) && stageOrder.indexOf(job.stage) > stageOrder.indexOf(newStage);
+      if (movingBackwardToPhysicalWork) {
+        try { await base44.functions.invoke("invalidateJobComponentVerification", { job_id: job.id, reason: `Job moved back from ${job.stage} to ${newStage}` }); } catch {}
+      }
       const buildIsCompleted = build && (build.status === "complete" || build.status === "shipped");
       const newBuildStatus = STAGE_TO_BUILD_STATUS[newStage];
 

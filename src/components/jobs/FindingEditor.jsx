@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,24 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
   const [existingPhotos, setExistingPhotos] = useState(finding ? null : []);
   const [photoSlots, setPhotoSlots] = useState([]);
   const [originalPhotoIds, setOriginalPhotoIds] = useState([]);
+
+  const { data: serializedComponents = [] } = useQuery({
+    queryKey: ["finding-components", job?.customer_engine_id],
+    queryFn: async () => {
+      if (!job?.customer_engine_id) return [];
+      const engines = await base44.entities.CustomerEngine.filter({ id: job.customer_engine_id });
+      const engine = engines?.[0];
+      if (!engine) return [];
+      const linked = await base44.entities.EngineComponent.filter({ current_customer_engine_id: engine.id }, "-created_date", 50);
+      const direct = [];
+      for (const id of [engine.current_head_component_id, engine.current_case_component_id].filter(Boolean)) {
+        const found = await base44.entities.EngineComponent.filter({ id });
+        if (found?.[0]) direct.push(found[0]);
+      }
+      return [...linked, ...direct].filter((c, i, a) => a.findIndex(x => x.id === c.id) === i);
+    },
+    enabled: !!job?.customer_engine_id,
+  });
 
   const charge = roundMoney(
     (form.labor_items || []).reduce((s, l) => s + (Number(l.price) || 0), 0) +
@@ -70,6 +89,9 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
       const payload = {
         job_id: job.id,
         customer_engine_id: job.customer_engine_id || "",
+        component_id: form.component_id || "",
+        component_code: form.component_code || "",
+        component_type: form.component_type || "",
         component: form.component.trim(),
         condition: form.condition,
         measurements: form.measurements,
@@ -97,6 +119,16 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
 
       // Persist photos (skip any still uploading or failed)
       await persistPhotos(findingId);
+
+      if (["testing", "ready_for_pickup", "picked_up"].includes(job.stage)) {
+        try {
+          await base44.functions.invoke("invalidateJobComponentVerification", {
+            job_id: job.id,
+            component_id: form.component_id || "",
+            reason: `Finding added/updated after final QC: ${form.component.trim()}`,
+          });
+        } catch {}
+      }
 
       onSaved();
     } catch (e) { toast.error("Save failed: " + e.message); }
@@ -157,6 +189,13 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{finding ? "Edit Finding" : "Log Teardown Finding"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          <div>
+            <Label>Serialized component <span className="text-xs text-slate-400 font-normal">(recommended for tagged head/case findings)</span></Label>
+            <Select value={form.component_id || "none"} onValueChange={id => { const c = serializedComponents.find(x => x.id === id); setForm(f => c ? ({ ...f, component_id:c.id, component_code:c.component_code, component_type:c.component_type, component:c.component_code }) : ({ ...f, component_id:"", component_code:"", component_type:"" })); }}>
+              <SelectTrigger><SelectValue placeholder="Select tagged component..." /></SelectTrigger>
+              <SelectContent><SelectItem value="none">No serialized component</SelectItem>{serializedComponents.map(c => <SelectItem key={c.id} value={c.id}>{c.component_code} · {c.component_type === "cylinder_head" ? "Cylinder Head" : "Engine Case"}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div><Label>Component *</Label><Input value={form.component} onChange={e => setForm(f => ({ ...f, component: e.target.value }))} placeholder="Crankshaft, Head #2…" /></div>
             <div><Label>Condition</Label>
@@ -245,5 +284,5 @@ function ItemGroup({ label, items, onChange, withVendor = false }) {
 function updateAt(onChange, list, i, patch) { onChange(list.map((x, x_i) => x_i === i ? { ...x, ...patch } : x)); }
 function emptyForm(job, finding) {
   if (finding) return { ...finding, customer_description: finding.customer_description || "", recommended_part_ids: finding.recommended_part_ids || [], labor_items: finding.labor_items || [], machining_items: finding.machining_items || [], outsourced_services: finding.outsourced_services || [] };
-  return { job_id: job.id, component: "", condition: "needs_inspection", measurements: "", notes: "", customer_description: "", recommended_action: "none", recommended_part_ids: [], labor_items: [], machining_items: [], outsourced_services: [], estimated_customer_charge: 0, status: "open", inspected_by: "" };
+  return { job_id: job.id, component_id: "", component_code: "", component_type: "", component: "", condition: "needs_inspection", measurements: "", notes: "", customer_description: "", recommended_action: "none", recommended_part_ids: [], labor_items: [], machining_items: [], outsourced_services: [], estimated_customer_charge: 0, status: "open", inspected_by: "" };
 }
