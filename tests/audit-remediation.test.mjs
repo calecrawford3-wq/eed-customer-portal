@@ -26,3 +26,12 @@ test('returning engines never reuse completed jobs', () => {
   assert.match(engine, /j\.stage !== "picked_up" && !j\.archived && !j\.completed_at/);
   assert.match(engine, /openJobs\.length > 1/);
 });
+
+const lifecycle = readFileSync('base44/shared/jobLifecycle.ts', 'utf8');
+test('estimate reconciliation rejects ambiguous duplicate jobs instead of picking first', () => {
+  assert.match(lifecycle, /matchingJobs\.length > 1/);
+  assert.match(lifecycle, /Multiple jobs linked to estimate/);
+});
+test('invoice links are copied before updating so callers are not mutated', () => {
+  assert.match(lifecycle, /const invoiceIds = \[\.\.\.\(job\?\.invoice_ids \|\| \[\]\)\]/);
+});

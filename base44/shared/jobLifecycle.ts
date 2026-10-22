@@ -119,7 +119,11 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
   // Find existing job by estimate_id
   let job = null;
   const existing = await base44.entities.Job.filter({ estimate_id: estimate.id });
-  job = (existing.items || existing || [])[0] || null;
+  const matchingJobs = existing.items || existing || [];
+  if (matchingJobs.length > 1) {
+    throw new Error(`Multiple jobs linked to estimate ${estimate.id}; manual reconciliation required`);
+  }
+  job = matchingJobs[0] || null;
 
   const { stage, blocking, is_active } = deriveStageAndBlocking(estimate, build, job?.manual_stage_override);
   const depositMet = isDepositMet(estimate);
@@ -127,7 +131,7 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
 
   // Resolve linked records
   const buildId = build?.id || estimate.build_id || job?.build_id || "";
-  const invoiceIds = job?.invoice_ids || [];
+  const invoiceIds = [...(job?.invoice_ids || [])];
   if (invoice_id && !invoiceIds.includes(invoice_id)) invoiceIds.push(invoice_id);
   if (estimate.invoice_id && !invoiceIds.includes(estimate.invoice_id)) invoiceIds.push(estimate.invoice_id);
 
