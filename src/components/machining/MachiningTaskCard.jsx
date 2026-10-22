@@ -29,7 +29,12 @@ export default function MachiningTaskCard({ task, large = false }) {
   const [blockReason, setBlockReason] = useState("");
   const [measurements, setMeasurements] = useState(task.measurements || {});
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["machining-tasks", task.job_id] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["machining-tasks", task.job_id] });
+    qc.invalidateQueries({ queryKey: ["inventory-repair-tasks"] });
+    qc.invalidateQueries({ queryKey: ["component-repair-tickets"] });
+    if (task.repair_ticket_id) qc.invalidateQueries({ queryKey: ["component-repair-ticket", task.repair_ticket_id] });
+  };
 
   const startTask = async () => {
     try {
@@ -40,6 +45,7 @@ export default function MachiningTaskCard({ task, large = false }) {
         started_by: me?.full_name || "Admin",
       });
       invalidate();
+      if (task.repair_ticket_id) base44.functions.invoke("updateComponentRepairTicket", { ticket_id: task.repair_ticket_id, status: "in_machining" }).catch(() => {});
       toast.success("Task started");
     } catch (e) { toast.error("Failed to start task"); }
   };
@@ -66,6 +72,7 @@ export default function MachiningTaskCard({ task, large = false }) {
         completed_by: "",
       });
       invalidate();
+      if (task.repair_ticket_id) base44.functions.invoke("updateComponentRepairTicket", { ticket_id: task.repair_ticket_id, status: "in_machining" }).catch(() => {});
       toast.success("Task reopened");
     } catch (e) { toast.error("Failed to reopen task"); }
   };
@@ -84,7 +91,7 @@ export default function MachiningTaskCard({ task, large = false }) {
       invalidate();
       setShowComplete(false);
       if (result.corrected) toast.success("Measurement corrected — audit trail updated");
-      else toast.success("Task complete — logged to engine history");
+      else toast.success(task.repair_ticket_id ? "Task complete — logged to component history" : "Task complete — logged to engine history");
     } catch (e) {
       const data = e?.response?.data || {};
       toast.error(data?.error || e.message || "Failed to complete task");
@@ -272,6 +279,9 @@ function CompletedMeasurements({ task, large = false }) {
       if (m.operations?.length) rows.push(["Operations", m.operations.join(", ")]);
       if (m.side) rows.push(["Side", m.side]);
       if (m.affected_positions) rows.push(["Positions", m.affected_positions]);
+      if (m.valve_job_type) rows.push(["Valve job", String(m.valve_job_type).replaceAll("_", "-")]);
+      if (m.seat_replacement_positions) rows.push(["Seats replaced", m.seat_replacement_positions]);
+      if (m.guide_replacement_positions) rows.push(["Guides replaced", m.guide_replacement_positions]);
       if (m.lash_measurements && Object.keys(m.lash_measurements).length) {
         const lash = Object.entries(m.lash_measurements).map(([k, v]) => `${k}=${formatInch(v)}`).join(", ");
         rows.push(["Valve lash", lash]);

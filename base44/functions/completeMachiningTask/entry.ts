@@ -158,6 +158,14 @@ Deno.serve(async (req) => {
           await syncSpecFromMachining(base44.asServiceRole, task, measurements, userName);
         }
       }
+      if (task.repair_ticket_id) {
+        try {
+          const repairTasksRes = await base44.asServiceRole.entities.MachiningTask.filter({ repair_ticket_id: task.repair_ticket_id });
+          const repairTasks = repairTasksRes.items || repairTasksRes || [];
+          const allDone = repairTasks.every(t => t.id === task.id ? true : t.status === "complete");
+          await base44.asServiceRole.entities.ComponentRepairTicket.update(task.repair_ticket_id, { status: allDone ? "ready_for_inventory" : "in_machining" });
+        } catch (e) { console.warn("[completeMachiningTask] Repair ticket sync skipped:", e); }
+      }
       return Response.json({
         success: true,
         task: { ...task, measurements, corrections: [...(task.corrections || []), ...diffs.map(d => ({ ...d, changed_by: userName, changed_at: now }))] },
@@ -232,6 +240,14 @@ Deno.serve(async (req) => {
 
     if (task.component_id) {
       await syncSpecFromMachining(base44.asServiceRole, task, measurements, userName);
+    }
+    if (task.repair_ticket_id) {
+      try {
+        const repairTasksRes = await base44.asServiceRole.entities.MachiningTask.filter({ repair_ticket_id: task.repair_ticket_id });
+        const repairTasks = repairTasksRes.items || repairTasksRes || [];
+        const allDone = repairTasks.every(t => t.id === task.id ? true : t.status === "complete");
+        await base44.asServiceRole.entities.ComponentRepairTicket.update(task.repair_ticket_id, { status: allDone ? "ready_for_inventory" : "in_machining" });
+      } catch (e) { console.warn("[completeMachiningTask] Repair ticket sync skipped:", e); }
     }
 
     return Response.json({
