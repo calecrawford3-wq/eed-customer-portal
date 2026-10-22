@@ -13,6 +13,7 @@ import FromAddressesEditor from "@/components/settings/FromAddressesEditor";
 import VoipPhonebookPanel from "@/components/settings/VoipPhonebookPanel";
 import EmailAdminPanel from "@/components/settings/EmailAdminPanel";
 import NotificationSettingsPanel from "@/components/settings/NotificationSettingsPanel";
+import CompanyLogoUploader from "@/components/settings/CompanyLogoUploader";
 import WorkflowTemplatesPanel from "@/components/settings/WorkflowTemplatesPanel";
 import StorageLocationsPanel from "@/components/settings/StorageLocationsPanel";
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -183,11 +184,8 @@ export default function Settings() {
                   <div><Label>ZIP</Label><Input value={form.company_zip} onChange={e => set("company_zip", e.target.value)} /></div>
                 </div>
                 <div className="col-span-2">
-                  <Label>Logo URL</Label>
-                  <Input value={form.company_logo_url} onChange={e => set("company_logo_url", e.target.value)} placeholder="https://..." />
-                  {form.company_logo_url && (
-                    <img src={form.company_logo_url} alt="Logo Preview" className="mt-2 h-16 object-contain rounded border border-slate-200 p-1" />
-                  )}
+                  <CompanyLogoUploader value={form.company_logo_url||""} onChange={value=>set("company_logo_url",value)} disabled={saveMutation.isPending}/>
+                  <p className="text-xs text-slate-500 mt-1">This uploaded logo is used on checks, estimates, invoices, and customer-facing documents.</p>
                 </div>
               </div>
             </CardContent>
