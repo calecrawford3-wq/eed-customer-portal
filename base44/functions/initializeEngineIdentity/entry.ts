@@ -6,7 +6,7 @@ Deno.serve(async req=>{try{
  const me=await base44.auth.me();if(me?.role!=='admin')return Response.json({error:'Admin required'},{status:403});
  if(!engineId)return Response.json({error:'Engine ID required'},{status:400});
  let engine=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0];if(!engine)return Response.json({error:'Engine not found'},{status:404});
- if(!engine.identity_initialized_at)engine=await service.entities.CustomerEngine.update(engineId,{identity_initialized_at:new Date().toISOString()});
+ const initializedAt=engine.identity_initialized_at||new Date().toISOString();
  const caseComponent=await ensureCaseComponent(service,engine);
  let head:any=null;
  engine=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||engine;
@@ -17,6 +17,9 @@ Deno.serve(async req=>{try{
    else {const created=await createHead(service,{engineId,platformId:engine.platform_id,pair:true,reason:'Initial engine identity',reasonCode:'initial'});head=created.head;}
  }
  if(head&&!head.current_tag_version_id){const tag=await createInitialTagVersion(service,{component:head});head=await service.entities.EngineComponent.update(head.id,{current_tag_version_id:tag.id});}
- const fresh=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||engine;
+ let fresh=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||engine;
+ if(!fresh.identity_initialized_at||!fresh.current_case_component_id||!fresh.current_head_component_id||!fresh.tag_code){
+   fresh=await service.entities.CustomerEngine.update(engineId,{identity_initialized_at:initializedAt,current_case_component_id:caseComponent?.id||fresh.current_case_component_id||'',current_head_component_id:head?.id||fresh.current_head_component_id||'',tag_code:caseComponent?.tag_code||fresh.tag_code||''});
+ }
  return Response.json({success:true,engine:fresh,case_component:caseComponent,head});
 }catch(e){console.error('[initializeEngineIdentity]',e);return Response.json({error:e.message},{status:500});}});
