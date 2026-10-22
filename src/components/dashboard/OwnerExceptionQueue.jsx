@@ -53,7 +53,7 @@ export default function OwnerExceptionQueue() {
   });
 
   const snoozeMutation = useMutation({
-    mutationFn: ({ alert_id, ...payload }) => base44.functions.invoke("snoozeException", { alert_id, ...payload }),
+    mutationFn: /** @param {Record<string, any>} args */ ({ alert_id, ...payload }) => base44.functions.invoke("snoozeException", { alert_id, ...payload }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["exception-alerts-today"] });
       setSnoozeTarget(null);

@@ -45,7 +45,7 @@ export default function Addons() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
   });
   const updateAddonMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Addon.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.Addon.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
   });
   const deleteAddonMut = useMutation({

@@ -53,12 +53,12 @@ export default function Estimates() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Estimate.update(id, { status }),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, status }) => base44.entities.Estimate.update(id, { status }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); toast.success("Status updated"); },
   });
 
   const archiveMutation = useMutation({
-    mutationFn: ({ id, archived }) => base44.entities.Estimate.update(id, { archived }),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, archived }) => base44.entities.Estimate.update(id, { archived }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); },
   });
 

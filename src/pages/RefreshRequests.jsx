@@ -44,7 +44,7 @@ export default function RefreshRequests() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.RefreshRequest.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.RefreshRequest.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["refreshRequests"] });
       setDetailOpen(false);

@@ -53,7 +53,7 @@ export default function ActivityTimeline({ builds = [], estimates = [], invoices
     })),
   ]
     .filter(i => i.date)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 30);
 
   if (items.length === 0) {

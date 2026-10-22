@@ -51,12 +51,12 @@ export default function Payments() {
   });
 
   const updateInvoiceMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Invoice.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.Invoice.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); setEditOpen(false); toast.success("Payment updated"); },
   });
 
   const updateEstimateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Estimate.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.Estimate.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); setEditOpen(false); toast.success("Payment updated"); },
   });
 

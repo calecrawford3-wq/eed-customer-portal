@@ -93,7 +93,7 @@ export default function Platforms() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.EnginePlatform.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.EnginePlatform.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
       closeDialog();

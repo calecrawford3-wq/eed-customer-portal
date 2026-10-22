@@ -181,7 +181,7 @@ export default function Messaging() {
 
   // Delete conversation mutation
   const deleteConversationMutation = useMutation({
-    mutationFn: async ({ messagesToDelete }) => {
+    mutationFn: /** @param {Record<string, any>} args */ async ({ messagesToDelete }) => {
       if (!Array.isArray(messagesToDelete) || messagesToDelete.length === 0) {
         throw new Error("No messages were found in this conversation.");
       }

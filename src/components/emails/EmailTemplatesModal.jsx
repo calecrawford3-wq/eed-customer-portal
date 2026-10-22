@@ -23,7 +23,7 @@ export default function EmailTemplatesModal({ open, onClose }) {
   const [editing, setEditing] = useState(null); // record being edited (null = closed form)
 
   const saveMut = useMutation({
-    mutationFn: async ({ id, data }) =>
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id, data }) =>
       id ? base44.entities.EmailTemplate.update(id, data) : base44.entities.EmailTemplate.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["email-templates"] });

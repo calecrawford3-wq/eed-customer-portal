@@ -45,7 +45,7 @@ export default function CannedJobs() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.CannedJob.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.CannedJob.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cannedJobs"] });
       setDialogOpen(false);

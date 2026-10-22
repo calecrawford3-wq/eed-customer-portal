@@ -109,7 +109,7 @@ export default function CustomerDetail() {
   });
 
   const updateBuildMutation = useMutation({
-    mutationFn: ({ buildId, data }) => base44.entities.EngineBuild.update(buildId, data),
+    mutationFn: /** @param {Record<string, any>} args */ ({ buildId, data }) => base44.entities.EngineBuild.update(buildId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["builds"] });
       qc.invalidateQueries({ queryKey: ["customer-builds", id] });

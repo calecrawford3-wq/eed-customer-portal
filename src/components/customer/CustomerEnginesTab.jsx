@@ -136,7 +136,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => base44.entities.CustomerEngine.update(id, data),
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id, data }) => base44.entities.CustomerEngine.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
@@ -147,7 +147,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   });
 
   const transferMutation = useMutation({
-    mutationFn: async ({ id, newCustomerId, convertEstimateIds = [] }) => {
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id, newCustomerId, convertEstimateIds = [] }) => {
       await base44.entities.CustomerEngine.update(id, { customer_id: newCustomerId });
       // Optionally reassign active estimates to the new customer so the
       // in-progress quote follows the engine to its new owner.
@@ -175,7 +175,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async ({ id }) => {
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id }) => {
       await base44.entities.CustomerEngine.delete(id);
     },
     onSuccess: () => {
@@ -189,7 +189,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   });
 
   const voidMutation = useMutation({
-    mutationFn: async ({ id }) => base44.entities.LegalDocument.update(id, { status: "void" }),
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id }) => base44.entities.LegalDocument.update(id, { status: "void" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["legal-docs", customerId] });
       setVoidDoc(null);

@@ -54,7 +54,7 @@ export default function BarcodeScan() {
   };
 
   const adjustMutation = useMutation({
-    mutationFn: async ({ id, type, qty }) => {
+    mutationFn: /** @param {Record<string, any>} args */ async ({ id, type, qty }) => {
       if (type === "part") return base44.entities.Part.update(id, { quantity_on_hand: qty });
       return base44.entities.EngineCore.update(id, { quantity_on_hand: qty });
     },
