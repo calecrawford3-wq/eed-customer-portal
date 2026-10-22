@@ -9,12 +9,12 @@ import { generateJobNumber, computePartsReadiness } from "../../shared/jobLifecy
 // still needed to guarantee concurrency safety.
 //
 // POST { customer_engine_id, invoice_id?: string }
-//   - Loads the CustomerEngine, creates a Job with stage "awaiting_approval".
+//   - Loads the CustomerEngine, creates a Job with stage "needs_estimate".
 //   - Optionally links an invoice_id (for check-ins linked to an existing invoice).
 
 async function maxJobSeq(base44) {
   const res = await base44.entities.Job.filter({
-    stage: { $in: ["awaiting_approval", "awaiting_deposit", "queued", "teardown", "waiting_on_parts", "machining", "assembly", "testing", "ready_for_pickup", "picked_up"] },
+    stage: { $in: ["needs_estimate", "awaiting_approval", "awaiting_deposit", "queued", "teardown", "waiting_on_parts", "machining", "assembly", "testing", "ready_for_pickup", "picked_up"] },
   });
   const items = res.items || res || [];
   let max = 100000;
@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
       invoice_ids: invoiceId ? [invoiceId] : [],
       platform_id: engine.platform_id || "",
       is_engine_build: true,
-      stage: "awaiting_approval",
-      blocking_condition: "awaiting_approval",
+      stage: "needs_estimate",
+      blocking_condition: "none",
       is_active: false,
       deposit_required: false,
       deposit_amount: 0,
