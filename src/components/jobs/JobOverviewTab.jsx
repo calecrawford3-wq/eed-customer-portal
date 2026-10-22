@@ -1,4 +1,5 @@
 import React from "react";
+import EngineIdentityPanel from "@/components/engines/EngineIdentityPanel";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -122,6 +123,7 @@ function Row({ label, value }) {
     <div className="flex items-center justify-between">
       <span className="text-slate-500">{label}</span>
       <span className="text-slate-900">{value}</span>
+    {engine && <div className="mt-4"><EngineIdentityPanel engine={engine} platformName={platform ? `${platform.manufacturer || ""} ${platform.name || ""}`.trim() : ""} jobId={job?.id || ""} /></div>}
     </div>
   );
 }

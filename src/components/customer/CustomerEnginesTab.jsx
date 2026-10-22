@@ -13,6 +13,8 @@ import { Cpu, Plus, ExternalLink, ChevronDown, ChevronRight, Wrench, Pencil, Arr
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import IllegalPartsViewModal from "@/components/legal/IllegalPartsViewModal";
+import EngineIdentityPanel from "@/components/engines/EngineIdentityPanel";
+import EngineTagFilesDialog from "@/components/engines/EngineTagFilesDialog";
 
 function getPlatformLabel(platform) {
   if (!platform) return "Unknown";
@@ -63,6 +65,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   const [legalDocToView, setLegalDocToView] = useState(null);
   const [voidDoc, setVoidDoc] = useState(null);
   const [deleteEngine, setDeleteEngine] = useState(null);
+  const [newTagPackage, setNewTagPackage] = useState(null);
 
   const { data: allCustomers = [] } = useQuery({
     queryKey: ["customers"],
@@ -123,14 +126,23 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       if (existForCustomer) {
         throw new Error(`Serial already registered as ${existForCustomer.eed_id} for this customer`);
       }
-      return base44.entities.CustomerEngine.create(data);
+      const created = await base44.entities.CustomerEngine.create(data);
+      try {
+        const result = await base44.functions.invoke("initializeEngineIdentity", { customer_engine_id: created.id });
+        const info = result?.data || result || {};
+        return { ...created, ...(info.engine || {}), _new_head: info.head || null };
+      } catch (e) {
+        console.warn("Engine created but tag identity initialization needs retry:", e);
+        return created;
+      }
     },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["customer-engines", customerId] });
       qc.invalidateQueries({ queryKey: ["all-engines-for-eed"] });
       setAddOpen(false);
       setNewEngine({ engine_serial_number: "", platform_id: "", notes: "" });
-      toast.success(`Engine ${created.eed_id} registered`);
+      if (created.tag_code) setNewTagPackage({ engine: created, head: created._new_head || null });
+      toast.success(`Engine ${created.eed_id} registered${created.tag_code ? " · laser tags ready" : ""}`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -302,6 +314,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
 
                   {isExpanded && (
                     <div className="mt-4 border-t border-slate-100 pt-4 space-y-4">
+                      <EngineIdentityPanel engine={engine} platformName={getPlatformLabel(platform)} />
                       {/* Most recent build */}
                       {mostRecentBuild ? (
                         <div>
@@ -449,6 +462,8 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
           })}
         </div>
       )}
+
+      <EngineTagFilesDialog open={!!newTagPackage} onClose={() => setNewTagPackage(null)} engine={newTagPackage?.engine} head={newTagPackage?.head} platformName={getPlatformLabel(platforms.find(p => p.id === newTagPackage?.engine?.platform_id))} />
 
       {/* Edit Engine Dialog */}
       <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditEngine(null); }}>
