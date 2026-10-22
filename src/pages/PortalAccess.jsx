@@ -6,9 +6,11 @@ import {postLoginDestination} from '@/lib/post-login-destination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {usePublicCompanyLogo} from '@/hooks/useCompanyLogo';
 
 export default function PortalAccess({ initialMode }) {
   const { user, isLoadingAuth, isLoadingPublicSettings } = useAuth();
+  const {logoUrl}=usePublicCompanyLogo('light');
   const params = new URLSearchParams(window.location.search);
   const destination = portalDestination(params.get('next'), window.location.origin);
   const [mode, setMode] = useState(initialMode || (['activate', 'forgot', 'signin'].includes(params.get('mode')) ? params.get('mode') : 'signin'));
@@ -130,7 +132,7 @@ export default function PortalAccess({ initialMode }) {
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 flex items-center justify-center">
       <section className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-none sm:shadow-xl">
-        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png" alt="Elite Engine Development" className="h-12 max-w-full object-contain mx-auto mb-6" />
+        <img src={logoUrl} alt="Elite Engine Development" className="h-12 max-w-full object-contain mx-auto mb-6" />
         <div className="mb-5 flex items-center gap-2 text-xs font-semibold text-slate-600" aria-label={`Account activation step ${isVerification ? 2 : 1} of 2`}>
           <span className={`rounded-full px-3 py-1 ${isVerification ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>1. Account details</span>
           <span aria-hidden="true">→</span>

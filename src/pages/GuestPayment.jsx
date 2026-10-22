@@ -6,9 +6,10 @@ import { DocumentCharges } from '@/components/portal/PortalDocumentDialog';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/money';
 import PortalPaymentReceipt from '@/components/portal/PortalPaymentReceipt';
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
+import {usePublicCompanyLogo} from '@/hooks/useCompanyLogo';
 
 export default function GuestPayment() {
+  const {logoUrl}=usePublicCompanyLogo('light');
   const { type, token } = useParams();
   const [params] = useSearchParams();
   const [option, setOption] = useState(() => new URLSearchParams(window.location.search).get('option') === 'balance' ? 'balance' : new URLSearchParams(window.location.search).get('option') === 'deposit' ? 'deposit' : '');
@@ -38,7 +39,7 @@ export default function GuestPayment() {
     } catch { setError('Payment could not be started. Refresh to check the current balance, then try again.'); setBusy(false); }
   }
   return <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
-    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-5 md:px-6"><img src={LOGO_URL} alt="Elite Engine Development" className="h-9 w-auto max-w-[58%] object-contain"/><div className="text-right"><p className="text-sm font-bold text-slate-900">Secure Payment</p><p className="text-xs text-slate-500">Powered by Stripe</p></div></div></header>
+    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-5 md:px-6"><img src={logoUrl} alt="Elite Engine Development" className="h-9 w-auto max-w-[58%] object-contain"/><div className="text-right"><p className="text-sm font-bold text-slate-900">Secure Payment</p><p className="text-xs text-slate-500">Powered by Stripe</p></div></div></header>
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12 md:px-6 md:py-8">
       {!valid || loadError ? <section className="rounded-xl bg-white p-6 shadow-sm"><h1 className="text-xl font-bold">This link is unavailable</h1><p className="mt-2 text-slate-600">It may have expired or been disabled. Ask the customer for a new payment link.</p><Button className="mt-4" variant="outline" onClick={() => refetch()}>Try Again</Button></section> : isLoading ? <p role="status">Loading payment request…</p> : data && <>
         <section className="rounded-xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm space-y-2">

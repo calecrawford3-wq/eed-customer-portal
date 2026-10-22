@@ -29,6 +29,7 @@ import AccountSetup, { accountContactComplete } from '@/components/portal/Accoun
 import RacingGarage from '@/components/portal/RacingGarage';
 import PortalTour from '@/components/portal/PortalTour';
 import { useAuth } from "@/lib/AuthContext";
+import {resolveCompanyLogo} from "@/lib/companyLogo";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-600",
@@ -175,6 +176,8 @@ export default function CustomerPortal() {
     enabled: !!customer,
   });
 
+  const portalLogo = resolveCompanyLogo(settingsData?.[0], 'light');
+
   // Build Book data (loaded on demand when printing) — fetched through the
   // ownership-checked getPortalBuildBook backend so the admin-only entities
   // (BuildTask, TeardownFinding, ComponentReplacement) are never read directly.
@@ -250,7 +253,7 @@ export default function CustomerPortal() {
         <Card className="w-full max-w-md border-0 shadow-lg">
           <CardContent className="p-8">
             <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+              src={portalLogo}
               alt="Elite Engine Development"
               className="h-14 mx-auto mb-6"
             />
@@ -351,7 +354,7 @@ export default function CustomerPortal() {
         <header className="bg-white border-b border-slate-200">
           <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+              src={portalLogo}
               alt="Elite Engine Development"
               className="h-8 md:h-10"
             />
@@ -428,7 +431,7 @@ export default function CustomerPortal() {
       <header className="bg-white border-b border-slate-200 print:hidden">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-wrap items-center justify-between gap-2">
           <img
-            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+            src={portalLogo}
             alt="Elite Engine Development"
             className="h-8 md:h-10"
           />
@@ -1008,7 +1011,7 @@ export default function CustomerPortal() {
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <img
-                        src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+                        src={portalLogo}
                         alt="Elite Engine Development"
                         className="h-10 mb-2"
                       />

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2, Wrench, Check, AlertCircle } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import PhotoGallery from "@/components/findings/PhotoGallery";
+import {usePublicCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const CONDITION_CLS = {
   good: "bg-emerald-100 text-emerald-700",
@@ -19,6 +20,7 @@ const CONDITION_CLS = {
 };
 
 export default function AdditionalWorkViewer() {
+  const {logoUrl}=usePublicCompanyLogo("light");
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ export default function AdditionalWorkViewer() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-5">
           <img
-            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png"
+            src={logoUrl}
             alt="Elite Engine Development"
             className="h-10 mb-3"
           />

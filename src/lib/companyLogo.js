@@ -5,6 +5,6 @@ export function resolveCompanyLogo(settings, background='light'){
   const light=String(settings?.company_logo_light_url||'').trim();
   const dark=String(settings?.company_logo_dark_url||'').trim();
   return background==='dark'
-    ? (dark||legacy||light||DEFAULT_COMPANY_LOGO_URL)
-    : (light||legacy||dark||DEFAULT_COMPANY_LOGO_URL);
+    ? (dark||light||legacy||DEFAULT_COMPANY_LOGO_URL)
+    : (light||dark||legacy||DEFAULT_COMPANY_LOGO_URL);
 }

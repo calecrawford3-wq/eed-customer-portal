@@ -42,7 +42,7 @@ export default async function(req) {
     const number=doc.estimate_number||doc.invoice_number||'';
     const money=(v:any)=>'$'+Number(v||0).toFixed(2);
     const balance=portalAmounts(doc,documentType).balance;
-    const logo='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
+    const logo=settings.company_logo_dark_url||settings.company_logo_light_url||settings.company_logo_url||'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
       body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;background:#f8f9fa}
       .container{max-width:600px;margin:0 auto;background:#fff}

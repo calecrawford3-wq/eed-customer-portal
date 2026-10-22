@@ -94,6 +94,8 @@ export default async function(req: Request): Promise<Response> {
       company_email: settings.company_email,
       company_website: settings.company_website,
       company_logo_url: settings.company_logo_url,
+      company_logo_light_url: settings.company_logo_light_url,
+      company_logo_dark_url: settings.company_logo_dark_url,
     } : null;
 
     return Response.json({
