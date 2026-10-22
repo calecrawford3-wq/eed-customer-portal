@@ -9,7 +9,8 @@
     "component_type": {
       "type": "string",
       "enum": [
-        "cylinder_head"
+        "cylinder_head",
+        "engine_case"
       ],
       "description": "Serialized engine component type."
     },
@@ -44,6 +45,69 @@
     "storage_location": {
       "type": "string",
       "description": "Current physical shop location of this serialized component."
+    },
+    "physical_serial_number": {
+      "type": "string",
+      "description": "OEM/physical serial number when present, primarily for engine cases."
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "in_machining",
+        "waiting_on_parts",
+        "spare",
+        "damaged",
+        "retired",
+        "scrapped"
+      ],
+      "default": "active",
+      "description": "Physical component lifecycle independent of pairing and inventory ownership."
+    },
+    "engine_core_id": {
+      "type": "string",
+      "description": "EngineCore catalog/SKU record this serialized physical core belongs to."
+    },
+    "inventory_state": {
+      "type": "string",
+      "enum": [
+        "not_inventory",
+        "in_stock",
+        "reserved",
+        "installed",
+        "customer_owned",
+        "scrapped"
+      ],
+      "default": "not_inventory",
+      "description": "Serialized core inventory state. Separate from lifecycle and pairing."
+    },
+    "core_credit_value": {
+      "type": "number",
+      "description": "Core credit/value snapshot assigned to this physical component."
+    },
+    "acquired_from_customer_id": {
+      "type": "string"
+    },
+    "acquired_job_id": {
+      "type": "string"
+    },
+    "current_tag_version_id": {
+      "type": "string"
+    },
+    "verification_invalidated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Latest physical change that invalidates earlier QC verification."
+    },
+    "verification_invalidation_reason": {
+      "type": "string"
+    },
+    "retired_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "retired_reason": {
+      "type": "string"
     }
   },
   "required": [

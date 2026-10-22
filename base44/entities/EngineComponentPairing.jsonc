@@ -41,6 +41,30 @@
     "reason": {
       "type": "string",
       "description": "Optional reason for pairing/change."
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head",
+        "engine_case"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "initial",
+        "replacement",
+        "customer_swap",
+        "repair",
+        "testing",
+        "incorrect_previous_pairing",
+        "core_install",
+        "other"
+      ],
+      "description": "Structured reason for the component pairing/change."
+    },
+    "reason_note": {
+      "type": "string"
     }
   },
   "required": [

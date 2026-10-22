@@ -85,10 +85,25 @@
           }
         }
       }
+    },
+    "component_id": {
+      "type": "string",
+      "description": "Serialized EngineComponent this work/history belongs to when component-specific."
+    },
+    "component_code": {
+      "type": "string",
+      "description": "Permanent component code snapshot for readability."
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head",
+        "engine_case"
+      ],
+      "description": "Serialized component type when linked."
     }
   },
   "required": [
-    "customer_engine_id",
     "entry_type",
     "title"
   ],

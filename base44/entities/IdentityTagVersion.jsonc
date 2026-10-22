@@ -1,0 +1,101 @@
+{
+  "name": "IdentityTagVersion",
+  "type": "object",
+  "properties": {
+    "owner_type": {
+      "type": "string",
+      "enum": [
+        "customer_engine",
+        "engine_component"
+      ]
+    },
+    "customer_engine_id": {
+      "type": "string"
+    },
+    "component_id": {
+      "type": "string"
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head",
+        "engine_case"
+      ]
+    },
+    "identity_display": {
+      "type": "string"
+    },
+    "tag_code": {
+      "type": "string",
+      "description": "Physical scan token used on this tag version."
+    },
+    "version_number": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "template_version": {
+      "type": "string",
+      "default": "elite-tag-v1"
+    },
+    "width_mm": {
+      "type": "number"
+    },
+    "height_mm": {
+      "type": "number"
+    },
+    "svg_snapshot": {
+      "type": "string",
+      "description": "Exact SVG content generated for traceability/reprint."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_by": {
+      "type": "string"
+    },
+    "replaced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "replacement_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_type",
+    "tag_code",
+    "version_number",
+    "status",
+    "generated_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

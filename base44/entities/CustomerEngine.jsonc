@@ -72,6 +72,20 @@
       "type": "string",
       "format": "date-time",
       "description": "When permanent engine/component tag identities were initialized."
+    },
+    "current_case_component_id": {
+      "type": "string",
+      "description": "Serialized EngineComponent record for the physical engine case/bottom end currently representing this engine."
+    },
+    "current_tag_version_id": {
+      "type": "string"
+    },
+    "verification_invalidated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verification_invalidation_reason": {
+      "type": "string"
     }
   },
   "required": [
