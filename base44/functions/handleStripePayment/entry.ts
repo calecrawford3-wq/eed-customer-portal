@@ -1,4 +1,5 @@
 import Stripe from "npm:stripe@14.10.0";
+import { activateReferralCreditsForEnginePayment } from "../../shared/referralCredits.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"));
 const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -119,6 +120,7 @@ Deno.serve(async (req) => {
     });
 
     console.log(`[handleStripePayment] Estimate updated successfully`);
+    await activateReferralCreditsForEnginePayment(base44, estimate.customer_id, estimate).catch(e => console.warn(`[handleStripePayment] referral release skipped: ${e.message}`));
 
     // Return 200 to Stripe immediately
     return Response.json({ 

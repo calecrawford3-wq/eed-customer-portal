@@ -5,8 +5,9 @@ const rows = (v: any) => Array.isArray(v) ? v : v?.items || [];
 
 export async function ensureReferralCredits(base44: any, referredCustomerId: string, referrerCustomerId: string, amount = REFERRAL_CREDIT_AMOUNT) {
   if (!referredCustomerId || !referrerCustomerId || referredCustomerId === referrerCustomerId) throw new Error('Referral customers must be different');
-  const Customer = base44.asServiceRole.entities.Customer;
-  const Credit = base44.asServiceRole.entities.AccountCredit;
+  const service = base44.asServiceRole || base44;
+  const Customer = service.entities.Customer;
+  const Credit = service.entities.AccountCredit;
   const referred = rows(await Customer.filter({ id: referredCustomerId }))[0];
   const referrer = rows(await Customer.filter({ id: referrerCustomerId }))[0];
   if (!referred || !referrer) throw new Error('Referral customer not found');
@@ -27,13 +28,15 @@ async function qualifiesAsEngineBuild(base44: any, document: any) {
   if (!document) return false;
   if (document.is_engine_build || document.build_id) return true;
   if (!document.estimate_id) return false;
-  const estimate = rows(await base44.asServiceRole.entities.Estimate.filter({ id: document.estimate_id }))[0];
+  const service = base44.asServiceRole || base44;
+  const estimate = rows(await service.entities.Estimate.filter({ id: document.estimate_id }))[0];
   return !!(estimate?.is_engine_build || estimate?.build_id);
 }
 
 export async function activateReferralCreditsForEnginePayment(base44: any, customerId: string, document: any) {
   if (!customerId || !(await qualifiesAsEngineBuild(base44, document))) return { activated: 0, reason: 'not_engine_build' };
-  const Credit = base44.asServiceRole.entities.AccountCredit;
+  const service = base44.asServiceRole || base44;
+  const Credit = service.entities.AccountCredit;
   const pending = rows(await Credit.filter({ type:'referral', status:'pending', source_reference:customerId }))
     .filter((c: any) => c.subtype === 'Referral Bonus (Referrer)');
   if (!pending.length) return { activated: 0, reason: 'none_pending' };
@@ -48,7 +51,7 @@ export async function activateReferralCreditsForEnginePayment(base44: any, custo
     }
   }
   if (activated) {
-    try { await base44.asServiceRole.entities.Notification.create({ title:'Referral credit released', message:`${activated} referral credit${activated===1?'':'s'} released after the referred customer's first engine-build payment.`, type:'other', link_url:'/Credits', is_read:false }); } catch { /* never fail a payment */ }
+    try { await (base44.asServiceRole || base44).entities.Notification.create({ title:'Referral credit released', message:`${activated} referral credit${activated===1?'':'s'} released after the referred customer's first engine-build payment.`, type:'other', link_url:'/Credits', is_read:false }); } catch { /* never fail a payment */ }
   }
   return { activated };
 }
