@@ -328,7 +328,7 @@ export default function Emails() {
       }
     },
     onError: (e) => {
-      const msg = e?.response?.data?.error || e?.message || "error";
+      const msg = /** @type {any} */ (e)?.response?.data?.error || e?.message || "error";
       if (/INVALID_OAUTHSCOPE|not connected|ZohoMail/i.test(msg)) {
         toast.error("Zoho Mail isn't connected — go to Settings → Email to connect.");
       } else {

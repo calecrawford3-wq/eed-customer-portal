@@ -24,7 +24,7 @@ export default function LinkInvoiceDialog({ open, onClose, job }) {
     enabled: !!job?.customer_id && open,
   });
 
-  const invoices = invoicesData?.items || invoicesData || [];
+  const invoices = Array.isArray(invoicesData) ? invoicesData : (invoicesData?.items || []);
   const existingIds = job?.invoice_ids || [];
   const filtered = invoices.filter(
     (inv) =>

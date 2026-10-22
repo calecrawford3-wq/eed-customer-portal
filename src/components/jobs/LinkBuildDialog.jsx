@@ -23,7 +23,7 @@ export default function LinkBuildDialog({ open, onClose, job, currentBuildId }) 
     enabled: !!job?.customer_id && open,
   });
 
-  const builds = buildsData?.items || buildsData || [];
+  const builds = Array.isArray(buildsData) ? buildsData : (buildsData?.items || []);
   const filtered = builds.filter(
     (b) =>
       b.id !== currentBuildId &&

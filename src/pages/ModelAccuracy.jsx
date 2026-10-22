@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart2, TrendingUp, Target } from "lucide-react";
 
-function Stat({ label, value, sub }) {
+function Stat({ label, value, sub = "" }) {
   return (
     <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
       <p className="text-xs text-slate-400">{label}</p>

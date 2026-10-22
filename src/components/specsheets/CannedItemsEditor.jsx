@@ -13,7 +13,7 @@ const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1 };
 const emptyLabor = { labor_item_id: "", name: "", description: "" };
 const emptyMachining = { machining_item_id: "", name: "", description: "" };
 
-export default function CannedItemsEditor({ cannedItems = {}, onChange, showMachining = false }) {
+export default function CannedItemsEditor({ cannedItems = /** @type {Record<string, any>} */ ({}), onChange, showMachining = false }) {
   const lineItems = cannedItems.line_items || [];
   const laborItems = cannedItems.labor_items || [];
   const machiningItems = cannedItems.machining_items || [];

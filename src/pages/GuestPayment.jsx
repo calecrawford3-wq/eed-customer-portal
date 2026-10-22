@@ -19,7 +19,7 @@ export default function GuestPayment() {
     queryKey: ['guest-document', type, token], enabled: valid, retry: false,
     gcTime: 0, staleTime: 0, refetchOnWindowFocus: true,
     queryFn: async () => {
-      const r = await base44Public.functions.invoke(type === 'estimate' ? 'getGuestEstimate' : 'getGuestInvoice', { guestPaymentToken: token });
+      const r = await base44Public.functions.invoke(type === 'estimate' ? 'getGuestEstimate' : 'getGuestInvoice', { guestPaymentToken: token, id = null });
       if (r.data?.error) throw new Error('Link unavailable');
       return r.data;
     },

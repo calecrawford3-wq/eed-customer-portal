@@ -271,7 +271,8 @@ export default function EngineCheckInModal({ open, onClose }) {
       toast.error("Storage location is required");
       return;
     }
-    const payload = {
+    /** @type {Record<string, any>} */
+      const payload = {
       ...form,
       check_in_status: "checked_in",
       check_in_date: new Date().toISOString().split("T")[0],

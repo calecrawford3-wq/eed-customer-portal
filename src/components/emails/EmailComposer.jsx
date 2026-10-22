@@ -33,7 +33,7 @@ function buildQuote(src) {
   return lines.join("\n");
 }
 
-export default function EmailComposer({ open, onClose, mode = "compose", sourceMessage = null, draft = null }) {
+export default function EmailComposer({ open, onClose, mode = "compose", sourceMessage = null, draft = null, prefillTo = "", prefillSubject = "" }) {
   const qc = useQueryClient();
   const { data: settings } = useQuery({
     queryKey: ["app-settings"],
@@ -115,7 +115,7 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
       reset();
       onClose();
     },
-    onError: (e) => toast.error("Send failed: " + (e?.response?.data?.error || e?.message || "error")),
+    onError: (e) => toast.error("Send failed: " + (/** @type {any} */ (e)?.response?.data?.error || e?.message || "error")),
   });
 
   const reset = () => { setTo(""); setCc(""); setSubject(""); setBody(""); };

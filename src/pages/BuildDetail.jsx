@@ -283,7 +283,7 @@ export default function BuildDetail() {
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${printContent?.innerHTML}
         </body>
       </html>
     `);

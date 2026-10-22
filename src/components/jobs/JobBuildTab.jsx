@@ -174,7 +174,7 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
     printWindow.document.write(`
       <html><head><title>Build Sheet - ${build.engine_serial_number}</title>
       <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}</style>
-      </head><body>${printContent.innerHTML}</body></html>
+      </head><body>${printContent?.innerHTML}</body></html>
     `);
     printWindow.document.close();
     printWindow.focus();

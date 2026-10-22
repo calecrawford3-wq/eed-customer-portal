@@ -26,7 +26,7 @@ export default function ZohoMailConnect({ open, onClose, onConnected = () => {} 
       setCode("");
       onClose();
     },
-    onError: (e) => toast.error("Connect failed: " + (e?.response?.data?.error || e?.message || "error")),
+    onError: (e) => toast.error("Connect failed: " + (/** @type {any} */ (e)?.response?.data?.error || e?.message || "error")),
   });
 
   const handleConnect = () => {

@@ -24,7 +24,7 @@ export default function LinkEstimateDialog({ open, onClose, job }) {
     enabled: !!job?.customer_id && open,
   });
 
-  const estimates = estimatesData?.items || estimatesData || [];
+  const estimates = Array.isArray(estimatesData) ? estimatesData : (estimatesData?.items || []);
   const filtered = estimates.filter(
     (e) =>
       e.id !== job?.estimate_id &&

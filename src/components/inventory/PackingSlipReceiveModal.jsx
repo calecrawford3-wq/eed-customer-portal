@@ -53,7 +53,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
     try {
       const hash = await computeFileHash(file);
       const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file });
-      const fileUri = uploadRes?.data?.file_uri || uploadRes?.file_uri;
+      const fileUri = /** @type {any} */ (uploadRes)?.data?.file_uri || uploadRes?.file_uri;
 
       const extractRes = await base44.functions.invoke("extractPackingSlip", {
         file_uri: fileUri,
