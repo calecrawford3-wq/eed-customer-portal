@@ -105,7 +105,11 @@ export default function EngineCheckInModal({ open, onClose }) {
           // Keep existing eed_id and serial — refresh doesn't change identity
         });
         const updated = await base44.entities.CustomerEngine.filter({ id: existingId });
-        return updated?.[0] || { id: existingId, ...updates };
+        let engine = updated?.[0] || { id: existingId, ...updates };
+        if (!engine.tag_code) {
+          try { const initialized = await base44.functions.invoke("initializeEngineIdentity", { customer_engine_id: existingId }); engine = { ...engine, ...((initialized?.data || initialized)?.engine || {}) }; } catch (e) { console.warn("Permanent tag initialization needs retry:", e); }
+        }
+        return engine;
       }
       // New serial number: ensure the serial isn't already registered
       const existing = allEngines.find(e => e.engine_serial_number === data.engine_serial_number);
@@ -212,7 +216,7 @@ export default function EngineCheckInModal({ open, onClose }) {
         platformName: platform ? getPlatformLabel(platform) : "",
         storageLocation: created.storage_location,
         statusLabel: "CHECKED IN",
-        barcodeValue: created.engine_serial_number,
+        barcodeValue: created.tag_code || created.engine_serial_number,
         startPos: labelStartPos,
       });
     },
@@ -351,6 +355,7 @@ export default function EngineCheckInModal({ open, onClose }) {
               <p className="text-sm text-slate-500 text-center">
                 A check-in label has been sent to the printer. Stick it on the engine or storage container.
               </p>
+              <EngineIdentityPanel engine={checkedInEngine} platformName={selectedPlatform ? getPlatformLabel(selectedPlatform) : ""} />
               <div className="flex items-center justify-center gap-2">
                 <Printer className="w-4 h-4 text-slate-400" />
                 <Label className="text-xs whitespace-nowrap">Label start slot</Label>
@@ -371,7 +376,7 @@ export default function EngineCheckInModal({ open, onClose }) {
                     platformName: platform ? getPlatformLabel(platform) : "",
                     storageLocation: checkedInEngine.storage_location,
                     statusLabel: "CHECKED IN",
-                    barcodeValue: checkedInEngine.engine_serial_number,
+                    barcodeValue: checkedInEngine.tag_code || checkedInEngine.engine_serial_number,
                     startPos: labelStartPos,
                   });
                 }}>

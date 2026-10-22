@@ -10,6 +10,7 @@ import { Cpu, PackageCheck, AlertTriangle, Plus, CheckCircle2 } from "lucide-rea
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { printEngineLabel } from "@/components/engines/EngineLabelPrint";
+import EngineIdentityPanel from "@/components/engines/EngineIdentityPanel";
 
 // Intake dialog shown when a pre-arrival job (estimate approved, no engine)
 // is dragged into receiving or an active stage. Asks whether the engine has
@@ -144,7 +145,7 @@ export default function IntakeEngineDialog({ job, customer, open, onClose, onLin
         platformName: plat ? `${plat.manufacturer} ${plat.name}` : "",
         storageLocation: created.storage_location,
         statusLabel: "CHECKED IN",
-        barcodeValue: created.engine_serial_number,
+        barcodeValue: taggedEngine.tag_code || created.engine_serial_number,
       });
 
       setLinkedEngine(taggedEngine);
@@ -310,6 +311,7 @@ export default function IntakeEngineDialog({ job, customer, open, onClose, onLin
               {linkedEngine.storage_location && <p className="text-xs text-emerald-500 mt-1">📍 {linkedEngine.storage_location}</p>}
             </div>
             <p className="text-sm text-slate-500 text-center">A check-in label has been sent to the printer.</p>
+            <EngineIdentityPanel engine={linkedEngine} platformName={selectedPlatform ? `${selectedPlatform.manufacturer || ""} ${selectedPlatform.name || ""}`.trim() : ""} jobId={job?.id || ""} />
             <DialogFooter>
               <Button className="w-full bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleClose}>Done</Button>
             </DialogFooter>
