@@ -21,7 +21,7 @@ const BILLING_BADGE = {
 // Task card with operational controls: start, block, record measurements,
 // complete, reopen. Used by both the Job Card Machining tab and the Machining
 // Station. The `large` prop increases text/button sizes for the station screen.
-export default function MachiningTaskCard({ task, large }) {
+export default function MachiningTaskCard({ task, large = false }) {
   const qc = useQueryClient();
   const [showComplete, setShowComplete] = useState(false);
   const [showBlock, setShowBlock] = useState(false);
@@ -251,7 +251,7 @@ export default function MachiningTaskCard({ task, large }) {
   );
 }
 
-function CompletedMeasurements({ task, large }) {
+function CompletedMeasurements({ task, large = false }) {
   const m = task.measurements || {};
   const rows = [];
   switch (task.task_type) {

@@ -15,7 +15,7 @@ const empty = {
   unit_cost: 0, sell_price: 0, core_credit: 0, quantity_on_hand: 1, description: "", status: "active"
 };
 
-export default function QuickCreateCoreModal({ open, onClose, onCreated, editingCore }) {
+export default function QuickCreateCoreModal({ open, onClose, onCreated = () => {}, editingCore }) {
   const [form, setForm] = useState(empty);
   const qc = useQueryClient();
 

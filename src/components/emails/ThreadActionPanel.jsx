@@ -36,7 +36,7 @@ function fmt(iso) {
   return same ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function Field({ label, value, highlight }) {
+function Field({ label, value, highlight = false }) {
   return (
     <div className="min-w-0">
       <div className="text-[10px] uppercase text-slate-400 tracking-wide">{label}</div>

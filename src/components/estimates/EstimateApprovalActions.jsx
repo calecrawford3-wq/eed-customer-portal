@@ -15,7 +15,7 @@ export const ESTIMATE_STATUS_META = {
   expired: { label: "Expired", cls: "bg-slate-200 text-slate-500 border-slate-200" },
 };
 
-export default function EstimateApprovalActions({ estimateId, compact }) {
+export default function EstimateApprovalActions({ estimateId, compact = false }) {
   const qc = useQueryClient();
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimate-approval", estimateId],

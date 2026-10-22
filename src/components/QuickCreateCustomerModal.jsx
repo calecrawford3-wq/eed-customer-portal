@@ -11,7 +11,7 @@ import CountrySelect from "@/components/CountrySelect";
 
 const empty = { first_name: "", last_name: "", company_name: "", email: "", phone: "", country: "", status: "active" };
 
-export default function QuickCreateCustomerModal({ open, onClose, onCreated, defaultPhone }) {
+export default function QuickCreateCustomerModal({ open, onClose, onCreated, defaultPhone = "" }) {
   const [form, setForm] = useState(empty);
   const qc = useQueryClient();
 
