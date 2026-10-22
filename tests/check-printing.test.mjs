@@ -57,3 +57,17 @@ test('voiding and reprinting never alter the next check sequence',()=>{
  assert.match(voidFn,/status:'voided'/);
  assert.match(reprintFn,/reprint_count/);
 });
+
+test('company logo is uploaded as a file instead of entered as a URL',()=>{
+ const uploader=read('src/components/settings/CompanyLogoUploader.jsx');
+ const settingsPage=read('src/pages/Settings.jsx');
+ const checkPage=read('src/pages/CheckPrinting.jsx');
+ assert.match(uploader,/UploadFile\(\{file\}\)/);
+ assert.match(uploader,/Upload Company Logo/);
+ assert.match(uploader,/PNG, JPG, WebP, or SVG/);
+ assert.match(settingsPage,/CompanyLogoUploader/);
+ assert.doesNotMatch(settingsPage,/Logo URL/);
+ assert.doesNotMatch(settingsPage,/placeholder="https:\/\//);
+ assert.match(checkPage,/CompanyLogoUploader/);
+ assert.match(checkPage,/company_logo_url:setup\.company_logo_url/);
+});
