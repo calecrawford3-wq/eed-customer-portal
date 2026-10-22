@@ -237,7 +237,6 @@
     },
     "myracepass_profile_url": {
       "type": "string",
-      "format": "uri",
       "description": "Public MyRacePass driver profile URL used to identify this customer for automated race-result imports."
     },
     "myracepass_driver_id": {

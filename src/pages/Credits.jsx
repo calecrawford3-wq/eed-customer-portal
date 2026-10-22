@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Plus, Users, Trash2, Search, TrendingUp, TrendingDown, Wallet, Clock } from "lucide-react";
+import { Award, Plus, Users, Trash2, Search, TrendingUp, TrendingDown, Wallet, Clock, Flag, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import AddCreditModal from "@/components/credits/AddCreditModal";
 import AddReferralModal from "@/components/credits/AddReferralModal";
+import AddRaceResultModal from "@/components/credits/AddRaceResultModal";
 
 const TYPE_STYLES = {
   performance: "bg-amber-100 text-amber-700",
@@ -44,6 +45,7 @@ export default function Credits() {
   const [filterCustomerId, setFilterCustomerId] = useState("");
   const [search, setSearch] = useState("");
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [raceOpen, setRaceOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: customers = [] } = useQuery({
@@ -55,6 +57,12 @@ export default function Credits() {
     queryKey: ["allAccountCredits"],
     queryFn: () => base44.entities.AccountCredit.list("-created_date", 500),
   });
+
+  const { data: raceResults = [] } = useQuery({
+    queryKey: ["raceResults"],
+    queryFn: () => base44.entities.RaceResult.list("-event_date", 100),
+  });
+  const connectedRaceProfiles = customers.filter(c => c.myracepass_driver_id && c.myracepass_profile_url);
 
   const deleteMutation = useMutation({
     mutationFn: /** @param {string} id */ (id) => base44.entities.AccountCredit.delete(id),
@@ -96,7 +104,8 @@ export default function Credits() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Award className="w-6 h-6 text-amber-500" /> Performance Credit System</h1>
           <p className="text-sm text-slate-500 mt-1">Track and manage driver account credits — 1 Credit = $1, redeemable toward builds.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setRaceOpen(true)}><Flag className="w-4 h-4 mr-2" /> Race Result</Button>
           <Button variant="outline" onClick={() => setReferralOpen(true)}><Users className="w-4 h-4 mr-2" /> Add Referral</Button>
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add Credit</Button>
         </div>
@@ -136,6 +145,19 @@ export default function Credits() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-0 shadow-sm mb-6">
+        <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Flag className="w-4 h-4 text-[#e20404]"/> Race Result Automation</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
+            MyRacePass profiles can be linked on the customer record now. Elite's result processor is ready to turn imported finishes into PCS credits automatically. The external pull will use the official MyRacePass developer API once an API key/documentation are connected.
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Connected Profiles ({connectedRaceProfiles.length})</p>{connectedRaceProfiles.length===0?<p className="text-sm text-slate-400">No MyRacePass profiles linked yet. Add a profile URL when creating or editing a customer.</p>:<div className="space-y-2 max-h-48 overflow-y-auto">{connectedRaceProfiles.map(c=><div key={c.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-2.5"><div className="min-w-0"><p className="text-sm font-medium text-slate-900 truncate">{c.first_name} {c.last_name}</p><p className="text-xs text-slate-500">MRP #{c.myracepass_driver_id} · {c.myracepass_sync_status||'ready'}</p></div><a href={c.myracepass_profile_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-700"><ExternalLink className="w-4 h-4"/></a></div>)}</div>}</div>
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Recent Results</p>{raceResults.length===0?<p className="text-sm text-slate-400">No race results recorded yet.</p>:<div className="space-y-2 max-h-48 overflow-y-auto">{raceResults.slice(0,8).map(r=><div key={r.id} className="rounded-lg bg-slate-50 p-2.5"><div className="flex justify-between gap-2"><p className="text-sm font-medium text-slate-900 truncate">{customerName(r.customer_id)} · {r.track_name||r.event_name||'Race'}</p><Badge className="border-0 bg-emerald-100 text-emerald-700">{r.status}</Badge></div><p className="text-xs text-slate-500">{r.event_date}{r.finish_position?` · Feature P${r.finish_position}`:''}{r.heat_finish_position?` · Heat P${r.heat_finish_position}`:''}</p></div>)}</div>}</div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-0 shadow-sm mb-6">
         <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowBreakdown(!showBreakdown)}>
@@ -243,6 +265,7 @@ export default function Credits() {
 
       <AddCreditModal open={addOpen} onClose={() => setAddOpen(false)} customers={customers} />
       <AddReferralModal open={referralOpen} onClose={() => setReferralOpen(false)} customers={customers} />
+      <AddRaceResultModal open={raceOpen} onClose={() => setRaceOpen(false)} customers={customers} />
     </div>
   );
 }

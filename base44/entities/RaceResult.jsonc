@@ -14,8 +14,7 @@
       "description": "Stable MyRacePass event/result identifier used for deduplication"
     },
     "source_url": {
-      "type": "string",
-      "format": "uri"
+      "type": "string"
     },
     "event_date": {
       "type": "string",
