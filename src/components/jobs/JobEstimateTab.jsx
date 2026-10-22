@@ -89,7 +89,8 @@ export default function JobEstimateTab({ job, estimate }) {
               <span className="text-slate-700">{estimate.deposit_paid ? "Deposit received" : `Awaiting deposit of ${formatMoney(estimate.deposit_amount)}`}</span>
             </div>
           )}
-          {job.stage === "awaiting_approval" && <p className="text-xs text-slate-400">The job becomes active once the estimate is approved{estimate.deposit_required ? " and the deposit is received" : ""}.</p>}
+          {job.stage === "needs_estimate" && <p className="text-xs text-slate-400">This job stays in Needs Estimate until the estimate is sent to the customer.</p>}
+          {job.stage === "awaiting_approval" && <p className="text-xs text-slate-400">The estimate has been sent. The job becomes active once it is approved{estimate.deposit_required ? " and the deposit is received" : ""}.</p>}
         </CardContent>
       </Card>
 
