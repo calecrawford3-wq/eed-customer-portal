@@ -27,7 +27,7 @@ export default function GlobalCreateMenu({ variant = 'header' }) {
     let to = action.to;
     const current = new URLSearchParams(location.search);
     const currentId = current.get('id');
-    if (currentId && location.pathname.toLowerCase().includes('customerdetail') && (to.startsWith('/EstimateDetail') || to.startsWith('/InvoiceDetail'))) {
+    if (currentId && location.pathname.toLowerCase().includes('customerdetail') && (to.startsWith('/EstimateDetail') || to.startsWith('/InvoiceDetail') || to.startsWith('/Jobs?new=1'))) {
       to += `&customer_id=${encodeURIComponent(currentId)}`;
     }
     if (currentId && location.pathname.toLowerCase().includes('jobcard') && to.startsWith('/EstimateDetail')) {

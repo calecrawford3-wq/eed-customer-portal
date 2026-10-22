@@ -1,4 +1,4 @@
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {useNavigate} from 'react-router-dom';
 import {Briefcase, Cpu} from 'lucide-react';
@@ -9,12 +9,13 @@ import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/compo
 import CustomerSearchSelect from '@/components/CustomerSearchSelect';
 import {toast} from 'sonner';
 
-export default function NewJobDialog({open,onClose,customers=[],engines=[]}){
+export default function NewJobDialog({open,onClose,customers=[],engines=[],initialCustomerId='',initialEngineId=''}){
  const navigate=useNavigate();
  const [customerId,setCustomerId]=useState('');
  const [engineId,setEngineId]=useState('none');
  const [saving,setSaving]=useState(false);
  const customerEngines=useMemo(()=>engines.filter(e=>e.customer_id===customerId),[engines,customerId]);
+ useEffect(()=>{if(open){setCustomerId(initialCustomerId||'');setEngineId(initialEngineId||'none');}},[open,initialCustomerId,initialEngineId]);
  const close=()=>{if(saving)return;setCustomerId('');setEngineId('none');onClose();};
  const start=async()=>{
   if(!customerId){toast.error('Select a customer');return;}

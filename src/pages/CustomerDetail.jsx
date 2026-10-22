@@ -178,7 +178,7 @@ export default function CustomerDetail() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={`/EstimateDetail?new=1&customer_id=${id}`}>New Estimate</Link>
+              <Link to={`/Jobs?new=1&customer_id=${id}`}>New Job</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to={`/InvoiceDetail?new=1&customer_id=${id}`}>New Invoice</Link>
@@ -363,10 +363,9 @@ export default function CustomerDetail() {
             </TabsContent>
 
             <TabsContent value="estimates">
-              <div className="flex justify-end mb-3">
-                <Link to={`/EstimateDetail?new=1&customer_id=${id}`}>
-                  <Button size="sm" variant="outline"><Plus className="w-3.5 h-3.5 mr-1" /> New Estimate</Button>
-                </Link>
+              <div className="flex justify-end gap-2 mb-3">
+                <Link to={`/Jobs?new=1&customer_id=${id}`}><Button size="sm" className="bg-[#e20404] hover:bg-red-700"><Plus className="w-3.5 h-3.5 mr-1" /> New Job</Button></Link>
+                <Link to={`/EstimateDetail?new=1&standalone=1&customer_id=${id}`}><Button size="sm" variant="outline"><Plus className="w-3.5 h-3.5 mr-1" /> Standalone Estimate</Button></Link>
               </div>
               {customerEstimates.length === 0 ? (
                 <div className="text-center py-10 text-slate-400">

@@ -288,7 +288,7 @@ export default function EngineCheckInModal({ open, onClose }) {
 
   const handleStartEstimate = () => {
     qc.invalidateQueries({ queryKey: ["checked-in-engines"] });
-    navigate(`/EstimateDetail?new=1&customer_id=${form.customer_id}`);
+    navigate(`/Jobs?tab=intake`);
     onClose();
   };
 
@@ -352,7 +352,7 @@ export default function EngineCheckInModal({ open, onClose }) {
               </div>
               <div className="flex flex-col gap-2">
                 <Button className="w-full bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleStartEstimate}>
-                  <ClipboardList className="w-4 h-4 mr-2" /> Start Estimate
+                  <ClipboardList className="w-4 h-4 mr-2" /> Open Job Intake
                 </Button>
                 <Button variant="outline" className="w-full" onClick={() => {
                   const customer = customers.find(c => c.id === checkedInEngine.customer_id);

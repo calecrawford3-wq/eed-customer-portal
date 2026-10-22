@@ -244,8 +244,8 @@ export default function ActiveCallModal({ open, onClose, customer, customerSucce
 
           {/* Create estimate quick link */}
           <div className="flex flex-wrap gap-2">
-            <Link to={`/EstimateDetail?new=1&customer_id=${customer.id}`}>
-              <Button type="button" variant="outline" size="sm"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Create Estimate</Button>
+            <Link to={`/Jobs?new=1&customer_id=${customer.id}`}>
+              <Button type="button" variant="outline" size="sm"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Start Job</Button>
             </Link>
           </div>
         </div>

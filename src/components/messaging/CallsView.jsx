@@ -269,8 +269,8 @@ export default function CallsView() {
                 </Button>
               )}
               {selected.customer_id && (
-                <Link to={`/EstimateDetail?new=1&customer_id=${selected.customer_id}`}>
-                  <Button variant="outline" size="sm"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Create Estimate</Button>
+                <Link to={`/Jobs?new=1&customer_id=${selected.customer_id}`}>
+                  <Button variant="outline" size="sm"><FilePlus2 className="w-3.5 h-3.5 mr-1" /> Start Job</Button>
                 </Link>
               )}
               {selected.direction === "inbound" && !selected.customer_id && (

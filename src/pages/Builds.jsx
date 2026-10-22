@@ -667,12 +667,12 @@ export default function Builds() {
                                 onChange={e => setLabelStartPos(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
                               />
                             </div>
-                            <Link to={createPageUrl(`EstimateDetail?new=1&customer_id=${engine.customer_id || ""}&customer_engine_id=${engine.id}`)}>
+                            <Link to={createPageUrl(`Jobs?new=1&customer_id=${engine.customer_id || ""}&customer_engine_id=${engine.id}`)}>
                               <Button
                                 size="sm"
                                 className="text-xs bg-[#e20404] hover:bg-[#c00303] text-white"
                               >
-                                <FileText className="w-3.5 h-3.5 mr-1" /> Estimate
+                                <FileText className="w-3.5 h-3.5 mr-1" /> New Job
                               </Button>
                             </Link>
                             <Button

@@ -123,6 +123,8 @@ export default function Jobs() {
   const [pickupDialog, setPickupDialog] = useState(null); // job
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(searchParams.get("new") === "1");
+  const newJobCustomerId = searchParams.get("customer_id") || "";
+  const newJobEngineId = searchParams.get("customer_engine_id") || "";
 
   useEffect(() => {
     if (searchParams.get("new") !== "1") return;
@@ -498,7 +500,7 @@ export default function Jobs() {
           onLinked={() => invalidateAll()}
         />
       )}
-      <NewJobDialog open={newJobOpen} onClose={() => setNewJobOpen(false)} customers={customers} engines={engines} />
+      <NewJobDialog open={newJobOpen} onClose={() => setNewJobOpen(false)} customers={customers} engines={engines} initialCustomerId={newJobCustomerId} initialEngineId={newJobEngineId} />
       {/* Check In Engine modal */}
       <EngineCheckInModal open={checkInOpen} onClose={() => { setCheckInOpen(false); invalidateAll(); }} />
 
