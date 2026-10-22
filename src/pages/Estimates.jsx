@@ -71,7 +71,7 @@ export default function Estimates() {
 
   // Auto-archive expired estimates (past expiry date, still "sent", not yet archived)
   useEffect(() => {
-    if (autoArchiveRan.current || !standaloneEstimates.length) return;
+    if (autoArchiveRan.current || isLoading || jobsLoading || !standaloneEstimates.length) return;
     autoArchiveRan.current = true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -94,7 +94,7 @@ export default function Estimates() {
         toast.info(`Auto-archived ${toArchive.length} expired estimates`);
       }
     })();
-  }, [standaloneEstimates, qc]);
+  }, [standaloneEstimates, isLoading, jobsLoading, qc]);
 
   const navigate = useNavigate();
 
