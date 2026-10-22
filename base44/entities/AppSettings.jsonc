@@ -467,6 +467,14 @@
     "check_logo_width_mm": {
       "type": "number",
       "default": 32
+    },
+    "company_logo_light_url": {
+      "type": "string",
+      "description": "Uploaded company logo intended for light/white backgrounds."
+    },
+    "company_logo_dark_url": {
+      "type": "string",
+      "description": "Uploaded company logo intended for dark/black backgrounds."
     }
   },
   "required": [

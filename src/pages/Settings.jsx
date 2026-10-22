@@ -36,6 +36,8 @@ const defaultSettings = {
   company_email: "",
   company_website: "",
   company_logo_url: "",
+  company_logo_light_url: "",
+  company_logo_dark_url: "",
   default_tax_rate: 0,
   default_payment_terms: "Net 30",
   default_estimate_expiry_days: 30,
@@ -183,9 +185,12 @@ export default function Settings() {
                   <div><Label>State</Label><Input value={form.company_state} onChange={e => set("company_state", e.target.value)} /></div>
                   <div><Label>ZIP</Label><Input value={form.company_zip} onChange={e => set("company_zip", e.target.value)} /></div>
                 </div>
-                <div className="col-span-2">
-                  <CompanyLogoUploader value={form.company_logo_url||""} onChange={value=>set("company_logo_url",value)} disabled={saveMutation.isPending}/>
-                  <p className="text-xs text-slate-500 mt-1">This uploaded logo is used on checks, estimates, invoices, and customer-facing documents.</p>
+                <div className="col-span-2 rounded-xl border border-slate-200 p-4 space-y-4">
+                  <div><h3 className="font-semibold text-slate-900">Brand Logos</h3><p className="text-xs text-slate-500 mt-1">Elite automatically chooses the correct logo based on the background. If one is missing, the other logo or the original Elite logo is used as a fallback.</p></div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-white border p-3"><CompanyLogoUploader value={form.company_logo_light_url||form.company_logo_url||""} onChange={value=>set("company_logo_light_url",value)} label="Logo for Light Backgrounds" disabled={saveMutation.isPending}/><p className="text-[11px] text-slate-500 mt-2">Invoices, estimates, checks, purchase orders, white portal headers, printouts.</p></div>
+                    <div className="rounded-xl bg-slate-950 p-3 text-white"><CompanyLogoUploader value={form.company_logo_dark_url||form.company_logo_url||""} onChange={value=>set("company_logo_dark_url",value)} label="Logo for Dark Backgrounds" disabled={saveMutation.isPending}/><p className="text-[11px] text-slate-400 mt-2">Shop header, splash screen, dark email headers and other black/dark surfaces.</p></div>
+                  </div>
                 </div>
               </div>
             </CardContent>
