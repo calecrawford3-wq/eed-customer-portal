@@ -47,7 +47,7 @@ export default function MobileItemEditor({
   // Catalog data (editor owns its picker):
   catalogItems = [],   // labor/machining catalog
   parts = [], kits = [], cores = [], customer = null,  // parts catalog
-  onCommitKitSeparate = () => {}, onNewCore = () => {}, onEditCore = () => {},
+  onCommitKitSeparate = (..._args) => {}, onNewCore = () => {}, onEditCore = () => {},
   onDirtyChange,
 }) {
   const [draft, setDraft] = useState(item || freshDraft(type));

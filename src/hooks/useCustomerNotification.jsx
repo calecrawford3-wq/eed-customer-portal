@@ -80,7 +80,7 @@ export function useCustomerNotification() {
       defaultEmailBody: built.emailBody || "",
       defaultSmsBody: built.smsBody || "",
       linkUrl: built.linkUrl || "",
-      jobId = null,
+      jobId,
       entityId,
       entityLabel,
       onSent,
