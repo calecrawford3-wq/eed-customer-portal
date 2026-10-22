@@ -121,12 +121,12 @@ export default function JobCard() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await base44.entities.Job.delete(jobId);
+      await base44.entities.Job.update(jobId, { archived: true, is_active: false });
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success("Job deleted");
+      toast.success("Job archived. Linked records have been preserved.");
       navigate("/Jobs");
     } catch (e) {
-      toast.error("Failed to delete job: " + e.message);
+      toast.error("Failed to archive job: " + e.message);
     }
     setDeleting(false);
   };
@@ -199,7 +199,7 @@ export default function JobCard() {
             className="text-red-600 hover:text-red-700 hover:bg-red-50"
             onClick={() => setDeleteOpen(true)}
           >
-            <Trash2 className="w-4 h-4 mr-1" /> Delete
+            <Trash2 className="w-4 h-4 mr-1" /> Archive
           </Button>
         </div>
       </div>
@@ -228,9 +228,9 @@ export default function JobCard() {
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
-        title={`Delete ${job.job_number}?`}
-        message="This permanently removes the job card. Linked estimates, invoices, and builds will remain but will no longer be associated with a job."
-        confirmLabel={deleting ? "Deleting..." : "Delete Job"}
+        title={`Archive ${job.job_number}?`}
+        message="This archives the job card without deleting linked estimates, invoices, builds, or machining history. You can find it in archived jobs."
+        confirmLabel={deleting ? "Archiving..." : "Archive Job"}
       />
 
       {needsEstimate && (

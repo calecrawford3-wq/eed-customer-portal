@@ -32,6 +32,7 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
   }, [autoOpenPlan]);  
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
+  const [moving, setMoving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const { data: tasksData, isLoading } = useQuery({
@@ -54,7 +55,27 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
   const inMachiningStage = job?.stage === "machining";
 
   const moveNext = async (allowOverride, reason) => {
+    if (moving) return;
+    setMoving(true);
     try {
+      if (allowOverride && !reason?.trim()) throw new Error("Override reason is required");
+      // Refresh the task state before advancing; the displayed query may be stale.
+      const latestResult = await base44.entities.MachiningTask.filter({ job_id: job.id }, { sort: "sort_order", limit: 200 });
+      const latestTasks = latestResult?.items || latestResult || [];
+      const incomplete = latestTasks.filter(t => t.is_required && t.status !== "complete");
+      if (incomplete.length && !allowOverride) throw new Error(`${incomplete.length} required machining task(s) remain incomplete`);
+      if (allowOverride) {
+        const me = await base44.auth.me();
+        await base44.entities.ServiceHistoryEntry.create({
+          customer_engine_id: job.customer_engine_id,
+          job_id: job.id,
+          entry_type: "machining_override",
+          title: "Machining completion override",
+          description: `Moved to assembly with ${incomplete.length} required task(s) incomplete. Reason: ${reason.trim()}`,
+          performed_at: new Date().toISOString(),
+          performed_by: me?.full_name || "Admin",
+        });
+      }
       // Move to assembly (next stage after machining)
       const buildIsCompleted = build && (build.status === "complete" || build.status === "shipped");
       if (build && !buildIsCompleted) {
@@ -74,8 +95,12 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
         qc.invalidateQueries({ queryKey: ["job-linked", "EngineBuild", job.build_id] }),
       ]);
       toast.success("Moved to Assembly");
+      return true;
     } catch (e) {
       toast.error("Failed to move stage: " + e.message);
+      return false;
+    } finally {
+      setMoving(false);
     }
   };
 
@@ -89,9 +114,12 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
 
   const confirmOverride = () => {
     if (!overrideReason.trim()) { toast.error("Enter an override reason"); return; }
-    setOverrideOpen(false);
-    moveNext(true, overrideReason);
-    setOverrideReason("");
+    moveNext(true, overrideReason).then(success => {
+      if (success) {
+        setOverrideOpen(false);
+        setOverrideReason("");
+      }
+    });
   };
 
   return (
@@ -158,7 +186,7 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
                         <p className="text-xs text-slate-500">All required tasks are complete. Move the engine to the next stage when ready.</p>
                       </div>
                     </div>
-                    <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleFinish}>
+                    <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={handleFinish} disabled={moving}>
                       <ArrowRight className="w-4 h-4 mr-1" /> Move to Assembly
                     </Button>
                   </div>
@@ -230,7 +258,7 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOverrideOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmOverride}>Override & Move to Assembly</Button>
+            <Button variant="destructive" onClick={confirmOverride} disabled={moving}>Override & Move to Assembly</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
