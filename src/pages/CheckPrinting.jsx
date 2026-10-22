@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {Button} from '@/components/ui/button';
@@ -17,11 +17,11 @@ const today=()=>new Date().toISOString().slice(0,10);
 export default function CheckPrinting(){
  const qc=useQueryClient();const params=new URLSearchParams(window.location.search);const expenseId=params.get('expense_id')||'';
  const {data:settingsRows=[]}=useQuery({queryKey:['app-settings'],queryFn:()=>base44.entities.AppSettings.filter({key:'global'})});
- const settings=settingsRows?.[0]||{};
+ const settings=/** @type {any} */ (settingsRows?.[0]||{});
  const {data:expenses=[]}=useQuery({queryKey:['expenses'],queryFn:()=>base44.entities.Expense.list('-date',500)});
  const {data:checks=[]}=useQuery({queryKey:['printed-checks'],queryFn:()=>base44.entities.PrintedCheck.list('-printed_at',300)});
  const linkedExpense=expenses.find(e=>e.id===expenseId)||null;
- const [setupOpen,setSetupOpen]=useState(false);const [setup,setSetup]=useState({});const [voidTarget,setVoidTarget]=useState(null);const [voidReason,setVoidReason]=useState('');
+ const [setupOpen,setSetupOpen]=useState(false);const [setup,setSetup]=useState(/** @type {any} */ ({}));const [voidTarget,setVoidTarget]=useState(null);const [voidReason,setVoidReason]=useState('');
  const [form,setForm]=useState({check_number:'',payee:'',amount:'',date:today(),memo:'',expense_id:'',source:'manual'});
  useEffect(()=>{if(settings?.id)setSetup({...settings});},[settings?.id]);
  useEffect(()=>{setForm(f=>({...f,check_number:f.check_number||String(Math.trunc(Number(settings.check_next_number)||1001))}));},[settings.check_next_number]);
