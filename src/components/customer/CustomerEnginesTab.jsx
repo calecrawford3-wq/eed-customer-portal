@@ -166,8 +166,15 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
       for (const estId of convertEstimateIds) {
         try {
           await base44.entities.Estimate.update(estId, { customer_id: newCustomerId });
+          await base44.functions.invoke("ensureJobForEstimate", { estimate_id: estId, activate: false });
         } catch (e) {
-          console.warn(`Failed to reassign estimate ${estId}:`, e);
+          console.warn(`Failed to reassign estimate/job ${estId}:`, e);
+        }
+      }
+      const openJobs = await base44.entities.Job.filter({ customer_engine_id: id });
+      for (const job of (openJobs || []).filter(j => !j.archived && !j.completed_at && j.stage !== "picked_up")) {
+        if (!job.estimate_id) {
+          await base44.entities.Job.update(job.id, { customer_id: newCustomerId });
         }
       }
     },
