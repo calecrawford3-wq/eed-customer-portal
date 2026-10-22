@@ -23,6 +23,7 @@ export async function syncSerializedCoreQuantity(service:any,coreId:string){
  if(!coreId)return 0;
  const units=rows(await service.entities.EngineComponent.filter({engine_core_id:coreId}));
  const count=units.filter((u:any)=>u.inventory_state==='in_stock'&&!['retired','scrapped'].includes(u.lifecycle_status||'')).length;
- await service.entities.EngineCore.update(coreId,{quantity_on_hand:count});
+ const core=rows(await service.entities.EngineCore.filter({id:coreId}))[0];
+ if(core?.serialized_tracking_enabled)await service.entities.EngineCore.update(coreId,{quantity_on_hand:count});
  return count;
 }

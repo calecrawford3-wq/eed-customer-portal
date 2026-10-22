@@ -126,6 +126,11 @@
     "wix_sync_error": {
       "type": "string",
       "description": "Safe error message from the last failed Wix sync attempt"
+    },
+    "serialized_tracking_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, quantity_on_hand is automatically reconciled to serialized tagged units in stock."
     }
   },
   "required": [
