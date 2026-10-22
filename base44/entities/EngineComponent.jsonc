@@ -40,6 +40,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "storage_location": {
+      "type": "string",
+      "description": "Current physical shop location of this serialized component."
     }
   },
   "required": [
