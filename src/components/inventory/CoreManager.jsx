@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
 import CorePhotoManager from "@/components/inventory/CorePhotoManager";
+import SerializedCoreUnitsDialog from "@/components/inventory/SerializedCoreUnitsDialog";
 
 const CATEGORIES = ["block","cylinder_head","rotating_assembly","crankshaft","valvetrain","timing","oiling","other"];
 const CONDITIONS = ["rebuildable","needs_inspection","good","scrap"];
@@ -25,7 +26,7 @@ const emptyCore = {
   quantity_on_hand: 0, unit_cost: 0, sell_price: 0, core_credit: 0,
   location: "", photos: [], notes: "", status: "active",
   list_online: false, online_title: "", online_description: "", online_price: null,
-  wix_listing_status: "not_listed"
+  wix_listing_status: "not_listed", serialized_tracking_enabled: false
 };
 
 const CONDITION_STYLES = {
@@ -43,6 +44,7 @@ export default function CoreManager() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyCore);
   const [photosViewer, setPhotosViewer] = useState(null);
+  const [serializedCore, setSerializedCore] = useState(null);
   const qc = useQueryClient();
 
   const { data: cores = [], isLoading } = useQuery({
@@ -53,6 +55,11 @@ export default function CoreManager() {
   const { data: enginePlatforms = [] } = useQuery({
     queryKey: ["enginePlatforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 200),
+  });
+
+  const { data: serializedUnits = [] } = useQuery({
+    queryKey: ["serialized-core-components"],
+    queryFn: () => base44.entities.EngineComponent.list("-created_date", 2000),
   });
 
   const sortedPlatforms = [...enginePlatforms].sort((a, b) =>
@@ -168,6 +175,7 @@ export default function CoreManager() {
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Core Value</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Sell Price</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Credit</th>
+                <th className="text-center px-4 py-3 font-medium text-slate-600">Tagged</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600">Status</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -198,6 +206,9 @@ export default function CoreManager() {
                   <td className="px-4 py-3 text-right text-slate-600">{Number(c.sell_price || 0).toFixed(2) === "0.00" ? "—" : `$${Number(c.sell_price).toFixed(2)}`}</td>
                   <td className="px-4 py-3 text-right text-emerald-600 font-medium">{Number(c.core_credit || 0).toFixed(2) === "0.00" ? "—" : `$${Number(c.core_credit).toFixed(2)}`}</td>
                   <td className="px-4 py-3 text-center">
+                    {['block','cylinder_head'].includes(c.category) ? <button type="button" className="text-xs font-semibold text-[#e20404] hover:underline" onClick={() => setSerializedCore(c)}>{serializedUnits.filter(u => u.engine_core_id === c.id).length} units</button> : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <Badge className={c.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-500 border-0"}>
                         {c.status}
@@ -219,6 +230,7 @@ export default function CoreManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
+                      {['block','cylinder_head'].includes(c.category) && <Button size="sm" variant="ghost" title="Tagged physical units" onClick={() => setSerializedCore(c)}><Tag className="w-3.5 h-3.5" /></Button>}
                       <Button size="sm" variant="ghost" title="Print this label" onClick={() => setSingleLabelItem({
                         id: c.id,
                         code: c.core_number,
@@ -278,6 +290,7 @@ export default function CoreManager() {
             </div>
             <div><Label>Quantity On Hand</Label><Input type="number" value={form.quantity_on_hand} onChange={e => setForm({...form, quantity_on_hand: Number(e.target.value)})} /></div>
             <div><Label>Storage Location</Label><Input value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Rack B2" /></div>
+            {['block','cylinder_head'].includes(form.category) && <div className="col-span-2 rounded-lg border border-slate-200 p-3 flex items-center justify-between gap-3"><div><Label className="font-semibold">Use tagged units as quantity source</Label><p className="text-xs text-slate-500 mt-0.5">Leave off while you are still tagging existing stock. When enabled, On Hand reconciles to serialized units currently in stock.</p></div><Switch checked={!!form.serialized_tracking_enabled} onCheckedChange={checked => setForm({...form,serialized_tracking_enabled:checked})}/></div>}
             <div><Label>Core Value / Cost ($)</Label><Input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({...form, unit_cost: Number(e.target.value)})} placeholder="What it's worth to you" /></div>
             <div><Label>Sell Price ($)</Label><Input type="number" step="0.01" value={form.sell_price} onChange={e => setForm({...form, sell_price: Number(e.target.value)})} placeholder="Price when selling to customer" /></div>
             <div className="col-span-2">
@@ -375,6 +388,7 @@ export default function CoreManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <SerializedCoreUnitsDialog open={!!serializedCore} onClose={() => setSerializedCore(null)} core={serializedCore} platforms={enginePlatforms} />
       <PrintLabelsModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
