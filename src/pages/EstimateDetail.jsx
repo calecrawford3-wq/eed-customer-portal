@@ -87,7 +87,7 @@ export default function EstimateDetail() {
     deposit_percent: 0,
     deposit_amount: 0,
     deposit_paid: false,
-    is_engine_build: true,
+    is_engine_build: !!prefillJobId,
     contains_illegal_parts: false,
     payments: [],
     line_items: [{ ...emptyPart }],
@@ -325,10 +325,15 @@ export default function EstimateDetail() {
 
   const saveMutation = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ async (data) => {
+      const payload = prefillJobId ? { ...data, is_engine_build: true } : data;
       const result = id
-        ? await base44.entities.Estimate.update(id, data)
-        : await base44.entities.Estimate.create(data);
+        ? await base44.entities.Estimate.update(id, payload)
+        : await base44.entities.Estimate.create(payload);
       const estimateId = id || result.id;
+      if (isNew && prefillJobId && estimateId) {
+        await base44.entities.Job.update(prefillJobId, { estimate_id: estimateId, is_engine_build: true });
+        await base44.functions.invoke("ensureJobForEstimate", { estimate_id: estimateId, activate: false });
+      }
       // Credits are redeemed only when the estimate is approved (see redeemCreditsOnApproval),
       // so the same credits can be soft-held on multiple estimates without locking the balance.
       // Checkout is created on demand from the current portal balance.
@@ -352,16 +357,14 @@ export default function EstimateDetail() {
         }).then(() => toast.success("Customer view updated — no need to resend"))
           .catch((e) => console.warn("Auto-sync to viewer failed:", e));
       }
-      // Link this estimate to the job it was created from (checked-in engine flow)
-      if (isNew && prefillJobId && result?.id) {
-        base44.entities.Job.update(prefillJobId, { estimate_id: result.id })
-          .then(() => {
-            qc.invalidateQueries({ queryKey: ["jobs"] });
-            qc.invalidateQueries({ queryKey: ["job", prefillJobId] });
-          })
-          .catch((e) => console.warn("Failed to link estimate to job:", e));
+      if (isNew && prefillJobId) {
+        qc.invalidateQueries({ queryKey: ["jobs"] });
+        qc.invalidateQueries({ queryKey: ["job", prefillJobId] });
       }
-      if (isNew) { bypass(); navigate(`/EstimateDetail?id=${result.id}`); }
+      if (isNew) {
+        bypass();
+        navigate(prefillJobId ? `/JobCard?id=${prefillJobId}&tab=billing&billing=estimate` : `/EstimateDetail?id=${result.id}`);
+      }
     },
   });
 
@@ -1786,6 +1789,9 @@ export default function EstimateDetail() {
         setPoModalOpen={setPoModalOpen}
         setPrintMode={setPrintMode}
         setHistoryOpen={setHistoryOpen}
+        backTo={prefillJobId ? `/JobCard?id=${prefillJobId}&tab=billing&billing=estimate` : "/Estimates"}
+        backLabel={prefillJobId ? "Back to Job" : "Back"}
+        contextLabel={prefillJobId ? "Job Estimate" : "Standalone Estimate"}
       />
 
       {id && form.customer_id && ["sent","approved","partial"].includes(form.status) && <div className="mb-4"><GuestPaymentShare type="estimate" id={id} /></div>}
@@ -1902,10 +1908,11 @@ export default function EstimateDetail() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-700">Engine Build</p>
-                  <p className="text-xs text-slate-400">Approval creates a build; otherwise creates an invoice</p>
+                  <p className="text-xs text-slate-400">{prefillJobId ? "This estimate belongs to the Job and will follow the engine-build workflow" : "Enable only if this standalone quote should become an engine-build job"}</p>
                 </div>
                 <Switch
-                  checked={!!form.is_engine_build}
+                  checked={prefillJobId ? true : !!form.is_engine_build}
+                  disabled={!!prefillJobId}
                   onCheckedChange={v => setForm({...form, is_engine_build: v})}
                 />
               </div>

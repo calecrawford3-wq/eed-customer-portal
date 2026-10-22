@@ -37,11 +37,15 @@ export default function EstimateHeader({
   setPoModalOpen,
   setPrintMode,
   setHistoryOpen,
+  backTo = "/Estimates",
+  backLabel = "Back",
+  contextLabel = "",
 }) {
   return (
     <div className="flex items-center gap-2 mb-6 flex-wrap">
-      <Link to="/Estimates"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
+      <Link to={backTo}><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> {backLabel}</Button></Link>
       <div className="flex-1 min-w-0">
+        {contextLabel && <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{contextLabel}</p>}
         <h1 className="text-2xl font-bold text-slate-900">{form.estimate_number}</h1>
       </div>
       <Badge className={`${STATUS_BADGE[form.status] || "bg-slate-100 text-slate-600"} border-0 capitalize`}>{form.status}</Badge>
