@@ -132,6 +132,20 @@ export default function BuildDetail() {
     enabled: !!buildId && (!!build?.customer_engine_id || !!build?.engine_serial_number),
   });
   const priorBuild = priorBuildData || null;
+  const { data: componentEngine } = useQuery({
+    queryKey: ["build-detail-component-engine", build?.customer_engine_id],
+    queryFn: async () => (await base44.entities.CustomerEngine.filter({ id: build.customer_engine_id }))?.[0] || null,
+    enabled: !!build?.customer_engine_id,
+  });
+  const { data: componentHeadSpec } = useQuery({
+    queryKey: ["build-detail-head-spec", componentEngine?.current_head_component_id],
+    queryFn: async () => (await base44.entities.EngineComponentSpecSheet.filter({ component_id: componentEngine.current_head_component_id }))?.[0] || null,
+    enabled: !!componentEngine?.current_head_component_id,
+  });
+  const priorLashSource = componentHeadSpec ? {
+    valve_lash_intake: componentHeadSpec.last_valve_lash_intake || {},
+    valve_lash_exhaust: componentHeadSpec.last_valve_lash_exhaust || {},
+  } : priorBuild;
   const effectivePlatformId = localChanges.platform_id ?? build?.platform_id;
   const effectiveSpecSheetId = localChanges.spec_sheet_id ?? build?.spec_sheet_id;
   const platform = platforms.find(p => p.id === effectivePlatformId);
@@ -140,8 +154,10 @@ export default function BuildDetail() {
 
   const updateMutation = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.EngineBuild.update(buildId, data),
-    onSuccess: () => {
+    onSuccess: async () => {
+      try { await base44.functions.invoke("syncBuildComponentSpecs", { build_id: buildId }); } catch (e) { console.warn("Component spec sync needs retry:", e); }
       queryClient.invalidateQueries({ queryKey: ["build", buildId] });
+      queryClient.invalidateQueries({ queryKey: ["component-spec-sheets"] });
       setLocalChanges({});
     },
   });
@@ -466,7 +482,7 @@ export default function BuildDetail() {
           <BuildValveLashTab
             getValveLash={getValveLash}
             handleValveLashChange={handleValveLashChange}
-            priorBuild={priorBuild}
+            priorBuild={priorLashSource}
           />
         </TabsContent>
 
