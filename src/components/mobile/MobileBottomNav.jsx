@@ -5,7 +5,7 @@ import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
 import {
-  Gauge, Briefcase, MessageSquare, Receipt, MoreHorizontal, X, ChevronRight,
+  Gauge, Briefcase, MessageSquare, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, ClipboardList, DollarSign,
   Award, TrendingDown, BarChart2, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
@@ -23,8 +23,8 @@ import {
 const PRIMARY_TABS = [
   { key: "Dashboard", label: "Today", icon: Gauge, badge: "exceptions" },
   { key: "Jobs", label: "Jobs", icon: Briefcase },
+  { key: "BarcodeScan", label: "Scan", icon: ScanLine },
   { key: "Communications", label: "Inbox", icon: MessageSquare, badge: "messages" },
-  { key: "Invoices", label: "Billing", icon: Receipt, badge: "approvals" },
 ];
 
 const MORE_SECTIONS = [
@@ -73,7 +73,6 @@ const MORE_SECTIONS = [
     items: [
       { name: "Build Workflow", page: "BuildWorkflow", icon: ListChecks },
       { name: "Machining Station", page: "MachiningStation", icon: Wrench },
-      { name: "Barcode Scan", page: "BarcodeScan", icon: ScanLine },
     ],
   },
   {

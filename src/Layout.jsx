@@ -7,6 +7,8 @@ import NotificationBell from '@/components/NotificationBell';
 import GlobalSearch from '@/components/GlobalSearch';
 import GlobalBarcodeListener from '@/components/GlobalBarcodeListener';
 import {AppSectionNav} from '@/components/navigation/AppLauncher';
+import MobileBottomNav from '@/components/mobile/MobileBottomNav';
+import GlobalCreateMenu from '@/components/GlobalCreateMenu';
 
 const LOGO='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
 export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
@@ -43,6 +45,7 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
       <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
       <div className="flex items-center gap-1 sm:gap-2">
         {!isHome&&<Link to={staffMode?'/EmployeePortal':'/Dashboard'} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-slate-800" aria-label="Home"><Home className="h-5 w-5"/><span className="hidden sm:inline">Home</span></Link>}
+        {!staffMode&&<GlobalCreateMenu/>}
         {!staffMode&&<button aria-label="Search" title="Search" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>document.dispatchEvent(new KeyboardEvent('keydown',{metaKey:true,key:'k'}))}><Search className="h-5 w-5"/></button>}
         {!staffMode&&canUse('BarcodeScan')&&<button aria-label="Scan" title="Scan engine" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>navigate(createPageUrl('BarcodeScan'))}><ScanLine className="h-5 w-5"/></button>}
         {!staffMode&&<NotificationBell/>}
@@ -50,10 +53,11 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
       </div>
     </div>
    </header>
-   <div ref={pageScroller} data-elite-page-scroll className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50" style={{WebkitOverflowScrolling:'touch'}}>
+   <div ref={pageScroller} data-elite-page-scroll className={'flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50 '+(!staffMode&&!isFullScreen?'elite-mobile-nav-space':'')} style={{WebkitOverflowScrolling:'touch'}}>
     {!isHome&&!isFullScreen&&<AppSectionNav page={currentPageName} allowedPages={staffMode?staffAllowedPages:null}/>}
     <main className="mx-auto max-w-screen-2xl min-w-0 min-h-full">{children}</main>
    </div>
+   {!staffMode&&!isFullScreen&&<MobileBottomNav/>}
    {debugLayout&&<div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:99999,background:'#111827',color:'white',fontSize:12,padding:'8px 12px',fontFamily:'monospace',pointerEvents:'none'}}>{JSON.stringify(layoutMetrics)}</div>}
  </div>;
 }

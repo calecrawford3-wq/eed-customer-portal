@@ -133,6 +133,12 @@
     min-height: 0;
     flex: 1 1 0%;
   }
+  @media (max-width: 767px) {
+    [data-elite-page-scroll].elite-mobile-nav-space {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
   /* Match the iOS standalone status-bar backdrop to the Elite header. */
   @media (display-mode: standalone) {
     html, body, #root {
