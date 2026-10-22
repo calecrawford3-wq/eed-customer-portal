@@ -1,0 +1,27 @@
+{
+  "name": "JobComponentVerification",
+  "type": "object",
+  "properties": {
+    "job_id": {"type":"string","description":"Job being physically verified."},
+    "customer_engine_id": {"type":"string","description":"Expected case/bottom-end CustomerEngine ID."},
+    "expected_case_tag_code": {"type":"string"},
+    "scanned_case_tag_code": {"type":"string"},
+    "expected_head_component_id": {"type":"string"},
+    "expected_head_code": {"type":"string"},
+    "scanned_head_component_id": {"type":"string"},
+    "scanned_head_code": {"type":"string"},
+    "status": {"type":"string","enum":["passed","failed_case","failed_head","head_repaired"],"description":"Result of the physical component verification."},
+    "case_verified": {"type":"boolean","default":false},
+    "head_verified": {"type":"boolean","default":false},
+    "pairing_changed": {"type":"boolean","default":false},
+    "verified_at": {"type":"string","format":"date-time"},
+    "notes": {"type":"string"}
+  },
+  "required": ["job_id","customer_engine_id","status","verified_at"],
+  "rls": {
+    "read": {"user_condition":{"role":"admin"}},
+    "create": {"user_condition":{"role":"admin"}},
+    "update": {"user_condition":{"role":"admin"}},
+    "delete": {"user_condition":{"role":"admin"}}
+  }
+}
