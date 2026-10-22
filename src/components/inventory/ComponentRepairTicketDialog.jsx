@@ -13,8 +13,8 @@ import {Wrench,Plus,CheckCircle2} from 'lucide-react';
 import {toast} from 'sonner';
 import MachiningTaskCard from '@/components/machining/MachiningTaskCard';
 const money=v=>Number(v||0).toFixed(2); const pretty=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
-export default function ComponentRepairTicketDialog({open,onClose,component,ticketId='',onDone}){
- const qc=useQueryClient();const [form,setForm]=useState({});const [busy,setBusy]=useState(false);const [newTaskOpen,setNewTaskOpen]=useState(false);const [taskType,setTaskType]=useState('');const [taskInstructions,setTaskInstructions]=useState('');
+export default function ComponentRepairTicketDialog({open,onClose,component,ticketId='',onDone=()=>{}}){
+ const qc=useQueryClient();const [form,setForm]=useState(/** @type {Record<string, any>} */ ({}));const [busy,setBusy]=useState(false);const [newTaskOpen,setNewTaskOpen]=useState(false);const [taskType,setTaskType]=useState('');const [taskInstructions,setTaskInstructions]=useState('');
  const activeId=ticketId||component?.active_repair_ticket_id||'';
  const {data:tickets=[]}=useQuery({queryKey:['component-repair-ticket',activeId],queryFn:()=>base44.entities.ComponentRepairTicket.filter({id:activeId}),enabled:open&&!!activeId});
  const ticket=tickets?.[0]||null;
