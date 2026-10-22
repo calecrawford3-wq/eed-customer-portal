@@ -9,6 +9,7 @@ import { Wrench, ArrowLeft, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import MachiningTaskCard from "@/components/machining/MachiningTaskCard";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
+import ComponentRepairTicketDialog from "@/components/inventory/ComponentRepairTicketDialog";
 
 // Machining Station: a dedicated shop-floor screen for the machining area.
 // Large text, large buttons, minimal navigation. Shows all engines currently
@@ -18,12 +19,14 @@ const VIEW_TABS = [
   { key: "in_progress", label: "In Progress" },
   { key: "blocked", label: "Blocked" },
   { key: "complete", label: "Machining Complete" },
+  { key: "inventory_repairs", label: "Inventory Repairs" },
 ];
 
 export default function MachiningStation() {
   const qc = useQueryClient();
   const [view, setView] = useState("queued");
   const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedRepairId, setSelectedRepairId] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
 
   // Load all jobs in the machining stage
@@ -46,6 +49,26 @@ export default function MachiningStation() {
     queryKey: ["platforms"],
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
+
+  const { data: components = [] } = useQuery({
+    queryKey: ["machining-station-components"],
+    queryFn: () => base44.entities.EngineComponent.list("-created_date", 1500),
+    refetchInterval: 10000,
+  });
+  const { data: repairTickets = [] } = useQuery({
+    queryKey: ["component-repair-tickets"],
+    queryFn: () => base44.entities.ComponentRepairTicket.list("-created_at", 300),
+    refetchInterval: 10000,
+  });
+  const openRepairTickets = repairTickets.filter(t => !["complete","cancelled"].includes(t.status));
+  const repairTicketIds = openRepairTickets.map(t => t.id);
+  const { data: repairTasksData = [] } = useQuery({
+    queryKey: ["inventory-repair-tasks", repairTicketIds],
+    queryFn: () => base44.entities.MachiningTask.filter({ repair_ticket_id: { $in: repairTicketIds } }, { sort: "sort_order", limit: 500 }),
+    enabled: repairTicketIds.length > 0,
+    refetchInterval: 10000,
+  });
+  const repairTasks = Array.isArray(repairTasksData) ? repairTasksData : (repairTasksData?.items || []);
 
   // Load machining tasks for all machining jobs in one query
   const jobIds = jobs.map(j => j.id);
@@ -101,6 +124,13 @@ export default function MachiningStation() {
   });
 
   const visibleJobs = classified.filter(j => j._machiningView === view);
+  const repairRows = openRepairTickets.map(t => {
+    const component = components.find(c => c.id === t.component_id);
+    const tasks = repairTasks.filter(x => x.repair_ticket_id === t.id);
+    const completed = tasks.filter(x => x.status === "complete").length;
+    return { ...t, _component: component, _tasks: tasks, _progress: `${completed} of ${tasks.length}` };
+  });
+  const selectedRepair = repairRows.find(r => r.id === selectedRepairId) || null;
   const selectedJob = enrichedJobs.find(j => j.id === selectedJobId);
   const selectedTasks = selectedJob?._tasks || [];
 
@@ -112,10 +142,13 @@ export default function MachiningStation() {
     );
     if (match) {
       setSelectedJobId(match.id);
+      setSelectedRepairId(null);
       setShowScanner(false);
       toast.success(`Loaded ${match.job_number}`);
     } else {
-      toast.error("No machining job found for scanned code");
+      const repair = repairRows.find(r => [r.component_code, r._component?.tag_code].filter(Boolean).some(v => String(v).toLowerCase() === code.toLowerCase()));
+      if (repair) { setSelectedRepairId(repair.id); setSelectedJobId(null); setShowScanner(false); toast.success(`Loaded ${repair.ticket_number}`); }
+      else toast.error("No machining Job or inventory repair found for scanned code");
     }
   };
 
@@ -148,7 +181,7 @@ export default function MachiningStation() {
       <div className="bg-slate-900 px-4 md:px-8 py-3 flex-shrink-0 border-b border-slate-800">
         <div className="flex gap-2 flex-wrap">
           {VIEW_TABS.map(tab => {
-            const count = classified.filter(j => j._machiningView === tab.key).length;
+            const count = tab.key === "inventory_repairs" ? openRepairTickets.length : classified.filter(j => j._machiningView === tab.key).length;
             const isActive = view === tab.key;
             return (
               <button
@@ -168,7 +201,10 @@ export default function MachiningStation() {
 
       {/* Job grid */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        {isLoading ? (
+        {view === "inventory_repairs" ? (
+          repairRows.length === 0 ? <div className="text-center py-16"><Wrench className="w-16 h-16 mx-auto mb-4 text-slate-700"/><p className="text-xl text-slate-500">No inventory repairs in machining</p></div> :
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{repairRows.map(r => <RepairStationCard key={r.id} repair={r} onOpen={() => setSelectedRepairId(r.id)} />)}</div>
+        ) : isLoading ? (
           <p className="text-slate-400 text-center text-lg py-12">Loading...</p>
         ) : visibleJobs.length === 0 ? (
           <div className="text-center py-16">
@@ -241,12 +277,14 @@ export default function MachiningStation() {
         </Dialog>
       )}
 
+      {selectedRepair && <ComponentRepairTicketDialog open={true} onClose={() => setSelectedRepairId(null)} component={selectedRepair._component} ticketId={selectedRepair.id} />}
+
       {/* Scanner */}
       {showScanner && (
         <Dialog open={true} onOpenChange={(o) => !o && setShowScanner(false)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Scan Engine or Job</DialogTitle>
+              <DialogTitle>Scan Engine, Job, Head, or Case</DialogTitle>
             </DialogHeader>
             <BarcodeScanner onScan={handleScan} />
           </DialogContent>
@@ -254,6 +292,16 @@ export default function MachiningStation() {
       )}
     </div>
   );
+}
+
+function RepairStationCard({ repair, onOpen }) {
+  const pending = repair._tasks.filter(t => t.status !== "complete").length;
+  return <div onClick={onOpen} className="bg-slate-800 rounded-2xl p-5 hover:bg-slate-700 hover:ring-2 hover:ring-amber-500 cursor-pointer transition-all border border-slate-700">
+    <div className="flex items-start justify-between gap-2"><div><p className="text-lg font-bold text-white font-mono">{repair.component_code}</p><p className="text-sm text-amber-300">{repair.ticket_number}</p></div><Badge className="bg-amber-900/50 text-amber-300 border-0">Inventory Repair</Badge></div>
+    <p className="text-sm text-slate-300 mt-3 line-clamp-2">{repair.issue_reason || "Internal repair"}</p>
+    <div className="mt-3 text-xs text-slate-400"><p>Progress: <span className="text-white font-semibold">{repair._progress}</span></p><p>Location: {repair._component?.storage_location || repair.storage_location || "—"}</p><p>Invested: ${Number(repair.total_invested_cost || 0).toFixed(2)}</p></div>
+    <div className="mt-3"><span className={`text-xs rounded-full px-2 py-1 ${pending ? "bg-purple-900/60 text-purple-300" : "bg-emerald-900/60 text-emerald-300"}`}>{pending ? `${pending} task${pending===1?'':'s'} remaining` : "Ready to return to stock"}</span></div>
+  </div>;
 }
 
 function JobStationCard({ job, onOpen }) {
