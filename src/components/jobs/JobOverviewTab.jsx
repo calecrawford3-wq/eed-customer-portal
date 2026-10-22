@@ -114,6 +114,8 @@ export default function JobOverviewTab({ job, customer, engine, platform, estima
       <div className="md:col-span-2 lg:col-span-3">
         <CompletionBillingAudit job={job} />
       </div>
+
+      {engine && <div className="md:col-span-2 lg:col-span-3"><EngineIdentityPanel engine={engine} platformName={platform ? `${platform.manufacturer || ""} ${platform.name || ""}`.trim() : ""} jobId={job?.id || ""} /></div>}
     </div>
   );
 }
@@ -123,7 +125,6 @@ function Row({ label, value }) {
     <div className="flex items-center justify-between">
       <span className="text-slate-500">{label}</span>
       <span className="text-slate-900">{value}</span>
-    {engine && <div className="mt-4"><EngineIdentityPanel engine={engine} platformName={platform ? `${platform.manufacturer || ""} ${platform.name || ""}`.trim() : ""} jobId={job?.id || ""} /></div>}
     </div>
   );
 }
