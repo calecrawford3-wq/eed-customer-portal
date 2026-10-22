@@ -60,7 +60,8 @@ Deno.serve(async (req) => {
       const ref = stripeSessionId || stripePaymentIntent;
       const dup = existingPayments.find(p => (p.note || "").includes(ref));
       if (dup) {
-        console.log(`[recordInvoicePayment] Duplicate payment detected for ref ${ref} — skipping`);
+        console.log(`[recordInvoicePayment] Duplicate payment detected for ref ${ref} — skipping money write`);
+        await activateReferralCreditsForEnginePayment(base44, invoice.customer_id, invoice).catch(e => console.warn('[recordInvoicePayment] referral replay skipped:', e.message));
         return Response.json({
           success: true,
           invoice_id: invoice.id,
