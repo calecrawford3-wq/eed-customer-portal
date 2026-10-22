@@ -107,7 +107,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
   };
 
   const createPOMutation = useMutation({
-    mutationFn: async (group) => {
+    mutationFn: /** @param {Record<string, any>} group */ async (group) => {
       const poNumber = `PO-${Date.now().toString().slice(-6)}`;
       const result = await base44.entities.PurchaseOrder.create({
         po_number: poNumber,

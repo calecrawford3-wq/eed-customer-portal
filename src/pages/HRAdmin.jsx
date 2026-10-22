@@ -8,7 +8,7 @@ const money=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'U
 const call=async body=>{const r=await base44.functions.invoke('hrWorkspace',body);if(r.data?.error)throw Error(r.data.error);return r.data;};
 export default function HRAdmin(){
  const {user}=useAuth();
- const [data,setData]=useState(null),[tab,setTab]=useState('workers'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[draft,setDraft]=useState({worker_type:'w2',status:'active',pay_type:'hourly',access_level:'employee'}),[editing,setEditing]=useState(null);
+ const [data,setData]=useState(null),[tab,setTab]=useState('workers'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[draft,setDraft]=useState(/** @type {Record<string, any>} */ ({worker_type:'w2',status:'active',pay_type:'hourly',access_level:'employee'})),[editing,setEditing]=useState(null);
  const load=async()=>{try{setData(await call({action:'dashboard',adminView:true}));setError('');}catch(e){setError(e.message)}};
  useEffect(()=>{if(user?.role==='admin')load()},[user?.role]);
  const invite=async worker=>{setBusy(true);setError('');try{const r=await base44.functions.invoke('sendEmployeeInvite',{worker_id:worker.id});if(r.data?.error)throw Error(r.data.error);alert('Employee invitation sent.');await load()}catch(e){setError(e.response?.data?.error||e.message)}finally{setBusy(false)}};
