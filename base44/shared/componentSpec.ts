@@ -24,7 +24,7 @@ export async function syncSpecFromMachining(service:any,task:any,measurements:an
    if(ops.includes('valve_job')){patch.valve_job_type=m.valve_job_type||'unknown';patch.valve_job_notes=m.valve_job_notes||m.completion_notes||'';patch.valve_job_updated_at=now;}
    if(ops.includes('seat_replacement'))patch.valve_seats_replaced=m.seat_replacement_positions||m.affected_positions||[];
    if(ops.includes('guide_replacement'))patch.valve_guides_replaced=m.guide_replacement_positions||m.affected_positions||[];
-   if(ops.includes('lash_setup')&&m.lash_measurements){patch.last_valve_lash_intake=m.lash_measurements;patch.last_valve_lash_at=now;patch.last_valve_lash_build_id=task.build_id||'';patch.last_valve_lash_job_id=task.job_id||'';}
+   if(ops.includes('lash_setup')&&m.lash_measurements){if(m.side==='exhaust')patch.last_valve_lash_exhaust=m.lash_measurements;else if(m.side==='both'){patch.last_valve_lash_intake=m.lash_measurements;patch.last_valve_lash_exhaust=m.lash_measurements;}else patch.last_valve_lash_intake=m.lash_measurements;patch.last_valve_lash_at=now;patch.last_valve_lash_build_id=task.build_id||'';patch.last_valve_lash_job_id=task.job_id||'';}
   }
  } else if(component.component_type==='engine_case'&&task.task_type==='deck_case'){
   if(m.starting_measurement)patch.case_starting_deck_measurement_in=m.starting_measurement;

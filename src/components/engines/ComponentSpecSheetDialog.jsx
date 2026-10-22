@@ -13,7 +13,7 @@ import {toast} from 'sonner';
 const pretty=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const listText=v=>Array.isArray(v)?v.join(', '):String(v||'');
 export default function ComponentSpecSheetDialog({open,onClose,component}){
- const qc=useQueryClient();const [form,setForm]=useState({});const [saving,setSaving]=useState(false);
+ const qc=useQueryClient();const [form,setForm]=useState(/** @type {Record<string, any>} */ ({}));const [saving,setSaving]=useState(false);
  const {data:specs=[]}=useQuery({queryKey:['component-spec-sheets',component?.id],queryFn:()=>base44.entities.EngineComponentSpecSheet.filter({component_id:component.id}),enabled:open&&!!component?.id});
  const spec=specs?.[0]||null;
  const {data:history=[]}=useQuery({queryKey:['component-service-history',component?.id],queryFn:()=>base44.entities.ServiceHistoryEntry.filter({component_id:component.id},'-performed_at',300),enabled:open&&!!component?.id});
