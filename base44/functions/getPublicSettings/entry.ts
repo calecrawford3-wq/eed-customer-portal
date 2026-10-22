@@ -9,7 +9,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 const SAFE_FIELDS = [
   'company_name', 'company_address', 'company_city', 'company_state',
   'company_zip', 'company_phone', 'company_email', 'company_website',
-  'company_logo_url',
+  'company_logo_url', 'company_logo_light_url', 'company_logo_dark_url',
 ];
 
 export default async function (req) {

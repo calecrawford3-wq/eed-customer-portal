@@ -5,5 +5,5 @@ export function publicCapability(value: any): value is string {
 }
 export const publicCompanySettings = (s: any) => s ? Object.fromEntries([
   'company_name', 'company_address', 'company_city', 'company_state',
-  'company_zip', 'company_phone', 'company_email', 'company_website', 'company_logo_url',
+  'company_zip', 'company_phone', 'company_email', 'company_website', 'company_logo_url', 'company_logo_light_url', 'company_logo_dark_url',
 ].filter(key => s[key] !== undefined).map(key => [key, s[key]])) : null;

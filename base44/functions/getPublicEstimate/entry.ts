@@ -122,6 +122,8 @@ Deno.serve(async (req) => {
       company_email: settings[0].company_email,
       company_website: settings[0].company_website,
       company_logo_url: settings[0].company_logo_url,
+      company_logo_light_url: settings[0].company_logo_light_url,
+      company_logo_dark_url: settings[0].company_logo_dark_url,
     } : null;
 
     return Response.json({
