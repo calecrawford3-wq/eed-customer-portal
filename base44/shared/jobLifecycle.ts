@@ -35,11 +35,12 @@ function generateJobNumber(seq) {
 // Determine deposit-met state from an estimate
 function isDepositMet(estimate) {
   if (!estimate.deposit_required) return true;
+  const req = Number(estimate.deposit_amount) || 0;
+  if (req <= 0) return true;
   if (estimate.deposit_paid) return true;
   // Also treat as met if amount_paid >= deposit_amount
   const paid = Number(estimate.amount_paid) || 0;
-  const req = Number(estimate.deposit_amount) || 0;
-  return req > 0 && paid >= req;
+  return paid >= req;
 }
 
 // Derive stage + blocking + is_active from estimate/build state.
@@ -169,7 +170,7 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
     invoice_ids: invoiceIds,
     platform_id: estimate.customer_engine_id ? (build?.platform_id || job?.platform_id || "") : (build?.platform_id || job?.platform_id || ""),
     is_engine_build: estimate.is_engine_build ?? job?.is_engine_build ?? false,
-    deposit_required: !!estimate.deposit_required,
+    deposit_required: !!estimate.deposit_required && (Number(estimate.deposit_amount) || 0) > 0,
     deposit_amount: Number(estimate.deposit_amount) || 0,
     deposit_met: depositMet,
     stage,
