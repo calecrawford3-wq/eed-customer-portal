@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, Tag, Cpu } from "lucide-react";
+import { Search, LayoutGrid, List, Archive, ArchiveRestore, ChevronDown, Check, Tag, Cpu, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDial
 import { moveJobStage, getIntakeAction } from "@/lib/jobMoveHelpers";
 import LocationBoard from "@/components/jobs/LocationBoard";
 import EngineCheckInModal from "@/components/engines/EngineCheckInModal";
+import NewJobDialog from "@/components/jobs/NewJobDialog";
 
 // --- View definitions ---
 // Views change which columns are shown. Jobs can appear in multiple views.
@@ -24,7 +25,7 @@ const VIEWS = {
   intake: {
     label: "Intake Queue",
     columns: [
-      { key: "needs_estimate", label: "Checked In — Needs Estimate", filter: j => j.customer_engine_id && !j.estimate_id && !j.archived },
+      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.estimate_id && !j.archived },
       { key: "awaiting_approval", label: "Awaiting Approval", filter: j => j.stage === "awaiting_approval" && !j.archived },
       { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j.estimate_id && !j.customer_engine_id && !j.archived && j.stage !== "awaiting_approval" },
       { key: "awaiting_deposit", label: "Awaiting Deposit", filter: j => j.stage === "awaiting_deposit" && !j.archived },
@@ -50,7 +51,7 @@ const VIEWS = {
   all: {
     label: "All Stages",
     columns: [
-      { key: "needs_estimate", label: "Checked In — Needs Estimate", filter: j => j.customer_engine_id && !j.estimate_id && !j.archived },
+      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.estimate_id && !j.archived },
       { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j.estimate_id && !j.customer_engine_id && !j.archived && j.stage !== "awaiting_approval" },
       { key: "awaiting_approval", label: "Awaiting Approval", filter: j => j.stage === "awaiting_approval" && !j.archived },
       { key: "awaiting_deposit", label: "Awaiting Deposit", filter: j => j.stage === "awaiting_deposit" && !j.archived },
@@ -121,6 +122,13 @@ export default function Jobs() {
   const [intakeDialog, setIntakeDialog] = useState(null); // { type: "estimate"|"engine", job, customer }
   const [pickupDialog, setPickupDialog] = useState(null); // job
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [newJobOpen, setNewJobOpen] = useState(searchParams.get("new") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setNewJobOpen(true);
+    const next = new URLSearchParams(searchParams); next.delete("new"); setSearchParams(next,{replace:true});
+  }, [searchParams, setSearchParams]);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs", showArchive],
@@ -341,7 +349,10 @@ export default function Jobs() {
               <List className="w-4 h-4" />
             </button>
           </div>
-          <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setCheckInOpen(true)}>
+          <Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => setNewJobOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" /> New Job
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCheckInOpen(true)}>
             <Cpu className="w-4 h-4 mr-1" /> Check In Engine
           </Button>
           <Button variant="outline" size="sm" onClick={() => { const next = !showArchive; setShowArchive(next); updateParam("arch", next ? "1" : "0"); }}>
@@ -487,6 +498,7 @@ export default function Jobs() {
           onLinked={() => invalidateAll()}
         />
       )}
+      <NewJobDialog open={newJobOpen} onClose={() => setNewJobOpen(false)} customers={customers} engines={engines} />
       {/* Check In Engine modal */}
       <EngineCheckInModal open={checkInOpen} onClose={() => { setCheckInOpen(false); invalidateAll(); }} />
 
