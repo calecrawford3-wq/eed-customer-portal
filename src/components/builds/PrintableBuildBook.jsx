@@ -1,6 +1,6 @@
 import React from "react";
 import { useDisplayImage } from "@/hooks/useDisplayImage";
-import { useCompanyLogo } from "@/hooks/useCompanyLogo";
+import { usePublicCompanyLogo } from "@/hooks/useCompanyLogo";
 
 // Renders a print-safe image from a private URI or signed URL, handling HEIC conversion.
 function PrintablePhoto({ src, alt, style }) {
