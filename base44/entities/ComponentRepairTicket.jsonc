@@ -113,6 +113,10 @@
     },
     "cancel_reason": {
       "type": "string"
+    },
+    "machining_cost": {
+      "type": "number",
+      "default": 0
     }
   },
   "required": [
