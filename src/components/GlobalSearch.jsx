@@ -20,6 +20,7 @@ import {
   Cpu,
   FileText,
   Briefcase,
+  Plus,
 } from "lucide-react";
 
 export default function GlobalSearch() {
@@ -41,6 +42,11 @@ export default function GlobalSearch() {
     queryKey: ["gs-customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
     staleTime: 60000,
+  });
+  const { data: jobs = [] } = useQuery({
+    queryKey: ["gs-jobs"],
+    queryFn: () => base44.entities.Job.list("-created_date", 250),
+    staleTime: 30000,
   });
   const { data: builds = [] } = useQuery({
     queryKey: ["gs-builds"],
@@ -83,7 +89,8 @@ export default function GlobalSearch() {
   const filterResults = (q) => {
     if (!q) return {};
     return {
-      customers: customers.filter((c) => match(`${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""}`, q)).slice(0, 5),
+      customers: customers.filter((c) => match(`${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""} ${c.phone || ""}`, q)).slice(0, 5),
+      jobs: jobs.filter((j) => match(`${j.job_number || ""} ${j.storage_location || ""} ${j.stage || ""}`, q)).slice(0, 6),
       builds: builds.filter((b) => match(`${b.engine_serial_number} ${b.build_number} ${b.eed_id}`, q)).slice(0, 5),
       invoices: invoices.filter((i) => match(`${i.invoice_number}`, q)).slice(0, 5),
       estimates: estimates.filter((e) => !e.archived && e.status !== "expired" && match(`${e.estimate_number}`, q)).slice(0, 5),
@@ -99,7 +106,7 @@ export default function GlobalSearch() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search customers, builds, invoices, parts…" value={query} onValueChange={setQuery} />
+      <CommandInput placeholder="Search job #, customer, phone, engine, invoice, part…" value={query} onValueChange={setQuery} />
       <CommandList>
         {query && !hasResults && <CommandEmpty>No results found.</CommandEmpty>}
         {!query && (
@@ -116,6 +123,8 @@ export default function GlobalSearch() {
             <CommandItem onSelect={() => go("/Inventory")}>
               <Package className="w-4 h-4" /> Inventory
             </CommandItem>
+            <CommandItem onSelect={() => go("/EstimateDetail?new=1")}><Plus className="w-4 h-4" /> New Estimate</CommandItem>
+            <CommandItem onSelect={() => go("/Customers?new=1")}><Plus className="w-4 h-4" /> New Customer</CommandItem>
           </CommandGroup>
         )}
         {results.customers?.length > 0 && (
@@ -123,6 +132,15 @@ export default function GlobalSearch() {
             {results.customers.map((c) => (
               <CommandItem key={c.id} onSelect={() => go(`/CustomerDetail?id=${c.id}`)}>
                 <Users className="w-4 h-4" /> {c.first_name} {c.last_name}{c.company_name ? ` · ${c.company_name}` : ""}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        {results.jobs?.length > 0 && (
+          <CommandGroup heading="Jobs">
+            {results.jobs.map((j) => (
+              <CommandItem key={j.id} onSelect={() => go(`/JobCard?id=${j.id}`)}>
+                <Briefcase className="w-4 h-4" /> {j.job_number || 'Job'}{j.stage ? ` · ${String(j.stage).replaceAll('_',' ')}` : ''}
               </CommandItem>
             ))}
           </CommandGroup>

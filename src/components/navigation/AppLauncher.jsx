@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import {Briefcase,Users,Package,ShoppingCart,Receipt,MessageSquare,Calendar,ChartNoAxesCombined,FlaskConical,ShieldCheck} from 'lucide-react';
 
 export const APP_AREAS=[
- {name:'Jobs & Builds',icon:Briefcase,tone:'bg-red-50 text-red-700',description:'Jobs, engines and build progress',pages:[['Jobs','All Jobs'],['Builds','Engine Builds'],['BuildWorkflow','Build Workflow'],['MachiningStation','Machining'],['ShopDisplay','Shop Display'],['BarcodeScan','Scan Engine']]},
+ {name:'Jobs',icon:Briefcase,tone:'bg-red-50 text-red-700',description:'Every engine visit and its progress',pages:[['Jobs','All Jobs'],['Builds','Build History']]},
  {name:'Customers',icon:Users,tone:'bg-blue-50 text-blue-700',description:'Customer records and requests',pages:[['Customers','Customers'],['CustomerSuccess','Follow-ups'],['RefreshRequests','Refresh Requests']]},
  {name:'Inventory',icon:Package,tone:'bg-amber-50 text-amber-700',description:'Parts and stock levels',pages:[['Inventory','Parts Inventory']]},
  {name:'Purchasing',icon:ShoppingCart,tone:'bg-teal-50 text-teal-700',description:'Purchase orders and suppliers',pages:[['PurchaseOrders','Purchase Orders'],['Suppliers','Suppliers']]},

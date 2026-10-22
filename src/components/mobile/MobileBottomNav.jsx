@@ -175,19 +175,19 @@ export default function MobileBottomNav({allowedPages=null}) {
               onClick={() => handleTabClick(tab.key)}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 relative transition-colors",
-                active ? "text-[#e20404]" : "text-slate-400 hover:text-slate-600"
+                tab.key === "BarcodeScan" ? "text-white" : active ? "text-[#e20404]" : "text-slate-400 hover:text-slate-600"
               )}
               style={{ minHeight: "50px" }}
             >
-              <div className="relative">
-                <tab.icon className={cn("w-5 h-5", active && "stroke-[2.5]")} />
+              <div className={cn("relative", tab.key === "BarcodeScan" && "h-10 w-10 -mt-5 rounded-full bg-[#e20404] shadow-lg flex items-center justify-center border-4 border-white")}>
+                <tab.icon className={cn("w-5 h-5", active && "stroke-[2.5]", tab.key === "BarcodeScan" && "text-white")} />
                 {count > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-[#e20404] text-white text-[10px] rounded-full min-w-4 h-4 px-1 flex items-center justify-center font-bold leading-none">
                     {count > 9 ? "9+" : count}
                   </span>
                 )}
               </div>
-              <span className={cn("text-[10px] font-medium", active && "font-semibold")}>{tab.label}</span>
+              <span className={cn("text-[10px] font-medium", active && "font-semibold", tab.key === "BarcodeScan" && "text-[#e20404]")}>{tab.label}</span>
               {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#e20404] rounded-full" />}
             </button>
           );
