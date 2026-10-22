@@ -8,7 +8,8 @@ async function ensureTagVersion(service:any,{ownerType,engineId='',component:any
  const existing=rows(await service.entities.IdentityTagVersion.filter({tag_code:tagCode}));
  if(existing.length){const same=existing.find((v:any)=>(engineId&&v.customer_engine_id===engineId)||(component?.id&&v.component_id===component.id));if(same)return same;throw new Error('Scan token collision detected. Regenerate the tag token.');}
  const versions=ownerType==='customer_engine'?rows(await service.entities.IdentityTagVersion.filter({customer_engine_id:engineId})):rows(await service.entities.IdentityTagVersion.filter({component_id:component?.id}));
- return service.entities.IdentityTagVersion.create({owner_type:ownerType,customer_engine_id:engineId,component_id:component?.id||'',component_type:component?.component_type||'engine_case',identity_display:identityDisplay,tag_code:tagCode,version_number:(Math.max(0,...versions.map((v:any)=>Number(v.version_number)||0))+1),status:'active',template_version:templateVersion,width_mm:widthMm,height_mm:heightMm,generated_at:new Date().toISOString(),generated_by:'Elite'});
+ const linkedEngineId=engineId||component?.current_customer_engine_id||component?.origin_customer_engine_id||'';
+ return service.entities.IdentityTagVersion.create({owner_type:ownerType,customer_engine_id:linkedEngineId,component_id:component?.id||'',component_type:component?.component_type||'engine_case',identity_display:identityDisplay,tag_code:tagCode,version_number:(Math.max(0,...versions.map((v:any)=>Number(v.version_number)||0))+1),status:'active',template_version:templateVersion,width_mm:widthMm,height_mm:heightMm,generated_at:new Date().toISOString(),generated_by:'Elite'});
 }
 export async function newTagCode(service:any,prefix:string){
  const engineEntity=service.entities.CustomerEngine,componentEntity=service.entities.EngineComponent,tagEntity=service.entities.IdentityTagVersion;
