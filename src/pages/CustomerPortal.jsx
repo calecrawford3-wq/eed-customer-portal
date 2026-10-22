@@ -434,7 +434,7 @@ export default function CustomerPortal() {
           />
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {user?.role !== "admin" && (
-              <Button variant="ghost" size="sm" onClick={() => { setProfileForm({ ...customer }); setProfileOpen(true); }}>
+              <Button variant="ghost" size="sm" onClick={() => setPortalTab('account')}>
                 <User className="w-4 h-4 mr-1" /> {customer.first_name} {customer.last_name}
               </Button>
             )}

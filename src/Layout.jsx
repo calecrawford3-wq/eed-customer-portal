@@ -50,12 +50,12 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
         <Link to="/Communications" className="rounded-lg px-3 py-2 hover:bg-slate-800">Inbox</Link>
       </nav>
       <div className="flex items-center gap-1 sm:gap-2">
-        {!isHome&&<Link to={staffMode?'/EmployeePortal':'/Dashboard'} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-slate-800" aria-label="Home"><Home className="h-5 w-5"/><span className="hidden sm:inline">Home</span></Link>}
+        {!isHome&&<Link to={staffMode?'/EmployeePortal':'/Dashboard'} className="hidden md:flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-slate-800" aria-label="Home"><Home className="h-5 w-5"/><span className="hidden sm:inline">Home</span></Link>}
         {!staffMode&&<GlobalCreateMenu/>}
         {!staffMode&&<button aria-label="Search" title="Search" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>document.dispatchEvent(new KeyboardEvent('keydown',{metaKey:true,key:'k'}))}><Search className="h-5 w-5"/></button>}
-        {!staffMode&&canUse('BarcodeScan')&&<button aria-label="Scan" title="Scan engine" className="rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>navigate(createPageUrl('BarcodeScan'))}><ScanLine className="h-5 w-5"/></button>}
+        {!staffMode&&canUse('BarcodeScan')&&<button aria-label="Scan" title="Scan engine" className="hidden md:inline-flex rounded-lg p-2.5 hover:bg-slate-800" onClick={()=>navigate(createPageUrl('BarcodeScan'))}><ScanLine className="h-5 w-5"/></button>}
         {!staffMode&&<NotificationBell/>}
-        {!staffMode&&!isHome&&<Link to="/Settings" aria-label="Settings" title="Settings" className="rounded-lg p-2.5 hover:bg-slate-800"><Settings2 className="h-5 w-5"/></Link>}
+        {!staffMode&&!isHome&&<Link to="/Settings" aria-label="Settings" title="Settings" className="hidden md:inline-flex rounded-lg p-2.5 hover:bg-slate-800"><Settings2 className="h-5 w-5"/></Link>}
       </div>
     </div>
    </header>

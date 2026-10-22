@@ -115,7 +115,7 @@ export default function Jobs() {
   };
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [view, setView] = useState(searchParams.get("v") || "board");
-  const [activeView, setActiveView] = useState(searchParams.get("tab") || "all");
+  const [activeView, setActiveView] = useState(searchParams.get("tab") || "active");
   const [showArchive, setShowArchive] = useState(searchParams.get("arch") === "1");
   const [movingId, setMovingId] = useState(null);
   const [intakeDialog, setIntakeDialog] = useState(null); // { type: "estimate"|"engine", job, customer }
