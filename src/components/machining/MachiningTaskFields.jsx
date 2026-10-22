@@ -74,7 +74,7 @@ export function defaultMeasurements(taskType) {
 }
 
 // Labeled inch input — displays the unit (in) and supports 4 decimal places.
-export function InchInput({ label, value, onChange, placeholder, required, reference }) {
+export function InchInput({ label, value, onChange, placeholder = "", required = false, reference = "" }) {
   return (
     <div>
       <Label className="text-xs font-medium text-slate-600 flex items-center gap-1">

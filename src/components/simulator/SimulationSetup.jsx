@@ -14,8 +14,8 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
   const [source, setSource] = useState("build");
   const [buildId, setBuildId] = useState("");
   const [specSheetId, setSpecSheetId] = useState("");
-  const [rpmStart, setRpmStart] = useState(4000);
-  const [rpmEnd, setRpmEnd] = useState(15000);
+  const [rpmStart, setRpmStart] = useState(/** @type {string|number} */ (4000));
+  const [rpmEnd, setRpmEnd] = useState(/** @type {string|number} */ (15000));
   const [racingClass, setRacingClass] = useState("");
   const [engineFamily, setEngineFamily] = useState("");
   const [fuelType, setFuelType] = useState("");
@@ -25,7 +25,7 @@ export default function SimulationSetup({ open, onClose, presetBuildId, onResult
   const [refPullId, setRefPullId] = useState("");
   const [refSheetId, setRefSheetId] = useState("");
   const [name, setName] = useState("");
-  const [changes, setChanges] = useState({});
+  const [changes, setChanges] = useState(/** @type {Record<string, any>} */ ({}));
   const [running, setRunning] = useState(false);
 
   const { data: builds = [] } = useQuery({ queryKey: ["builds"], queryFn: () => base44.entities.EngineBuild.list("-created_date", 200) });
