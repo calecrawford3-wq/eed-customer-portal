@@ -1,5 +1,6 @@
 // Only call with a Session retrieved from Stripe, never with browser/sync body data.
 import { portalItems } from './portalDocument.ts';
+import { activateReferralCreditsForEnginePayment } from './referralCredits.ts';
 
 export const PORTAL_STRIPE_SOURCE = 'eed_portal_v1';
 // Separate key so testing the new integration cannot replace legacy live keys.
@@ -104,6 +105,7 @@ export async function recordPortalStripePayment(base44: any, facts: any, recover
     await linkJobInvoice(base44, result.invoice);
     // Invoice payments can finish an estimate's deposit. Never approve work here.
     if (invoice.estimate_id) await updateEstimateDeposit(base44, invoice.estimate_id, result.invoice);
+    if (!result.duplicate) await activateReferralCreditsForEnginePayment(base44, invoice.customer_id, result.invoice).catch(() => {});
     await notifyRecordedPayment(base44, result, facts);
     return { invoice_id: invoice.id, duplicate: result.duplicate };
   }
@@ -162,6 +164,7 @@ export async function recordPortalStripePayment(base44: any, facts: any, recover
   // retries this step without crediting the same payment twice.
   const legal = portalItems(await base44.asServiceRole.entities.LegalDocument.filter({ estimate_id: estimate.id, customer_id: estimate.customer_id }));
   for (const doc of legal.filter(d => d.status !== 'void')) await base44.asServiceRole.entities.LegalDocument.update(doc.id, { invoice_id: invoice.id });
+  if (!result.duplicate) await activateReferralCreditsForEnginePayment(base44, estimate.customer_id, result.invoice).catch(() => {});
   await notifyRecordedPayment(base44, result, facts);
   return { invoice_id: invoice.id, duplicate: result.duplicate };
 }

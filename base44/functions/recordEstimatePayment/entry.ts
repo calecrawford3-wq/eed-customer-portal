@@ -1,4 +1,5 @@
 import { syncMachiningBilling } from '../../shared/syncMachiningBilling.ts';
+import { activateReferralCreditsForEnginePayment } from '../../shared/referralCredits.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
 Deno.serve(async (req) => {
@@ -198,6 +199,11 @@ Deno.serve(async (req) => {
       amount_paid: 0,
     });
     console.log(`[recordEstimatePayment] Estimate updated — status: approved, invoice_id: ${invoiceId}, deposit_paid: ${depositPaid}`);
+
+    try {
+      const referralInvoice = invoice || (await base44.asServiceRole.entities.Invoice.filter({ id: invoiceId }))?.[0];
+      await activateReferralCreditsForEnginePayment(base44, estimate.customer_id, referralInvoice || estimate);
+    } catch (e) { console.warn(`[recordEstimatePayment] referral release skipped: ${e.message}`); }
 
     // Notify admin of payment received
     try {

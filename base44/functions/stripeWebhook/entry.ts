@@ -1,5 +1,6 @@
 import Stripe from "npm:stripe@13.11.0";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import { activateReferralCreditsForEnginePayment } from "../../shared/referralCredits.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"));
 const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -141,6 +142,10 @@ Deno.serve(async (req) => {
           console.log(`Invoice ${documentId} updated with payment of $${amountPaid}`);
         }
 
+        try {
+          const paidDoc = documentType === 'invoice' ? currentDoc : { ...currentDoc, estimate_id: currentDoc.id, is_engine_build: currentDoc.is_engine_build };
+          await activateReferralCreditsForEnginePayment(base44, currentDoc.customer_id, paidDoc);
+        } catch (e) { console.warn('Referral release skipped:', e.message); }
         return Response.json({ success: true });
       } catch (error) {
         console.error(`Error processing ${documentType} payment:`, error.message);

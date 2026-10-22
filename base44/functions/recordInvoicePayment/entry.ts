@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
+import { activateReferralCreditsForEnginePayment } from "../../shared/referralCredits.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
     });
 
     console.log(`[recordInvoicePayment] Invoice updated — paid: ${totalPaid}, balance: ${balance}, status: ${status}`);
+    await activateReferralCreditsForEnginePayment(base44, invoice.customer_id, invoice).catch(e => console.warn('[recordInvoicePayment] referral release skipped:', e.message));
 
     // Notify admin of payment received (skip on duplicate webhook retries)
     try {
