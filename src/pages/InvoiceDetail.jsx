@@ -61,7 +61,7 @@ export default function InvoiceDetail() {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
     customer_id: "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
@@ -75,7 +75,7 @@ export default function InvoiceDetail() {
     shipping_cost: 0,
     pricing_allowance_rate: 5, pricing_allowance_amount: 0,
     tax_rate: 0, notes: "", amount_paid: 0, balance_due: 0
-  });
+  }));
 
   // --- Navigation guard: detect unsaved edits and prompt before leaving ---
   // form state is declared above so formRef can read it without a TDZ crash.

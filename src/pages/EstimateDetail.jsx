@@ -77,7 +77,7 @@ export default function EstimateDetail() {
   const isMobile = useIsMobile();
   const [confirmState, setConfirmState] = useState({ open: false });
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     estimate_number: `EST-${Date.now().toString().slice(-6)}`,
     customer_id: "", customer_engine_id: "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
@@ -97,7 +97,7 @@ export default function EstimateDetail() {
     shipping_cost: 0,
     pricing_allowance_rate: 5, pricing_allowance_amount: 0,
     tax_rate: 0, notes: "", internal_notes: "", initial_findings: []
-  });
+  }));
 
   // --- Navigation guard: detect unsaved edits and prompt before leaving ---
   // form state is declared above so formRef can read it without a TDZ crash.
