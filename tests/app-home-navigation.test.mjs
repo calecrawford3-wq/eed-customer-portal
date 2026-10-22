@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(path,'utf8');
 test('Today leads with attention, active jobs and quick actions while retaining deeper tools',()=>{
  const d=read('src/pages/Dashboard.jsx');
- for(const phrase of ['Needs Attention','Start','Apps']) assert.ok(d.includes(phrase) || read('src/components/dashboard/TodayActionCenter.jsx').includes(phrase) || read('src/components/dashboard/HomeStartBar.jsx').includes(phrase), phrase);
+ for(const phrase of ['Needs Attention','Start']) assert.ok(d.includes(phrase) || read('src/components/dashboard/TodayActionCenter.jsx').includes(phrase) || read('src/components/dashboard/HomeStartBar.jsx').includes(phrase), phrase);
+ assert.match(read('src/components/navigation/AppLauncher.jsx'),/>Apps</);
  assert.match(read('src/components/dashboard/HomeActiveJobsRow.jsx'),/Continue Work/);
  assert.match(d,/<AppLauncher\s*\/>/);
  assert.match(d,/<StaffSignOut\s*\/>/);
