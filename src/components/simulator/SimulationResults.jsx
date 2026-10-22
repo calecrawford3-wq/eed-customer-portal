@@ -11,7 +11,7 @@ import RevisionCompareModal from "./RevisionCompareModal";
 
 const CONF_COLOR = { high: "bg-emerald-100 text-emerald-700", medium: "bg-amber-100 text-amber-700", low: "bg-orange-100 text-orange-700", insufficient: "bg-red-100 text-red-700" };
 
-function Stat({ label, value, sub }) {
+function Stat({ label, value, sub = "" }) {
   return (
     <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
       <p className="text-[11px] text-slate-400">{label}</p>

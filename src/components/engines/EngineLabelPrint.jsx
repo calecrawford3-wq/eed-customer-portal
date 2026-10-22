@@ -12,7 +12,7 @@ const STATUS_COLORS = {
   "PICKED UP": "#6b7280",
 };
 
-export function printEngineLabel({ engineSerialNumber, eedId, customerName, platformName, storageLocation, statusLabel, barcodeValue, notes, startPos = 1 }) {
+export function printEngineLabel({ engineSerialNumber, eedId, customerName, platformName, storageLocation, statusLabel, barcodeValue, notes = "", startPos = 1 }) {
   const barcode = generateBarcodeSVG(barcodeValue || engineSerialNumber, { width: 1.6, height: 40, fontSize: 12 });
   const statusBg = STATUS_COLORS[statusLabel] || "#475569";
 

@@ -175,7 +175,7 @@ function MarginCard({ label, pct }) {
   );
 }
 
-function ProfitRow({ icon: Icon, label, quoted, actual, cost }) {
+function ProfitRow({ icon: Icon, label, quoted, actual, cost = 0 }) {
   const variance = quoted != null && actual != null ? actual - quoted : null;
   return (
     <tr className="border-b border-slate-100">

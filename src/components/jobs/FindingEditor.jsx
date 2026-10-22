@@ -222,7 +222,7 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
   );
 }
 
-function ItemGroup({ label, items, onChange, withVendor }) {
+function ItemGroup({ label, items, onChange, withVendor = false }) {
   const list = items || [];
   return (
     <div>

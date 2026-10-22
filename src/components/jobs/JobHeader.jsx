@@ -122,7 +122,7 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
   );
 }
 
-function HeaderCell({ label, icon: Icon, children }) {
+function HeaderCell({ label, icon: Icon = null, children }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold flex items-center gap-1">

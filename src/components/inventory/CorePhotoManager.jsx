@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function CorePhotoManager({ photos, onChange, readOnly }) {
+export default function CorePhotoManager({ photos, onChange, readOnly = false }) {
   const list = Array.isArray(photos) ? photos : [];
   const [uploading, setUploading] = useState(false);
   const [viewer, setViewer] = useState(null);

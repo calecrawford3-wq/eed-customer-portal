@@ -106,7 +106,7 @@ export default function JobPartsTab({ job }) {
   );
 }
 
-function StatCard({ label, value, cls }) {
+function StatCard({ label, value, cls = "" }) {
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-3">
       <p className="text-[10px] uppercase text-slate-400 font-semibold">{label}</p>

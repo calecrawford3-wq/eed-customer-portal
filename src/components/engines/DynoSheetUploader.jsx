@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function DynoSheetUploader({ buildId, specSheetId, role = "admin", onUploaded }) {
+export default function DynoSheetUploader({ buildId = null, specSheetId = null, role = "admin", onUploaded }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 

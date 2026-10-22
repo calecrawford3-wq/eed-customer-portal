@@ -94,7 +94,7 @@ const buildPrintHtml = (labels, startPos = 1) => {
 </body></html>`;
 };
 
-export default function PrintLabelsModal({ open, onClose, items, title = "Print Labels", preselectId }) {
+export default function PrintLabelsModal({ open, onClose, items, title = "Print Labels", preselectId = null }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [quantities, setQuantities] = useState({});
