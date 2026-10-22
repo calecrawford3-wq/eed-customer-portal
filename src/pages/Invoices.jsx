@@ -30,7 +30,7 @@ export default function Invoices() {
   const [legacyImportOpen, setLegacyImportOpen] = useState(false);
   const [combineOpen, setCombineOpen] = useState(false);
   const qc = useQueryClient();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],

@@ -126,42 +126,42 @@ export default function Jobs() {
     queryKey: ["jobs", showArchive],
     queryFn: async () => {
       const res = await base44.entities.Job.filter({ archived: showArchive }, "-created_date", 500);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const res = await base44.entities.Customer.list("-created_date", 200);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const { data: platforms = [] } = useQuery({
     queryKey: ["platforms"],
     queryFn: async () => {
       const res = await base44.entities.EnginePlatform.list("-created_date", 100);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const { data: engines = [] } = useQuery({
     queryKey: ["all-engines-jobs"],
     queryFn: async () => {
       const res = await base44.entities.CustomerEngine.list("-created_date", 1000);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const { data: builds = [] } = useQuery({
     queryKey: ["builds-for-jobs"],
     queryFn: async () => {
       const res = await base44.entities.EngineBuild.list("-created_date", 500);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates-for-jobs"],
     queryFn: async () => {
       const res = await base44.entities.Estimate.filter({ status: { $in: ["expired", "declined"] }, archived: true }, "-created_date", 500);
-      return res.items || res || [];
+      return res || [];
     },
   });
   const expiredEstimateIds = useMemo(() => new Set(estimates.map(e => e.id)), [estimates]);

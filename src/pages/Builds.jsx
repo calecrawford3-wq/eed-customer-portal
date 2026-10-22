@@ -92,7 +92,7 @@ const SPEC_TYPES = [
 
 export default function Builds() {
   const navigate = useNavigate();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -1107,7 +1107,7 @@ export default function Builds() {
               <Button
                 variant="destructive"
                 onClick={() => {
-                  const reason = document.getElementById("shortage-override-reason")?.value?.trim() || "";
+                  const reason = /** @type {HTMLTextAreaElement|null} */ (document.getElementById("shortage-override-reason"))?.value?.trim() || "";
                   if (!reason) { toast.error("Enter an override reason to proceed"); return; }
                   const cs = completeShortages;
                   setCompleteShortages(null);
