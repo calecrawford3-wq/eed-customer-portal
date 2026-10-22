@@ -184,7 +184,7 @@ export default function Jobs() {
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates-for-jobs"],
     queryFn: async () => {
-      const res = await base44.entities.Estimate.filter({ status: { $in: ["expired", "declined"] }, archived: true }, "-created_date", 500);
+      const res = await base44.entities.Estimate.filter({ status: { $in: ["expired", "declined"] } }, "-created_date", 500);
       return res || [];
     },
   });
