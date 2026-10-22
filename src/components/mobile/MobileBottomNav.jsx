@@ -9,7 +9,7 @@ import {
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, ClipboardList, DollarSign,
   Award, TrendingDown, BarChart2, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
-  ClipboardCheck, ScanLine,
+  ScanLine,
 } from "lucide-react";
 
 /**
