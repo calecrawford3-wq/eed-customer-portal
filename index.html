@@ -17,6 +17,29 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // The initial HTML is black by design. Surface startup failures instead of leaving a blank screen.
+      (function () {
+        var failed = false;
+        function showStartupError() {
+          if (failed) return;
+          failed = true;
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (!root || root.childElementCount) return;
+            root.innerHTML = '<main style="min-height:100vh;background:#0f172a;color:#fff;padding:12vh 24px;text-align:center;font-family:system-ui,sans-serif"><h1>Elite could not start</h1><p style="color:#cbd5e1">The application failed to load. Please reload or contact Elite support.</p><button onclick="location.reload()" style="padding:12px 24px;background:#dc2626;color:#fff;border:0;border-radius:8px">Reload Elite</button></main>';
+          }, 0);
+        }
+        window.addEventListener('error', function (event) {
+          if (event.target && event.target.tagName === 'SCRIPT') showStartupError();
+          else if (event.error) { console.error('Elite startup error:', event.error); showStartupError(); }
+        }, true);
+        window.addEventListener('unhandledrejection', function (event) {
+          console.error('Elite startup rejection:', event.reason);
+          showStartupError();
+        });
+      }());
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
