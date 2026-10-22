@@ -16,7 +16,7 @@ import { ArrowRight } from "lucide-react";
  *  - to: route link (for navigation buttons) — used instead of onAction
  *  - disabled / disabledReason: disables the action button when applicable
  */
-export default function NextStepBanner({ icon: Icon, message, actionLabel, onAction, to, disabled, disabledReason }) {
+export default function NextStepBanner({ icon: Icon, message, actionLabel, onAction = null, to = null, disabled = false, disabledReason = "" }) {
   if (!message) return null;
   const hasAction = actionLabel && (onAction || to);
 

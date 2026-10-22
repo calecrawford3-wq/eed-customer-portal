@@ -35,14 +35,14 @@ export default function PurchaseOrderDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     po_number: `PO-${Date.now().toString().slice(-6)}`,
     supplier_id: "", status: "draft",
     order_date: new Date().toISOString().split("T")[0],
     expected_date: "",
     line_items: [{ ...emptyLine }],
     shipping_cost: 0, tax_amount: 0, notes: "", shipping_address: ""
-  });
+  }));
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const pendingReceiptId = useRef(null);

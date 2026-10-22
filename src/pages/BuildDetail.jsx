@@ -59,7 +59,7 @@ const SPEC_TYPES = [
 export default function BuildDetail() {
   const navigate = useNavigate();
   const [buildId, setBuildId] = useState(null);
-  const [localChanges, setLocalChanges] = useState({});
+  const [localChanges, setLocalChanges] = useState(/** @type {Record<string, any>} */ ({}));
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);

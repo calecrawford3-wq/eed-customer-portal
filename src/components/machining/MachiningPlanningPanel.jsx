@@ -52,7 +52,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
     queryFn: () => base44.entities.MachiningTask.filter({ job_id: job.id }, { sort: "sort_order", limit: 200 }),
     enabled: !!job?.id && open,
   });
-  const existingTasks = tasksData?.items || tasksData || [];
+  const existingTasks = Array.isArray(tasksData) ? tasksData : (tasksData?.items || []);
 
   // MachiningItem catalog for the dropdown selection.
   const { data: catalogData } = useQuery({
@@ -60,7 +60,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
     queryFn: () => base44.entities.MachiningItem.filter({ status: "active" }, { sort: "name", limit: 200 }),
     enabled: !!job?.id && open,
   });
-  const catalog = catalogData?.items || catalogData || [];
+  const catalog = Array.isArray(catalogData) ? catalogData : (catalogData?.items || []);
 
   // Fetch the machining items from the linked estimate and invoice(s) so we
   // can pre-populate drafts. Only items actually on the documents are used —
