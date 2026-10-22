@@ -8,6 +8,7 @@ import FinishStageButton from "@/components/jobs/FinishStageButton";
 import { billingSummary } from "@/lib/jobBillingStatus";
 
 const STAGE_LABELS = {
+  needs_estimate: "Needs Estimate",
   awaiting_approval: "Awaiting Approval",
   awaiting_deposit: "Awaiting Deposit",
   queued: "Queued",
@@ -135,6 +136,7 @@ function HeaderCell({ label, icon: Icon = null, children }) {
 
 function stageColor(job) {
   const map = {
+    needs_estimate: "bg-slate-100 text-slate-600",
     awaiting_approval: "bg-slate-100 text-slate-600",
     awaiting_deposit: "bg-amber-100 text-amber-700",
     queued: "bg-blue-100 text-blue-700",
@@ -149,6 +151,9 @@ function stageColor(job) {
 }
 
 function deriveNextAction(job, billing, build) {
+  if (job.stage === "needs_estimate") {
+    return <p className="text-xs text-slate-500">Create or finish the estimate, then send it to move this job to Awaiting Approval.</p>;
+  }
   if (job.stage === "awaiting_approval") {
     return billing.approval.state === "sent" ? "Follow up with customer on estimate approval" : "Send estimate to customer for approval";
   }
