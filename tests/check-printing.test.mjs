@@ -12,13 +12,14 @@ test('check printing is a Billing page and available from Expenses',()=>{
 
 test('check template includes Elite logo, check face, vouchers and optional MICR line',()=>{
  const src=read('src/lib/checkPrint.js');
- assert.match(src,/company_logo_url/);assert.match(src,/Pay to the order of/);assert.match(src,/Voucher \/ record copy/);assert.match(src,/fully_blank/);assert.match(src,/check_routing_number/);assert.match(src,/check_account_number/);
+ assert.match(src,/company_logo_url/);assert.match(src,/Pay to the order of/);assert.match(src,/payee_address/);assert.match(src,/buildCheckAlignmentHtml/);assert.match(src,/Voucher \/ record copy/);assert.match(src,/fully_blank/);assert.match(src,/check_routing_number/);assert.match(src,/check_account_number/);
 });
 
 test('check register supports expense linking, reprints, voids and saved layout settings',()=>{
  const page=read('src/pages/CheckPrinting.jsx');const schema=JSON.parse(read('base44/entities/PrintedCheck.jsonc'));const settings=JSON.parse(read('base44/entities/AppSettings.jsonc'));
- assert.match(page,/PrintedCheck\.create/);assert.match(page,/reprint_count/);assert.match(page,/void_reason/);assert.match(page,/printed_check_id/);assert.match(page,/company_logo_url/);
- assert.ok(schema.properties.layout_snapshot);assert.ok(settings.properties.check_stock_mode);assert.ok(settings.properties.check_logo_width_mm);assert.ok(settings.properties.check_next_number);
+ assert.match(page,/recordPrintedCheck/);assert.match(page,/reprintPrintedCheck/);assert.match(page,/voidPrintedCheck/);assert.match(page,/printed_check_id/);assert.match(page,/company_logo_url/);assert.match(page,/Print Alignment Test/);
+ assert.ok(schema.properties.layout_snapshot);assert.ok(schema.properties.payee_address);assert.ok(settings.properties.check_stock_mode);assert.ok(settings.properties.check_logo_width_mm);assert.ok(settings.properties.check_next_number);
+ const createFn=read('base44/functions/recordPrintedCheck/entry.ts');assert.match(createFn,/already exists in the register/);assert.match(createFn,/check_next_number/);
 });
 
 test('amount words handles dollars and cents',()=>{

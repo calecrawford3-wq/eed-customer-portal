@@ -51,6 +51,8 @@ test('global and camera scanner recognize permanent case and head scan codes',()
 test('engine identity is manageable from both customer history and Job overview',()=>{
  assert.match(read('src/components/customer/CustomerEnginesTab.jsx'),/<EngineIdentityPanel/);
  assert.match(read('src/components/jobs/JobOverviewTab.jsx'),/<EngineIdentityPanel/);
- assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/Pairing History/);
- assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/New Random Head/);
+ assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/Physical Component History/);
+ assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/Create New Head/);
+ assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/Remove Head to Inventory/);
+ assert.match(read('src/components/engines/EngineIdentityPanel.jsx'),/Remove Case to Inventory/);
 });
