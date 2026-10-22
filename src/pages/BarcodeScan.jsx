@@ -60,7 +60,8 @@ export default function BarcodeScan() {
         setResults(found);
         const q = {};
         found.filter(r=>r.type === "part" || r.type === "core").forEach((r) => {
-          q[`${r.type}:${r.item.id}`] = String(r.item.quantity_on_hand ?? 0);
+          const inventoryItem = /** @type {any} */ (r.item);
+          q[`${r.type}:${inventoryItem.id}`] = String(inventoryItem.quantity_on_hand ?? 0);
         });
         setQtyInputs(q);
         if (found.length > 1) {
