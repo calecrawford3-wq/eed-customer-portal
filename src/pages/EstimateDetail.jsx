@@ -75,7 +75,7 @@ export default function EstimateDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
 
   const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     estimate_number: `EST-${Date.now().toString().slice(-6)}`,

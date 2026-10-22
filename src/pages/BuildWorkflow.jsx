@@ -78,6 +78,7 @@ export default function BuildWorkflow() {
   );
 
   // Enrich builds with the resolved customer name so voice commands can match by name.
+  /** @type {any[]} */
   const buildsWithCustomerName = useMemo(
     () =>
       builds.map((b) => {
@@ -143,7 +144,7 @@ export default function BuildWorkflow() {
 
       // Load existing tasks to preserve completion history
       const existingRes = await base44.entities.BuildTask.filter({ build_id: selectedBuildId }, "sort_order", 500);
-      const existingTasks = existingRes?.items || existingRes || [];
+      const existingTasks = existingRes || [];
       const existingByName = {};
       existingTasks.forEach((t) => { existingByName[t.name] = t; });
 
@@ -199,11 +200,11 @@ export default function BuildWorkflow() {
     if (!template) { setPreview(null); return; }
     const taskKey = (n, u) => `${n || ""}|||${u || ""}`;
     const existingByKey = {};
-    (tasks.items || tasks || []).forEach((t) => { existingByKey[taskKey(t.name, t.uid)] = t; });
+    tasks.forEach((t) => { existingByKey[taskKey(t.name, t.uid)] = t; });
     const templateKeys = new Set((template.items || []).map((i) => taskKey(i.name, i.uid)));
     const add = (template.items || []).filter((i) => !existingByKey[taskKey(i.name, i.uid)]);
-    const remove = (tasks.items || tasks || []).filter((t) => !templateKeys.has(taskKey(t.name, t.uid)) && !["complete", "skipped"].includes(t.status));
-    const preserved = (tasks.items || tasks || []).filter((t) => ["complete", "skipped"].includes(t.status));
+    const remove = tasks.filter((t) => !templateKeys.has(taskKey(t.name, t.uid)) && !["complete", "skipped"].includes(t.status));
+    const preserved = tasks.filter((t) => ["complete", "skipped"].includes(t.status));
     setPreview({ add: add.map(i => i.name), remove: remove.map(t => t.name), preserved: preserved.length });
   }, [showAssign, assignTemplateId, templates, tasks]);
 

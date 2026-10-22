@@ -28,9 +28,9 @@ export default function Payments() {
   const [yearFilter, setYearFilter] = useState("all");
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // { type: 'invoice'|'estimate', record, paymentIdx }
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState(/** @type {Record<string, any>} */ ({}));
   const [expandedPayment, setExpandedPayment] = useState(null);
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
   const qc = useQueryClient();
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
