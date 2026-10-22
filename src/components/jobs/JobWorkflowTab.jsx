@@ -56,7 +56,7 @@ export default function JobWorkflowTab({ job, build }) {
     enabled: !!job.build_id,
   });
 
-  const taskList = tasks.items || tasks || [];
+  const taskList = tasks;
   const byStage = {};
   for (const t of taskList) {
     const s = t.stage || "Unstaged";

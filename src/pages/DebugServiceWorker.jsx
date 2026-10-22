@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 export default function DebugServiceWorker() {
   const [workers, setWorkers] = useState(/** @type {ServiceWorkerRegistration[]} */ ([]));
-  const [cacheList, setCacheList] = useState(/** @type {ServiceWorkerRegistration[]} */ ([]));
+  const [cacheList, setCacheList] = useState(/** @type {string[]} */ ([]));
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function DebugServiceWorker() {
   const checkServiceWorkers = async () => {
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      setWorkers(registrations);
+      setWorkers([...registrations]);
       console.log('Service Workers found:', registrations);
     }
   };

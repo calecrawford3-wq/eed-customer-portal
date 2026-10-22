@@ -65,7 +65,7 @@ export default function JobStageMover({ job, build }) {
       setMoving(true);
       try {
         const invRes = await base44.entities.Invoice.filter({ build_id: job.build_id });
-        const invoices = invRes.items || invRes || [];
+        const invoices = invRes || [];
         const buildComplete = build && (build.status === "complete" || build.status === "shipped");
         const hasInvoice = invoices.length > 0;
         const invoiceSent = invoices.some(inv => inv.status !== "draft" && inv.status !== "void");

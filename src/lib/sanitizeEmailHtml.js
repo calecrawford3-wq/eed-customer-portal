@@ -45,7 +45,7 @@ export function sanitizeEmailHtmlForDisplay(html, { loadImages = false } = {}) {
     }
 
     // Sanitize attributes (event handlers + javascript: URLs)
-    [...el.attributes].forEach((attr) => {
+    Array.from(el.attributes).forEach((attr) => {
       const name = attr.name.toLowerCase();
       const val = String(attr.value || "").toLowerCase().trim();
       if (name.startsWith("on")) el.removeAttribute(attr.name);

@@ -66,7 +66,7 @@ export default function IntakeEngineDialog({ job, customer, open, onClose, onLin
 
     // Check for active-job conflicts
     const jobRes = await base44.entities.Job.filter({ customer_engine_id: eng.id, is_active: true });
-    const activeJobs = (jobRes.items || jobRes || []).filter(j => j.id !== job.id);
+    const activeJobs = (jobRes || []).filter(j => j.id !== job.id);
     if (activeJobs.length > 0) {
       toast.error(`Engine ${eng.eed_id} is already active on ${activeJobs[0].job_number}. Resolve that visit first.`);
       return;

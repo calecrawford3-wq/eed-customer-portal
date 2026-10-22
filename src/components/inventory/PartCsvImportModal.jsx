@@ -314,7 +314,7 @@ export default function PartCsvImportModal({ open, onClose }) {
           <div className="py-8 flex-1 flex flex-col items-center justify-center">
             <div
               className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center cursor-pointer hover:border-[#e20404] hover:bg-slate-50 transition-colors w-full max-w-md"
-              onClick={() => fileRef.current.click()}
+              onClick={() => fileRef.current?.click()}
             >
               <FileUp className="w-12 h-12 mx-auto mb-3 text-slate-400" />
               <p className="text-lg font-medium text-slate-700">Click to choose a CSV file</p>
