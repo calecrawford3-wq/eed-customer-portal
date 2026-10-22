@@ -1,10 +1,10 @@
 import React from "react";
-
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+import {useCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
 export default function PrintableBuildPartsList({ form, customer, customerEngine, platform, specSheet }) {
+  const {logoUrl}=useCompanyLogo();
   const docNumber = form.invoice_number || form.estimate_number || "";
   const stageLabel = specSheet
     ? (specSheet.custom_name || STAGE_LABELS[specSheet.spec_type] || specSheet.spec_type)
@@ -17,7 +17,7 @@ export default function PrintableBuildPartsList({ form, customer, customerEngine
     <div className="invoice-page">
       <div className="inv-header">
         <div>
-          <img src={LOGO_URL} alt="Elite Engine Development" style={{ height: "36px" }} />
+          <img src={logoUrl} alt="Elite Engine Development" style={{ height: "36px" }} />
         </div>
         <div style={{ textAlign: "right" }}>
           <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: "#1a1a1a" }}>Engine Build Parts List</h1>

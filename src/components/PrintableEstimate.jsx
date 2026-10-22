@@ -2,7 +2,7 @@ import React from "react";
 
 import { getCountryName } from "@/components/CountrySelect";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+import { resolveCompanyLogo } from "@/lib/companyLogo";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
@@ -22,7 +22,7 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
     <div style={{ fontFamily: "Arial, sans-serif", padding: "24px", maxWidth: "800px", margin: "0 auto", color: "#333" }}>
       <div style={{ borderBottom: "3px solid #e20404", paddingBottom: "16px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "60px", marginBottom: "8px" }} />
+          <img src={resolveCompanyLogo(settings)} alt={settings?.company_name} style={{ height: "60px", marginBottom: "8px" }} />
           <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>ESTIMATE</h1>
           <p style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>{settings?.company_name}</p>
         </div>

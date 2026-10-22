@@ -2,7 +2,7 @@
 // Used by both the EstimateDetail "Send" button (when the estimate is in a
 // comparison group) and the StageComparisonSection "Send to Customer" button.
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+import {resolveCompanyLogo} from '@/lib/companyLogo';
 
 /** @param {{stages:any[],customer:any,settings?:Record<string,any>,url:string}} args */
 export function buildComparisonEmailHtml({ stages, customer, settings = {}, url }) {
@@ -41,7 +41,7 @@ export function buildComparisonEmailHtml({ stages, customer, settings = {}, url 
       <body>
         <div class="container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="${settings.company_name || ""}" class="logo" />
+            <img src="${resolveCompanyLogo(settings)}" alt="${settings.company_name || ""}" class="logo" />
             <h1 class="header-title">Stage Options Ready</h1>
             <p class="header-subtitle">${stages.length} STAGES TO COMPARE</p>
           </div>

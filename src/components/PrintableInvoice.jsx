@@ -2,7 +2,7 @@ import React from "react";
 
 import { getCountryName } from "@/components/CountrySelect";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+import { resolveCompanyLogo } from "@/lib/companyLogo";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
@@ -115,7 +115,7 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
       {/* Header */}
       <div className="inv-header">
         <div>
-          <img src={LOGO_URL} alt={settings?.company_name} style={{ height: "50px", marginBottom: "6px" }} />
+          <img src={resolveCompanyLogo(settings)} alt={settings?.company_name} style={{ height: "50px", marginBottom: "6px" }} />
           <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>
             {invoice.is_combined ? "COMBINED INVOICE" : "INVOICE"}
           </h1>

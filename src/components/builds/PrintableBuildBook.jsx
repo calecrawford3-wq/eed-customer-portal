@@ -1,5 +1,6 @@
 import React from "react";
 import { useDisplayImage } from "@/hooks/useDisplayImage";
+import { useCompanyLogo } from "@/hooks/useCompanyLogo";
 
 // Renders a print-safe image from a private URI or signed URL, handling HEIC conversion.
 function PrintablePhoto({ src, alt, style }) {
@@ -7,7 +8,6 @@ function PrintablePhoto({ src, alt, style }) {
   return <img src={url || ""} alt={alt} style={style} />;
 }
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const SPEC_TYPES = [
   { value: "stock", label: "Stock" }, { value: "stage_1", label: "Stage 1" },
@@ -31,6 +31,7 @@ export default function PrintableBuildBook({
   build, platform, specSheet, customer, job, tasks = [], findings = [],
   replacements = [], profitability = null, invoice = null, findingPhotos = {},
 }) {
+  const {logoUrl}=useCompanyLogo();
   const getSpecTypeLabel = (type) => SPEC_TYPES.find(t => t.value === type)?.label || type || "N/A";
 
   const completedTasks = tasks.filter(t => t.status === "complete");
@@ -59,7 +60,7 @@ export default function PrintableBuildBook({
       <div style={{ borderBottom: "3px solid #e20404", paddingBottom: "16px", marginBottom: "20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <img src={LOGO_URL} alt="EED" style={{ height: "50px", marginBottom: "8px" }} />
+            <img src={logoUrl} alt="EED" style={{ height: "50px", marginBottom: "8px" }} />
             <h1 style={{ fontSize: "22px", fontWeight: "bold", margin: 0, color: "#1a1a1a" }}>
               BUILD BOOK
             </h1>
