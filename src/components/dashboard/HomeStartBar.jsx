@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, ClipboardList, ScanLine, UserPlus, Plus } from 'lucide-react';
+import { Cpu, ClipboardList, ScanLine, UserPlus } from 'lucide-react';
 
 const starts = [
   {label:'New Estimate', icon:ClipboardList, to:'/EstimateDetail?new=1'},
