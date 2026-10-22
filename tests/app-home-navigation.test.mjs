@@ -4,12 +4,12 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(path,'utf8');
 test('Today leads with attention, active jobs and quick actions while retaining deeper tools',()=>{
  const d=read('src/pages/Dashboard.jsx');
- for(const phrase of ['Needs Attention','Active Jobs','Quick Actions','Business snapshot & all tools']) assert.ok(d.includes(phrase) || read('src/components/dashboard/TodayActionCenter.jsx').includes(phrase) || read('src/components/dashboard/ActiveJobsSnapshot.jsx').includes(phrase), phrase);
+ for(const phrase of ['Needs Attention','Continue Work','Start','Apps']) assert.ok(d.includes(phrase) || read('src/components/dashboard/TodayActionCenter.jsx').includes(phrase) || read('src/components/dashboard/ActiveJobsSnapshot.jsx').includes(phrase), phrase);
  assert.match(d,/<AppLauncher\s*\/>/);
  assert.match(d,/<StaffSignOut\s*\/>/);
  assert.match(d,/to="\/Settings"/);
  assert.match(d,/<TodayActionCenter/);
- assert.match(d,/<ActiveJobsSnapshot/);
+ assert.match(d,/<HomeActiveJobsRow/);
 });
 test('Mobile and desktop share app-style home navigation without legacy sidebars',()=>{
  const layout=read('src/Layout.jsx');
