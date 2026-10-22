@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { ScanLine, Package, Recycle, Minus, Plus, Save, RotateCcw, MapPin, DollarSign, AlertTriangle, Edit } from "lucide-react";
+import { ScanLine, Package, Recycle, Minus, Plus, Save, RotateCcw, MapPin, DollarSign, AlertTriangle, Edit, Cpu, Component, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
 import BarcodeLabel from "@/components/inventory/BarcodeLabel";
@@ -18,6 +19,7 @@ export default function BarcodeScan() {
   const [qtyInputs, setQtyInputs] = useState({}); // `${type}:${id}` -> string
   const [editingPart, setEditingPart] = useState(null);
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const lookup = async (code) => {
     const clean = code.trim();
@@ -26,19 +28,25 @@ export default function BarcodeScan() {
     setResults([]);
     setQtyInputs({});
     try {
-      const [parts, cores] = await Promise.all([
+      const [parts, cores, caseTags, caseIds, headTags, headCodes] = await Promise.all([
         base44.entities.Part.filter({ part_number: clean }),
         base44.entities.EngineCore.filter({ core_number: clean }),
+        base44.entities.CustomerEngine.filter({ tag_code: clean }),
+        base44.entities.CustomerEngine.filter({ eed_id: clean }),
+        base44.entities.EngineComponent.filter({ tag_code: clean }),
+        base44.entities.EngineComponent.filter({ component_code: clean }),
       ]);
       const found = [];
       parts.forEach((p) => found.push({ type: "part", item: p }));
       cores.forEach((c) => found.push({ type: "core", item: c }));
+      [...caseTags,...caseIds].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((e)=>found.push({type:'engine',item:e}));
+      [...headTags,...headCodes].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((h)=>found.push({type:'head',item:h}));
       if (found.length === 0) {
         toast.error(`No item found for "${clean}"`);
       } else {
         setResults(found);
         const q = {};
-        found.forEach((r) => {
+        found.filter(r=>r.type === "part" || r.type === "core").forEach((r) => {
           q[`${r.type}:${r.item.id}`] = String(r.item.quantity_on_hand ?? 0);
         });
         setQtyInputs(q);
@@ -103,7 +111,7 @@ export default function BarcodeScan() {
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
           <ScanLine className="w-7 h-7 text-[#e20404]" /> Barcode Scan & Adjust
         </h1>
-        <p className="text-slate-500 mt-1">Scan or type a part/core number to look it up and adjust inventory.</p>
+        <p className="text-slate-500 mt-1">Scan a laser engine/head tag, Job code, part, or core. Engine tags open the current internal workflow; inventory items can still be adjusted here.</p>
       </div>
 
       <Card className="mb-6">
@@ -123,9 +131,11 @@ export default function BarcodeScan() {
       </Card>
 
       {results.map((r) => {
-        const isPart = r.type === "part";
         const item = r.item;
         const key = `${r.type}:${item.id}`;
+        if (r.type === "engine") return <EngineScanCard key={key} engine={item} navigate={navigate}/>;
+        if (r.type === "head") return <HeadScanCard key={key} head={item} navigate={navigate}/>;
+        const isPart = r.type === "part";
         const qVal = qtyInputs[key] ?? String(item.quantity_on_hand ?? 0);
         return (
           <Card key={key} className="mb-4">
@@ -239,4 +249,16 @@ export default function BarcodeScan() {
       />
     </div>
   );
+}
+
+function EngineScanCard({engine,navigate}) {
+  const [job,setJob]=useState(null);
+  useEffect(()=>{let live=true;base44.entities.Job.filter({customer_engine_id:engine.id}).then(rows=>{if(live)setJob((rows||[]).find(j=>!j.archived&&j.stage!=="picked_up")||null);});return()=>{live=false};},[engine.id]);
+  return <Card className="mb-4 border-red-100"><CardHeader><CardTitle className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><Cpu className="w-5 h-5 text-[#e20404]"/>{engine.eed_id} · Case / Bottom End</span><Badge className="bg-red-50 text-red-700 border-0">Engine Tag</Badge></CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid sm:grid-cols-2 gap-3 text-sm"><div><Label className="text-xs text-slate-500">Serial</Label><p className="font-mono">{engine.engine_serial_number}</p></div><div><Label className="text-xs text-slate-500">Current stage</Label><p>{String(engine.check_in_status||'').replaceAll('_',' ')||'—'}</p></div></div><div className="flex flex-wrap gap-2">{job&&<Button className="bg-[#e20404] hover:bg-red-700" onClick={()=>navigate(`/JobCard?id=${job.id}`)}><Briefcase className="w-4 h-4 mr-1"/>Open {job.job_number}</Button>}<Button variant="outline" onClick={()=>navigate(`/CustomerDetail?id=${engine.customer_id}`)}>Engine Record</Button></div></CardContent></Card>;
+}
+
+function HeadScanCard({head,navigate}) {
+  const [engine,setEngine]=useState(null);const [job,setJob]=useState(null);
+  useEffect(()=>{let live=true;(async()=>{if(!head.current_customer_engine_id)return;const engines=await base44.entities.CustomerEngine.filter({id:head.current_customer_engine_id});const e=engines?.[0]||null;if(!live)return;setEngine(e);if(e){const jobs=await base44.entities.Job.filter({customer_engine_id:e.id});if(live)setJob((jobs||[]).find(j=>!j.archived&&j.stage!=="picked_up")||null);}})();return()=>{live=false};},[head.current_customer_engine_id]);
+  return <Card className="mb-4 border-purple-100"><CardHeader><CardTitle className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><Component className="w-5 h-5 text-purple-600"/>{head.component_code}</span><Badge className="bg-purple-50 text-purple-700 border-0">Cylinder Head</Badge></CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-slate-600">{engine?<>Currently paired to <span className="font-mono font-semibold">{engine.eed_id}</span> · {engine.engine_serial_number}</>:<>Currently unpaired</>}</p><div className="flex flex-wrap gap-2">{job&&<Button className="bg-[#e20404] hover:bg-red-700" onClick={()=>navigate(`/JobCard?id=${job.id}`)}><Briefcase className="w-4 h-4 mr-1"/>Open {job.job_number}</Button>}{engine&&<Button variant="outline" onClick={()=>navigate(`/CustomerDetail?id=${engine.customer_id}`)}>Paired Engine</Button>}</div></CardContent></Card>;
 }
