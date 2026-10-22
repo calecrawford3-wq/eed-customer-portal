@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Camera, CameraOff, Keyboard, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
-export default function BarcodeScanner({ onScan, autoFocus = true, placeholder = "Type or scan barcode..." }) {
+export default function BarcodeScanner({ onScan, autoFocus = true, placeholder = "Type or scan barcode...", preserveFullCode = false }) {
   const [mode, setMode] = useState("usb");
   const [manual, setManual] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -69,6 +69,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
   // keep only the first 11 characters so lookups match the stored part number.
   const normalizeBarcode = (val) => {
     const trimmed = val.trim();
+    if (preserveFullCode) return trimmed;
     return trimmed.length > 11 ? trimmed.slice(0, 11) : trimmed;
   };
 

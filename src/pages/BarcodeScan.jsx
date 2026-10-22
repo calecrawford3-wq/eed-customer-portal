@@ -125,7 +125,7 @@ export default function BarcodeScan() {
               Looking up item...
             </div>
           ) : (
-            <BarcodeScanner onScan={lookup} />
+            <BarcodeScanner onScan={lookup} preserveFullCode />
           )}
         </CardContent>
       </Card>
