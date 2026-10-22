@@ -42,7 +42,7 @@ export default function Estimates() {
     queryFn: () => base44.entities.Estimate.list("-created_date", 200),
   });
 
-  const { data: jobs = [] } = useQuery({
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ["jobs-for-standalone-estimates"],
     queryFn: () => base44.entities.Job.list("-created_date", 1000),
   });
@@ -263,7 +263,7 @@ export default function Estimates() {
         </Select>
       </div>
 
-      {isLoading ? (
+      {(isLoading || jobsLoading) ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">

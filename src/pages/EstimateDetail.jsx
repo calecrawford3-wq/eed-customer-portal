@@ -968,7 +968,7 @@ export default function EstimateDetail() {
         }
         }
         toast.success("Payment recorded — invoice created!");
-        bypass(); navigate(`/InvoiceDetail?id=${invoice.id}`);
+        bypass(); navigate(prefillJobId ? `/JobCard?id=${prefillJobId}&tab=billing&billing=invoice` : `/InvoiceDetail?id=${invoice.id}`);
         };
 
   const handleApprove = async () => {
@@ -1126,7 +1126,7 @@ export default function EstimateDetail() {
         } catch (e) { console.warn("Failed to create/activate job:", e); }
         setConvertingToBuild(false);
         toast.success("Estimate approved — engine build & invoice created!");
-        bypass(); navigate(`/BuildDetail?id=${build.id}`);
+        bypass(); navigate(prefillJobId ? `/JobCard?id=${prefillJobId}&tab=work&work=workflow` : `/BuildDetail?id=${build.id}`);
       } catch (e) {
         console.error("Failed to create build/invoice on approval:", e);
         setConvertingToBuild(false);
@@ -1185,7 +1185,7 @@ export default function EstimateDetail() {
         qc.invalidateQueries({ queryKey: ["jobs"] });
       } catch (e) { console.warn("Failed to create/activate job:", e); }
       toast.success("Estimate approved — invoice created!");
-      bypass(); navigate(`/InvoiceDetail?id=${invoice.id}`);
+      bypass(); navigate(prefillJobId ? `/JobCard?id=${prefillJobId}&tab=billing&billing=invoice` : `/InvoiceDetail?id=${invoice.id}`);
     }
   };
 
@@ -1275,7 +1275,7 @@ export default function EstimateDetail() {
       } catch (e) { console.warn("Failed to reconcile job:", e); }
       qc.invalidateQueries({ queryKey: ["builds"] });
       toast.success("Engine build created! Redirecting...");
-      bypass(); navigate(`/BuildDetail?id=${build.id}`);
+      bypass(); navigate(prefillJobId ? `/JobCard?id=${prefillJobId}&tab=work&work=workflow` : `/BuildDetail?id=${build.id}`);
     } catch {
       toast.error("Failed to create build");
     } finally {
@@ -1838,7 +1838,7 @@ export default function EstimateDetail() {
           icon={Wrench}
           message="Build created — open it to assign a workflow and start tracking tasks."
           actionLabel="Go to Build"
-          to={`/BuildDetail?id=${form.build_id}`}
+          to={prefillJobId ? `/JobCard?id=${prefillJobId}&tab=work&work=workflow` : `/BuildDetail?id=${form.build_id}`}
         />
       )}
       {id && form.status === "approved" && !form.is_engine_build && !form.invoice_id && (
@@ -1854,7 +1854,7 @@ export default function EstimateDetail() {
           icon={Receipt}
           message="Invoice created — record payment when received."
           actionLabel="Go to Invoice"
-          to={`/InvoiceDetail?id=${form.invoice_id}`}
+          to={prefillJobId ? `/JobCard?id=${prefillJobId}&tab=billing&billing=invoice` : `/InvoiceDetail?id=${form.invoice_id}`}
         />
       )}
 

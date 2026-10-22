@@ -56,7 +56,9 @@ export default function JobInvoiceTab({ job, invoices }) {
       const balance = Math.max(0, (Number(inv.total) || 0) - credits - totalPaid);
       const status = balance < 0.01 ? "paid" : (totalPaid > 0 ? "partial" : inv.status);
       await base44.entities.Invoice.update(inv.id, { payments, amount_paid: totalPaid, balance_due: balance, status });
+      try { await base44.functions.invoke("releaseReferralCreditForPayment", { invoice_id: inv.id }); } catch { /* payment remains valid if referral automation needs retry */ }
       qc.invalidateQueries({ queryKey: ["job-invoices", job.invoice_ids] });
+      qc.invalidateQueries({ queryKey: ["allAccountCredits"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success(`Payment of ${formatMoney(amount)} recorded`);
       setRecordingFor(null);
