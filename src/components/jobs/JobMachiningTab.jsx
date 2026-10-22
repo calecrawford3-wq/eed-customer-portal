@@ -39,14 +39,14 @@ export default function JobMachiningTab({ job, build, engine, autoOpenPlan }) {
     queryFn: () => base44.entities.MachiningTask.filter({ job_id: job.id }, { sort: "sort_order", limit: 200 }),
     enabled: !!job?.id,
   });
-  const tasks = tasksData?.items || tasksData || [];
+  const tasks = Array.isArray(tasksData) ? tasksData : (tasksData?.items || []);
 
   const { data: historyData } = useQuery({
     queryKey: ["engine-service-history", job?.customer_engine_id],
     queryFn: () => base44.entities.ServiceHistoryEntry.filter({ customer_engine_id: job.customer_engine_id }, { sort: "-performed_at", limit: 50 }),
     enabled: !!job?.customer_engine_id && showHistory,
   });
-  const history = historyData?.items || historyData || [];
+  const history = Array.isArray(historyData) ? historyData : (historyData?.items || []);
 
   const completed = tasks.filter(t => t.status === "complete").length;
   const requiredIncomplete = tasks.filter(t => t.is_required && t.status !== "complete");

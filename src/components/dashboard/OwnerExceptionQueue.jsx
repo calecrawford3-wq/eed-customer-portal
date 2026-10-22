@@ -32,7 +32,7 @@ export default function OwnerExceptionQueue() {
         { status: "active" },
         { sort: "-created_date", limit: 50 }
       );
-      return res?.items || res || [];
+      return Array.isArray(res) ? res : (res?.items || []);
     },
     refetchInterval: 60000,
   });
