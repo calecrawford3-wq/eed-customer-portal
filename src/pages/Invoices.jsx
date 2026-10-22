@@ -48,7 +48,7 @@ export default function Invoices() {
   });
 
   const markPaid = useMutation({
-    mutationFn: (invoice) => base44.entities.Invoice.update(invoice.id, {
+    mutationFn: /** @param {Record<string, any>} invoice */ (invoice) => base44.entities.Invoice.update(invoice.id, {
       status: "paid", amount_paid: invoice.total, balance_due: 0
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); toast.success("Marked as paid"); },

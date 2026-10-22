@@ -39,7 +39,7 @@ export default function CustomerDetail() {
   const qc = useQueryClient();
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState(/** @type {Record<string, any>} */ ({}));
   const [assignBuildOpen, setAssignBuildOpen] = useState(false);
   const [dynoBuildId, setDynoBuildId] = useState(null);
 

@@ -98,7 +98,7 @@ export default function CustomerPortal() {
   const [tourFromOnboarding, setTourFromOnboarding] = useState(false);
   const [accountSetupSection, setAccountSetupSection] = useState('contact');
   const showOnboardingSecurity = () => {setTourOpen(false);setTourFromOnboarding(false);setAccountSetupSection('security');setAccountSetupOpen(true);};
-  const [profileForm, setProfileForm] = useState({});
+  const [profileForm, setProfileForm] = useState(/** @type {Record<string, any>} */ ({}));
   const [refreshOpen, setRefreshOpen] = useState(false);
   const [refreshBuild, setRefreshBuild] = useState(null);
   const [refreshMessage, setRefreshMessage] = useState("");

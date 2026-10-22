@@ -92,7 +92,7 @@ export default function Estimates() {
   const navigate = useNavigate();
 
   const convertToInvoice = useMutation({
-    mutationFn: async (estimate) => {
+    mutationFn: /** @param {Record<string, any>} estimate */ async (estimate) => {
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
       const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNumber,
