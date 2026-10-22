@@ -18,7 +18,7 @@ import {
  * sheet listing every remaining destination grouped by section.
  *
  * Badges show actionable counts (unread messages on Inbox, active
- * exceptions on Today, pending approvals on Billing).
+ * exceptions on Today and unread messages on Inbox).
  */
 const PRIMARY_TABS = [
   { key: "Dashboard", label: "Today", icon: Gauge, badge: "exceptions" },
@@ -115,11 +115,6 @@ export default function MobileBottomNav({allowedPages=null}) {
     refetchInterval: 30000,
     enabled: allowedPages===null,
   });
-  const { data: approvalsCount = 0 } = useQuery({
-    queryKey: ["nav-badge-approvals"],
-    queryFn: () => base44.entities.Estimate.count({ status: "sent" }),
-    enabled: allowedPages===null,
-  });
   const { data: refreshCount = 0 } = useQuery({
     queryKey: ["nav-badge-refresh"],
     queryFn: () => base44.entities.RefreshRequest.count({ status: "pending" }),
@@ -133,7 +128,6 @@ export default function MobileBottomNav({allowedPages=null}) {
 
   const badgeFor = (key) => {
     if (key === "messages") return unreadCount;
-    if (key === "approvals") return approvalsCount;
     if (key === "refresh") return refreshCount;
     if (key === "exceptions") return exceptionsCount;
     return 0;
