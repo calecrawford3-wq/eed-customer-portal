@@ -430,6 +430,43 @@
       "type": "boolean",
       "default": false,
       "description": "When true, a customer's approved additional-work response is applied automatically (reservations, invoice, machining/build tasks) via the same idempotent core as the admin Approve & Apply action. Defaults OFF so historical approvals are never retroactively processed. Turn on only after the shop has verified the flow."
+    },
+    "check_stock_mode": {
+      "type": "string",
+      "enum": [
+        "preprinted_micr",
+        "fully_blank"
+      ],
+      "default": "preprinted_micr",
+      "description": "Whether bank/MICR data is preprinted on stock or printed by Elite."
+    },
+    "check_bank_name": {
+      "type": "string"
+    },
+    "check_bank_address": {
+      "type": "string"
+    },
+    "check_routing_number": {
+      "type": "string"
+    },
+    "check_account_number": {
+      "type": "string"
+    },
+    "check_next_number": {
+      "type": "number",
+      "default": 1001
+    },
+    "check_vertical_offset_mm": {
+      "type": "number",
+      "default": 0
+    },
+    "check_horizontal_offset_mm": {
+      "type": "number",
+      "default": 0
+    },
+    "check_logo_width_mm": {
+      "type": "number",
+      "default": 32
     }
   },
   "required": [

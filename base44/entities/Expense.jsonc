@@ -87,6 +87,12 @@
       ],
       "default": "manual",
       "description": "How this expense was created"
+    },
+    "check_number": {
+      "type": "string"
+    },
+    "printed_check_id": {
+      "type": "string"
     }
   },
   "required": [

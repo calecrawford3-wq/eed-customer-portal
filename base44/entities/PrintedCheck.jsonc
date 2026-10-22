@@ -1,0 +1,98 @@
+{
+  "name": "PrintedCheck",
+  "type": "object",
+  "properties": {
+    "check_number": {
+      "type": "string"
+    },
+    "payee": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "memo": {
+      "type": "string"
+    },
+    "expense_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "expense"
+      ],
+      "default": "manual"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "printed",
+        "voided"
+      ],
+      "default": "printed"
+    },
+    "printed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reprint_count": {
+      "type": "number",
+      "default": 0
+    },
+    "voided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "void_reason": {
+      "type": "string"
+    },
+    "stock_mode": {
+      "type": "string",
+      "enum": [
+        "preprinted_micr",
+        "fully_blank"
+      ]
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "layout_snapshot": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "check_number",
+    "payee",
+    "amount",
+    "date",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
