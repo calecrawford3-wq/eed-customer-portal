@@ -10,7 +10,7 @@ import {toast} from 'sonner';
 
 const REASONS=[['core_install','Core install'],['replacement','Replacement'],['customer_swap','Customer swap'],['repair','Repair'],['testing','Testing'],['incorrect_previous_pairing','Incorrect previous pairing'],['other','Other']];
 
-export default function InstallComponentDialog({open,onClose,component,onDone=()=>{}}){
+export default function InstallComponentDialog({open,onClose,component,onDone=(/** @type {any} */ _d)=>{}}){
  const [engineId,setEngineId]=useState(''),[reasonCode,setReasonCode]=useState('core_install'),[reason,setReason]=useState(''),[busy,setBusy]=useState(false);
  const {data:engines=[]}=useQuery({queryKey:['install-component-engines'],queryFn:()=>base44.entities.CustomerEngine.list('-created_date',1000),enabled:open});
  const current=useMemo(()=>engines.find(e=>e.id===component?.current_customer_engine_id)||null,[engines,component?.current_customer_engine_id]);
