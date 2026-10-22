@@ -1,11 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MapPin, CheckCircle2, Clock, AlertTriangle, Package, DollarSign, ArrowRight } from "lucide-react";
 import JobStageMover from "@/components/jobs/JobStageMover";
 import FinishStageButton from "@/components/jobs/FinishStageButton";
 import { billingSummary } from "@/lib/jobBillingStatus";
+import { base44 } from "@/api/base44Client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import ScanMoveLocationDialog from "@/components/scan/ScanMoveLocationDialog";
 
 const STAGE_LABELS = {
   needs_estimate: "Needs Estimate",
@@ -34,11 +39,40 @@ const PARTS_LABELS = {
 };
 
 export default function JobHeader({ job, customer, engine, platform, invoice, invoices, estimate, build }) {
+  const qc = useQueryClient();
+  const [moveLocationOpen, setMoveLocationOpen] = useState(false);
+  const [movingLocation, setMovingLocation] = useState(false);
   const parts = PARTS_LABELS[job.parts_readiness] || PARTS_LABELS.unknown;
   const invList = invoices && invoices.length ? invoices : (invoice ? [invoice] : []);
   const billing = billingSummary(job, estimate, invList);
 
   const nextAction = deriveNextAction(job, billing, build);
+
+  const moveLocation = async (location) => {
+    setMovingLocation(true);
+    try {
+      const res = await base44.functions.invoke("moveIdentityLocation", {
+        job_id: job.id,
+        customer_engine_id: engine?.id || job.customer_engine_id || "",
+        location,
+      });
+      const data = res?.data || res;
+      if (data?.error) throw Error(data.error);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["job", job.id] }),
+        qc.invalidateQueries({ queryKey: ["jobs"] }),
+        qc.invalidateQueries({ queryKey: ["customer-engines"] }),
+        qc.invalidateQueries({ queryKey: ["checked-in-engines"] }),
+        qc.invalidateQueries({ queryKey: ["job-linked", "EngineBuild", job.build_id] }),
+      ]);
+      setMoveLocationOpen(false);
+      toast.success(`Moved to ${location}`);
+    } catch (e) {
+      toast.error("Could not change storage location: " + (e?.message || e));
+    } finally {
+      setMovingLocation(false);
+    }
+  };
 
   return (
     <div className="bg-white border-b border-slate-200 sticky top-14 md:top-12 z-10 print:hidden">
@@ -78,7 +112,12 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
             {job.service_package && <span className="block text-xs text-slate-400 capitalize">{job.service_package.replace("_", " ")}</span>}
           </HeaderCell>
           <HeaderCell label="Location" icon={MapPin}>
-            <span className="text-slate-700">{job.storage_location || "—"}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-700">{job.storage_location || "—"}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-[#e20404]" onClick={() => setMoveLocationOpen(true)}>
+                Change
+              </Button>
+            </div>
           </HeaderCell>
           <HeaderCell label="Approval / Deposit" icon={billing.deposit.state === "received" ? CheckCircle2 : Clock}>
             <span className={cn("text-xs",
@@ -119,6 +158,14 @@ export default function JobHeader({ job, customer, engine, platform, invoice, in
           </div>
         )}
       </div>
+      <ScanMoveLocationDialog
+        open={moveLocationOpen}
+        onClose={() => setMoveLocationOpen(false)}
+        title={`Move ${job.job_number}`}
+        currentLocation={job.storage_location || engine?.storage_location || ""}
+        onConfirm={moveLocation}
+        busy={movingLocation}
+      />
     </div>
   );
 }
