@@ -34,7 +34,7 @@ export default function CustomerCreditsTab({ customer }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.AccountCredit.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.AccountCredit.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer-credits", customer.id] });
       qc.invalidateQueries({ queryKey: ["allAccountCredits"] });

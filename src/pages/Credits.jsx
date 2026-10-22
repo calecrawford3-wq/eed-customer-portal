@@ -57,7 +57,7 @@ export default function Credits() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.AccountCredit.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.AccountCredit.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["allAccountCredits"] }); toast.success("Credit removed"); },
   });
 

@@ -136,7 +136,7 @@ export default function Inventory() {
   });
 
   const deletePartMutation = useMutation({
-    mutationFn: (id) => base44.entities.Part.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Part.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["parts"] }); toast.success("Part deleted"); },
   });
 
@@ -152,7 +152,7 @@ export default function Inventory() {
   });
 
   const deleteLaborMutation = useMutation({
-    mutationFn: (id) => base44.entities.LaborItem.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.LaborItem.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["laborItems"] }); toast.success("Labor item deleted"); },
   });
 
@@ -168,7 +168,7 @@ export default function Inventory() {
   });
 
   const deleteMachiningMutation = useMutation({
-    mutationFn: (id) => base44.entities.MachiningItem.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.MachiningItem.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["machiningItems"] }); toast.success("Machining item deleted"); },
   });
 

@@ -129,7 +129,7 @@ export default function NotificationBell() {
   };
 
   const markReadMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notification.update(id, { is_read: true }),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Notification.update(id, { is_read: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
@@ -147,7 +147,7 @@ export default function NotificationBell() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notification.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Notification.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 

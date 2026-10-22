@@ -24,7 +24,7 @@ export default function WorkflowTemplatesPanel() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.WorkflowTemplate.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.WorkflowTemplate.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workflow-templates"] });
       toast.success("Template deleted");

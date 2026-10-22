@@ -104,7 +104,7 @@ export default function CoreManager() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.EngineCore.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.EngineCore.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["engineCores"] }); toast.success("Core deleted"); },
   });
 

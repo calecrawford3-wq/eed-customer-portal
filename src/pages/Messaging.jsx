@@ -207,7 +207,7 @@ export default function Messaging() {
 
   // Resend failed/unconfirmed message
   const resendMessageMutation = useMutation({
-    mutationFn: async (message) => {
+    mutationFn: /** @param {string} message */ async (message) => {
       const mediaUrls = getMediaUrls(message);
       return base44.functions.invoke("sendVoipSms", {
         to: message.to_number || message.phone_number,

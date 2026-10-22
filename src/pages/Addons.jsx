@@ -49,7 +49,7 @@ export default function Addons() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
   });
   const deleteAddonMut = useMutation({
-    mutationFn: (id) => base44.entities.Addon.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Addon.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["addons"] }),
   });
 
@@ -58,7 +58,7 @@ export default function Addons() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addonCategories"] }); setCategoryDialogOpen(false); setNewCategoryName(""); setNewCategoryDesc(""); toast.success("Category created"); },
   });
   const deleteCatMut = useMutation({
-    mutationFn: (id) => base44.entities.AddonCategory.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.AddonCategory.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addonCategories"] }); qc.invalidateQueries({ queryKey: ["addons"] }); setSelectedCategory(""); },
   });
 

@@ -43,7 +43,7 @@ export default function Suppliers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Supplier.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Supplier.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       toast.success("Supplier deleted");

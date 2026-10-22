@@ -64,7 +64,7 @@ export default function Customers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Customer.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Customer.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Customer deleted");

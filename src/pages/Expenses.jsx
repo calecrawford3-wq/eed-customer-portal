@@ -127,7 +127,7 @@ export default function Expenses() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Expense.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Expense.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
       toast.success("Expense deleted");

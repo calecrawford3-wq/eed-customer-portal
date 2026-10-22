@@ -34,7 +34,7 @@ export default function EmailTemplatesModal({ open, onClose }) {
   });
 
   const delMut = useMutation({
-    mutationFn: (id) => base44.entities.EmailTemplate.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.EmailTemplate.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["email-templates"] }); toast.success("Template deleted"); },
     onError: (e) => toast.error("Delete failed: " + (e?.message || "error")),
   });

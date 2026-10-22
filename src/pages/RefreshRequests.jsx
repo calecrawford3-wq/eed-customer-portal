@@ -53,7 +53,7 @@ export default function RefreshRequests() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.RefreshRequest.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.RefreshRequest.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["refreshRequests"] });
       toast.success("Request removed");

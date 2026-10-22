@@ -68,7 +68,7 @@ export default function CannedJobs() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.CannedJob.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.CannedJob.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cannedJobs"] }),
   });
 

@@ -101,7 +101,7 @@ export default function Platforms() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.EnginePlatform.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.EnginePlatform.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
     },

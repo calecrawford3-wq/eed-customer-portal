@@ -48,7 +48,7 @@ export default function Estimates() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Estimate.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.Estimate.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); toast.success("Estimate deleted"); },
   });
 

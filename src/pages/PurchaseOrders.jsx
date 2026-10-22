@@ -37,7 +37,7 @@ export default function PurchaseOrders() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PurchaseOrder.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.PurchaseOrder.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchaseOrders"] }); toast.success("PO deleted"); },
   });
 

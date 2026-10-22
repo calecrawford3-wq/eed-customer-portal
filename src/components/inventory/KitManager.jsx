@@ -82,7 +82,7 @@ export default function KitManager() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PartKit.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.PartKit.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["partKits"] }); toast.success("Kit deleted"); },
   });
 

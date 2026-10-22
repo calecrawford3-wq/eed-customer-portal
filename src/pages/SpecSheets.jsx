@@ -98,7 +98,7 @@ export default function SpecSheets() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.SpecSheet.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.SpecSheet.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["specSheets"] });
     },

@@ -185,7 +185,7 @@ export default function Builds() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.EngineBuild.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.EngineBuild.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["builds"] }),
   });
 

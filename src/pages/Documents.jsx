@@ -71,7 +71,7 @@ export default function Documents() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.TechnicalDocument.delete(id),
+    mutationFn: /** @param {string} id */ (id) => base44.entities.TechnicalDocument.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Document deleted");
