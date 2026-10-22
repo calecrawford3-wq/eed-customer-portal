@@ -18,7 +18,7 @@ export { reconcileJobFromEstimate, deriveStageAndBlocking, generateJobNumber, co
 async function maxJobSeq(base44) {
   // Find the highest numeric suffix in job_number to avoid collisions.
   // Use a broad query (filter({}) matches nothing in this SDK) and compute max in JS.
-  const res = await base44.entities.Job.filter({ stage: { $in: ["awaiting_approval", "awaiting_deposit", "queued", "teardown", "waiting_on_parts", "machining", "assembly", "testing", "ready_for_pickup", "picked_up"] } });
+  const res = await base44.entities.Job.filter({ stage: { $in: ["needs_estimate", "awaiting_approval", "awaiting_deposit", "queued", "teardown", "waiting_on_parts", "machining", "assembly", "testing", "ready_for_pickup", "picked_up"] } });
   const items = res.items || res || [];
   let max = 100000;
   for (const j of items) {
@@ -51,8 +51,17 @@ function deriveStageAndBlocking(estimate, build, override) {
   const depositMet = isDepositMet(estimate);
 
   // Pre-activation
-  if (estStatus !== "approved") {
+  if (estStatus === "draft" || !estimate?.id) {
+    return { stage: "needs_estimate", blocking: "none", is_active: false };
+  }
+  if (estStatus === "sent") {
     return { stage: "awaiting_approval", blocking: "awaiting_approval", is_active: false };
+  }
+  if (["declined", "expired"].includes(estStatus)) {
+    return { stage: "needs_estimate", blocking: "none", is_active: false };
+  }
+  if (estStatus !== "approved") {
+    return { stage: "needs_estimate", blocking: "none", is_active: false };
   }
   if (estimate.deposit_required && !depositMet) {
     return { stage: "awaiting_deposit", blocking: "awaiting_deposit", is_active: false };
@@ -61,7 +70,7 @@ function deriveStageAndBlocking(estimate, build, override) {
   // Manual override takes precedence for activated jobs. Preserve blocking
   // conditions (e.g. waiting_on_parts) from the build's work_tag so a stage
   // change doesn't clear a valid hold. Terminal stages clear blocking.
-  if (override && override !== "awaiting_approval" && override !== "awaiting_deposit") {
+  if (override && override !== "needs_estimate" && override !== "awaiting_approval" && override !== "awaiting_deposit") {
     let blocking = "none";
     if (build && override !== "ready_for_pickup" && override !== "picked_up") {
       if (build.work_tag === "waiting_on_parts") blocking = "waiting_on_parts";
