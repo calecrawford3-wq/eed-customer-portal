@@ -10,7 +10,7 @@ const blankCar = {name:'',car_number:'',class_name:'',chassis:'',team:'',notes:'
 const blankDriver = {name:'',nickname:'',phone:'',notes:''};
 const tracks = ['Port City Raceway','Sweet Springs Motorsports Complex','Tulsa Speedway','Creek County Speedway','Red Dirt Raceway'];
 const split = (v) => String(v || '').split(',').map(x=>x.trim()).filter(Boolean);
-export default function RacingGarage({customerId,engines=[],onChange,onEditingChange}) {
+export default function RacingGarage({customerId,engines=[],onChange,onEditingChange = () => {}}) {
   const [cars,setCars] = useState([]);
   const [drivers,setDrivers] = useState([]);
   const [kind,setKind] = useState('car');

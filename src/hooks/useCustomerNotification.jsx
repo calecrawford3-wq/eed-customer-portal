@@ -50,7 +50,7 @@ export function useCustomerNotification() {
         base44.entities.AppSettings.filter({ key: "global" }),
       ]);
       customer = custRes;
-      settings = (settingsRes?.items || settingsRes || [])[0] || {};
+      settings = (settingsRes || [])[0] || {};
       pref = settings[prefField] || "ask_me";
     } catch {
       // If we can't fetch, default to ask_me so the admin can still send manually

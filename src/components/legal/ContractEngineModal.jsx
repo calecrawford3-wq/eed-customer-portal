@@ -69,7 +69,7 @@ BUYER AND SELLER KNOWINGLY, VOLUNTARILY, AND INTENTIONALLY WAIVE ANY RIGHT TO TR
 Seller Representative: Cale Crawford | Seller Contact: (918) 310-8532 | Seller Email: Cale@eedpower.com
 `;
 
-export default function ContractEngineModal({ open, onClose, onCreated, estimateId, invoiceId, customerId, buildId, customerEngineId, engineSerialNumber, customerName }) {
+export default function ContractEngineModal({ open, onClose, onCreated, estimateId, invoiceId = null, customerId, buildId, customerEngineId, engineSerialNumber, customerName }) {
   const [sealTagNumbers, setSealTagNumbers] = useState("");
   const [photos, setPhotos] = useState([]); // [{url, name}]
   const [uploadingPhoto, setUploadingPhoto] = useState(false);

@@ -89,7 +89,7 @@ function SectionedItems({ invoice }) {
   );
 }
 
-export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform, specSheet }) {
+export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform, specSheet = null }) {
   if (!invoice || !customer) return null;
 
   const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";

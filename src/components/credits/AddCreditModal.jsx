@@ -30,7 +30,7 @@ const TYPES = [
 
 const dec31ThisYear = () => `${new Date().getFullYear()}-12-31`;
 
-export default function AddCreditModal({ open, onClose, customers, presetCustomerId }) {
+export default function AddCreditModal({ open, onClose, customers, presetCustomerId = null }) {
   const [customerId, setCustomerId] = useState(presetCustomerId || "");
   const [type, setType] = useState("performance");
   const [subtype, setSubtype] = useState("");

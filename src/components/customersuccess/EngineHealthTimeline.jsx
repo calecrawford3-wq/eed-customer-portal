@@ -16,6 +16,7 @@ export default function EngineHealthTimeline({ engineSerialNumber }) {
     enabled: !!engineSerialNumber,
   });
 
+  /** @type {Array<Record<string, any>>} */
   const events = [];
   const deliveryDate = tasks.find((t) => t.delivery_date)?.delivery_date;
   if (deliveryDate) {

@@ -15,7 +15,7 @@ import EngineHealthTimeline from "./EngineHealthTimeline";
 import DriverNotesModal from "./DriverNotesModal";
 import CustomerCreditContext from "./CustomerCreditContext";
 
-export default function CustomerSuccessCallForm({ open, onClose, task, onSaved }) {
+export default function CustomerSuccessCallForm({ open, onClose, task, onSaved = () => {} }) {
   const qc = useQueryClient();
   const [driverNotesOpen, setDriverNotesOpen] = useState(false);
   const [checklist, setChecklist] = useState([]);

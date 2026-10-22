@@ -25,7 +25,7 @@ Customer Signature: _____________________        Date: ___________
 
 `;
 
-export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId, customerId, buildId, customerEngineId }) {
+export default function IllegalPartsModal({ open, onClose, onSigned, estimateId, invoiceId = null, customerId, buildId, customerEngineId }) {
   const [saving, setSaving] = useState(false);
 
   const handleConfirm = async () => {

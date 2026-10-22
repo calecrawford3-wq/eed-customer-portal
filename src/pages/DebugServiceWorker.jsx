@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
 export default function DebugServiceWorker() {
-  const [workers, setWorkers] = useState([]);
-  const [cacheList, setCacheList] = useState([]);
+  const [workers, setWorkers] = useState(/** @type {ServiceWorkerRegistration[]} */ ([]));
+  const [cacheList, setCacheList] = useState(/** @type {ServiceWorkerRegistration[]} */ ([]));
   const [message, setMessage] = useState('');
 
   useEffect(() => {

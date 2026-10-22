@@ -38,7 +38,7 @@ export default function QuickCreatePartModal({ open, onClose, onCreated = () => 
     queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100),
   });
 
-  const reset = () => setForm({ ...empty });
+  const reset = (..._unused) => setForm({ ...empty });
 
   const createMut = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Part.create(data),

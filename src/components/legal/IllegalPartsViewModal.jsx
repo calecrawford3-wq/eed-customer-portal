@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, Clock, Printer, FileText, Tag, Image } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function IllegalPartsViewModal({ open, onClose, estimateId, invoiceId, customerEngineId, documentType, documentId }) {
+export default function IllegalPartsViewModal({ open, onClose, estimateId = null, invoiceId = null, customerEngineId = null, documentType = "", documentId = null }) {
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
 
