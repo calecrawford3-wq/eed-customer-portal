@@ -61,6 +61,21 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   });
   const priorBuild = priorBuildData || null;
 
+  const { data: currentEngineData } = useQuery({
+    queryKey: ["build-component-engine", build?.customer_engine_id],
+    queryFn: async () => (await base44.entities.CustomerEngine.filter({ id: build.customer_engine_id }))?.[0] || null,
+    enabled: !!build?.customer_engine_id,
+  });
+  const { data: currentHeadSpecData } = useQuery({
+    queryKey: ["build-current-head-spec", currentEngineData?.current_head_component_id],
+    queryFn: async () => (await base44.entities.EngineComponentSpecSheet.filter({ component_id: currentEngineData.current_head_component_id }))?.[0] || null,
+    enabled: !!currentEngineData?.current_head_component_id,
+  });
+  const priorLashSource = currentHeadSpecData ? {
+    valve_lash_intake: currentHeadSpecData.last_valve_lash_intake || {},
+    valve_lash_exhaust: currentHeadSpecData.last_valve_lash_exhaust || {},
+  } : priorBuild;
+
   if (!build) {
     return (
       <Card className="border-0 shadow-sm">
@@ -259,7 +274,7 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
           <BuildValveLashTab
             getValveLash={getValveLash}
             handleValveLashChange={handleValveLashChange}
-            priorBuild={priorBuild}
+            priorBuild={priorLashSource}
           />
         </TabsContent>
         <TabsContent value="internal" className="mt-4">
