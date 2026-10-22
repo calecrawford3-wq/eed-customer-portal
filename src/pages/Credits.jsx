@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Plus, Users, Trash2, Search, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { Award, Plus, Users, Trash2, Search, TrendingUp, TrendingDown, Wallet, Clock } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import AddCreditModal from "@/components/credits/AddCreditModal";
@@ -76,17 +76,18 @@ export default function Credits() {
     return true;
   });
 
-  const totalIssued = credits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0);
+  const totalIssued = credits.filter(c => c.amount > 0 && c.status !== "pending").reduce((s, c) => s + c.amount, 0);
+  const pendingTotal = credits.filter(c => c.amount > 0 && c.status === "pending").reduce((s, c) => s + c.amount, 0);
   const totalRedeemed = credits.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0);
 
   const balances = {};
-  credits.forEach(c => { balances[c.customer_id] = (balances[c.customer_id] || 0) + c.amount; });
+  credits.filter(c => c.status === "active").forEach(c => { balances[c.customer_id] = (balances[c.customer_id] || 0) + c.amount; });
   const customerBalances = Object.entries(balances)
     .map(([cid, bal]) => ({ customer_id: cid, balance: bal, name: customerName(cid) }))
     .filter(cb => cb.balance !== 0)
     .sort((a, b) => b.balance - a.balance);
 
-  const filteredBalance = filterCustomerId ? balances[filterCustomerId] || 0 : totalIssued - totalRedeemed;
+  const filteredBalance = filterCustomerId ? balances[filterCustomerId] || 0 : Object.values(balances).reduce((sum, value) => sum + Number(value || 0), 0);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -101,7 +102,7 @@ export default function Credits() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
@@ -122,7 +123,15 @@ export default function Credits() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center"><Wallet className="w-5 h-5 text-violet-600" /></div>
-              <div><p className="text-xs text-slate-500">Outstanding Balance</p><p className="text-xl font-bold text-slate-900">${(totalIssued - totalRedeemed).toFixed(2)}</p></div>
+              <div><p className="text-xs text-slate-500">Available Balance</p><p className="text-xl font-bold text-slate-900">${Object.values(balances).reduce((sum, value) => sum + Number(value || 0), 0).toFixed(2)}</p></div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center"><Clock className="w-5 h-5 text-amber-700" /></div>
+              <div><p className="text-xs text-slate-500">Pending Referrals</p><p className="text-xl font-bold text-amber-700">${pendingTotal.toFixed(2)}</p></div>
             </div>
           </CardContent>
         </Card>
@@ -188,6 +197,7 @@ export default function Credits() {
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Subtype / Description</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Amount</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Expires</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -203,6 +213,7 @@ export default function Credits() {
                   </td>
                   <td className={`px-4 py-3 text-right font-bold ${c.amount >= 0 ? "text-emerald-600" : "text-red-600"}`}>{c.amount >= 0 ? "+" : "−"}${Math.abs(c.amount).toFixed(2)}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{c.date ? new Date(c.date).toLocaleDateString() : "—"}</td>
+                  <td className="px-4 py-3"><Badge className={c.status === "pending" ? "bg-amber-100 text-amber-700 border-0" : c.status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-slate-100 text-slate-600 border-0"}>{c.status || "active"}</Badge>{c.pending_reason && <span className="block text-[10px] text-slate-400 mt-1 max-w-52">{c.pending_reason}</span>}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{c.expires_on ? new Date(c.expires_on).toLocaleDateString() : "—"}</td>
                   <td className="px-4 py-3">
                     <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>

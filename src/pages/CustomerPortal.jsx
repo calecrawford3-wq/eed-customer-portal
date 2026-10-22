@@ -877,10 +877,11 @@ export default function CustomerPortal() {
             {(() => {
               const today = new Date().toISOString().split("T")[0];
               const sorted = [...credits].sort((a, b) => new Date(b.date || b.created_date || 0).getTime() - new Date(a.date || a.created_date || 0).getTime());
-              const activeCredits = sorted.filter(c => !c.expires_on || c.expires_on >= today);
+              const activeCredits = sorted.filter(c => c.status === "active" && (!c.expires_on || c.expires_on >= today));
               const expiredCredits = sorted.filter(c => c.expires_on && c.expires_on < today);
               const available = activeCredits.reduce((s, c) => s + (c.amount || 0), 0);
-              const totalEarned = sorted.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0);
+              const totalEarned = sorted.filter(c => c.amount > 0 && c.status !== "pending").reduce((s, c) => s + c.amount, 0);
+              const pendingCredits = sorted.filter(c => c.amount > 0 && c.status === "pending").reduce((s, c) => s + c.amount, 0);
               const totalRedeemed = sorted.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0);
               const expiredValue = expiredCredits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0);
               const TYPE_STYLES = { performance: "bg-amber-100 text-amber-700", referral: "bg-violet-100 text-violet-700", manual: "bg-slate-100 text-slate-600", redemption: "bg-red-100 text-red-700", other: "bg-slate-100 text-slate-600" };
@@ -895,7 +896,7 @@ export default function CustomerPortal() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="border-0 shadow-sm bg-white">
                       <CardContent className="p-5">
                         <div className="flex items-center gap-3 mb-2">
@@ -921,6 +922,15 @@ export default function CustomerPortal() {
                           <span className="text-sm text-slate-500">Redeemed</span>
                         </div>
                         <p className="text-2xl font-bold text-slate-900">${totalRedeemed.toFixed(2)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-sm bg-white">
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="bg-amber-100 p-2 rounded-lg"><Clock className="w-4 h-4 text-amber-700" /></div>
+                          <span className="text-sm text-slate-500">Pending Referral</span>
+                        </div>
+                        <p className="text-2xl font-bold text-amber-700">${pendingCredits.toFixed(2)}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -958,6 +968,7 @@ export default function CustomerPortal() {
                                 <td className="px-4 py-3 text-slate-600">
                                   {c.subtype && <span className="font-medium text-slate-700">{c.subtype}</span>}
                                   {c.description && <span className="text-slate-500 text-xs block">{c.description}</span>}
+                                  {c.status === "pending" && <span className="text-amber-700 text-xs block font-medium">Pending until the referred customer's first engine-build payment</span>}
                                 </td>
                                 <td className={`px-4 py-3 text-right font-bold ${c.amount >= 0 ? "text-emerald-600" : "text-red-600"}`}>{c.amount >= 0 ? "+" : "−"}${Math.abs(c.amount).toFixed(2)}</td>
                                 <td className="px-4 py-3 text-xs">
