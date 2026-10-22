@@ -41,17 +41,17 @@ export default function GlobalBarcodeListener() {
           base44.entities.EngineBuild.filter({ engine_serial_number: code }),
           base44.entities.Job.filter({ job_number: code }),
         ]);
-        const parts = partsRes.items || partsRes || [];
-        const cores = coresRes.items || coresRes || [];
-        const builds = buildsRes.items || buildsRes || [];
-        const jobs = jobsRes.items || jobsRes || [];
+        const parts = partsRes || [];
+        const cores = coresRes || [];
+        const builds = buildsRes || [];
+        const jobs = jobsRes || [];
 
         const found = parts.length + cores.length + builds.length + jobs.length;
 
         if (found === 0) {
           // Fallback: try storage location lookup (engines at this location)
           const locRes = await base44.entities.EngineBuild.filter({ storage_location: code });
-          const locBuilds = locRes.items || locRes || [];
+          const locBuilds = locRes || [];
           if (locBuilds.length > 0) {
             locBuilds.forEach(b => {
               toast.success(`${b.engine_serial_number} — ${b.eed_id || "No EED ID"}`, {

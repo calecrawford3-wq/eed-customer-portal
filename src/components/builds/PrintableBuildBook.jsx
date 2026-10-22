@@ -15,6 +15,7 @@ const SPEC_TYPES = [
   { value: "contract", label: "Contract" }, { value: "custom", label: "Custom" },
 ];
 
+/** @returns {React.CSSProperties} */
 const sectionTitle = (label) => ({
   fontSize: "13px", fontWeight: "bold", textTransform: "uppercase",
   color: "#e20404", borderBottom: "1px solid #ddd", paddingBottom: "6px",
@@ -22,6 +23,7 @@ const sectionTitle = (label) => ({
 });
 
 const card = { padding: "10px", backgroundColor: "#fff", border: "1px solid #ddd", borderRadius: "4px" };
+/** @type {React.CSSProperties} */
 const labelStyle = { fontSize: "10px", color: "#666", textTransform: "uppercase", marginBottom: "2px" };
 const valueStyle = { fontSize: "14px", fontWeight: "600" };
 

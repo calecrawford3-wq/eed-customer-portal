@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import PartzillaBrowser from "@/components/PartzillaBrowser";
 
+/** @param {{label?:string,size?:"default"|"sm"|"lg"|"icon",className?:string,onImported?:Function}} props */
 export default function PartzillaBrowseButton({ label = "Browse Catalog", size = "sm", className = "", onImported }) {
   const [open, setOpen] = useState(false);
 
