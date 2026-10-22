@@ -28,7 +28,7 @@ export default function BarcodeScan() {
     setResults([]);
     setQtyInputs({});
     try {
-      const [parts, cores, caseTags, caseIds, headTags, headCodes] = await Promise.all([
+      const [partsExact, cores, caseTags, caseIds, headTags, headCodes] = await Promise.all([
         base44.entities.Part.filter({ part_number: clean }),
         base44.entities.EngineCore.filter({ core_number: clean }),
         base44.entities.CustomerEngine.filter({ tag_code: clean }),
@@ -36,6 +36,8 @@ export default function BarcodeScan() {
         base44.entities.EngineComponent.filter({ tag_code: clean }),
         base44.entities.EngineComponent.filter({ component_code: clean }),
       ]);
+      let parts = partsExact || [];
+      if (!parts.length && clean.length > 11) parts = await base44.entities.Part.filter({ part_number: clean.slice(0, 11) });
       const found = [];
       parts.forEach((p) => found.push({ type: "part", item: p }));
       cores.forEach((c) => found.push({ type: "core", item: c }));

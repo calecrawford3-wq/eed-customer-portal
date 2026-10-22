@@ -1,6 +1,6 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
+import {matchesCaseScan,matchesHeadScan} from '../../shared/componentVerification.ts';
 const rows=(v:any)=>Array.isArray(v)?v:v?.items||[];
-const norm=(v:any)=>String(v||'').trim().toLowerCase();
 
 Deno.serve(async req=>{try{
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
@@ -11,7 +11,7 @@ Deno.serve(async req=>{try{
  if(!engine.tag_code){return Response.json({error:'Engine laser identity is not initialized yet. Initialize tags before verification.',needs_identity:true},{status:400});}
  const step=body.step;const code=String(body.code||'').trim();if(!code)return Response.json({error:'Scan code required'},{status:400});
  if(step==='case'){
-   const ok=[engine.tag_code,engine.eed_id,engine.engine_serial_number].some(v=>norm(v)===norm(code));
+   const ok=matchesCaseScan(engine,code);
    if(!ok){
      const scanned=rows(await service.entities.CustomerEngine.filter({tag_code:code}))[0]||rows(await service.entities.CustomerEngine.filter({eed_id:code}))[0]||rows(await service.entities.CustomerEngine.filter({engine_serial_number:code}))[0]||null;
      await service.entities.JobComponentVerification.create({job_id:job.id,customer_engine_id:engine.id,expected_case_tag_code:engine.tag_code,scanned_case_tag_code:scanned?.tag_code||code,expected_head_component_id:engine.current_head_component_id||'',status:'failed_case',case_verified:false,head_verified:false,verified_at:new Date().toISOString(),notes:scanned?`Wrong case scanned: ${scanned.eed_id||scanned.engine_serial_number}`:'Unrecognized case scan'});
@@ -23,7 +23,7 @@ Deno.serve(async req=>{try{
    if(!engine.current_head_component_id)return Response.json({error:'No cylinder head is currently paired to this engine.',needs_head_pairing:true},{status:400});
    const expected=rows(await service.entities.EngineComponent.filter({id:engine.current_head_component_id}))[0];if(!expected)return Response.json({error:'Expected cylinder head record was not found.'},{status:404});
    const scanned=rows(await service.entities.EngineComponent.filter({tag_code:code}))[0]||rows(await service.entities.EngineComponent.filter({component_code:code}))[0]||null;
-   const ok=!!scanned&&scanned.id===expected.id;
+   const ok=matchesHeadScan(expected,scanned);
    if(!ok){
      await service.entities.JobComponentVerification.create({job_id:job.id,customer_engine_id:engine.id,expected_case_tag_code:engine.tag_code,scanned_case_tag_code:body.case_code||engine.tag_code,expected_head_component_id:expected.id,expected_head_code:expected.component_code,scanned_head_component_id:scanned?.id||'',scanned_head_code:scanned?.component_code||code,status:'failed_head',case_verified:true,head_verified:false,verified_at:new Date().toISOString(),notes:scanned?`Wrong head scanned: ${scanned.component_code}`:'Unrecognized head scan'});
      return Response.json({success:false,match:false,step:'head',expected:{id:expected.id,component_code:expected.component_code,tag_code:expected.tag_code},scanned:scanned?{id:scanned.id,component_code:scanned.component_code,tag_code:scanned.tag_code,current_customer_engine_id:scanned.current_customer_engine_id}:null,engine:{id:engine.id,eed_id:engine.eed_id}});
