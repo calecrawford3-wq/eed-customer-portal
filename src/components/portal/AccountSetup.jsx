@@ -20,7 +20,7 @@ export function accountContactComplete(c) {
 }
 export default function AccountSetup({ customer, engines = [], onSaved, onClose, onStartTour, initialSection = 'contact' }) {
   const setupTopRef = useRef(null);
-  const [form,setForm] = useState({});
+  const [form,setForm] = useState(/** @type {Record<string, any>} */ ({}));
   const [same,setSame] = useState(false);
   const [section,setSection] = useState(initialSection);
   const [garageEditing,setGarageEditing] = useState(false);
@@ -49,6 +49,7 @@ export default function AccountSetup({ customer, engines = [], onSaved, onClose,
     finally {setSaving(false);}
   };
   const saveContact = async () => {
+    /** @type {Record<string, any>} */
     const patch = Object.fromEntries(fields.map(([key]) => [key,String(form[key] || '').trim()]));
     if (same) Object.assign(patch,{
       shipping_address_line1:patch.address_line1,shipping_address_line2:patch.address_line2,
