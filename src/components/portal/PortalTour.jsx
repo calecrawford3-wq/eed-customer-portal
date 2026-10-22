@@ -5,13 +5,10 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 // Each step points at a real control in CustomerPortal. The selected tab is
 // changed first, then the spotlight follows the control even on narrow screens.
 const steps = [
-  {title:'My Engines', target:'engines', tab:'engines', body:'This is where your engines and their service history appear. Select My Engines whenever you want to review an engine. It is normal for this section to be empty before Elite assigns one.'},
-  {title:'Engine Builds', target:'builds', tab:'builds', body:'Open Engine Builds to follow work on your engines and view available build details and documentation.'},
-  {title:'Estimates & Approvals', target:'estimates', tab:'estimates', body:'When Elite sends you an estimate, open this tab to review the work and approve or decline it.'},
-  {title:'Invoices & Payments', target:'invoices', tab:'invoices', body:'Find your invoices, review balances and use the secure payment options here.'},
-  {title:'Findings & Inspections', target:'findings', tab:'findings', body:'Inspection findings, supporting photos and work requiring your attention are found here.'},
-  {title:'My Account', target:'account', tab:null, body:'Use My Account to update your contact information, racing preferences and notification settings.'},
-  {title:'Cars & Drivers', target:'garage', tab:null, body:'Use Cars & Drivers to add cars, drivers and chassis details, and associate your engines with cars without changing shop ownership.'},
+  {title:'Home', target:'home', tab:'home', body:'Home shows the things that need your attention first, including approvals and payments, so you do not have to hunt through the portal.'},
+  {title:'My Engines', target:'engines', tab:'engines', body:'My Engines keeps each engine and its build history together. Use the Engines and Build History controls inside this section when you want more detail.'},
+  {title:'Documents & Payments', target:'documents', tab:'invoices', body:'Estimates, inspection findings, invoices, payments, credits and tax records are grouped here. Use the smaller category buttons to move between them.'},
+  {title:'Account', target:'account', tab:'account', body:'Account contains your contact information, notification and security settings, cars and drivers, and saved payment settings.'},
 ];
 const locate = target => document.querySelector('[data-tour="' + target + '"]');
 

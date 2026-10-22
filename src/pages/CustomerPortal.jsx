@@ -65,7 +65,9 @@ export default function CustomerPortal() {
   const signOutToPortal = () => base44.auth.logout(portalSignInUrl);
   const [searchParams, setSearchParams] = useSearchParams();
   const [portalDocument, setPortalDocument] = useState(null);
-  const [portalTab, setPortalTab] = useState('engines');
+  const [portalTab, setPortalTab] = useState('home');
+  const portalSection = ['engines','builds'].includes(portalTab) ? 'engines' : ['invoices','estimates','findings','credits','tax'].includes(portalTab) ? 'documents' : portalTab;
+  const goPortalSection = section => setPortalTab(section === 'documents' ? 'invoices' : section === 'engines' ? 'engines' : section);
   useEffect(() => {
     const type = searchParams.get('document');
     const id = searchParams.get('id');
@@ -75,7 +77,7 @@ export default function CustomerPortal() {
     } else {
       setPortalDocument(null);
       const tab = searchParams.get('tab');
-      if (['engines', 'builds', 'invoices', 'estimates', 'findings', 'credits', 'tax'].includes(tab)) setPortalTab(tab);
+      if (['home','account','engines', 'builds', 'invoices', 'estimates', 'findings', 'credits', 'tax'].includes(tab)) setPortalTab(tab);
     }
   }, [searchParams]);
   const openDocument = (type, id) => {
@@ -456,11 +458,9 @@ export default function CustomerPortal() {
         </div>
 
         {user?.role !== 'admin' && (!customer?.onboarding_profile_completed || accountSetupOpen) && <div className="mb-6">{accountSetupOpen ? <AccountSetup customer={customer} engines={customerEngines} initialSection={accountSetupSection} onSaved={async () => { await qc.invalidateQueries({queryKey:['portal-data']}); }} onStartTour={()=>{setAccountSetupOpen(false);setTourFromOnboarding(true);setTourOpen(true);}} onClose={()=>{setAccountSetupOpen(false);setAccountSetupSection('contact');}} /> : <Card className="border-red-100"><CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><p className="font-semibold">{accountContactComplete(customer) ? 'My Account' : 'Account setup'}</p><p className="text-sm text-slate-600">{accountContactComplete(customer) ? 'Review your profile and racing information whenever you like.' : 'Confirm your contact information. You can still use all estimates, approvals and payments.'}</p></div><Button onClick={()=>setAccountSetupOpen(true)}>{accountContactComplete(customer) ? 'Review profile' : 'Continue setup'}</Button></CardContent></Card>}</div>}
-        {user?.role !== 'admin' && <div className="mb-6 flex flex-wrap gap-2"><span data-tour="account"><Button variant="outline" onClick={()=>{setAccountSetupSection('contact');setAccountSetupOpen(v=>!v);setGarageOpen(false);setTourOpen(false);setTourFromOnboarding(false);}}>My Account</Button></span><span data-tour="garage"><Button variant="outline" onClick={()=>{setGarageOpen(v=>!v);setAccountSetupOpen(false);setTourOpen(false);}}>Cars & drivers</Button></span><Button variant="outline" onClick={()=>{setTourFromOnboarding(false);setTourOpen(v=>!v);setAccountSetupOpen(false);setGarageOpen(false);}}>Portal tour</Button></div>}
-        {user?.role !== 'admin' && customer?.id && portalTab === 'invoices' && <div className="mb-5"><CardOnFileSettings /></div>}
-        {user?.role !== 'admin' && garageOpen && <div className="mb-6"><RacingGarage customerId={customer.id} engines={customerEngines} onChange={()=>qc.invalidateQueries({queryKey:['portal-data']})} /></div>}
+        {user?.role !== 'admin' && <div className="mb-4 flex justify-end"><Button variant="ghost" size="sm" onClick={()=>{setTourFromOnboarding(false);setTourOpen(v=>!v);}}>Portal tour</Button></div>}
         {user?.role !== 'admin' && tourOpen && <div className="mb-6"><PortalTour onNavigate={setPortalTab} onFinish={async()=>{try{const response=await base44.functions.invoke('updateCustomerProfile',{onboarding_tour_completed:true,onboarding_tour_skipped:false});if(response?.data?.error)throw Error(response.data.error);await qc.invalidateQueries({queryKey:['portal-data']});toast.success('Tour complete');if(tourFromOnboarding)showOnboardingSecurity();else setTourOpen(false);}catch{toast.error('Could not save tour progress');}}} onClose={async()=>{if(tourFromOnboarding){try{const response=await base44.functions.invoke('updateCustomerProfile',{onboarding_tour_skipped:true});if(response?.data?.error)throw Error(response.data.error);await qc.invalidateQueries({queryKey:['portal-data']});showOnboardingSecurity();}catch{toast.error('Could not save tour preference');}}else setTourOpen(false);}}/></div>}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {portalSection === 'home' && <div data-tour="home-summary" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="border-0 shadow-sm bg-white">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-2">
@@ -496,26 +496,31 @@ export default function CustomerPortal() {
               </p>
             </CardContent>
           </Card>
-        </div>
+        </div>}
 
-        <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+        {portalSection === 'home' && <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 space-y-3">
           <h2 className="font-semibold text-slate-900">What would you like to do?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Button variant="outline" className="min-h-11 whitespace-normal" onClick={() => setPortalTab('estimates')}>Review Estimates</Button>
             <Button variant="outline" className="min-h-11 whitespace-normal" onClick={() => setPortalTab('findings')}>Review Findings & Approvals</Button>
             <Button className="min-h-11 whitespace-normal bg-[#e20404] hover:bg-red-700" onClick={() => setPortalTab('invoices')}>View & Pay Invoices</Button>
           </div>
-        </section>
+        </section>}
+        <div className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-slate-200 bg-white p-1" aria-label="Portal navigation">
+          <button data-tour="home" onClick={()=>goPortalSection('home')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='home'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Home</button>
+          <button data-tour="engines" onClick={()=>goPortalSection('engines')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='engines'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>My Engines</button>
+          <button data-tour="documents" onClick={()=>goPortalSection('documents')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='documents'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Documents & Payments</button>
+          <button data-tour="account" onClick={()=>goPortalSection('account')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='account'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Account</button>
+        </div>
+        {portalSection === 'engines' && <div className="mb-4 flex gap-2"><Button size="sm" variant={portalTab==='engines'?'default':'outline'} onClick={()=>setPortalTab('engines')}>Engines</Button><Button size="sm" variant={portalTab==='builds'?'default':'outline'} onClick={()=>setPortalTab('builds')}>Build History</Button></div>}
+        {portalSection === 'documents' && <div className="mb-4 flex gap-2 overflow-x-auto pb-1"><Button size="sm" variant={portalTab==='invoices'?'default':'outline'} onClick={()=>setPortalTab('invoices')}>Invoices</Button><Button size="sm" variant={portalTab==='estimates'?'default':'outline'} onClick={()=>setPortalTab('estimates')}>Estimates</Button><Button size="sm" variant={portalTab==='findings'?'default':'outline'} onClick={()=>setPortalTab('findings')}>Findings</Button><Button size="sm" variant={portalTab==='credits'?'default':'outline'} onClick={()=>setPortalTab('credits')}>Credits</Button><Button size="sm" variant={portalTab==='tax'?'default':'outline'} onClick={()=>setPortalTab('tax')}>Tax</Button></div>}
         <Tabs value={portalTab} onValueChange={setPortalTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:flex-wrap [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:break-words [&>button]:px-2">
-            <TabsTrigger data-tour="engines" value="engines">My Engines ({customerEngines.length})</TabsTrigger>
-            <TabsTrigger data-tour="builds" value="builds">Engine Builds ({builds.length})</TabsTrigger>
-            <TabsTrigger data-tour="invoices" value="invoices">Invoices ({invoices.length})</TabsTrigger>
-            <TabsTrigger data-tour="estimates" value="estimates">Estimates ({estimates.length})</TabsTrigger>
-            <TabsTrigger data-tour="findings" value="findings">Findings</TabsTrigger>
-            <TabsTrigger value="credits">Credits</TabsTrigger>
-            <TabsTrigger value="tax">Tax Statement</TabsTrigger>
-          </TabsList>
+          <TabsContent value="home" className="mt-0">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="font-bold text-slate-900">Your Elite portal</h2>
+              <p className="mt-1 text-sm text-slate-600">Use Home for what needs attention. My Engines keeps engine and build history together. Documents & Payments contains approvals, estimates, findings, invoices, credits and tax records.</p>
+            </div>
+          </TabsContent>
 
           {/* ─── My Engines ─── */}
           <TabsContent value="engines">
@@ -1040,6 +1045,20 @@ export default function CustomerPortal() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="account" className="mt-0">
+            <div className="space-y-4">
+              <section className="rounded-xl border border-slate-200 bg-white p-4" data-tour="account-profile">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Account details</h2><p className="text-sm text-slate-600">Contact information, notification preferences and account security.</p></div><Button onClick={()=>{setAccountSetupSection('contact');setAccountSetupOpen(v=>!v);setGarageOpen(false);}}>{accountSetupOpen?'Hide details':'Edit account'}</Button></div>
+                {accountSetupOpen && <div className="mt-4"><AccountSetup customer={customer} engines={customerEngines} initialSection={accountSetupSection} onSaved={async()=>{await qc.invalidateQueries({queryKey:['portal-data']});}} onStartTour={()=>{setTourFromOnboarding(false);setTourOpen(true);}} onClose={()=>setAccountSetupOpen(false)}/></div>}
+              </section>
+              <section className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Cars & drivers</h2><p className="text-sm text-slate-600">Manage chassis, drivers and which engine is associated with each car.</p></div><Button variant="outline" onClick={()=>{setGarageOpen(v=>!v);setAccountSetupOpen(false);}}>{garageOpen?'Hide garage':'Manage garage'}</Button></div>
+                {garageOpen && <div className="mt-4"><RacingGarage customerId={customer.id} engines={customerEngines} onChange={()=>qc.invalidateQueries({queryKey:['portal-data']})}/></div>}
+              </section>
+              {user?.role !== 'admin' && <section className="rounded-xl border border-slate-200 bg-white p-4"><h2 className="font-bold text-slate-900 mb-3">Payment settings</h2><CardOnFileSettings/></section>}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
