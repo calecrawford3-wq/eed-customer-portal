@@ -64,7 +64,7 @@ export default function Customers() {
         return base44.entities.Customer.update(editing.id, data);
       } else {
         const driverId = parseMyRacePassDriverId(data.myracepass_profile_url);
-        const payload = { ...data, myracepass_driver_id: driverId, myracepass_sync_status: driverId ? "ready" : "not_connected" };
+        const payload = /** @type {Record<string, any>} */ ({ ...data, myracepass_driver_id: driverId, myracepass_sync_status: driverId ? "ready" : "not_connected" });
         const newCustomer = await base44.entities.Customer.create(payload);
         let referralWarning = "";
         if (payload.referred_by_customer_id) {

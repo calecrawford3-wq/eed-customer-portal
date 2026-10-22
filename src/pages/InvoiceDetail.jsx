@@ -245,7 +245,7 @@ export default function InvoiceDetail() {
   });
 
   const existingCreditRedemption = customerCredits.find(c => c.linked_invoice_id === id && c.type === "redemption");
-  const availableCreditBalance = customerCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
+  const availableCreditBalance = customerCredits.filter(c => c.status === "active").reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
 
   useEffect(() => {
     if (form.customer_id && isNew && availableCreditBalance > 0) {
@@ -722,8 +722,12 @@ export default function InvoiceDetail() {
     const status = balance <= 0 ? "paid" : "partial";
     const recalcTotals = recalc(form.line_items, form.labor_items || [], form.machining_items || [], form.tax_rate, paid, form.applied_credits, form.discount_type || "none", form.discount_value || 0);
     const updated = { ...form, payments: updatedPayments, amount_paid: paid, balance_due: balance, status, ...recalcTotals };
-    await saveMutation.mutateAsync(updated);
+    const saved = await saveMutation.mutateAsync(updated);
     setForm(updated);
+    const savedId = id || saved?.id;
+    if (savedId) {
+      try { await base44.functions.invoke("releaseReferralCreditForPayment", { invoice_id: savedId }); qc.invalidateQueries({queryKey:["allAccountCredits"]}); } catch { /* payment itself remains valid */ }
+    }
     toast.success("Payment recorded");
   };
 

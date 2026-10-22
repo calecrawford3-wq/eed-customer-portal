@@ -188,7 +188,7 @@ export default function EstimateDetail() {
   });
 
   const existingCreditRedemption = customerCredits.find(c => c.linked_estimate_id === id && c.type === "redemption");
-  const availableCreditBalance = customerCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
+  const availableCreditBalance = customerCredits.filter(c => c.status === "active").reduce((s, c) => s + (Number(c.amount) || 0), 0) - (existingCreditRedemption ? Number(existingCreditRedemption.amount) || 0 : 0);
 
   useEffect(() => {
     if (form.customer_id && isNew && availableCreditBalance > 0) {
