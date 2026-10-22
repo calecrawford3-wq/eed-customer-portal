@@ -59,6 +59,19 @@
     },
     "notes": {
       "type": "string"
+    },
+    "tag_code": {
+      "type": "string",
+      "description": "Immutable internal scan code laser-engraved on the case/bottom-end identity tag."
+    },
+    "current_head_component_id": {
+      "type": "string",
+      "description": "Currently paired EngineComponent record for the cylinder head."
+    },
+    "identity_initialized_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When permanent engine/component tag identities were initialized."
     }
   },
   "required": [

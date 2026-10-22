@@ -1,0 +1,14 @@
+{
+  "name": "initializeEngineIdentity",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Initialize permanent engine and head tags",
+      "type": "entity",
+      "entity_name": "CustomerEngine",
+      "event_types": ["create"],
+      "description": "Assign a permanent case scan code, create a random cylinder-head identity, and pair it to every new engine.",
+      "is_active": true
+    }
+  ]
+}

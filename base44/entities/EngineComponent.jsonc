@@ -1,0 +1,72 @@
+{
+  "name": "EngineComponent",
+  "type": "object",
+  "properties": {
+    "component_code": {
+      "type": "string",
+      "description": "Permanent human-readable component identity, e.g. HD-482731."
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head"
+      ],
+      "description": "Serialized engine component type."
+    },
+    "tag_code": {
+      "type": "string",
+      "description": "Immutable internal scan code encoded on the laser tag."
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Engine platform this component was created for, when known."
+    },
+    "origin_customer_engine_id": {
+      "type": "string",
+      "description": "Engine this component was first created with."
+    },
+    "current_customer_engine_id": {
+      "type": "string",
+      "description": "Bottom end/case this component is currently paired to; blank when unpaired."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "paired",
+        "unpaired",
+        "retired"
+      ],
+      "default": "unpaired"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "component_code",
+    "component_type",
+    "tag_code"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

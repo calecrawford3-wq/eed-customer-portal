@@ -1,0 +1,73 @@
+{
+  "name": "EngineComponentPairing",
+  "type": "object",
+  "properties": {
+    "component_id": {
+      "type": "string",
+      "description": "EngineComponent record ID."
+    },
+    "component_code": {
+      "type": "string",
+      "description": "Component code snapshot."
+    },
+    "customer_engine_id": {
+      "type": "string",
+      "description": "CustomerEngine case/bottom-end record ID."
+    },
+    "engine_eed_id": {
+      "type": "string",
+      "description": "EED ID snapshot of the paired bottom end."
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Job active when pairing occurred, when applicable."
+    },
+    "paired_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unpaired_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "historical"
+      ],
+      "default": "active"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Optional reason for pairing/change."
+    }
+  },
+  "required": [
+    "component_id",
+    "customer_engine_id",
+    "paired_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
