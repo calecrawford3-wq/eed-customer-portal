@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 export default function JobNextAction({ job, estimate, onIntake, onNavigate }) {
   let title='Review job'; let detail='Open the job overview and continue from the current status.'; let label='Open Overview'; let action=()=>onNavigate('overview');
   if (job?.customer_engine_id && !job?.estimate_id) { title='Create or link the estimate'; detail='The engine is checked in, but the job cannot advance until an estimate is connected.'; label='Create Estimate'; action=onIntake; }
+  else if (job?.stage === 'needs_estimate' || !estimate || estimate?.status === 'draft') { title='Estimate is next'; detail='Create or finish the estimate, then send it to the customer.'; label='Open Estimate'; action=()=>onNavigate('billing','estimate'); }
   else if (job?.stage === 'awaiting_approval' || estimate?.status === 'sent') { title='Customer approval is next'; detail='Review the estimate status and follow up with the customer if needed.'; label='Open Estimate'; action=()=>onNavigate('billing','estimate'); }
   else if (job?.stage === 'awaiting_deposit') { title='Deposit is next'; detail='Review payment status before releasing the job into active shop work.'; label='Open Billing'; action=()=>onNavigate('billing','invoice'); }
   else if (job?.stage === 'teardown') { title='Record teardown findings'; detail='Document findings and anything that needs customer approval before continuing.'; label='Open Findings'; action=()=>onNavigate('findings'); }
