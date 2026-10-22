@@ -22,7 +22,7 @@ const STATUS_STYLES = {
 
 export default function RefreshRequests() {
   const qc = useQueryClient();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");

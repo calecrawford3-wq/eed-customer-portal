@@ -4,6 +4,7 @@
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
+/** @param {{stages:any[],customer:any,settings?:Record<string,any>,url:string}} args */
 export function buildComparisonEmailHtml({ stages, customer, settings = {}, url }) {
   const stageRows = stages
     .map(
