@@ -17,7 +17,7 @@ function getAudioContext() {
   if (!audioCtx) {
     try {
       audioCtx = new (window.AudioContext ||
-        window.webkitAudioContext)();
+        /** @type {any} */ (window).webkitAudioContext)();
     } catch (e) {
       return null;
     }

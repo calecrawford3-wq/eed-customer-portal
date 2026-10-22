@@ -35,7 +35,7 @@ const SPEC_TYPES = [
 // saving and printing, so the user never leaves the Job Card.
 export default function JobBuildTab({ job, build, platform, customer, customers, platforms }) {
   const qc = useQueryClient();
-  const [localChanges, setLocalChanges] = useState({});
+  const [localChanges, setLocalChanges] = useState(/** @type {Record<string, any>} */ ({}));
   const [showBarcodeVerify, setShowBarcodeVerify] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);

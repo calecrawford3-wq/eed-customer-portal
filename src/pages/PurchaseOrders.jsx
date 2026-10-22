@@ -24,7 +24,7 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const qc = useQueryClient();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["purchaseOrders"],

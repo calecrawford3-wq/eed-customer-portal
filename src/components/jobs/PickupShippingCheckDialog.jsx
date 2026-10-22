@@ -42,10 +42,10 @@ export default function PickupShippingCheckDialog({ job, open, onClose, onFinali
     queryKey: ["pickup-check-invoices", job?.build_id, job?.invoice_ids],
     queryFn: async () => {
       let res = await base44.entities.Invoice.filter({ build_id: job.build_id });
-      let items = res.items || res || [];
+      let items = res || [];
       if (items.length === 0 && job.invoice_ids?.length) {
         res = await base44.entities.Invoice.filter({ id: { $in: job.invoice_ids } });
-        items = res.items || res || [];
+        items = res || [];
       }
       return items;
     },

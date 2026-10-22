@@ -29,7 +29,7 @@ export default function LocationBoard({
     queryKey: ["app-settings"],
     queryFn: async () => {
       const res = await base44.entities.AppSettings.filter({ key: "global" });
-      return res.items || res || [];
+      return res || [];
     },
   });
 

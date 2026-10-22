@@ -29,7 +29,7 @@ export default function CalendarWeekView({ weekStart, byDate, buildBlockedDates,
                     <p className={`text-lg font-semibold ${isToday ? "text-[#e20404]" : "text-slate-700"}`}>{d.getDate()}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {buildBlockedDates?.has(ds) && <Lock className="w-3 h-3 text-slate-300" title="Build cooldown" />}
+                    {buildBlockedDates?.has(ds) && <Lock className="w-3 h-3 text-slate-300" />}
                     <button onClick={() => onNew(ds)} className="text-slate-300 hover:text-[#e20404]"><span className="text-lg leading-none">+</span></button>
                   </div>
                 </div>

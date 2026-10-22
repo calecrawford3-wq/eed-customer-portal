@@ -159,7 +159,6 @@ export default function OktapFilingWizard({ open, onOpenChange, year, invoices, 
       totalExemptions, stateTax, cityCountyTax, totalTaxDue,
       unclassifiedCount, periodLabel,
       inventoryConsumed: 0, foodSales: 0,
-      cityCountyTax,
       jurisdictionData: Object.values(jurisdictionMap),
     };
   }, [invoiceDetails, jurisdictions, custName, year, selectedMonth]);

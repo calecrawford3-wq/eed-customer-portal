@@ -53,7 +53,7 @@ export default function FindingEditor({ job, finding, onClose, onSaved }) {
     setPartSearch(q);
     if (q.length < 2) { setPartResults([]); return; }
     const res = await base44.entities.Part.filter({ name: { $regex: q, $options: "i" } }, "-created_date", 10);
-    setPartResults(res.items || res || []);
+    setPartResults(res || []);
   };
 
   const addPart = (p) => {

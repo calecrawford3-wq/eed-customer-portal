@@ -69,7 +69,7 @@ function stripWakeWord(text) {
 let audioCtxRef = null;
 function playTriggerChime() {
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
+    const AC = window.AudioContext || /** @type {any} */ (window).webkitAudioContext;
     if (!AC) return;
     if (!audioCtxRef) audioCtxRef = new AC();
     const ctx = audioCtxRef;
@@ -395,7 +395,7 @@ export default function VoiceControl({
   }, [processing, armed, alwaysOn, arm]);
 
   useEffect(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = /** @type {any} */ (window).SpeechRecognition || /** @type {any} */ (window).webkitSpeechRecognition;
     if (!SR) {
       setSupported(false);
       return;

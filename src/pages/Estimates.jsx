@@ -34,7 +34,7 @@ export default function Estimates() {
   const [sortKey, setSortKey] = useState("recent");
   const [view, setView] = useState("active");
   const qc = useQueryClient();
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
   const autoArchiveRan = useRef(false);
 
   const { data: estimates = [], isLoading } = useQuery({

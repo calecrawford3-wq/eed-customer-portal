@@ -194,7 +194,7 @@ export default function JobWorkflowTab({ job, build }) {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="flex-shrink-0">{STATUS_ICON[t.status]}</span>
                     <span className={t.status === "complete" || t.status === "skipped" ? "text-slate-400 line-through" : "text-slate-700"}>{t.name}</span>
-                    {t.is_required && <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Required task" />}
+                    {t.is_required && <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
                     {t.status === "skipped" && <Badge variant="outline" className="text-xs">Skipped</Badge>}
                     {t.override_authorized_by && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Override: {t.override_authorized_by}</Badge>}
                     {t.time_logged_minutes > 0 && <span className="text-xs text-slate-400 flex items-center gap-0.5"><Timer className="w-3 h-3" />{t.time_logged_minutes}m</span>}

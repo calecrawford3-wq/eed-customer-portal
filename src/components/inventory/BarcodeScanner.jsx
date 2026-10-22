@@ -34,7 +34,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
     if (mode !== "camera") {
       stopCamera();
     }
-    return () => stopCamera();
+    return () => { void stopCamera(); };
      
   }, [mode]);
 
