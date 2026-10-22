@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,16 @@ export default function Expenses() {
   const [scanning, setScanning] = useState(false);
   const receiptInputRef = useRef(null);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") !== "1") return;
+    params.delete("new");
+    window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
+    setEditing(null); setForm({ ...emptyExpense, expense_number: `EXP-${Date.now().toString().slice(-6)}` }); setDialogOpen(true);
+  }, []);
+
+
 
   const handleReceiptScan = async (e) => {
     const file = e.target.files?.[0];

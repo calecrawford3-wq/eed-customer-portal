@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,16 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey] = useState("recent");
   const qc = useQueryClient();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") !== "1") return;
+    params.delete("new");
+    window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
+    setEditing(null); setForm(emptyCustomer); setDialogOpen(true);
+  }, []);
+
+
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["customers"],
