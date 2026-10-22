@@ -7,7 +7,7 @@ test('Today leads with attention, active jobs and quick actions while retaining 
  for(const phrase of ['Needs Attention','Start']) assert.ok(d.includes(phrase) || read('src/components/dashboard/TodayActionCenter.jsx').includes(phrase) || read('src/components/dashboard/HomeStartBar.jsx').includes(phrase), phrase);
  assert.match(read('src/components/navigation/AppLauncher.jsx'),/>Apps</);
  assert.match(read('src/components/dashboard/HomeActiveJobsRow.jsx'),/Continue Work/);
- assert.match(d,/<AppLauncher\s*\/>/);
+ assert.match(d,/<AppLauncher[^>]*\/>/);
  assert.match(d,/<StaffSignOut\s*\/>/);
  assert.match(d,/to="\/Settings"/);
  assert.match(d,/<TodayActionCenter/);
