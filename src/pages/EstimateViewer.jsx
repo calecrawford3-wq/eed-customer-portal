@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import PublicGuestPaymentShare from "@/components/portal/PublicGuestPaymentShare";
 import { useParams } from "react-router-dom";
 import { base44Public } from "@/api/base44Client";
+import {resolveCompanyLogo} from "@/lib/companyLogo";
 
 const formatMoney = (value) => {
   if (value === null || value === undefined || isNaN(value)) return "$0.00";
@@ -213,9 +214,7 @@ export default function EstimateViewer({ buildVersion }) {
             <div className="bg-white rounded-lg border border-slate-200 p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  {data.settings?.company_logo_url && (
-                    <img src={data.settings.company_logo_url} alt="Company" className="h-12 mb-4" />
-                  )}
+                  <img src={resolveCompanyLogo(data.settings,"light")} alt="Company" className="h-12 mb-4" />
                   {data.settings?.company_name && <h2 className="text-lg font-semibold text-slate-900">{data.settings.company_name}</h2>}
                   {data.settings?.company_address && <p className="text-sm text-slate-600">{data.settings.company_address}</p>}
                   {data.settings?.company_phone && <p className="text-sm text-slate-600">{data.settings.company_phone}</p>}

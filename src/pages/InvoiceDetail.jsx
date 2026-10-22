@@ -37,11 +37,11 @@ import LoadingState from "@/components/LoadingState";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import NavigationGuardDialog from "@/components/NavigationGuardDialog";
 import { normalizePart, normalizeKit, normalizeCoreSale, normalizeCoreCredit } from "@/lib/normalizeLineItem";
+import {resolveCompanyLogo} from "@/lib/companyLogo";
 
 const emptyPart = { part_id: "", part_number: "", item_name: "", quantity: 1, unit_cost: 0, unit_price: 0, total: 0 };
 const emptyLabor = { name: "", description: "", price: 0 };
 const emptyMachining = { name: "", description: "", price: 0, quantity: 1, cost_type: "unspecified", actual_cost: null, vendor: "" };
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 const STATUS_STYLES = {
   draft: "bg-slate-100 text-slate-600",
@@ -801,7 +801,7 @@ export default function InvoiceDetail() {
         <body>
           <div class="container">
             <div class="header">
-              <img src="${LOGO_URL}" alt="${settings.company_name}" class="logo" />
+              <img src="${resolveCompanyLogo(settings,'dark')}" alt="${settings.company_name}" class="logo" />
               <h1 class="header-title">Invoice</h1>
               <p class="header-subtitle">${form.invoice_number}</p>
             </div>

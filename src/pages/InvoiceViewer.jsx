@@ -11,8 +11,8 @@ import { toast } from "sonner";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { getCountryName } from "@/components/CountrySelect";
 import PublicAdditionalWorkSection from "@/components/public/PublicAdditionalWorkSection";
+import {resolveCompanyLogo} from "@/lib/companyLogo";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
 
 export default function InvoiceViewer() {
   const { token: publicAccessToken } = useParams();
@@ -90,7 +90,7 @@ export default function InvoiceViewer() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6 flex items-center justify-between gap-3">
-          <img src={LOGO_URL} alt="Company Logo" className="h-8 md:h-10" />
+          <img src={resolveCompanyLogo(settings,"light")} alt="Company Logo" className="h-8 md:h-10" />
           <div className="text-right">
             <h1 className="text-2xl font-bold text-slate-900">{inv.invoice_number}</h1>
             <Badge className={`mt-2 border-0 capitalize ${inv.status === "paid" ? "bg-emerald-100 text-emerald-700" : inv.status === "overdue" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>

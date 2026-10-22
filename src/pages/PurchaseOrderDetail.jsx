@@ -15,6 +15,7 @@ import PoPartPickerModal from "@/components/estimates/PoPartPickerModal";
 import PoKitPickerModal from "@/components/estimates/PoKitPickerModal";
 import EmailsSection from "@/components/emails/EmailsSection";
 import PackingSlipReceiveModal from "@/components/inventory/PackingSlipReceiveModal";
+import {resolveCompanyLogo} from "@/lib/companyLogo";
 
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
@@ -375,7 +376,7 @@ export default function PurchaseOrderDetail() {
   };
 
   const printPO = (poData, supplierData, settingsData) => {
-    const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+    const logoUrl = resolveCompanyLogo(settingsData,"light");
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : "N/A";
     const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
@@ -416,7 +417,7 @@ export default function PurchaseOrderDetail() {
     </head><body>
       <div style="border-bottom:3px solid #e20404;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end">
         <div>
-          <img src="${LOGO_URL}" alt="Logo" style="height:56px;margin-bottom:8px"/>
+          <img src="${logoUrl}" alt="Logo" style="height:56px;margin-bottom:8px"/>
           <h1 style="font-size:26px;font-weight:bold;margin:0;letter-spacing:1px">PURCHASE ORDER</h1>
           <p style="font-size:13px;color:#666;margin-top:4px">${settingsData?.company_name || "Elite Engine Development"}</p>
         </div>

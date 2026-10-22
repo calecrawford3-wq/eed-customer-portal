@@ -41,7 +41,7 @@ export function buildComparisonEmailHtml({ stages, customer, settings = {}, url 
       <body>
         <div class="container">
           <div class="header">
-            <img src="${resolveCompanyLogo(settings)}" alt="${settings.company_name || ""}" class="logo" />
+            <img src="${resolveCompanyLogo(settings,"dark")}" alt="${settings.company_name || ""}" class="logo" />
             <h1 class="header-title">Stage Options Ready</h1>
             <p class="header-subtitle">${stages.length} STAGES TO COMPARE</p>
           </div>
