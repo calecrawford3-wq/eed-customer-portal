@@ -119,14 +119,25 @@ Deno.serve(async (req) => {
         work_tag: "none",
         picked_up: true,
         picked_up_at: now,
+        storage_location: "",
       });
       // Update CustomerEngine if linked
       if (build.customer_engine_id) {
         try {
+          const engRes = await base44.asServiceRole.entities.CustomerEngine.filter({ id: build.customer_engine_id });
+          const engine = (engRes.items || engRes || [])[0] || null;
           await base44.asServiceRole.entities.CustomerEngine.update(build.customer_engine_id, {
             check_in_status: "picked_up",
             picked_up_at: now,
+            storage_location: "",
           });
+          for (const componentId of [engine?.current_case_component_id, engine?.current_head_component_id].filter(Boolean)) {
+            try {
+              await base44.asServiceRole.entities.EngineComponent.update(componentId, { storage_location: "" });
+            } catch (componentError) {
+              console.warn("[finalizeJobPickup] Component location clear failed:", componentError.message);
+            }
+          }
         } catch (e) {
           console.warn("[finalizeJobPickup] CustomerEngine update failed:", e.message);
         }
@@ -140,6 +151,11 @@ Deno.serve(async (req) => {
       is_active: true,
       blocking_condition: "none",
       completed_at: now,
+      storage_location: "",
+      location_history: [
+        ...(job.location_history || []),
+        ...(job.storage_location ? [{ from: job.storage_location, to: "", date: now, actor: user.full_name || user.email || "Admin" }] : []),
+      ],
     });
 
     // Record override/defer as persistent notifications
