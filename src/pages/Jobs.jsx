@@ -167,6 +167,20 @@ export default function Jobs() {
       return res || [];
     },
   });
+  const { data: portalCars = [] } = useQuery({
+    queryKey: ["portal-cars-jobs"],
+    queryFn: async () => {
+      const res = await base44.entities.PortalCar.list("-created_date", 1000);
+      return res || [];
+    },
+  });
+  const { data: portalDrivers = [] } = useQuery({
+    queryKey: ["portal-drivers-jobs"],
+    queryFn: async () => {
+      const res = await base44.entities.PortalDriver.list("-created_date", 1000);
+      return res || [];
+    },
+  });
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates-for-jobs"],
     queryFn: async () => {
@@ -187,6 +201,17 @@ export default function Jobs() {
   };
   const engineObj = (id) => engines.find(e => e.id === id);
   const buildObj = (id) => builds.find(b => b.id === id);
+  const engineAssignment = (engineId) => {
+    if (!engineId) return null;
+    const car = portalCars.find(c => !c.archived && c.engine_id === engineId);
+    if (!car) return null;
+    const driverId = car.primary_driver_id || (car.driver_ids || [])[0] || "";
+    const driver = portalDrivers.find(d => !d.archived && d.id === driverId);
+    return {
+      carLabel: [car.name, car.car_number ? `#${car.car_number}` : ""].filter(Boolean).join(" "),
+      driverName: driver?.name || "",
+    };
+  };
 
   const filtered = useMemo(() => {
     return jobs.filter(j => {
@@ -195,7 +220,9 @@ export default function Jobs() {
       if (!search) return true;
       const q = search.toLowerCase();
       const cn = customerName(j.customer_id).toLowerCase();
-      return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q);
+      const assignment = engineAssignment(j.customer_engine_id);
+      const assignmentText = [assignment?.carLabel, assignment?.driverName].filter(Boolean).join(" ").toLowerCase();
+      return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q) || assignmentText.includes(q);
     });
   }, [jobs, search, customers, expiredEstimateIds]);
 
@@ -442,6 +469,7 @@ export default function Jobs() {
                                     customerName={customerName(j.customer_id)}
                                     platformLabel={platformLabel(j.platform_id)}
                                     engine={engineObj(j.customer_engine_id)}
+                                    assignment={engineAssignment(j.customer_engine_id)}
                                     onClick={() => navigate(`/JobCard?id=${j.id}`)}
                                   />
                                   {/* Move dropdown — mobile/keyboard equivalent */}
@@ -474,6 +502,7 @@ export default function Jobs() {
               customerName={customerName(j.customer_id)}
               platformLabel={platformLabel(j.platform_id)}
               engine={engineObj(j.customer_engine_id)}
+              assignment={engineAssignment(j.customer_engine_id)}
               onMove={(stage) => handleMoveFromDropdown(j, stage)}
             />
           ))}
@@ -556,7 +585,7 @@ function MoveDropdown({ job, onMove, disabled }) {
   );
 }
 
-function JobRow({ job, customerName, platformLabel, engine, onMove }) {
+function JobRow({ job, customerName, platformLabel, engine, assignment, onMove }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const parts = job.parts_readiness || "unknown";
   const partsCls = {
@@ -577,6 +606,8 @@ function JobRow({ job, customerName, platformLabel, engine, onMove }) {
         <p className="text-xs text-slate-500 truncate">
           {platformLabel}
           {engine?.eed_id && ` · ${engine.eed_id}`}
+          {assignment?.carLabel ? ` · ${assignment.carLabel}` : ""}
+          {assignment?.driverName ? ` · ${assignment.driverName}` : ""}
           {job.storage_location ? ` · 📍 ${job.storage_location}` : ""}
         </p>
       </div>
