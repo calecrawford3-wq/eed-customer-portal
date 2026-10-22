@@ -1,0 +1,147 @@
+{
+  "name": "EngineComponentSpecSheet",
+  "type": "object",
+  "properties": {
+    "component_id": {
+      "type": "string",
+      "description": "Permanent serialized EngineComponent this sheet belongs to."
+    },
+    "component_code": {
+      "type": "string"
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head",
+        "engine_case"
+      ]
+    },
+    "platform_id": {
+      "type": "string"
+    },
+    "head_original_height_in": {
+      "type": "string"
+    },
+    "head_current_height_in": {
+      "type": "string"
+    },
+    "head_height_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "valve_job_type": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "none",
+        "radius",
+        "5_angle",
+        "other"
+      ],
+      "default": "unknown"
+    },
+    "valve_job_notes": {
+      "type": "string"
+    },
+    "valve_job_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "valve_seats_replaced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Permanent cumulative list of valve positions/seats replaced on this head."
+    },
+    "valve_guides_replaced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Permanent cumulative list of valve positions/guides replaced on this head."
+    },
+    "last_valve_lash_intake": {
+      "type": "object"
+    },
+    "last_valve_lash_exhaust": {
+      "type": "object"
+    },
+    "last_valve_lash_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_valve_lash_build_id": {
+      "type": "string"
+    },
+    "last_valve_lash_job_id": {
+      "type": "string"
+    },
+    "case_starting_deck_measurement_in": {
+      "type": "string"
+    },
+    "case_current_deck_measurement_in": {
+      "type": "string"
+    },
+    "case_deck_measurement_reference": {
+      "type": "string"
+    },
+    "case_deck_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_build_internal_measurements": {
+      "type": "object",
+      "description": "Latest bottom-end/internal build measurements captured while this physical case was installed."
+    },
+    "last_build_measurements_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_build_id": {
+      "type": "string"
+    },
+    "last_job_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "component_id",
+    "component_code",
+    "component_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
