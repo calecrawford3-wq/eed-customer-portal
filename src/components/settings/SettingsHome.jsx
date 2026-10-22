@@ -25,6 +25,6 @@ export default function SettingsHome({open}){
   {!shown.length&&<p className="text-slate-500">No settings match your search.</p>}
  </section>;
 }
-export function SettingsLinks({title,description,links}){
+export function SettingsLinks({title,description = "",links}){
  return <section className="rounded-xl border bg-white p-5 space-y-3"><div><h3 className="font-semibold text-lg">{title}</h3>{description&&<p className="text-sm text-slate-600 mt-1">{description}</p>}</div><div className="grid gap-2 sm:grid-cols-2">{links.map(({label,to,detail})=><Link key={label} to={to} className="flex justify-between items-center rounded-lg border px-4 py-3 hover:bg-slate-50"><span><span className="block font-medium text-sm">{label}</span>{detail&&<span className="text-xs text-slate-500">{detail}</span>}</span><ChevronRight className="h-4 w-4 text-slate-400"/></Link>)}</div></section>;
 }

@@ -26,7 +26,7 @@ function fmtTime(s) {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function ActiveCallModal({ open, onClose, customer, customerSuccessTask, builds, onSaved }) {
+export default function ActiveCallModal({ open, onClose, customer, customerSuccessTask = null, builds = [], onSaved }) {
   const qc = useQueryClient();
   const csMode = !!customerSuccessTask;
   const [seconds, setSeconds] = useState(0);

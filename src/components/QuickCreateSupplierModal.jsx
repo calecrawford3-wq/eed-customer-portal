@@ -10,7 +10,7 @@ import { formatPhone } from "@/lib/formatPhone";
 
 const empty = { name: "", contact_name: "", email: "", phone: "", website: "", account_number: "", payment_terms: "", status: "active" };
 
-export default function QuickCreateSupplierModal({ open, onClose, onCreated, defaultPhone }) {
+export default function QuickCreateSupplierModal({ open, onClose, onCreated, defaultPhone = "" }) {
   const [form, setForm] = useState(empty);
   const qc = useQueryClient();
 

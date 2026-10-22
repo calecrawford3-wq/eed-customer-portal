@@ -5,7 +5,7 @@ import { base44, base44Public } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/money';
 
-export default function PortalPaymentReceipt({ type, id, token, onRefresh }) {
+export default function PortalPaymentReceipt({ type, id = null, token = null, onRefresh }) {
   const [params, setParams] = useSearchParams();
   const sessionId = params.get('session_id');
   const { data, isLoading, error, refetch } = useQuery({
