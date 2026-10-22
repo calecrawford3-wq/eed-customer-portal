@@ -51,6 +51,7 @@ import Settings from './pages/Settings';
 import CustomerDetail from './pages/CustomerDetail';
 import Expenses from './pages/Expenses';
 import Payments from './pages/Payments';
+import CheckPrinting from './pages/CheckPrinting';
 import Reports from './pages/Reports';
 import RefreshRequests from './pages/RefreshRequests';
 import BuildDetail from './pages/BuildDetail';
@@ -99,6 +100,7 @@ export const PAGES = {
     "CustomerDetail": CustomerDetail,
     "Expenses": Expenses,
     "Payments": Payments,
+    "CheckPrinting": CheckPrinting,
     "Reports": Reports,
     "RefreshRequests": RefreshRequests,
 }
