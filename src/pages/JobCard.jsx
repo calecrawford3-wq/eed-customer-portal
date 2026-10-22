@@ -18,7 +18,7 @@ import JobNextAction from "@/components/jobs/JobNextAction";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
 import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
-import { BookOpen, ClipboardList } from "lucide-react";
+import { BookOpen, ClipboardList, ScanLine } from "lucide-react";
 
 export default function JobCard() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function JobCard() {
   const requestedTab = searchParams.get("tab") || "overview";
   const legacyTabMap = { estimate: "billing", invoice: "billing", comms: "billing", build: "work", workflow: "work", machining: "work" };
   const activeTab = legacyTabMap[requestedTab] || requestedTab;
-  const initialWorkSection = ["build","workflow","machining"].includes(requestedTab) ? requestedTab : searchParams.get("work") || undefined;
+  const initialWorkSection = ["build","workflow","machining","verify"].includes(requestedTab) ? requestedTab : searchParams.get("work") || undefined;
   const initialBillingSection = ["estimate","invoice","comms"].includes(requestedTab) ? requestedTab : searchParams.get("billing") || undefined;
   const planMachining = searchParams.get("plan") === "1";
 
@@ -188,6 +188,11 @@ export default function JobCard() {
       <div className="px-4 md:px-8 pt-4 print:hidden flex items-center justify-between">
         <Link to="/Jobs"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> All Jobs</Button></Link>
         <div className="flex items-center gap-2">
+          {engine && (
+            <Button variant="outline" size="sm" onClick={() => navigateJobArea("work", "verify")}>
+              <ScanLine className="w-4 h-4 mr-1" /> Verify Components
+            </Button>
+          )}
           {build && (
             <Button variant="outline" size="sm" onClick={handlePrintBuildBook}>
               <BookOpen className="w-4 h-4 mr-1" /> Build Book

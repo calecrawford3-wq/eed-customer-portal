@@ -1,7 +1,7 @@
 import React,{useMemo,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
-import {CheckCircle2,ScanLine,ShieldCheck,TriangleAlert,RotateCcw,Link2,History, Cpu, Component} from 'lucide-react';
+import {CheckCircle2,ShieldCheck,TriangleAlert,RotateCcw,Link2,History, Cpu, Component} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle} from '@/components/ui/dialog';
