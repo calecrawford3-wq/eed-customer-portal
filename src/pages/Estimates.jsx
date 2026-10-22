@@ -42,6 +42,13 @@ export default function Estimates() {
     queryFn: () => base44.entities.Estimate.list("-created_date", 200),
   });
 
+  const { data: jobs = [] } = useQuery({
+    queryKey: ["jobs-for-standalone-estimates"],
+    queryFn: () => base44.entities.Job.list("-created_date", 1000),
+  });
+  const jobEstimateIds = new Set(jobs.map(j => j.estimate_id).filter(Boolean));
+  const standaloneEstimates = estimates.filter(e => !jobEstimateIds.has(e.id));
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 200),
@@ -64,11 +71,11 @@ export default function Estimates() {
 
   // Auto-archive expired estimates (past expiry date, still "sent", not yet archived)
   useEffect(() => {
-    if (autoArchiveRan.current || !estimates.length) return;
+    if (autoArchiveRan.current || !standaloneEstimates.length) return;
     autoArchiveRan.current = true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const toArchive = estimates.filter(e => {
+    const toArchive = standaloneEstimates.filter(e => {
       if (e.archived) return false;
       if (e.status !== "sent") return false;
       if (!e.expiry_date) return false;
@@ -87,7 +94,7 @@ export default function Estimates() {
         toast.info(`Auto-archived ${toArchive.length} expired estimates`);
       }
     })();
-  }, [estimates, qc]);
+  }, [standaloneEstimates, qc]);
 
   const navigate = useNavigate();
 
@@ -127,7 +134,7 @@ export default function Estimates() {
 
   const getCustomer = (id) => customers.find(c => c.id === id);
 
-  let filtered = estimates.filter(e => {
+  let filtered = standaloneEstimates.filter(e => {
     const isArchived = !!e.archived;
     if (view === "active" && isArchived) return false;
     if (view === "archived" && !isArchived) return false;
@@ -146,8 +153,8 @@ export default function Estimates() {
     return an.localeCompare(bn);
   });
 
-  const activeEstimates = estimates.filter(e => !e.archived);
-  const archivedEstimates = estimates.filter(e => !!e.archived);
+  const activeEstimates = standaloneEstimates.filter(e => !e.archived);
+  const archivedEstimates = standaloneEstimates.filter(e => !!e.archived);
   const totalValue = filtered.reduce((sum, e) => sum + (e.total || 0), 0);
   const pendingEstimates = activeEstimates.filter(e => e.status === "sent");
   const pendingValue = pendingEstimates.reduce((sum, e) => sum + (e.total || 0), 0);
@@ -160,12 +167,12 @@ export default function Estimates() {
     <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Estimates</h1>
-          <p className="text-slate-500 mt-1">{filtered.length} estimates · ${totalValue.toLocaleString("en-US", {minimumFractionDigits: 2})} total</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Standalone Estimates</h1>
+          <p className="text-slate-500 mt-1">Non-job quotes and standalone work · {filtered.length} estimate{filtered.length === 1 ? "" : "s"}</p>
         </div>
         <Link to="/EstimateDetail?new=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
-            <Plus className="w-4 h-4 mr-2" /> New Estimate
+            <Plus className="w-4 h-4 mr-2" /> New Standalone Estimate
           </Button>
         </Link>
       </div>
@@ -261,9 +268,9 @@ export default function Estimates() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium">{estimates.length === 0 ? "No estimates yet" : "No estimates match your filters"}</p>
-          {estimates.length === 0 ? (
-            <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create First Estimate</Button></Link>
+          <p className="text-lg font-medium">{standaloneEstimates.length === 0 ? "No standalone estimates yet" : "No estimates match your filters"}</p>
+          {standaloneEstimates.length === 0 ? (
+            <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create Standalone Estimate</Button></Link>
           ) : (
             <Button variant="outline" className="mt-4" onClick={() => { setSearch(""); setFilterStatus("all"); }}>Clear Filters</Button>
           )}
