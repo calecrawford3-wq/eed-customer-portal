@@ -17,9 +17,9 @@ test('check template includes Elite logo, check face, vouchers and optional MICR
 
 test('check register supports expense linking, reprints, voids and saved layout settings',()=>{
  const page=read('src/pages/CheckPrinting.jsx');const schema=JSON.parse(read('base44/entities/PrintedCheck.jsonc'));const settings=JSON.parse(read('base44/entities/AppSettings.jsonc'));
- assert.match(page,/recordPrintedCheck/);assert.match(page,/reprintPrintedCheck/);assert.match(page,/voidPrintedCheck/);assert.match(page,/printed_check_id/);assert.match(page,/company_logo_url/);assert.match(page,/Print Alignment Test/);
+ assert.match(page,/recordPrintedCheck/);assert.match(page,/reprintPrintedCheck/);assert.match(page,/voidPrintedCheck/);assert.match(page,/company_logo_url/);assert.match(page,/Print Alignment Test/);
  assert.ok(schema.properties.layout_snapshot);assert.ok(schema.properties.payee_address);assert.ok(settings.properties.check_stock_mode);assert.ok(settings.properties.check_logo_width_mm);assert.ok(settings.properties.check_next_number);
- const createFn=read('base44/functions/recordPrintedCheck/entry.ts');assert.match(createFn,/already exists in the register/);assert.match(createFn,/check_next_number/);
+ const createFn=read('base44/functions/recordPrintedCheck/entry.ts');assert.match(createFn,/already exists in the register/);assert.match(createFn,/check_next_number/);assert.match(createFn,/printed_check_id/);
 });
 
 test('amount words handles dollars and cents',()=>{
