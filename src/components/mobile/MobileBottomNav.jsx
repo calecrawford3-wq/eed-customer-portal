@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 
 /**
- * iPhone-style bottom navigation bar for mobile.  Five primary tabs:
- * Today, Jobs, Inbox, Billing, More.  The "More" tab opens a full-screen
- * sheet listing every remaining destination grouped by section.
+ * iPhone-style bottom navigation bar for mobile. Primary actions are
+ * Today, Jobs, a raised Create button, Inbox, and More. The Create button
+ * opens common workflows; More lists every remaining destination.
  *
  * Badges show actionable counts (unread messages on Inbox, active
  * exceptions on Today and unread messages on Inbox).
