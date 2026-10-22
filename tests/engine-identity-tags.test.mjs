@@ -35,7 +35,7 @@ test('new engine create paths initialize permanent tags directly',()=>{
 
 test('laser tag exporter includes stable case/head fields and vector SVG download',()=>{
  const src=read('src/lib/laserTagFile.js');
- for(const phrase of ['ELITE ENGINE DEVELOPMENT','ENGINE CASE / BOTTOM END','CYLINDER HEAD','image/svg+xml','tag_code']) assert.ok(src.includes(phrase)||src.includes(phrase.toLowerCase()),phrase);
+ for(const phrase of ['ELITE ENGINE DEVELOPMENT','ENGINE CASE / BOTTOM END','CYLINDER HEAD','image/svg+xml','tagCode']) assert.ok(src.includes(phrase)||src.includes(phrase.toLowerCase()),phrase);
  assert.match(read('src/components/engines/EngineTagFilesDialog.jsx'),/Download Case SVG/);
  assert.match(read('src/components/engines/EngineTagFilesDialog.jsx'),/Download Head SVG/);
 });
