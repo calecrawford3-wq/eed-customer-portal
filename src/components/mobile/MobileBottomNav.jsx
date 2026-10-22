@@ -61,7 +61,6 @@ const MORE_SECTIONS = [
     label: "Billing",
     items: [
       { name: "Estimates", page: "Estimates", icon: ClipboardList },
-      { name: "Approvals", page: "Approvals", icon: ClipboardCheck, badge: "approvals" },
       { name: "Payments", page: "Payments", icon: DollarSign },
       { name: "Credits", page: "Credits", icon: Award },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },

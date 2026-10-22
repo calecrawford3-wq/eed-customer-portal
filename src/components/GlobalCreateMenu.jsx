@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Cpu, Users, ClipboardList, Receipt, ShoppingCart, TrendingDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import EngineCheckInModal from '@/components/engines/EngineCheckInModal';
@@ -15,13 +15,23 @@ const actions = [
 
 export default function GlobalCreateMenu() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
 
   const choose = (action) => {
     setOpen(false);
-    if (action.type === 'checkin') setCheckInOpen(true);
-    else navigate(action.to);
+    if (action.type === 'checkin') { setCheckInOpen(true); return; }
+    let to = action.to;
+    const current = new URLSearchParams(location.search);
+    const currentId = current.get('id');
+    if (currentId && location.pathname.toLowerCase().includes('customerdetail') && (to.startsWith('/EstimateDetail') || to.startsWith('/InvoiceDetail'))) {
+      to += `&customer_id=${encodeURIComponent(currentId)}`;
+    }
+    if (currentId && location.pathname.toLowerCase().includes('jobcard') && to.startsWith('/EstimateDetail')) {
+      to += `&job_id=${encodeURIComponent(currentId)}`;
+    }
+    navigate(to);
   };
 
   return <>

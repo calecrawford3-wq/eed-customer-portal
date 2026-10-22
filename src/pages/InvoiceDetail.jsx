@@ -57,13 +57,14 @@ export default function InvoiceDetail() {
   const id = params.get("id");
   const isNew = params.get("new") === "1";
   const isCombinedNew = params.get("combined") === "1";
+  const prefillCustomerId = params.get("customer_id");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
 
   const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
-    customer_id: "", status: "draft",
+    customer_id: prefillCustomerId || "", status: "draft",
     issue_date: new Date().toISOString().split("T")[0],
     due_date: "",
     is_combined: isCombinedNew,

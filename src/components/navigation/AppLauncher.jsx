@@ -7,7 +7,7 @@ export const APP_AREAS=[
  {name:'Customers',icon:Users,tone:'bg-blue-50 text-blue-700',description:'Customer records and requests',pages:[['Customers','Customers'],['CustomerSuccess','Follow-ups'],['RefreshRequests','Refresh Requests']]},
  {name:'Inventory',icon:Package,tone:'bg-amber-50 text-amber-700',description:'Parts and stock levels',pages:[['Inventory','Parts Inventory']]},
  {name:'Purchasing',icon:ShoppingCart,tone:'bg-teal-50 text-teal-700',description:'Purchase orders and suppliers',pages:[['PurchaseOrders','Purchase Orders'],['Suppliers','Suppliers']]},
- {name:'Billing',icon:Receipt,tone:'bg-emerald-50 text-emerald-700',description:'Estimates, invoices and payments',pages:[['Estimates','Estimates'],['Invoices','Invoices'],['Approvals','Approvals'],['Payments','Payments'],['Credits','Credits'],['Expenses','Expenses']]},
+ {name:'Billing',icon:Receipt,tone:'bg-emerald-50 text-emerald-700',description:'Estimates, invoices and payments',pages:[['Estimates','Estimates'],['Invoices','Invoices'],['Payments','Payments'],['Credits','Credits'],['Expenses','Expenses']]},
  {name:'Inbox',icon:MessageSquare,tone:'bg-indigo-50 text-indigo-700',description:'Messages and customer communication',pages:[['Communications','Inbox']]},
  {name:'Schedule',icon:Calendar,tone:'bg-violet-50 text-violet-700',description:'Calendar and upcoming work',pages:[['Calendar','Calendar']]},
  {name:'Reports',icon:ChartNoAxesCombined,tone:'bg-cyan-50 text-cyan-700',description:'Business reports and exceptions',pages:[['Reports','Reports'],['ExceptionDashboard','Exceptions']]},

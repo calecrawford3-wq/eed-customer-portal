@@ -43,6 +43,12 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
    <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#000000",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
     <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
       <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
+      <nav className="hidden lg:flex items-center gap-1 text-sm mr-2" aria-label="Primary">
+        <Link to="/Dashboard" className="rounded-lg px-3 py-2 hover:bg-slate-800">Today</Link>
+        <Link to="/Jobs" className="rounded-lg px-3 py-2 hover:bg-slate-800">Jobs</Link>
+        <Link to="/Customers" className="rounded-lg px-3 py-2 hover:bg-slate-800">Customers</Link>
+        <Link to="/Communications" className="rounded-lg px-3 py-2 hover:bg-slate-800">Inbox</Link>
+      </nav>
       <div className="flex items-center gap-1 sm:gap-2">
         {!isHome&&<Link to={staffMode?'/EmployeePortal':'/Dashboard'} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-slate-800" aria-label="Home"><Home className="h-5 w-5"/><span className="hidden sm:inline">Home</span></Link>}
         {!staffMode&&<GlobalCreateMenu/>}
