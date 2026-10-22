@@ -13,7 +13,7 @@ import { useCustomerNotification } from "@/hooks/useCustomerNotification";
 export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }) {
   const [title, setTitle] = useState(`Additional Work — ${findings.length} finding(s)`);
   const [description, setDescription] = useState("");
-  const [taxRate, setTaxRate] = useState(0);
+  const [taxRate, setTaxRate] = useState(/** @type {string|number} */ (0));
   const [saving, setSaving] = useState(false);
   const { triggerNotify, notifyDialog } = useCustomerNotification();
 
@@ -28,7 +28,7 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
     setSaving(true);
     try {
       const countRes = await base44.entities.AdditionalWork.filter({ job_id: job.id });
-      const num = `AW-${String((countRes.items || countRes || []).length + 1).padStart(4, "0")}`;
+      const num = `AW-${String((countRes || []).length + 1).padStart(4, "0")}`;
       const now = new Date().toISOString();
       const aw = await base44.entities.AdditionalWork.create({
         work_number: num, job_id: job.id, customer_id: job.customer_id, customer_engine_id: job.customer_engine_id || "",
@@ -107,7 +107,7 @@ export default function AdditionalWorkDialog({ job, findings, onClose, onSaved }
   );
 }
 
-function Row({ label, value, bold }) {
+function Row({ label, value, bold = false }) {
   return <div className="flex items-center justify-between"><span className="text-slate-500">{label}</span><span className={bold ? "font-semibold text-slate-900" : "text-slate-700"}>{value}</span></div>;
 }
 

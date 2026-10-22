@@ -13,7 +13,7 @@ export default function EmailAdminPanel() {
   const qc = useQueryClient();
   const [connectOpen, setConnectOpen] = useState(false);
   const [sendLogOpen, setSendLogOpen] = useState(false);
-  const [confirmState, setConfirmState] = useState({ open: false });
+  const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
   const [syncing, setSyncing] = useState(false);
 
   const runSync = async (fullResync = false) => {

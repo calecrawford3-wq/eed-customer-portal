@@ -34,7 +34,7 @@ export function useCustomerNotification() {
     entityId,
     entityLabel,
     prepare,
-    onSent,
+    onSent = undefined,
   }) => {
     if (!customerId) return;
 

@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 const SCOPES = "ZohoMail.accounts.READ,ZohoMail.folders.READ,ZohoMail.messages.READ,ZohoMail.messages.CREATE";
 
-export default function ZohoMailConnect({ open, onClose, onConnected }) {
+export default function ZohoMailConnect({ open, onClose, onConnected = () => {} }) {
   const qc = useQueryClient();
   const [code, setCode] = useState("");
 

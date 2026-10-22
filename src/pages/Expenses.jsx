@@ -58,7 +58,7 @@ export default function Expenses() {
     setScanning(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = /** @type {Record<string, any>} */ (await base44.integrations.Core.InvokeLLM({
         prompt: `Analyze this receipt image and extract the expense details. Return ONLY a JSON object with these fields:
 - description: what was purchased (brief, max 80 chars)
 - vendor: store/vendor name
@@ -80,7 +80,7 @@ export default function Expenses() {
             payment_method: { type: "string" },
           }
         }
-      });
+      }));
       setForm(f => ({
         ...f,
         description: result.description || f.description,
