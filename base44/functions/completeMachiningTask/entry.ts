@@ -52,6 +52,36 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Machining task not found" }, { status: 404 });
     }
 
+    // Backfill legacy/open machining tasks that predate serialized component links.
+    // The task type makes the physical target unambiguous for head/case work.
+    if (!task.component_id && task.customer_engine_id) {
+      try {
+        const engRes = await base44.asServiceRole.entities.CustomerEngine.filter({ id: task.customer_engine_id });
+        const eng = (engRes.items || engRes || [])[0];
+        const componentId = task.task_type === "deck_case"
+          ? eng?.current_case_component_id
+          : ["shave_head", "valve_work", "polishing"].includes(task.task_type)
+            ? eng?.current_head_component_id
+            : "";
+        if (componentId) {
+          const compRes = await base44.asServiceRole.entities.EngineComponent.filter({ id: componentId });
+          const comp = (compRes.items || compRes || [])[0];
+          if (comp) {
+            task.component_id = comp.id;
+            task.component_code = comp.component_code;
+            task.component_type = comp.component_type;
+            task.affected_component = task.affected_component || comp.component_code;
+            await base44.asServiceRole.entities.MachiningTask.update(taskId, {
+              component_id: comp.id, component_code: comp.component_code, component_type: comp.component_type,
+              affected_component: task.affected_component,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[completeMachiningTask] Legacy component backfill skipped:", e);
+      }
+    }
+
     // Validate required measurements based on task type
     const { valid, missing } = validateMeasurements(task.task_type, measurements);
     if (!valid) {
