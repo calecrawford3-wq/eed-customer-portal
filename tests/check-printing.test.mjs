@@ -27,3 +27,33 @@ test('amount words handles dollars and cents',()=>{
  assert.equal(amountToWords(125.34),'One Hundred Twenty-Five and 34/100 Dollars');
  assert.equal(amountToWords(0.05),'Zero and 05/100 Dollars');
 });
+
+test('check number is server controlled and cannot be manually entered or changed in setup',()=>{
+ const page=read('src/pages/CheckPrinting.jsx');
+ assert.doesNotMatch(page,/value=\{form\.check_number\}/);
+ assert.doesNotMatch(page,/setForm\(\{\.\.\.form,check_number/);
+ assert.doesNotMatch(page,/setSetup\(\{\.\.\.setup,check_next_number/);
+ assert.match(page,/Assigned automatically when the check is created/);
+ assert.match(page,/System controlled\. It cannot be edited or reused/);
+ const fn=read('base44/functions/recordPrintedCheck/entry.ts');
+ assert.match(fn,/Number is intentionally NOT accepted from the browser/);
+ assert.doesNotMatch(fn,/b\.check_number/);
+});
+
+test('server atomically claims next check number before creating the check',()=>{
+ const fn=read('base44/functions/recordPrintedCheck/entry.ts');
+ assert.match(fn,/updateMany\(\{id:settings\.id,check_next_number:raw\}/);
+ assert.match(fn,/check_next_number:current\+1/);
+ assert.match(fn,/if\(claim\?\.updated!==1\)continue/);
+ assert.match(fn,/PrintedCheck\.create\(\{check_number:num/);
+ assert.match(fn,/Self-heal forward if a legacy\/stale sequence points to an already-used number/);
+});
+
+test('voiding and reprinting never alter the next check sequence',()=>{
+ const voidFn=read('base44/functions/voidPrintedCheck/entry.ts');
+ const reprintFn=read('base44/functions/reprintPrintedCheck/entry.ts');
+ assert.doesNotMatch(voidFn,/check_next_number/);
+ assert.doesNotMatch(reprintFn,/check_next_number/);
+ assert.match(voidFn,/status:'voided'/);
+ assert.match(reprintFn,/reprint_count/);
+});
