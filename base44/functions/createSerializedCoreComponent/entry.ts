@@ -1,0 +1,13 @@
+import {createClientFromRequest} from 'npm:@base44/sdk';
+import {createCaseCore,createHead} from '../../shared/engineIdentity.ts';
+import {recordIdentityEvent} from '../../shared/identityAudit.ts';
+const rows=(v:any)=>Array.isArray(v)?v:v?.items||[];
+Deno.serve(async req=>{try{
+ const base44=createClientFromRequest(req);const me=await base44.auth.me();if(me?.role!=='admin')return Response.json({error:'Admin required'},{status:403});const body=await req.json();const service=base44.asServiceRole;const core=rows(await service.entities.EngineCore.filter({id:body.engine_core_id}))[0];if(!core)return Response.json({error:'Core catalog item not found'},{status:404});
+ const type=body.component_type||(core.category==='cylinder_head'?'cylinder_head':core.category==='block'?'engine_case':'');if(!['cylinder_head','engine_case'].includes(type))return Response.json({error:'Serialized core tags are currently supported for cylinder heads and engine cases.'},{status:400});
+ const platformId=body.platform_id||(core.platform_ids||[])[0]||'',credit=body.core_credit_value!==undefined?Number(body.core_credit_value)||0:Number(core.core_credit)||0;
+ let component:any;if(type==='cylinder_head'){const result=await createHead(service,{platformId,notes:body.notes||'',pair:false,engineCoreId:core.id,inventoryState:'in_stock',coreCreditValue:credit});component=result.head;}else component=await createCaseCore(service,{platformId,physicalSerialNumber:body.physical_serial_number||'',notes:body.notes||'',engineCoreId:core.id,inventoryState:'in_stock',coreCreditValue:credit});
+ component=await service.entities.EngineComponent.update(component.id,{storage_location:body.storage_location||core.location||'',lifecycle_status:body.lifecycle_status||'spare',acquired_from_customer_id:body.acquired_from_customer_id||'',acquired_job_id:body.acquired_job_id||''});
+ await recordIdentityEvent(service,{eventType:'core_inventory_added',componentId:component.id,componentCode:component.component_code,jobId:body.acquired_job_id||'',eventKey:`core_added:${component.id}`,details:{engine_core_id:core.id,core_number:core.core_number,core_credit_value:credit},actor:me?.full_name||me?.email||'Admin',dedupeSeconds:0});
+ return Response.json({success:true,component,core});
+}catch(e){return Response.json({error:e.message},{status:400});}});

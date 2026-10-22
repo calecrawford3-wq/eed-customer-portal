@@ -1,0 +1,12 @@
+import {createClientFromRequest} from 'npm:@base44/sdk';
+import {invalidateEngineVerification,recordIdentityEvent,syncSerializedCoreQuantity} from '../../shared/identityAudit.ts';
+const rows=(v:any)=>Array.isArray(v)?v:v?.items||[];
+const allowed=['active','in_machining','waiting_on_parts','spare','damaged','retired','scrapped'];
+Deno.serve(async req=>{try{
+ const base44=createClientFromRequest(req);const me=await base44.auth.me();if(me?.role!=='admin')return Response.json({error:'Admin required'},{status:403});const body=await req.json();if(!allowed.includes(body.lifecycle_status))return Response.json({error:'Invalid lifecycle status'},{status:400});const service=base44.asServiceRole;let component=rows(await service.entities.EngineComponent.filter({id:body.component_id}))[0];if(!component)return Response.json({error:'Component not found'},{status:404});const old=component.lifecycle_status||'active',now=new Date().toISOString(),engineId=component.current_customer_engine_id||'';
+ const patch:any={lifecycle_status:body.lifecycle_status};if(body.lifecycle_status==='retired'||body.lifecycle_status==='scrapped'){patch.retired_at=now;patch.retired_reason=body.reason||'';if(body.lifecycle_status==='scrapped')patch.inventory_state='scrapped';}else if(old==='retired'||old==='scrapped'){patch.retired_at='';patch.retired_reason='';}
+ component=await service.entities.EngineComponent.update(component.id,patch);
+ if(engineId&&['damaged','retired','scrapped'].includes(body.lifecycle_status))await invalidateEngineVerification(service,{engineId,componentId:component.id,jobId:body.job_id||'',reason:`${component.component_code} marked ${body.lifecycle_status}${body.reason?`: ${body.reason}`:''}`,actor:me?.full_name||me?.email||'Admin'});
+ await recordIdentityEvent(service,{eventType:(body.lifecycle_status==='retired'||body.lifecycle_status==='scrapped')?'retired':((old==='retired'||old==='scrapped')?'reactivated':'lifecycle_changed'),engineId,componentId:component.id,componentCode:component.component_code,jobId:body.job_id||'',eventKey:`lifecycle:${component.id}:${now}`,details:{from:old,to:body.lifecycle_status,reason:body.reason||''},actor:me?.full_name||me?.email||'Admin',dedupeSeconds:0});
+ if(component.engine_core_id)await syncSerializedCoreQuantity(service,component.engine_core_id);return Response.json({success:true,component});
+}catch(e){return Response.json({error:e.message},{status:400});}});
