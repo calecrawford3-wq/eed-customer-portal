@@ -16,13 +16,16 @@ import { toast } from "sonner";
 import CustomerCsvImportModal from "@/components/customers/CustomerCsvImportModal";
 import CountrySelect from "@/components/CountrySelect";
 import CallButton from "@/components/CallButton";
+import CustomerSearchSelect from "@/components/CustomerSearchSelect";
+import { parseMyRacePassDriverId } from "@/lib/myRacePass";
 
 function normalizePhone(p) { if (!p) return ""; let d = p.replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return d; }
 
 const emptyCustomer = {
   first_name: "", last_name: "", company_name: "", email: "", phone: "",
   address_line1: "", address_line2: "", city: "", state: "", zip: "", country: "",
-  notes: "", status: "active", tax_exempt: false, parts_markup_override: null
+  notes: "", status: "active", tax_exempt: false, parts_markup_override: null,
+  referred_by_customer_id: "", myracepass_profile_url: "", myracepass_driver_id: "", myracepass_sync_status: "not_connected"
 };
 
 export default function Customers() {
@@ -60,16 +63,26 @@ export default function Customers() {
       if (editing) {
         return base44.entities.Customer.update(editing.id, data);
       } else {
-        const newCustomer = await base44.entities.Customer.create(data);
+        const driverId = parseMyRacePassDriverId(data.myracepass_profile_url);
+        const payload = { ...data, myracepass_driver_id: driverId, myracepass_sync_status: driverId ? "ready" : "not_connected" };
+        const newCustomer = await base44.entities.Customer.create(payload);
+        let referralWarning = "";
+        if (payload.referred_by_customer_id) {
+          try {
+            const response = await base44.functions.invoke("initializeCustomerReferral", { referred_customer_id: newCustomer.id, referrer_customer_id: payload.referred_by_customer_id });
+            if (response?.data?.error) referralWarning = response.data.error;
+          } catch (e) { referralWarning = e?.message || "Referral credits need review"; }
+        }
         // Invitations are sent from the customer's Portal Access control.
-        // Do not email automatically when a customer record is created.
-        return newCustomer;
+        return { ...newCustomer, _referral_warning: referralWarning };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["allAccountCredits"] });
       setDialogOpen(false);
-      toast.success(editing ? "Customer updated" : "Customer created. Use Portal Access to invite them.");
+      if (result?._referral_warning) toast.warning(`Customer created, but referral credits need review: ${result._referral_warning}`);
+      else toast.success(editing ? "Customer updated" : (form.referred_by_customer_id ? "Customer created and referral credits started." : "Customer created. Use Portal Access to invite them."));
     },
   });
 
@@ -258,6 +271,17 @@ export default function Customers() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
               </Select>
+            </div>
+            {!editing && <div className="sm:col-span-2 rounded-xl border border-violet-200 bg-violet-50 p-4">
+              <Label>Referred By</Label>
+              <CustomerSearchSelect customers={customers} value={form.referred_by_customer_id || ""} onValueChange={v => setForm({...form, referred_by_customer_id:v})} placeholder="No referral / select existing customer..." />
+              <p className="text-xs text-violet-700 mt-2">If selected, the new customer receives $200 credit immediately. The referrer receives a $200 pending credit that releases after this customer's first payment on an engine build.</p>
+            </div>}
+            <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <Label>MyRacePass Driver Profile</Label>
+              <Input value={form.myracepass_profile_url || ""} onChange={e => { const url=e.target.value; const driverId=parseMyRacePassDriverId(url); setForm({...form,myracepass_profile_url:url,myracepass_driver_id:driverId,myracepass_sync_status:driverId?"ready":"not_connected"}); }} placeholder="https://...myracepass.com/profile/?r=12345&rt=driver" />
+              <p className="text-xs text-slate-500 mt-2">Optional. Elite stores the profile link and driver ID now so official MyRacePass result syncing can match this customer automatically.</p>
+              {form.myracepass_driver_id && <p className="text-xs font-medium text-emerald-700 mt-1">Driver ID: {form.myracepass_driver_id} · Ready for result sync</p>}
             </div>
             <div className="col-span-2"><Label>Address</Label><Input value={form.address_line1} onChange={e => setForm({...form, address_line1: e.target.value})} placeholder="Street address" /></div>
             <div><Label>City</Label><Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} /></div>

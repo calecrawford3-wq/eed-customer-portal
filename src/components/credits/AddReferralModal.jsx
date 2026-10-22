@@ -33,6 +33,7 @@ export default function AddReferralModal({ open, onClose, customers }) {
           date: today,
           expires_on: dec31ThisYear(),
           status: "active",
+          activated_at: new Date().toISOString(),
         },
         {
           customer_id: referrerId,
@@ -42,15 +43,15 @@ export default function AddReferralModal({ open, onClose, customers }) {
           description: `Referral bonus — referred ${referred?.first_name || ""} ${referred?.last_name || ""}`,
           source_reference: referredId,
           date: today,
-          expires_on: dec31ThisYear(),
-          status: "active",
+          status: "pending",
+          pending_reason: "Releases after the referred customer makes their first payment on an engine build.",
         },
       ]);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allAccountCredits"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });
-      toast.success(`$${amount} referral credit added to both customers`);
+      toast.success(`$${amount} added to the new customer; the referrer credit is pending until the first engine-build payment.`);
       setReferredId(""); setReferrerId(""); setAmount(200);
       onClose();
     },
@@ -69,7 +70,7 @@ export default function AddReferralModal({ open, onClose, customers }) {
         <DialogHeader><DialogTitle>Add Referral Credit</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 text-sm text-violet-700">
-            Creates two ${amount} referral credits — one for the new customer and one for the person who referred them.
+            The new customer receives ${amount} now. The referrer receives ${amount} pending until the referred customer makes their first payment on an engine build.
           </div>
           <div>
             <Label>New Customer (Referred) *</Label>
