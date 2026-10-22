@@ -74,6 +74,7 @@
         "not_inventory",
         "in_stock",
         "reserved",
+        "in_repair",
         "installed",
         "customer_owned",
         "scrapped"
@@ -108,6 +109,37 @@
     },
     "retired_reason": {
       "type": "string"
+    },
+    "acquisition_cost": {
+      "type": "number",
+      "description": "Amount Elite paid or credited to acquire this physical component into inventory."
+    },
+    "repair_cost_total": {
+      "type": "number",
+      "description": "Cumulative internal/outside repair spend invested in this physical component."
+    },
+    "total_invested_cost": {
+      "type": "number",
+      "description": "Acquisition cost plus cumulative repair spend."
+    },
+    "sell_value": {
+      "type": "number",
+      "description": "Current intended sell value/price for this serialized component."
+    },
+    "last_inventory_reason": {
+      "type": "string",
+      "description": "Most recent reason this component entered inventory or repair."
+    },
+    "last_inventory_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active_repair_ticket_id": {
+      "type": "string"
+    },
+    "legacy_identity_reference": {
+      "type": "string",
+      "description": "Historical seal/tag/reference preserved during legacy tag backfill."
     }
   },
   "required": [

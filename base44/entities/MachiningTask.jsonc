@@ -188,7 +188,8 @@
         "estimate",
         "invoice",
         "additional_work",
-        "teardown_finding"
+        "teardown_finding",
+        "inventory_repair"
       ],
       "default": "manual",
       "description": "Where this task originated. manual = added directly in the plan; estimate = pre-populated from an estimate machining item (already charged, not re-charged); invoice = pre-populated from an invoice machining item (already charged, linked); additional_work = created from an approved AdditionalWork document; teardown_finding = created from a teardown finding (pending until the finding is approved via additional work)."
@@ -220,10 +221,13 @@
         "engine_case"
       ],
       "description": "Serialized component type when linked."
+    },
+    "repair_ticket_id": {
+      "type": "string",
+      "description": "ComponentRepairTicket when this is internal inventory repair machining."
     }
   },
   "required": [
-    "job_id",
     "task_type"
   ],
   "rls": {

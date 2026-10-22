@@ -64,6 +64,16 @@
     },
     "layout_snapshot": {
       "type": "object"
+    },
+    "payee_address": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "last_reprinted_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

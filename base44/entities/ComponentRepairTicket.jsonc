@@ -1,0 +1,148 @@
+{
+  "name": "ComponentRepairTicket",
+  "type": "object",
+  "properties": {
+    "ticket_number": {
+      "type": "string"
+    },
+    "component_id": {
+      "type": "string"
+    },
+    "component_code": {
+      "type": "string"
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "cylinder_head",
+        "engine_case"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "waiting_parts",
+        "in_machining",
+        "ready_for_inventory",
+        "complete",
+        "cancelled"
+      ],
+      "default": "open"
+    },
+    "issue_reason": {
+      "type": "string"
+    },
+    "intake_notes": {
+      "type": "string"
+    },
+    "repair_summary": {
+      "type": "string"
+    },
+    "source_engine_id": {
+      "type": "string"
+    },
+    "source_engine_eed_id": {
+      "type": "string"
+    },
+    "source_job_id": {
+      "type": "string"
+    },
+    "engine_core_id": {
+      "type": "string"
+    },
+    "acquisition_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "parts_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "internal_labor_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "outside_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "other_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "repair_cost_total": {
+      "type": "number",
+      "default": 0
+    },
+    "total_invested_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "sell_value": {
+      "type": "number",
+      "default": 0
+    },
+    "machining_task_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "storage_location": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_by": {
+      "type": "string"
+    },
+    "cancelled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancel_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ticket_number",
+    "component_id",
+    "component_code",
+    "component_type",
+    "status",
+    "created_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
