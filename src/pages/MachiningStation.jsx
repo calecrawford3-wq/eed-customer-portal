@@ -124,7 +124,7 @@ export default function MachiningStation() {
   });
 
   const visibleJobs = classified.filter(j => j._machiningView === view);
-  const repairRows = openRepairTickets.map(t => {
+  const repairRows = /** @type {any[]} */ (openRepairTickets).map(t => {
     const component = components.find(c => c.id === t.component_id);
     const tasks = repairTasks.filter(x => x.repair_ticket_id === t.id);
     const completed = tasks.filter(x => x.status === "complete").length;
