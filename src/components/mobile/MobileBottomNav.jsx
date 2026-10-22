@@ -9,7 +9,7 @@ import {
   Gauge, Briefcase, MessageSquare, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, DollarSign,
-  Award, TrendingDown, BarChart2, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
+  Award, TrendingDown, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
 } from "lucide-react";
 
 /**
