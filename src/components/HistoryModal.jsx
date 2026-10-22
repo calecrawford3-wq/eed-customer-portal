@@ -73,8 +73,8 @@ export default function HistoryModal({ open, onClose, context }) {
         });
         all.sort(
           (a, b) =>
-            new Date(b.event_date || b.created_date || 0) -
-            new Date(a.event_date || a.created_date || 0)
+            new Date(b.event_date || b.created_date || 0).getTime() -
+            new Date(a.event_date || a.created_date || 0).getTime()
         );
         if (!cancelled) setEntries(all);
       } catch (e) {

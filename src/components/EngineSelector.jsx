@@ -48,6 +48,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
   };
 
   const createMutation = useMutation({
+    /** @param {Record<string,any>} data */
     mutationFn: async (data) => {
       // Check serial number not already used with a different EED ID
       const existing = allEngines.find(e =>
@@ -55,7 +56,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       );
       if (existing) {
         const err = new Error(`Serial number ${data.engine_serial_number} is already registered as ${existing.eed_id}`);
-        err.existingEngine = existing;
+        /** @type {Error & {existingEngine?:any}} */ (err).existingEngine = existing;
         throw err;
       }
       // Check if same serial already registered for this customer
@@ -76,7 +77,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
     },
     onError: (err) => {
       setCreateError(err.message);
-      setDuplicateEngine(err.existingEngine || null);
+      setDuplicateEngine(/** @type {Error & {existingEngine?:any}} */ (err).existingEngine || null);
       toast.error(err.message);
     },
   });

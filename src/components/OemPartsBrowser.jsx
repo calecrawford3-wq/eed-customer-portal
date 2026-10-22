@@ -10,7 +10,7 @@ import { toast } from "sonner";
 const DEFAULT_URL = "https://www.motosport.com/oem-parts";
 const PART_CATEGORIES = ["block","rotating_assembly","cylinder_head","valvetrain","timing","oiling","fasteners","gaskets","seals","electrical","other"];
 
-export default function OemPartsBrowser({ open, onOpenChange, onImported, onPick }) {
+export default function OemPartsBrowser({ open, onOpenChange, onImported = () => {}, onPick }) {
   const pickMode = !!onPick;
   const [address, setAddress] = useState(DEFAULT_URL);
   const [src, setSrc] = useState(DEFAULT_URL);

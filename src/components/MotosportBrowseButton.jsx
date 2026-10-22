@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import OemPartsBrowser from "@/components/OemPartsBrowser";
 
+/** @param {{label?:string,size?:"default"|"sm"|"lg"|"icon",className?:string,onPick?:Function}} props */
 export default function MotosportBrowseButton({ label = "Browse MotoSport", size = "sm", className = "", onPick }) {
   const [open, setOpen] = useState(false);
   return (
