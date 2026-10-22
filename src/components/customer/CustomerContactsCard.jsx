@@ -38,7 +38,7 @@ export default function CustomerContactsCard({ customerId }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (cid) => base44.entities.CustomerContact.delete(cid),
+    mutationFn: /** @param {string} cid */ (cid) => base44.entities.CustomerContact.delete(cid),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customer-contacts", customerId] }); toast.success("Contact deleted"); },
   });
 

@@ -31,7 +31,7 @@ export default function PortalAccessBadge({ customer, onUpdated }) {
     }
     try {
       const res = await base44.entities.User.filter({ email });
-      const users = res?.items || res || [];
+      const users = res || [];
       setUserExists(users.length > 0);
     } catch {
       // Non-admins can't list users — fall back to invite-sent status only

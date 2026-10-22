@@ -22,7 +22,7 @@ export default function VersionDiffModal({ open, onClose, oldVersion, newVersion
   const allLaborKeys = new Set([...oldLabor.keys(), ...newLabor.keys()]);
   const allMachiningKeys = new Set([...oldMachining.keys(), ...newMachining.keys()]);
 
-  const Row = ({ label, oldQty, newQty, type }) => {
+  const Row = ({ label, oldQty, newQty, type = "" }) => {
     const oldN = Number(oldQty) || 0;
     const newN = Number(newQty) || 0;
     const diff = newN - oldN;

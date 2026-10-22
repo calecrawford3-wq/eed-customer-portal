@@ -255,7 +255,7 @@ export default function VoiceControl({
       setProcessing(true);
       setTranscript(text);
       try {
-        const result = await parseCommand(text, currentBuild, currentTasks, allBuilds, templates);
+        const result = /** @type {Record<string, any>} */ (await parseCommand(text, currentBuild, currentTasks, allBuilds, templates));
         // Support both the new multi-action shape (result.actions) and a legacy single action.
         const rawActions = result && Array.isArray(result.actions) && result.actions.length
           ? result.actions

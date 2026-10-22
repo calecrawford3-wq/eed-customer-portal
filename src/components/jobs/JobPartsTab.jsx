@@ -25,7 +25,7 @@ export default function JobPartsTab({ job }) {
     enabled: !!job.build_id,
   });
 
-  const partMap = new Map((parts.items || parts || []).map(p => [p.id, p]));
+  const partMap = new Map((parts).map(p => [p.id, p]));
 
   const totalRequired = reservations.reduce((s, r) => s + (Number(r.quantity_required) || 0), 0);
   const totalReserved = reservations.reduce((s, r) => s + (Number(r.quantity_reserved) || 0), 0);
@@ -88,11 +88,11 @@ export default function JobPartsTab({ job }) {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Purchase Orders</CardTitle></CardHeader>
         <CardContent>
-          {(pos.items || pos || []).length === 0 ? (
+          {(pos).length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">No purchase orders linked to this job.</p>
           ) : (
             <div className="space-y-2">
-              {(pos.items || pos || []).map(po => (
+              {(pos).map(po => (
                 <Link key={po.id} to={`/PurchaseOrderDetail?id=${po.id}`} className="flex items-center justify-between bg-slate-50 rounded-lg p-3 hover:bg-slate-100">
                   <div><span className="font-medium text-sm">{po.po_number || "PO"}</span><span className="text-xs text-slate-500 ml-2">{po.supplier_name || ""}</span></div>
                   <Badge variant="outline" className="text-xs capitalize">{po.status}</Badge>

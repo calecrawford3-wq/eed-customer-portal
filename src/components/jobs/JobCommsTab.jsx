@@ -24,9 +24,9 @@ export default function JobCommsTab({ job, customer }) {
     enabled: !!job.estimate_id,
   });
 
-  const msgList = messages.items || messages || [];
-  const emailList = emails.items || emails || [];
-  const docList = docs.items || docs || [];
+  const msgList = messages;
+  const emailList = emails;
+  const docList = docs;
 
   return (
     <div className="space-y-4">

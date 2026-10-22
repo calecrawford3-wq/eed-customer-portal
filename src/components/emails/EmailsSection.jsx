@@ -21,7 +21,7 @@ function fmtDate(iso) {
   return sameDay ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export default function EmailsSection({ customerId, supplierId, linkType, linkId, docNumber, defaultTo, title }) {
+export default function EmailsSection({ customerId = null, supplierId = null, linkType, linkId, docNumber, defaultTo = "", title }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
