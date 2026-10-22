@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { cn } from "@/lib/utils";
+import GlobalCreateMenu from "@/components/GlobalCreateMenu";
 import {
   Gauge, Briefcase, MessageSquare, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, ClipboardList, DollarSign,
   Award, TrendingDown, BarChart2, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
-  ScanLine,
 } from "lucide-react";
 
 /**
@@ -23,7 +23,6 @@ import {
 const PRIMARY_TABS = [
   { key: "Dashboard", label: "Today", icon: Gauge, badge: "exceptions" },
   { key: "Jobs", label: "Jobs", icon: Briefcase },
-  { key: "BarcodeScan", label: "Scan", icon: ScanLine },
   { key: "Communications", label: "Inbox", icon: MessageSquare, badge: "messages" },
 ];
 
@@ -159,30 +158,32 @@ export default function MobileBottomNav({allowedPages=null}) {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 flex items-stretch print:hidden"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
       >
-        {visibleTabs.map((tab) => {
+        {visibleTabs.map((tab, index) => {
           const active = isActive(tab.key);
           const count = tab.badge ? badgeFor(tab.badge) : 0;
           return (
+            <React.Fragment key={tab.key}>
             <button
-              key={tab.key}
               onClick={() => handleTabClick(tab.key)}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 relative transition-colors",
-                tab.key === "BarcodeScan" ? "text-white" : active ? "text-[#e20404]" : "text-slate-400 hover:text-slate-600"
+                active ? "text-[#e20404]" : "text-slate-400 hover:text-slate-600"
               )}
               style={{ minHeight: "50px" }}
             >
-              <div className={cn("relative", tab.key === "BarcodeScan" && "h-10 w-10 -mt-5 rounded-full bg-[#e20404] shadow-lg flex items-center justify-center border-4 border-white")}>
-                <tab.icon className={cn("w-5 h-5", active && "stroke-[2.5]", tab.key === "BarcodeScan" && "text-white")} />
+              <div className="relative">
+                <tab.icon className={cn("w-5 h-5", active && "stroke-[2.5]")} />
                 {count > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-[#e20404] text-white text-[10px] rounded-full min-w-4 h-4 px-1 flex items-center justify-center font-bold leading-none">
                     {count > 9 ? "9+" : count}
                   </span>
                 )}
               </div>
-              <span className={cn("text-[10px] font-medium", active && "font-semibold", tab.key === "BarcodeScan" && "text-[#e20404]")}>{tab.label}</span>
+              <span className={cn("text-[10px] font-medium", active && "font-semibold")}>{tab.label}</span>
               {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#e20404] rounded-full" />}
             </button>
+            {index === 1 && allowedPages === null && <GlobalCreateMenu variant="nav" />}
+            </React.Fragment>
           );
         })}
 

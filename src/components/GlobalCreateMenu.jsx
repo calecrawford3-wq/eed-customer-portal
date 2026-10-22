@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Cpu, Users, ClipboardList, Receipt, ShoppingCart, TrendingDown } from 'lucide-react';
+import { Plus, Cpu, Users, ClipboardList, Receipt, ShoppingCart, TrendingDown, ScanLine } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import EngineCheckInModal from '@/components/engines/EngineCheckInModal';
 
 const actions = [
   { label: 'Check In Engine', icon: Cpu, type: 'checkin' },
+  { label: 'Scan', icon: ScanLine, to: '/BarcodeScan' },
   { label: 'New Customer', icon: Users, to: '/Customers?new=1' },
   { label: 'New Estimate', icon: ClipboardList, to: '/EstimateDetail?new=1' },
   { label: 'New Invoice', icon: Receipt, to: '/InvoiceDetail?new=1' },
@@ -13,7 +14,7 @@ const actions = [
   { label: 'New Expense', icon: TrendingDown, to: '/Expenses?new=1' },
 ];
 
-export default function GlobalCreateMenu() {
+export default function GlobalCreateMenu({ variant = 'header' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -35,12 +36,21 @@ export default function GlobalCreateMenu() {
   };
 
   return <>
-    <button aria-label="Create" title="Create" onClick={() => setOpen(true)} className="rounded-lg p-2.5 hover:bg-slate-800">
-      <Plus className="h-5 w-5" />
-    </button>
+    {variant === 'nav' ? (
+      <button aria-label="Create" title="Quick create" onClick={() => setOpen(true)} className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 relative" style={{ minHeight: '50px' }}>
+        <span className="h-11 w-11 -mt-6 rounded-full bg-[#e20404] shadow-lg flex items-center justify-center border-4 border-white">
+          <Plus className="h-6 w-6 text-white" strokeWidth={2.8} />
+        </span>
+        <span className="text-[10px] font-semibold text-[#e20404]">Create</span>
+      </button>
+    ) : (
+      <button aria-label="Create" title="Create" onClick={() => setOpen(true)} className="rounded-lg p-2.5 hover:bg-slate-800">
+        <Plus className="h-5 w-5" />
+      </button>
+    )}
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Create</DialogTitle></DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85dvh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Quick Actions</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-2">
           {actions.map(action => <button key={action.label} onClick={() => choose(action)} className="min-h-24 rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-red-200 hover:bg-red-50 transition-colors">
             <action.icon className="h-5 w-5 text-[#e20404] mb-2" />
