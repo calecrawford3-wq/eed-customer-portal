@@ -11,7 +11,7 @@ Deno.serve(async req=>{try{
  if(Object.keys(updates).length)engine=await service.entities.CustomerEngine.update(engineId,updates);
  let head:any=null;
  if(engine.current_head_component_id)head=rows(await service.entities.EngineComponent.filter({id:engine.current_head_component_id}))[0]||null;
- if(!head){const origin=rows(await service.entities.EngineComponent.filter({origin_customer_engine_id:engineId,component_type:'cylinder_head'}))[0]||null;if(origin){head=origin;if(origin.current_customer_engine_id!==engineId)await pairHead(service,{componentId:origin.id,engineId,reason:'Initial engine identity'});}else{const created=await createHead(service,{engineId,platformId:engine.platform_id,pair:true});head=created.head;}}
+ if(!head){const origin=rows(await service.entities.EngineComponent.filter({origin_customer_engine_id:engineId,component_type:'cylinder_head'}))[0]||null;if(origin&&(!origin.current_customer_engine_id||origin.current_customer_engine_id===engineId)){head=origin;if(origin.current_customer_engine_id!==engineId)await pairHead(service,{componentId:origin.id,engineId,reason:'Initial engine identity'});}else{const created=await createHead(service,{engineId,platformId:engine.platform_id,pair:true});head=created.head;}}
  const fresh=rows(await service.entities.CustomerEngine.filter({id:engineId}))[0]||engine;
  return Response.json({success:true,engine:fresh,head});
 }catch(e){console.error('[initializeEngineIdentity]',e);return Response.json({error:e.message},{status:500});}});
