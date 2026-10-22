@@ -150,25 +150,38 @@ Deno.serve(async (req) => {
 
     // Create the service history entry (idempotent via source_id = task_id)
     let historyEntry = null;
-    if (task.customer_engine_id) {
+    if (task.customer_engine_id || task.component_id) {
       // Check for an existing entry with this source_id (retry safety)
       const existingRes = await base44.asServiceRole.entities.ServiceHistoryEntry.filter({ source_id: taskId });
       const existing = (existingRes.items || existingRes || [])[0];
 
       const historyData = {
-        customer_engine_id: task.customer_engine_id,
+        customer_engine_id: task.customer_engine_id || "",
         customer_id: task.customer_id || "",
         job_id: task.job_id || "",
         build_id: task.build_id || "",
         entry_type: "machining_task",
         source_id: taskId,
-        component: task.affected_component || "",
+        component_id: task.component_id || "",
+        component_code: task.component_code || "",
+        component_type: task.component_type || "",
+        component: task.affected_component || task.component_code || "",
         title: buildHistoryTitle(task),
         description: buildHistoryDescription(task, measurements),
         measurements: buildHistoryMeasurements(task, measurements),
         performed_by: userName,
         performed_at: now,
       };
+
+      if (task.component_id) {
+        try {
+          const compRes = await base44.asServiceRole.entities.EngineComponent.filter({ id: task.component_id });
+          const comp = (compRes.items || compRes || [])[0];
+          if (comp && !["damaged","retired","scrapped"].includes(comp.lifecycle_status || "")) {
+            await base44.asServiceRole.entities.EngineComponent.update(task.component_id, { lifecycle_status: "active" });
+          }
+        } catch {}
+      }
 
       if (existing) {
         await base44.asServiceRole.entities.ServiceHistoryEntry.update(existing.id, historyData);
