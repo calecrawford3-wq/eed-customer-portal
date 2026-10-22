@@ -9,7 +9,7 @@ const actions = [
   { label: 'Check In Engine', icon: Cpu, type: 'checkin' },
   { label: 'Scan', icon: ScanLine, to: '/BarcodeScan' },
   { label: 'New Customer', icon: Users, to: '/Customers?new=1' },
-  { label: 'Standalone Estimate', icon: ClipboardList, to: '/EstimateDetail?new=1' },
+  { label: 'Standalone Estimate', icon: ClipboardList, to: '/EstimateDetail?new=1&standalone=1' },
   { label: 'New Invoice', icon: Receipt, to: '/InvoiceDetail?new=1' },
   { label: 'New Purchase Order', icon: ShoppingCart, to: '/PurchaseOrderDetail?new=1' },
   { label: 'New Expense', icon: TrendingDown, to: '/Expenses?new=1' },

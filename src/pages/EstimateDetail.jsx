@@ -72,6 +72,7 @@ export default function EstimateDetail() {
   const prefillBuildId = params.get("build_id");
   const prefillEngineId = params.get("customer_engine_id");
   const prefillJobId = params.get("job_id");
+  const isStandaloneEstimate = params.get("standalone") === "1";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
@@ -87,7 +88,7 @@ export default function EstimateDetail() {
     deposit_percent: 0,
     deposit_amount: 0,
     deposit_paid: false,
-    is_engine_build: !!prefillJobId,
+    is_engine_build: prefillJobId ? true : !isStandaloneEstimate,
     contains_illegal_parts: false,
     payments: [],
     line_items: [{ ...emptyPart }],

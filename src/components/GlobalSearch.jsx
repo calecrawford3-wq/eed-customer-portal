@@ -88,12 +88,13 @@ export default function GlobalSearch() {
 
   const filterResults = (q) => {
     if (!q) return {};
+    const jobEstimateIds = new Set(jobs.map(j => j.estimate_id).filter(Boolean));
     return {
       customers: customers.filter((c) => match(`${c.first_name} ${c.last_name} ${c.company_name || ""} ${c.email || ""} ${c.phone || ""}`, q)).slice(0, 5),
       jobs: jobs.filter((j) => match(`${j.job_number || ""} ${j.storage_location || ""} ${j.stage || ""}`, q)).slice(0, 6),
       builds: builds.filter((b) => match(`${b.engine_serial_number} ${b.build_number} ${b.eed_id}`, q)).slice(0, 5),
       invoices: invoices.filter((i) => match(`${i.invoice_number}`, q)).slice(0, 5),
-      estimates: estimates.filter((e) => !e.archived && e.status !== "expired" && match(`${e.estimate_number}`, q)).slice(0, 5),
+      estimates: estimates.filter((e) => !jobEstimateIds.has(e.id) && !e.archived && e.status !== "expired" && match(`${e.estimate_number}`, q)).slice(0, 5),
       pos: purchaseOrders.filter((p) => match(`${p.po_number}`, q)).slice(0, 5),
       parts: parts.filter((p) => match(`${p.name} ${p.part_number}`, q)).slice(0, 5),
       engines: engines.filter((e) => match(`${e.engine_serial_number} ${e.eed_id}`, q)).slice(0, 5),
@@ -123,7 +124,8 @@ export default function GlobalSearch() {
             <CommandItem onSelect={() => go("/Inventory")}>
               <Package className="w-4 h-4" /> Inventory
             </CommandItem>
-            <CommandItem onSelect={() => go("/EstimateDetail?new=1")}><Plus className="w-4 h-4" /> New Estimate</CommandItem>
+            <CommandItem onSelect={() => go("/Jobs?new=1")}><Plus className="w-4 h-4" /> New Job</CommandItem>
+            <CommandItem onSelect={() => go("/EstimateDetail?new=1&standalone=1")}><Plus className="w-4 h-4" /> Standalone Estimate</CommandItem>
             <CommandItem onSelect={() => go("/Customers?new=1")}><Plus className="w-4 h-4" /> New Customer</CommandItem>
           </CommandGroup>
         )}
@@ -164,7 +166,7 @@ export default function GlobalSearch() {
           </CommandGroup>
         )}
         {results.estimates?.length > 0 && (
-          <CommandGroup heading="Estimates">
+          <CommandGroup heading="Standalone Estimates">
             {results.estimates.map((e) => (
               <CommandItem key={e.id} onSelect={() => go(`/EstimateDetail?id=${e.id}`)}>
                 <ClipboardList className="w-4 h-4" /> {e.estimate_number}

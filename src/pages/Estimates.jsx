@@ -170,7 +170,7 @@ export default function Estimates() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Standalone Estimates</h1>
           <p className="text-slate-500 mt-1">Non-job quotes and standalone work · {filtered.length} estimate{filtered.length === 1 ? "" : "s"}</p>
         </div>
-        <Link to="/EstimateDetail?new=1">
+        <Link to="/EstimateDetail?new=1&standalone=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> New Standalone Estimate
           </Button>
@@ -270,7 +270,7 @@ export default function Estimates() {
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="text-lg font-medium">{standaloneEstimates.length === 0 ? "No standalone estimates yet" : "No estimates match your filters"}</p>
           {standaloneEstimates.length === 0 ? (
-            <Link to="/EstimateDetail?new=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create Standalone Estimate</Button></Link>
+            <Link to="/EstimateDetail?new=1&standalone=1"><Button className="mt-4 bg-[#e20404] hover:bg-[#c00303] text-white">Create Standalone Estimate</Button></Link>
           ) : (
             <Button variant="outline" className="mt-4" onClick={() => { setSearch(""); setFilterStatus("all"); }}>Clear Filters</Button>
           )}
