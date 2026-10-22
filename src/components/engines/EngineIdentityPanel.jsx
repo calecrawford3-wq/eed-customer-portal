@@ -3,7 +3,6 @@ import {base44} from '@/api/base44Client';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {Cpu,Download,Link2,Plus,Unlink,History,ScanLine,RefreshCw,ShieldAlert} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {Badge} from '@/components/ui/badge';
 import {Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {Label} from '@/components/ui/label';
@@ -28,7 +27,7 @@ export default function EngineIdentityPanel({engine,platformName='',jobId=''}){
  const createHead=useMutation({mutationFn:()=>base44.functions.invoke('createEngineHead',{customer_engine_id:engine.id,platform_id:engine.platform_id,job_id:jobId,pair:true,reason:'New head created for engine',reason_code:'replacement'}),onSuccess:r=>{const d=r?.data||r;if(d?.error)throw Error(d.error);invalidate();toast.success(`New head ${d?.head?.component_code||''} created and paired`);},onError:e=>toast.error(e.message||'Could not create head')});
  const pair=useMutation({mutationFn:()=>base44.functions.invoke('pairEngineHead',{component_id:selectedHead,customer_engine_id:engine.id,job_id:jobId,reason_code:reasonCode,reason:reasonNote.trim(),allow_transfer:!!conflictEngine}),onSuccess:r=>{const d=r?.data||r;if(d?.error)throw Error(d.error);invalidate();setPairOpen(false);setSelectedHead('');setReasonCode('replacement');setReasonNote('');toast.success('Head paired to this bottom end');},onError:e=>toast.error(e.message||'Could not pair head')});
  const unpair=useMutation({mutationFn:()=>base44.functions.invoke('pairEngineHead',{action:'unpair',customer_engine_id:engine.id,job_id:jobId,reason_code:'other',reason:'Manual unpair'}),onSuccess:()=>{invalidate();toast.success('Head unpaired');},onError:e=>toast.error(e.message||'Could not unpair head')});
- const lifecycle=useMutation({mutationFn:({componentId,status})=>base44.functions.invoke('updateEngineComponentLifecycle',{component_id:componentId,lifecycle_status:status,job_id:jobId,reason:`Changed from Engine Identity panel to ${pretty(status)}`}),onSuccess:()=>{invalidate();toast.success('Component status updated');},onError:e=>toast.error(e.message||'Could not update component status')});
+ const lifecycle=useMutation({mutationFn:/** @param {{componentId:string,status:string}} args */ ({componentId,status})=>base44.functions.invoke('updateEngineComponentLifecycle',{component_id:componentId,lifecycle_status:status,job_id:jobId,reason:`Changed from Engine Identity panel to ${pretty(status)}`}),onSuccess:()=>{invalidate();toast.success('Component status updated');},onError:e=>toast.error(e.message||'Could not update component status')});
  const available=useMemo(()=>heads.filter(h=>!['retired','scrapped'].includes(h.lifecycle_status||'')&&h.status!=='retired'),[heads]);
  const resetPair=()=>{setPairOpen(false);setSelectedHead('');setReasonCode('replacement');setReasonNote('');};
  if(!engine)return null;
