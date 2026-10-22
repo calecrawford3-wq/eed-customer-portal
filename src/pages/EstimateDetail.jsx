@@ -335,7 +335,7 @@ export default function EstimateDetail() {
         await base44.entities.Job.update(prefillJobId, { estimate_id: estimateId, is_engine_build: true });
       }
       if (estimateId) {
-        await base44.functions.invoke("ensureJobForEstimate", { estimate_id: estimateId, activate: false });
+        await base44.functions.invoke("ensureJobForEstimate", { estimate_id: estimateId, activate: true });
       }
       // Credits are redeemed only when the estimate is approved (see redeemCreditsOnApproval),
       // so the same credits can be soft-held on multiple estimates without locking the balance.
