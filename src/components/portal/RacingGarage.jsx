@@ -20,9 +20,14 @@ export default function RacingGarage({customerId,engines=[],onChange = () => {},
   const [error,setError] = useState('');
   useEffect(()=>{onEditingChange?.(!!editing);},[editing,onEditingChange]);
   const invoke = async (body) => {
-    const r = await base44.functions.invoke('managePortalGarage',body);
-    if(r?.data?.error) throw Error(r.data.error);
-    return r.data;
+    try {
+      const r = await base44.functions.invoke('managePortalGarage',body);
+      if(r?.data?.error) throw Error(r.data.error);
+      return r.data;
+    } catch (e) {
+      const message = e?.response?.data?.error || e?.data?.error || e?.message || 'Request failed';
+      throw Error(message);
+    }
   };
   const refresh = async () => {
     setLoading(true);
@@ -40,9 +45,16 @@ export default function RacingGarage({customerId,engines=[],onChange = () => {},
   };
   const change = (key,value)=>setForm(prev=>({...prev,[key]:value}));
   const save = async () => {
-    setLoading(true);setError('');
+    setError('');
+    const name = String(form.name || '').trim();
+    if (!name) {
+      setError(kind==='car' ? 'Car name / identifier is required.' : 'Driver full name is required.');
+      return;
+    }
+    setLoading(true);
     try {
       const values = Object.fromEntries(Object.entries(form).filter(([key,value])=>key!=='id' && value!==null && value!==undefined));
+      values.name = name;
       if(kind==='car') values.track_names=Array.isArray(values.track_names)?values.track_names:split(values.track_names);
       await invoke({kind,action:editing==='new'?'create':'update',id:editing==='new'?undefined:editing,values,customer_id:customerId});
       toast.success(kind==='car'?'Car saved':'Driver saved');
@@ -67,8 +79,8 @@ export default function RacingGarage({customerId,engines=[],onChange = () => {},
       {editing && <div className="border rounded-xl p-4 space-y-3">
         <h3 className="font-semibold">{editing==='new'?'Add':'Edit'} {kind}</h3>
         {(kind==='car'?[
-          ['name','Car name / identifier'],['car_number','Car number'],['class_name','Racing class'],['chassis','Chassis'],['team','Team'],['primary_track','Primary track'],['photo_url','Photo URL (HTTPS)'],['notes','Notes']
-        ]:[['name','Driver full name'],['nickname','Nickname'],['phone','Phone (optional)'],['notes','Notes']]).map(([key,label])=><div key={key}><Label htmlFor={'garage-'+key}>{label}</Label><Input id={'garage-'+key} value={form[key]||''} onChange={e=>change(key,e.target.value)} className="mt-1 min-h-11"/></div>)}
+          ['name','Car name / identifier *'],['car_number','Car number'],['class_name','Racing class'],['chassis','Chassis'],['team','Team'],['primary_track','Primary track'],['photo_url','Photo URL (HTTPS)'],['notes','Notes']
+        ]:[['name','Driver full name *'],['nickname','Nickname'],['phone','Phone (optional)'],['notes','Notes']]).map(([key,label])=><div key={key}><Label htmlFor={'garage-'+key}>{label}</Label><Input id={'garage-'+key} value={form[key]||''} onChange={e=>change(key,e.target.value)} className="mt-1 min-h-11"/></div>)}
         {kind==='car' && <>
           <div><Label htmlFor="garage-photo">Upload car photo</Label><Input id="garage-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>5*1024*1024){setError('Maximum photo size is 5 MB');return;}setLoading(true);try{const result=await base44.integrations.Core.UploadFile({file});if(!result.file_url)throw Error('Upload failed');change('photo_url',result.file_url);toast.success('Photo uploaded. Save the car to keep it.');}catch(err){setError(err.message||'Upload failed');}finally{setLoading(false);}}}/></div>
           <div><Label htmlFor="garage-tracks">Additional tracks (comma-separated)</Label><Input id="garage-tracks" list="garage-track-list" value={Array.isArray(form.track_names)?form.track_names.join(', '):form.track_names||''} onChange={e=>change('track_names',e.target.value)} /><datalist id="garage-track-list">{tracks.map(t=><option key={t} value={t}/>)}</datalist></div>
