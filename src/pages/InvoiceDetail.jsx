@@ -879,7 +879,7 @@ export default function InvoiceDetail() {
   const selectedSpecSheet = (() => {
     if (form.spec_sheet_id) return specSheets.find(s => s.id === form.spec_sheet_id) || null;
     if (engineBuilds.length > 0) {
-      const mostRecentBuild = [...engineBuilds].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+      const mostRecentBuild = [...engineBuilds].sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())[0];
       if (mostRecentBuild?.spec_sheet_id) {
         const found = specSheets.find(s => s.id === mostRecentBuild.spec_sheet_id);
         if (found) return found;

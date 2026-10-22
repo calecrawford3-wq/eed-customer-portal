@@ -886,7 +886,7 @@ export default function EstimateDetail() {
           const eng = engineRec[0];
           if (eng) {
              const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
-             const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+             const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())[0];
              if (lastBuild) {
                prevBuildData = {
                  max_rpm: lastBuild.max_rpm,
@@ -995,7 +995,7 @@ export default function EstimateDetail() {
           eng = engineRec?.[0] || null;
           if (eng) {
             const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
-            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())[0];
             if (lastBuild) {
               prevBuildData = {
                 max_rpm: lastBuild.max_rpm,
@@ -1202,7 +1202,7 @@ export default function EstimateDetail() {
           eng = engineRec?.[0] || null;
           if (eng) {
             const prevBuilds = await base44.entities.EngineBuild.filter({ engine_serial_number: eng.engine_serial_number });
-            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+            const lastBuild = prevBuilds.sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())[0];
             if (lastBuild) {
               prevBuildData = {
                 max_rpm: lastBuild.max_rpm,
@@ -1562,7 +1562,7 @@ export default function EstimateDetail() {
   const selectedSpecSheetForEngine = (() => {
     if (form.spec_sheet_id) return allSpecSheets.find(s => s.id === form.spec_sheet_id) || null;
     if (engineBuilds.length > 0) {
-      const mostRecentBuild = [...engineBuilds].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0];
+      const mostRecentBuild = [...engineBuilds].sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())[0];
       if (mostRecentBuild?.spec_sheet_id) {
         const found = allSpecSheets.find(s => s.id === mostRecentBuild.spec_sheet_id);
         if (found) return found;

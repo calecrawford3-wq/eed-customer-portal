@@ -146,7 +146,7 @@ export default function CustomerDetail() {
   const creditBalance = credits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0) - credits.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0);
   const nextFollowUp = successTasks
     .filter(t => t.status === "pending")
-    .sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0))[0];
+    .sort((a, b) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime())[0];
 
   if (!customer) return (
     <div className="p-8 flex items-center justify-center">

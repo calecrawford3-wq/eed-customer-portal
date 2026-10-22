@@ -127,9 +127,9 @@ export default function Messaging() {
       }
     });
     const list = Object.values(map);
-    list.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
+    list.sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
     list.forEach((conv) => {
-      conv.messages.sort((a, b) => new Date(a.sent_at || 0) - new Date(b.sent_at || 0));
+      conv.messages.sort((a, b) => new Date(a.sent_at || 0).getTime() - new Date(b.sent_at || 0).getTime());
     });
     return list;
   }, [messages]);

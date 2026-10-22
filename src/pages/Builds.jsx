@@ -459,7 +459,7 @@ export default function Builds() {
 
   const completedBuilds = filteredBuilds
     .filter(b => ["complete", "shipped"].includes(b.status))
-    .sort((a, b) => new Date(b.completion_date || 0) - new Date(a.completion_date || 0));
+    .sort((a, b) => new Date(b.completion_date || 0).getTime() - new Date(a.completion_date || 0).getTime());
 
   return (
     <div className="p-4 md:p-8">

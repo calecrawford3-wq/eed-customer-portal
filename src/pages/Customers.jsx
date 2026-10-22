@@ -101,7 +101,7 @@ export default function Customers() {
 
   if (sortKey === "name") filtered.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`));
   else if (sortKey === "balance_desc") filtered.sort((a, b) => (customerBalances[b.id] || 0) - (customerBalances[a.id] || 0));
-  else if (sortKey === "oldest") filtered.sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
+  else if (sortKey === "oldest") filtered.sort((a, b) => new Date(a.created_date || 0).getTime() - new Date(b.created_date || 0).getTime());
 
   return (
     <div className="p-4 md:p-8">

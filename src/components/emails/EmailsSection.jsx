@@ -56,7 +56,7 @@ export default function EmailsSection({ customerId, supplierId, linkType, linkId
     if (!selected) return [];
     return emails
       .filter((e) => e.thread_id === selected.thread_id)
-      .sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+      .sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
   }, [emails, selected]);
 
   const refresh = async () => {

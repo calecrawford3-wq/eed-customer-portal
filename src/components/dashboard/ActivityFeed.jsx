@@ -72,7 +72,7 @@ export default function ActivityFeed({ builds, invoices, purchaseOrders, custome
 
     return items
       .filter((a) => a.date)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 12);
   }, [builds, invoices, purchaseOrders, customers]);
 

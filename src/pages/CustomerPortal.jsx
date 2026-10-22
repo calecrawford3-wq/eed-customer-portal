@@ -531,7 +531,7 @@ export default function CustomerPortal() {
                   const engineLegalDocs = legalDocs.filter(d => d.customer_engine_id === engine.id && d.status !== "void");
                   const engineBuilds = builds
                     .filter(b => b.engine_serial_number === engine.engine_serial_number)
-                    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+                    .sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
                   const engineInvoices = invoices.filter(inv =>
                     engineBuilds.some(b => b.id === inv.build_id) ||
                     inv.customer_engine_id === engine.id
@@ -871,7 +871,7 @@ export default function CustomerPortal() {
           <TabsContent value="credits">
             {(() => {
               const today = new Date().toISOString().split("T")[0];
-              const sorted = [...credits].sort((a, b) => new Date(b.date || b.created_date || 0) - new Date(a.date || a.created_date || 0));
+              const sorted = [...credits].sort((a, b) => new Date(b.date || b.created_date || 0).getTime() - new Date(a.date || a.created_date || 0).getTime());
               const activeCredits = sorted.filter(c => !c.expires_on || c.expires_on >= today);
               const expiredCredits = sorted.filter(c => c.expires_on && c.expires_on < today);
               const available = activeCredits.reduce((s, c) => s + (c.amount || 0), 0);

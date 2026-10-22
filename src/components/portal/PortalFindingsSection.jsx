@@ -147,7 +147,7 @@ function EngineGroup({ engineLabel, engine, findingCount, children }) {
 
 function JobSubGroup({ jobFindings, estimate, invoices, approvalForFinding }) {
   const [open, setOpen] = useState(true);
-  const sorted = [...jobFindings].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+  const sorted = [...jobFindings].sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
   const dateLabel = sorted[0]?.created_date ? fmtDate(sorted[0].created_date) : "—";
   const estimateDate = estimate?.issue_date ? fmtDate(estimate.issue_date) : null;
   const invoiceDate = invoices?.[0]?.issue_date ? fmtDate(invoices[0].issue_date) : null;

@@ -61,7 +61,7 @@ export default function BuildTimeline({ buildId }) {
       });
       const ev = [];
       Object.entries(threadMap).forEach(([key, msgs]) => {
-        msgs.sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+        msgs.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
         const latest = msgs[msgs.length - 1];
         ev.push({
           date: latest.received_at, type: "email_thread",
@@ -102,7 +102,7 @@ export default function BuildTimeline({ buildId }) {
         date: a.event_date || a.created_date, type: "activity",
         title: a.title, desc: a.description || "", actor: a.actor,
       }));
-      ev.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      ev.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
       return ev;
     },
     enabled: !!buildId,

@@ -139,7 +139,7 @@ export default function Estimates() {
 
   if (sortKey === "total_desc") filtered.sort((a, b) => (b.total || 0) - (a.total || 0));
   else if (sortKey === "total_asc") filtered.sort((a, b) => (a.total || 0) - (b.total || 0));
-  else if (sortKey === "date_asc") filtered.sort((a, b) => new Date(a.issue_date || 0) - new Date(b.issue_date || 0));
+  else if (sortKey === "date_asc") filtered.sort((a, b) => new Date(a.issue_date || 0).getTime() - new Date(b.issue_date || 0).getTime());
   else if (sortKey === "customer") filtered.sort((a, b) => {
     const an = getCustomer(a.customer_id)?.last_name || "";
     const bn = getCustomer(b.customer_id)?.last_name || "";

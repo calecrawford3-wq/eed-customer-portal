@@ -60,7 +60,7 @@ export default function MessageThread({
   );
 
   const allMessages = [...(selectedConversation?.messages || []), ...pendingForConv].sort(
-    (a, b) => new Date(a.sent_at || 0) - new Date(b.sent_at || 0)
+    (a, b) => new Date(a.sent_at || 0).getTime() - new Date(b.sent_at || 0).getTime()
   );
 
   let lastDay = "";

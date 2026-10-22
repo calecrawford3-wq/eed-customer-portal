@@ -230,7 +230,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
             const platform = platforms.find(p => p.id === engine.platform_id);
             const engineBuilds = allBuilds
               .filter(b => b.engine_serial_number === engine.engine_serial_number)
-              .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+              .sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime());
             const mostRecentBuild = engineBuilds[0];
             const pastBuilds = engineBuilds.slice(1);
             const isExpanded = expandedEngine === engine.id;

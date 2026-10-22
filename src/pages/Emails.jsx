@@ -134,7 +134,7 @@ export default function Emails() {
     }
     const arr = [];
     for (const [key, msgs] of map) {
-      msgs.sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+      msgs.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
       const latest = msgs[msgs.length - 1];
       const first = msgs[0];
       const participants = new Set();
@@ -185,7 +185,7 @@ export default function Emails() {
         needsAction,
       });
     }
-    arr.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+    arr.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
     return arr;
   }
 
