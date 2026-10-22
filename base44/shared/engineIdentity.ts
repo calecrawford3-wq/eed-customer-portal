@@ -12,7 +12,7 @@ export async function pairHead(service:any,{componentId,engineId,jobId='',reason
  const Component=service.entities.EngineComponent, Engine=service.entities.CustomerEngine, Pairing=service.entities.EngineComponentPairing;
  const component=rows(await Component.filter({id:componentId}))[0]; const engine=rows(await Engine.filter({id:engineId}))[0];
  if(!component||component.component_type!=='cylinder_head')throw new Error('Cylinder head not found'); if(!engine)throw new Error('Engine not found');
- if(component.current_customer_engine_id===engineId&&engine.current_head_component_id===componentId){const existing=rows(await Pairing.filter({component_id:componentId,customer_engine_id:engineId,status:'active'}))[0]||null;return {pairing:existing,component,engine,no_op:true};}
+ if(component.current_customer_engine_id===engineId&&engine.current_head_component_id===componentId){const existing=rows(await Pairing.filter({component_id:componentId,customer_engine_id:engineId,status:'active'}))[0]||null;if(existing)return {pairing:existing,component,engine,no_op:true};const repaired=await Pairing.create({component_id:componentId,component_code:component.component_code,customer_engine_id:engineId,engine_eed_id:engine.eed_id||'',job_id:jobId,paired_at:new Date().toISOString(),status:'active',reason:reason||'Pairing history repaired'});return {pairing:repaired,component,engine,repaired:true};}
  const now=new Date().toISOString();
  // Close any active history rows involving either this head or this bottom end.
  const [byHead,byEngine]=await Promise.all([Pairing.filter({component_id:componentId,status:'active'}),Pairing.filter({customer_engine_id:engineId,status:'active'})]);
