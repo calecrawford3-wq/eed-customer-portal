@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import QuickCreateCustomerModal from "@/components/QuickCreateCustomerModal";
 import { printEngineLabel } from "./EngineLabelPrint";
+import EngineIdentityPanel from "@/components/engines/EngineIdentityPanel";
 
 function getPlatformLabel(platform) {
   if (!platform) return "Unknown";
