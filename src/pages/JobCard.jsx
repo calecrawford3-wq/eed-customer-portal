@@ -10,14 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import JobHeader from "@/components/jobs/JobHeader";
 import JobOverviewTab from "@/components/jobs/JobOverviewTab";
-import JobPartsTab from "@/components/jobs/JobPartsTab";
-import JobInvoiceTab from "@/components/jobs/JobInvoiceTab";
-import JobEstimateTab from "@/components/jobs/JobEstimateTab";
-import JobBuildTab from "@/components/jobs/JobBuildTab";
-import JobWorkflowTab from "@/components/jobs/JobWorkflowTab";
-import JobMachiningTab from "@/components/jobs/JobMachiningTab";
-import JobCommsTab from "@/components/jobs/JobCommsTab";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
+import JobPartsTab from "@/components/jobs/JobPartsTab";
+import JobWorkTab from "@/components/jobs/JobWorkTab";
+import JobBillingHistoryTab from "@/components/jobs/JobBillingHistoryTab";
+import JobNextAction from "@/components/jobs/JobNextAction";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
 import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
@@ -32,7 +29,11 @@ export default function JobCard() {
   const [deleting, setDeleting] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  const requestedTab = searchParams.get("tab") || "overview";
+  const legacyTabMap = { estimate: "billing", invoice: "billing", comms: "billing", build: "work", workflow: "work", machining: "work" };
+  const activeTab = legacyTabMap[requestedTab] || requestedTab;
+  const initialWorkSection = ["build","workflow","machining"].includes(requestedTab) ? requestedTab : searchParams.get("work") || undefined;
+  const initialBillingSection = ["estimate","invoice","comms"].includes(requestedTab) ? requestedTab : searchParams.get("billing") || undefined;
   const planMachining = searchParams.get("plan") === "1";
 
   useEffect(() => {
@@ -154,6 +155,16 @@ export default function JobCard() {
   // Checked-in engine with no estimate — prompt to create/link one
   const needsEstimate = job.customer_engine_id && !job.estimate_id;
 
+  const navigateJobArea = (tab, section) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    next.delete("plan"); next.delete("work"); next.delete("billing");
+    if (tab === "work" && section) next.set("work", section);
+    if (tab === "billing" && section) next.set("billing", section);
+    setSearchParams(next, { replace: true });
+  };
+
+
   return (
     <div className="pb-8">
       {/* Print-only Build Book */}
@@ -209,6 +220,8 @@ export default function JobCard() {
         </div>
       )}
 
+      <JobNextAction job={job} estimate={estimate} onIntake={() => setIntakeOpen(true)} onNavigate={navigateJobArea} />
+
       <JobHeader job={job} customer={customer} engine={engine} platform={platform} invoice={primaryInvoice} invoices={invoiceList} estimate={estimate} build={build} />
 
       <ConfirmDialog
@@ -231,53 +244,28 @@ export default function JobCard() {
       )}
 
       <div className="px-4 md:px-8 mt-4">
-        <Tabs value={activeTab} onValueChange={(v) => {
-          const next = new URLSearchParams(searchParams);
-          next.set("tab", v);
-          next.delete("plan");
-          setSearchParams(next, { replace: true });
-        }}>
-          <TabsList className="flex flex-nowrap h-auto overflow-x-auto md:flex-wrap md:overflow-x-visible -mx-4 px-4 md:mx-0 md:px-0">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="estimate">Estimate & Approvals</TabsTrigger>
-            <TabsTrigger value="findings">Findings & Approvals</TabsTrigger>
-            <TabsTrigger value="parts">Parts & Purchasing</TabsTrigger>
-            <TabsTrigger value="build">Build Sheet</TabsTrigger>
-            <TabsTrigger value="workflow">Workflow</TabsTrigger>
-            <TabsTrigger value="machining">Machining</TabsTrigger>
-            <TabsTrigger value="invoice">Invoice & Payments</TabsTrigger>
-            <TabsTrigger value="comms">Comms & Docs</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => navigateJobArea(v)}>
+          <TabsList className="grid grid-cols-5 h-auto gap-1 bg-white border border-slate-200 p-1 overflow-x-auto">
+            <TabsTrigger value="overview" className="min-h-10">Overview</TabsTrigger>
+            <TabsTrigger value="work" className="min-h-10">Work</TabsTrigger>
+            <TabsTrigger value="findings" className="min-h-10">Findings</TabsTrigger>
+            <TabsTrigger value="parts" className="min-h-10">Parts</TabsTrigger>
+            <TabsTrigger value="billing" className="min-h-10">Billing & History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
             <JobOverviewTab job={job} customer={customer} engine={engine} platform={platform} estimate={estimate} build={build} invoices={invoiceList} />
-            <div className="mt-6">
-              <JobProfitabilityTab job={job} />
-            </div>
+            <div className="mt-6"><JobProfitabilityTab job={job} /></div>
           </TabsContent>
-          <TabsContent value="estimate" className="mt-4">
-            <JobEstimateTab job={job} estimate={estimate} />
+          <TabsContent value="work" className="mt-4">
+            <JobWorkTab job={job} build={build} platform={platform} customer={customer} customers={customers} platforms={platforms} engine={engine} initialSection={initialWorkSection} autoOpenPlan={planMachining} />
           </TabsContent>
           <TabsContent value="findings" className="mt-4">
             <JobFindingsTab job={job} estimate={estimate} build={build} invoices={invoiceList} />
           </TabsContent>
-          <TabsContent value="parts" className="mt-4">
-            <JobPartsTab job={job} />
-          </TabsContent>
-          <TabsContent value="build" className="mt-4">
-            <JobBuildTab job={job} build={build} platform={platform} customer={customer} customers={customers} platforms={platforms} />
-          </TabsContent>
-          <TabsContent value="workflow" className="mt-4">
-            <JobWorkflowTab job={job} build={build} />
-          </TabsContent>
-          <TabsContent value="machining" className="mt-4">
-            <JobMachiningTab job={job} build={build} engine={engine} autoOpenPlan={planMachining} />
-          </TabsContent>
-          <TabsContent value="invoice" className="mt-4">
-            <JobInvoiceTab job={job} invoices={invoiceList} />
-          </TabsContent>
-          <TabsContent value="comms" className="mt-4">
-            <JobCommsTab job={job} customer={customer} />
+          <TabsContent value="parts" className="mt-4"><JobPartsTab job={job} /></TabsContent>
+          <TabsContent value="billing" className="mt-4">
+            <JobBillingHistoryTab job={job} estimate={estimate} invoices={invoiceList} customer={customer} initialSection={initialBillingSection} />
           </TabsContent>
         </Tabs>
       </div>
