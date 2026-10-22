@@ -9,8 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Intake dialog shown when a checked-in engine without an estimate is dragged
-// into an active work stage. Offers "Create Estimate" or "Link Existing Estimate".
+// Job estimate intake. Create the job-owned estimate or, for legacy/migrated work, link an existing standalone estimate.
 export default function IntakeLinkDialog({ job, customer, open, onClose, onLinked }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -80,14 +79,14 @@ export default function IntakeLinkDialog({ job, customer, open, onClose, onLinke
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-[#e20404]" /> Start Work — Estimate Required
+            <ClipboardList className="w-5 h-5 text-[#e20404]" /> Job Estimate Required
           </DialogTitle>
         </DialogHeader>
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-amber-800">
-            This checked-in engine has no estimate. Create or link one before starting work.
+            This job has no estimate yet. Create the job estimate before moving into active work.
           </p>
         </div>
 
@@ -95,7 +94,7 @@ export default function IntakeLinkDialog({ job, customer, open, onClose, onLinke
           <div className="bg-slate-50 rounded-lg p-3">
             <p className="text-xs text-slate-400 uppercase">Customer</p>
             <p className="font-medium text-slate-900">{customer.first_name} {customer.last_name}</p>
-            <p className="text-xs text-slate-500 mt-1">Engine: {job.customer_engine_id ? "Linked" : "—"}</p>
+            <p className="text-xs text-slate-500 mt-1">Engine: {job.customer_engine_id ? "Linked" : "Not here yet / link later"}</p>
           </div>
         )}
 
@@ -106,7 +105,7 @@ export default function IntakeLinkDialog({ job, customer, open, onClose, onLinke
               className="flex flex-col items-center gap-2 border-2 border-slate-200 rounded-lg p-4 hover:border-[#e20404] hover:bg-red-50/30 transition-all"
             >
               <ClipboardList className="w-8 h-8 text-[#e20404]" />
-              <span className="font-medium text-sm text-slate-900">Create Estimate</span>
+              <span className="font-medium text-sm text-slate-900">Create Job Estimate</span>
               <span className="text-xs text-slate-500 text-center">Prefilled with customer & engine</span>
             </button>
             <button

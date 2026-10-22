@@ -50,7 +50,7 @@ export default function JobCard() {
 
   // Auto-open the estimate prompt when a checked-in engine job loads with no estimate
   useEffect(() => {
-    if (job && job.customer_engine_id && !job.estimate_id) {
+    if (job && !job.estimate_id) {
       setIntakeOpen(true);
     }
   }, [job?.id]);
@@ -153,7 +153,7 @@ export default function JobCard() {
   }
 
   // Checked-in engine with no estimate — prompt to create/link one
-  const needsEstimate = job.customer_engine_id && !job.estimate_id;
+  const needsEstimate = !job.estimate_id;
 
   const navigateJobArea = (tab, section) => {
     const next = new URLSearchParams(searchParams);
@@ -208,8 +208,8 @@ export default function JobCard() {
           <div className="flex items-center gap-3 flex-1">
             <ClipboardList className="w-8 h-8 text-[#e20404] flex-shrink-0" />
             <div>
-              <p className="font-semibold text-slate-900">No estimate linked to this engine</p>
-              <p className="text-sm text-slate-600">Create or link an estimate to start the workflow for this checked-in engine.</p>
+              <p className="font-semibold text-slate-900">No estimate created for this job</p>
+              <p className="text-sm text-slate-600">Create this job’s estimate to start the workflow. The engine can be linked or checked in later if it has not arrived yet.</p>
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">

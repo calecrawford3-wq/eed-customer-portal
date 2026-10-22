@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, CheckCircle2, Clock, XCircle, Link2 } from "lucide-react";
+import { FileText, CheckCircle2, Clock, XCircle, Link2, Plus } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import LinkEstimateDialog from "./LinkEstimateDialog";
 
@@ -24,9 +24,14 @@ export default function JobEstimateTab({ job, estimate }) {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-8 text-center">
             <p className="text-sm text-slate-400 mb-3">No estimate linked to this job.</p>
-            <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
-              <Link2 className="w-4 h-4 mr-1" /> Link Estimate
-            </Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link to={`/EstimateDetail?new=1&customer_id=${encodeURIComponent(job.customer_id || '')}&customer_engine_id=${encodeURIComponent(job.customer_engine_id || '')}&job_id=${encodeURIComponent(job.id)}&return_job=1`}>
+                <Button size="sm" className="bg-[#e20404] hover:bg-red-700"><Plus className="w-4 h-4 mr-1" /> Create Job Estimate</Button>
+              </Link>
+              <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+                <Link2 className="w-4 h-4 mr-1" /> Link Existing
+              </Button>
+            </div>
           </CardContent>
         </Card>
         <LinkEstimateDialog open={linkOpen} onClose={() => setLinkOpen(false)} job={job} />
@@ -47,7 +52,7 @@ export default function JobEstimateTab({ job, estimate }) {
             <CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" /> {estimate.estimate_number}</CardTitle>
             <div className="flex items-center gap-2">
               <Badge className={STATUS_CLS[estimate.status] || "bg-slate-100"}>{estimate.status}</Badge>
-              <Link to={`/EstimateDetail?id=${estimate.id}`}><Button variant="outline" size="sm">Open Estimate</Button></Link>
+              <Link to={`/EstimateDetail?id=${estimate.id}&job_id=${job.id}&return_job=1`}><Button variant="outline" size="sm">Edit Job Estimate</Button></Link>
             </div>
           </div>
         </CardHeader>
@@ -90,7 +95,7 @@ export default function JobEstimateTab({ job, estimate }) {
 
       <div>
         <Button size="sm" variant="ghost" className="text-slate-500" onClick={() => setLinkOpen(true)}>
-          <Link2 className="w-3.5 h-3.5 mr-1" /> Link Different Estimate
+          <Link2 className="w-3.5 h-3.5 mr-1" /> Link Different Standalone Estimate
         </Button>
       </div>
 
