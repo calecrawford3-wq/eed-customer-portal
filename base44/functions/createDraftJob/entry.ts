@@ -2,7 +2,7 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.38";
 import { generateJobNumber } from "../../shared/jobLifecycle.ts";
 
 async function nextJobSeq(base44:any) {
-  const res = await base44.entities.Job.filter({ stage: { $in: ["awaiting_approval","awaiting_deposit","queued","teardown","waiting_on_parts","machining","assembly","testing","ready_for_pickup","picked_up"] } });
+  const res = await base44.entities.Job.filter({ stage: { $in: ["needs_estimate","awaiting_approval","awaiting_deposit","queued","teardown","waiting_on_parts","machining","assembly","testing","ready_for_pickup","picked_up"] } });
   const jobs = res?.items || res || [];
   let max = 100000;
   for (const job of jobs) {
@@ -46,8 +46,8 @@ Deno.serve(async req => {
       invoice_ids: [],
       platform_id: engine?.platform_id || "",
       is_engine_build: true,
-      stage: "awaiting_approval",
-      blocking_condition: "awaiting_approval",
+      stage: "needs_estimate",
+      blocking_condition: "none",
       is_active: false,
       deposit_required: false,
       deposit_amount: 0,
