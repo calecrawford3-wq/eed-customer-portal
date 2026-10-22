@@ -16,6 +16,7 @@ import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
+import ComponentRepairManager from "@/components/inventory/ComponentRepairManager";
 import MotosportBrowseButton from "@/components/MotosportBrowseButton";
 import PrintLabelsModal from "@/components/inventory/PrintLabelsModal";
 import PartsTable from "@/components/inventory/PartsTable";
@@ -239,6 +240,9 @@ export default function Inventory() {
           <TabsTrigger value="cores" className="flex items-center gap-2">
             <Recycle className="w-4 h-4" /> Cores
           </TabsTrigger>
+          <TabsTrigger value="repairs" className="flex items-center gap-2">
+            <Wrench className="w-4 h-4" /> Core Repairs
+          </TabsTrigger>
         </TabsList>
 
         {/* ─── Parts Tab ─── */}
@@ -338,6 +342,10 @@ export default function Inventory() {
         {/* ─── Cores Tab ─── */}
         <TabsContent value="cores">
           <CoreManager />
+        </TabsContent>
+
+        <TabsContent value="repairs">
+          <ComponentRepairManager />
         </TabsContent>
       </Tabs>
       <Dialog open={machiningDialogOpen} onOpenChange={setMachiningDialogOpen}>
