@@ -6,9 +6,10 @@ import { createPageUrl } from "@/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, BellOff, RefreshCw, Loader2, ListChecks } from "lucide-react";
+import { ChevronRight, BellOff, RefreshCw, Loader2, ListChecks, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import SnoozeExceptionDialog from "@/components/exceptions/SnoozeExceptionDialog";
+import DeleteExceptionDialog from "@/components/exceptions/DeleteExceptionDialog";
 import { EXCEPTION_TYPE_CONFIG, EXCEPTION_SEVERITY_STYLES } from "@/lib/exceptionTypes";
 
 const SEVERITY_ORDER = { critical: 0, warning: 1, info: 2 };
@@ -23,6 +24,7 @@ export default function OwnerExceptionQueue() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [snoozeTarget, setSnoozeTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [scanning, setScanning] = useState(false);
 
   const { data: alerts = [], isLoading } = useQuery({
@@ -59,6 +61,16 @@ export default function OwnerExceptionQueue() {
       setSnoozeTarget(null);
       toast.success("Alert snoozed");
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: /** @param {string} id */ (id) => base44.entities.ExceptionAlert.delete(id),
+    onSuccess: () => {
+      for (const key of ["exception-alerts-today","exception-alerts","today-action-exceptions","home-exceptions","nav-badge-exceptions"]) qc.invalidateQueries({ queryKey: [key] });
+      setDeleteTarget(null);
+      toast.success("Exception deleted");
+    },
+    onError: () => toast.error("Could not delete exception"),
   });
 
   const sorted = [...alerts].sort(
@@ -139,6 +151,9 @@ export default function OwnerExceptionQueue() {
                       >
                         <BellOff className="w-3.5 h-3.5" />
                       </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-600" aria-label="Delete exception" title="Delete exception" onClick={() => setDeleteTarget(alert)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -158,6 +173,7 @@ export default function OwnerExceptionQueue() {
         onClose={() => setSnoozeTarget(null)}
         onConfirm={(payload) => snoozeTarget && snoozeMutation.mutate({ alert_id: snoozeTarget.id, ...payload })}
       />
+      <DeleteExceptionDialog open={!!deleteTarget} alert={deleteTarget} busy={deleteMutation.isPending} onClose={() => setDeleteTarget(null)} onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)} />
     </>
   );
 }

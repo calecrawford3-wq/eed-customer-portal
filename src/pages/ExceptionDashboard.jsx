@@ -3,18 +3,20 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, BellOff, ChevronRight, Loader2 } from "lucide-react";
+import { RefreshCw, BellOff, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import SnoozeExceptionDialog from "@/components/exceptions/SnoozeExceptionDialog";
+import DeleteExceptionDialog from "@/components/exceptions/DeleteExceptionDialog";
 import { EXCEPTION_TYPE_CONFIG as TYPE_CONFIG, EXCEPTION_SEVERITY_STYLES as SEVERITY_STYLES } from "@/lib/exceptionTypes";
 
 export default function ExceptionDashboard() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [snoozeTarget, setSnoozeTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [scanning, setScanning] = useState(false);
 
   const { data: alerts = [], isLoading } = useQuery({
@@ -51,6 +53,20 @@ export default function ExceptionDashboard() {
       setSnoozeTarget(null);
       toast.success("Alert snoozed");
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: /** @param {string} id */ (id) => base44.entities.ExceptionAlert.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exception-alerts"] });
+      qc.invalidateQueries({ queryKey: ["exception-alerts-today"] });
+      qc.invalidateQueries({ queryKey: ["today-action-exceptions"] });
+      qc.invalidateQueries({ queryKey: ["home-exceptions"] });
+      qc.invalidateQueries({ queryKey: ["nav-badge-exceptions"] });
+      setDeleteTarget(null);
+      toast.success("Exception deleted");
+    },
+    onError: () => toast.error("Could not delete exception"),
   });
 
   const handleScan = () => {
@@ -153,6 +169,16 @@ export default function ExceptionDashboard() {
                             >
                               <BellOff className="w-3.5 h-3.5" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-slate-400 hover:text-red-600"
+                              aria-label="Delete exception"
+                              title="Delete exception"
+                              onClick={() => setDeleteTarget(alert)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -183,6 +209,9 @@ export default function ExceptionDashboard() {
                           <span className="text-xs text-slate-400">
                             Reactivates {alert.snooze_until ? new Date(alert.snooze_until).toLocaleDateString() : "—"}
                           </span>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600" aria-label="Delete exception" title="Delete exception" onClick={() => setDeleteTarget(alert)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                         {alert.snooze_reason && (
                           <p className="text-xs text-slate-400 mt-1 ml-5 italic">"{alert.snooze_reason}"</p>
@@ -201,6 +230,13 @@ export default function ExceptionDashboard() {
         open={!!snoozeTarget}
         onClose={() => setSnoozeTarget(null)}
         onConfirm={(payload) => snoozeTarget && snoozeMutation.mutate({ alert_id: snoozeTarget.id, ...payload })}
+      />
+      <DeleteExceptionDialog
+        open={!!deleteTarget}
+        alert={deleteTarget}
+        busy={deleteMutation.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />
     </div>
   );
