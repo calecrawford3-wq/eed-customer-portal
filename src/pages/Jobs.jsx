@@ -25,9 +25,9 @@ const VIEWS = {
   intake: {
     label: "Intake Queue",
     columns: [
-      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.estimate_id && !j.archived },
-      { key: "awaiting_approval", label: "Awaiting Approval", filter: j => j.stage === "awaiting_approval" && !j.archived },
-      { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j.estimate_id && !j.customer_engine_id && !j.archived && j.stage !== "awaiting_approval" },
+      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.archived && (!j.estimate_id || j._estimate_status === "draft") },
+      { key: "awaiting_approval", label: "Awaiting Approval", filter: j => !j.archived && j._estimate_status === "sent" },
+      { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j._estimate_status === "approved" && !j.customer_engine_id && !j.archived },
       { key: "awaiting_deposit", label: "Awaiting Deposit", filter: j => j.stage === "awaiting_deposit" && !j.archived },
     ],
   },
@@ -51,9 +51,9 @@ const VIEWS = {
   all: {
     label: "All Stages",
     columns: [
-      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.estimate_id && !j.archived },
-      { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j.estimate_id && !j.customer_engine_id && !j.archived && j.stage !== "awaiting_approval" },
-      { key: "awaiting_approval", label: "Awaiting Approval", filter: j => j.stage === "awaiting_approval" && !j.archived },
+      { key: "needs_estimate", label: "New Job — Needs Estimate", filter: j => !j.archived && (!j.estimate_id || j._estimate_status === "draft") },
+      { key: "awaiting_engine", label: "Approved — Awaiting Engine", filter: j => j.is_engine_build && j._estimate_status === "approved" && !j.customer_engine_id && !j.archived },
+      { key: "awaiting_approval", label: "Awaiting Approval", filter: j => !j.archived && j._estimate_status === "sent" },
       { key: "awaiting_deposit", label: "Awaiting Deposit", filter: j => j.stage === "awaiting_deposit" && !j.archived },
       { key: "queued", label: "Queued", filter: j => j.stage === "queued" && !j.archived },
       { key: "teardown", label: "Teardown / Inspection", filter: j => j.stage === "teardown" && !j.archived },
@@ -184,11 +184,15 @@ export default function Jobs() {
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates-for-jobs"],
     queryFn: async () => {
-      const res = await base44.entities.Estimate.filter({ status: { $in: ["expired", "declined"] } }, "-created_date", 500);
+      const res = await base44.entities.Estimate.list("-created_date", 1000);
       return res || [];
     },
   });
-  const expiredEstimateIds = useMemo(() => new Set(estimates.map(e => e.id)), [estimates]);
+  const estimateById = useMemo(() => new Map(estimates.map(e => [e.id, e])), [estimates]);
+  const inactiveEstimateIds = useMemo(
+    () => new Set(estimates.filter(e => ["expired", "declined"].includes(e.status)).map(e => e.id)),
+    [estimates]
+  );
 
   const customerName = (id) => {
     const c = customers.find(c => c.id === id);
@@ -214,17 +218,18 @@ export default function Jobs() {
   };
 
   const filtered = useMemo(() => {
-    return jobs.filter(j => {
-      // Hide jobs whose linked estimate is expired/archived — isolated to the Estimates page
-      if (j.estimate_id && expiredEstimateIds.has(j.estimate_id)) return false;
-      if (!search) return true;
-      const q = search.toLowerCase();
-      const cn = customerName(j.customer_id).toLowerCase();
-      const assignment = engineAssignment(j.customer_engine_id);
-      const assignmentText = [assignment?.carLabel, assignment?.driverName].filter(Boolean).join(" ").toLowerCase();
-      return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q) || assignmentText.includes(q);
-    });
-  }, [jobs, search, customers, expiredEstimateIds]);
+    return jobs
+      .filter(j => !(j.estimate_id && inactiveEstimateIds.has(j.estimate_id)))
+      .map(j => ({ ...j, _estimate_status: j.estimate_id ? (estimateById.get(j.estimate_id)?.status || "") : "" }))
+      .filter(j => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        const cn = customerName(j.customer_id).toLowerCase();
+        const assignment = engineAssignment(j.customer_engine_id);
+        const assignmentText = [assignment?.carLabel, assignment?.driverName].filter(Boolean).join(" ").toLowerCase();
+        return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q) || assignmentText.includes(q);
+      });
+  }, [jobs, search, customers, inactiveEstimateIds, estimateById, portalCars, portalDrivers]);
 
   const viewConfig = VIEWS[activeView];
   const columns = useMemo(() => {
