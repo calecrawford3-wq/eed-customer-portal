@@ -35,7 +35,7 @@ function formatTime(iso) {
   const d = new Date(iso);
   const now = new Date();
   if (d.toDateString() === now.toDateString())
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 function fmtDuration(s) {

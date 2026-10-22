@@ -55,7 +55,7 @@ export default function MachiningStation() {
     enabled: jobIds.length > 0,
     refetchInterval: 10000,
   });
-  const allTasks = allTasksData?.items || allTasksData || [];
+  const allTasks = Array.isArray(allTasksData) ? allTasksData : (allTasksData?.items || []);
 
   // Group tasks by job
   const tasksByJob = useMemo(() => {

@@ -101,7 +101,7 @@ export default function JobCard() {
   const { data: bookFindingPhotosData } = useQuery({
     queryKey: ["book-finding-photos", job?.id],
     queryFn: async () => {
-      const findingIds = bookFindings.map(f => f.id).filter(Boolean);
+      const findingIds = (Array.isArray(bookFindingsData) ? bookFindingsData : (bookFindingsData?.items || [])).map(f => f.id).filter(Boolean);
       if (findingIds.length === 0) return {};
       const res = await base44.functions.invoke("getFindingPhotosAdmin", { finding_ids: findingIds });
       const photos = res?.data?.photos || res?.photos || [];

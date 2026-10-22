@@ -40,7 +40,7 @@ export default function CustomerSuccess() {
   builds.forEach((b) => { if (b.customer_id) buildCounts[b.customer_id] = (buildCounts[b.customer_id] || 0) + 1; });
   const repeatCustomers = Object.values(buildCounts).filter((c) => c >= 2).length;
 
-  const Row = ({ t, showOverdue }) => {
+  const Row = ({ t, showOverdue = false }) => {
     const od = daysOverdue(t.due_date);
     return (
       <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">

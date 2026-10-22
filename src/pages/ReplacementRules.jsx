@@ -19,12 +19,12 @@ export default function ReplacementRules() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(null);
   const { data: platforms = [] } = useQuery({ queryKey: ["platforms"], queryFn: () => base44.entities.EnginePlatform.list("-created_date", 100) });
-  const platformList = platforms.items || platforms || [];
+  const platformList = platforms;
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ["replacement-rules"],
     queryFn: () => base44.entities.ReplacementRule.filter({}, "-created_date", 200),
   });
-  const ruleList = rules.items || rules || [];
+  const ruleList = rules;
 
   const del = async (r) => { await base44.entities.ReplacementRule.delete(r.id); qc.invalidateQueries({ queryKey: ["replacement-rules"] }); toast.success("Rule deleted"); };
 

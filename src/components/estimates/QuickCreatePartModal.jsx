@@ -24,7 +24,7 @@ const empty = {
   quantity_on_hand: 0, location: "", platform_ids: [], notes: "", status: "active",
 };
 
-export default function QuickCreatePartModal({ open, onClose, onCreated = () => {} }) {
+export default function QuickCreatePartModal({ open, onClose, onCreated = (..._args) => {} }) {
   const qc = useQueryClient();
   const [form, setForm] = useState(/** @type {Record<string, any>} */ ({ ...empty }));
   const [newSupplierOpen, setNewSupplierOpen] = useState(false);

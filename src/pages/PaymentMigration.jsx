@@ -101,7 +101,7 @@ export default function PaymentMigration({embedded=false}) {
       </div>}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">Payment method<select className="mt-1 block w-full rounded-md border bg-white p-2" value={sandboxMethod} onChange={e=>setSandboxMethod(e.target.value)}><option value="card">Credit / debit card</option><option value="affirm">Affirm</option></select></label>
-        <label className="text-sm">Test amount (USD)<Input className="mt-1" type="number" min="50" max="1000" step="1" value={sandboxAmount} onChange={e=>setSandboxAmount(e.target.value)}/></label>
+        <label className="text-sm">Test amount (USD)<Input className="mt-1" type="number" min="50" max="1000" step="1" value={sandboxAmount} onChange={e=>setSandboxAmount(Number(e.target.value))}/></label>
       </div>
       <Button disabled={busy||!(Number(sandboxAmount)>=50&&Number(sandboxAmount)<=1000)} onClick={()=>runSandbox('create')}>Open Test Checkout</Button>
       <p className="text-xs text-slate-600">For cards, Stripe test number 4242 4242 4242 4242 succeeds and 4000 0000 0000 0002 declines. Use any future expiration and any three-digit CVC. Affirm uses Stripe's sandbox approval flow. A new tab opens to Stripe Checkout.</p>
@@ -114,7 +114,7 @@ export default function PaymentMigration({embedded=false}) {
       <h2 className="font-semibold">Sandbox invoice integration tests</h2>
       <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 space-y-2"><p className="font-semibold text-amber-950">TEST MODE · Existing estimate EST-727124</p><p className="text-sm text-amber-950">Use the real estimate as a read-only reference. Test payments are recorded in an isolated mirror, never against the actual $1,085 estimate, its $250 deposit, customer, jobs, revenue, or taxes. This does not yet validate real estimate approval and job transitions.</p><Button variant="outline" disabled={busy} onClick={()=>runSandboxInvoice('link_estimate_test')}>Load EST-727124 Test Mirror</Button></div>
       <p className="text-sm">Tests the shared production invoice-crediting logic against an isolated sandbox-only invoice entity. No real invoices, customers, estimates, or revenue are touched. A sandbox invoice is not a real customer invoice.</p>
-      <label className="block text-sm">Test invoice total (USD)<Input className="mt-1" type="number" min="50" max="100000" step="1" value={testInvoiceAmount} onChange={e=>setTestInvoiceAmount(e.target.value)}/></label>
+      <label className="block text-sm">Test invoice total (USD)<Input className="mt-1" type="number" min="50" max="100000" step="1" value={testInvoiceAmount} onChange={e=>setTestInvoiceAmount(Number(e.target.value))}/></label>
       <Button variant="outline" disabled={busy||!(Number(testInvoiceAmount)>=50&&Number(testInvoiceAmount)<=100000)} onClick={()=>runSandboxInvoice('create_invoice')}>Create Isolated Test Invoice</Button>
       {testInvoice && <div className="space-y-3 rounded-lg border bg-white p-3 text-sm">
         <p className="break-all">Sandbox invoice: <code>{testInvoice.invoice_id}</code>{testInvoice.linked_estimate_number&&<strong className="ml-2">Linked read-only: {testInvoice.linked_estimate_number}</strong>}</p>

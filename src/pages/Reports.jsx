@@ -135,7 +135,7 @@ export default function Reports() {
     const buckets = { current: 0, d30: 0, d60: 0, d90: 0, over90: 0 };
     invoices.filter(i => ["sent","partial","overdue"].includes(i.status)).forEach(i => {
       const due = i.due_date ? new Date(i.due_date) : null;
-      const days = due ? Math.floor((today - due) / 86400000) : 0;
+      const days = due ? Math.floor((today.getTime() - due.getTime()) / 86400000) : 0;
       const bal = i.balance_due || 0;
       if (days <= 0) buckets.current += bal;
       else if (days <= 30) buckets.d30 += bal;
@@ -617,7 +617,7 @@ export default function Reports() {
                   {invoices.filter(i => ["sent","partial","overdue"].includes(i.status) && (i.balance_due || 0) > 0).map(inv => {
                     const c = customers.find(c => c.id === inv.customer_id);
                     const due = inv.due_date ? new Date(inv.due_date) : null;
-                    const days = due ? Math.floor((today - due) / 86400000) : null;
+                    const days = due ? Math.floor((today.getTime() - due.getTime()) / 86400000) : null;
                     return (
                       <tr key={inv.id} className="border-b border-slate-100">
                         <td className="py-2 font-medium">{inv.invoice_number}</td>

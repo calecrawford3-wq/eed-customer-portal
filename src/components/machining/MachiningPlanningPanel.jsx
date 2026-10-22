@@ -434,7 +434,7 @@ export default function MachiningPlanningPanel({ job, build, engine, open, onClo
   );
 }
 
-function TaskEditForm({ draft, setDraft, onSave, onCancel, hideButtons = false, saving = false, catalog = [], onCatalogSelect = () => {} }) {
+function TaskEditForm({ draft, setDraft, onSave, onCancel, hideButtons = false, saving = false, catalog = [], onCatalogSelect = (..._args) => {} }) {
   const update = (patch) => setDraft({ ...draft, ...patch });
   const isLinked = draft.source_type === "estimate" || draft.source_type === "invoice";
   return (

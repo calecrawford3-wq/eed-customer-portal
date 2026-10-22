@@ -79,7 +79,7 @@ export default function MessageBubble({
                   onError={(event) => {
                     event.currentTarget.style.display = "none";
                     const fallback = event.currentTarget.nextElementSibling;
-                    if (fallback) fallback.style.display = "flex";
+                    if (fallback) /** @type {HTMLElement} */ (fallback).style.display = "flex";
                   }}
                 />
                 <div className="hidden min-h-24 items-center justify-center gap-2 rounded-lg bg-slate-100 text-slate-500 px-4 py-3">

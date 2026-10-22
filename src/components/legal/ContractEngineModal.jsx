@@ -84,7 +84,7 @@ export default function ContractEngineModal({ open, onClose, onCreated, estimate
     for (const file of files) {
       try {
         const res = await base44.integrations.Core.UploadFile({ file });
-        const url = res?.file_url || res?.data?.file_url;
+        const url = res?.file_url || /** @type {any} */ (res)?.data?.file_url;
         if (url) setPhotos(prev => [...prev, { url, name: file.name }]);
       } catch (err) {
         toast.error(`Failed to upload ${file.name}`);

@@ -131,7 +131,7 @@ export default function InvoiceDetail() {
     setUploadingPdf(true);
     try {
       const res = await base44.integrations.Core.UploadFile({ file });
-      const url = res?.file_url || res?.data?.file_url;
+      const url = res?.file_url || /** @type {any} */ (res)?.data?.file_url;
       const updated = { ...form, legacy_pdf_url: url };
       setForm(updated);
       if (id) await base44.entities.Invoice.update(id, { legacy_pdf_url: url });

@@ -34,11 +34,11 @@ const EMPTY_PART = { part_id: "", part_number: "", item_name: "", quantity: 1, u
 const EMPTY_LABOR = { name: "", description: "", price: 0 };
 const EMPTY_MACHINING = { name: "", description: "", price: 0, quantity: 1, cost_type: "unspecified", actual_cost: null, vendor: "" };
 
-function freshDraft(type, preserve = {}) {
+function freshDraft(type, preserve = /** @type {Record<string, any>} */ ({})) {
   const base = type === "parts" ? { ...EMPTY_PART }
     : type === "labor" ? { ...EMPTY_LABOR }
     : { ...EMPTY_MACHINING };
-  if (preserve.engine_section) base.engine_section = preserve.engine_section;
+  if (preserve.engine_section) return { ...base, engine_section: preserve.engine_section };
   return base;
 }
 
