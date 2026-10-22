@@ -20,7 +20,7 @@ test('pairing a head to a new bottom end closes old pairing and clears prior hea
  const {pairHead}=exports;
  const EngineComponent=entity([{id:'h1',component_code:'HD-111111',component_type:'cylinder_head',current_customer_engine_id:'e1',status:'paired'},{id:'h2',component_code:'HD-222222',component_type:'cylinder_head',current_customer_engine_id:'e2',status:'paired'}]);
  const CustomerEngine=entity([{id:'e1',eed_id:'EED1040',current_head_component_id:'h1'},{id:'e2',eed_id:'EED1041',current_head_component_id:'h2'}]);
- const EngineComponentPairing=entity([{id:'p1',component_id:'h1',component_code:'HD-111111',customer_engine_id:'e1',status:'active',paired_at:'2026-01-01T00:00:00Z'},{id:'p2',component_id:'h2',component_code:'HD-222222',customer_engine_id:'e2',status:'active',paired_at:'2026-01-02T00:00:00Z'}]);
+ const EngineComponentPairing=entity([{id:'p1',component_id:'h1',component_code:'HD-111111',component_type:'cylinder_head',customer_engine_id:'e1',status:'active',paired_at:'2026-01-01T00:00:00Z'},{id:'p2',component_id:'h2',component_code:'HD-222222',component_type:'cylinder_head',customer_engine_id:'e2',status:'active',paired_at:'2026-01-02T00:00:00Z'}]);
  const service={entities:{EngineComponent,CustomerEngine,EngineComponentPairing}};
  await pairHead(service,{componentId:'h1',engineId:'e2',jobId:'j2',reason:'swap',reasonCode:'testing',allowTransfer:true});
  assert.equal(CustomerEngine.data.find(e=>e.id==='e1').current_head_component_id,'');
