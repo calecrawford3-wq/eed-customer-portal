@@ -55,7 +55,7 @@ export default function Inventory() {
   const [editingPart, setEditingPart] = useState(null);
   const [editingLabor, setEditingLabor] = useState(null);
   const [editingMachining, setEditingMachining] = useState(null);
-  const [partForm, setPartForm] = useState(emptyPart);
+  const [partForm, setPartForm] = useState(/** @type {Record<string, any>} */ (emptyPart));
   const [laborForm, setLaborForm] = useState(emptyLabor);
   const [machiningForm, setMachiningForm] = useState(emptyMachining);
   const [csvImportOpen, setCsvImportOpen] = useState(false);

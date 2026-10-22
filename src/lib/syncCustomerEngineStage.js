@@ -20,7 +20,7 @@ export async function syncCustomerEngineStage(engineId) {
     
     if (builds && builds.length > 0) {
       const mostRecentBuild = builds.sort((a, b) => 
-        new Date(b.created_date || 0) - new Date(a.created_date || 0)
+        new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()
       )[0];
 
       if (mostRecentBuild?.spec_sheet_id) {

@@ -481,7 +481,7 @@ export default function Emails() {
           <p className="text-sm text-slate-500">Zoho Mail — threaded inbox with AI sorting & document linking</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => syncMut.mutate()} disabled={syncMut.isPending}>
+          <Button variant="outline" onClick={() => syncMut.mutate({})} disabled={syncMut.isPending}>
             <RefreshCw className={`w-4 h-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
             {syncMut.isPending ? "Syncing…" : "Sync now"}
           </Button>

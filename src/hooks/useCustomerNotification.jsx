@@ -30,7 +30,7 @@ export function useCustomerNotification() {
   const triggerNotify = async ({
     eventType,
     customerId,
-    jobId,
+    jobId = null,
     entityId,
     entityLabel,
     prepare,
@@ -80,7 +80,7 @@ export function useCustomerNotification() {
       defaultEmailBody: built.emailBody || "",
       defaultSmsBody: built.smsBody || "",
       linkUrl: built.linkUrl || "",
-      jobId,
+      jobId = null,
       entityId,
       entityLabel,
       onSent,
