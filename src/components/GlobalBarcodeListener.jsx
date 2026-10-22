@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ScanLine, Wrench, Briefcase, Package, Recycle, MapPin } from "lucide-react";
+import { ScanLine, Wrench, Briefcase, Package, Recycle, MapPin, Cpu, Component } from "lucide-react";
 import { toast } from "sonner";
 
 // Max ms between keystrokes to be considered a barcode scanner (humans are 100ms+)
@@ -35,18 +35,24 @@ export default function GlobalBarcodeListener() {
 
       try {
         // Search all entity types in parallel using the full barcode value
-        const [partsRes, coresRes, buildsRes, jobsRes] = await Promise.all([
+        const [partsRes, coresRes, buildsRes, jobsRes, caseTagRes, caseIdRes, headTagRes, headCodeRes] = await Promise.all([
           base44.entities.Part.filter({ part_number: code }),
           base44.entities.EngineCore.filter({ core_number: code }),
           base44.entities.EngineBuild.filter({ engine_serial_number: code }),
           base44.entities.Job.filter({ job_number: code }),
+          base44.entities.CustomerEngine.filter({ tag_code: code }),
+          base44.entities.CustomerEngine.filter({ eed_id: code }),
+          base44.entities.EngineComponent.filter({ tag_code: code }),
+          base44.entities.EngineComponent.filter({ component_code: code }),
         ]);
         const parts = partsRes || [];
         const cores = coresRes || [];
         const builds = buildsRes || [];
         const jobs = jobsRes || [];
+        const cases = [...(caseTagRes || []), ...(caseIdRes || [])].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i);
+        const heads = [...(headTagRes || []), ...(headCodeRes || [])].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i);
 
-        const found = parts.length + cores.length + builds.length + jobs.length;
+        const found = parts.length + cores.length + builds.length + jobs.length + cases.length + heads.length;
 
         if (found === 0) {
           // Fallback: try storage location lookup (engines at this location)
@@ -95,6 +101,27 @@ export default function GlobalBarcodeListener() {
               action: { label: "View", onClick: () => navigate(`/JobCard?id=${j.id}`) },
             });
           });
+          for (const engine of cases) {
+            const openJobs = await base44.entities.Job.filter({ customer_engine_id: engine.id });
+            const currentJob = (openJobs || []).find(j => !j.archived && j.stage !== "picked_up");
+            toast.success(`${engine.eed_id} · Case`, {
+              icon: <Cpu className="w-4 h-4 text-[#e20404]" />,
+              description: `${engine.engine_serial_number || "No serial"}${currentJob ? ` • ${currentJob.job_number}` : " • No active job"}`,
+              action: currentJob ? { label: "Open Job", onClick: () => navigate(`/JobCard?id=${currentJob.id}`) } : { label: "Engine", onClick: () => navigate(`/CustomerDetail?id=${engine.customer_id}`) },
+            });
+          }
+          for (const head of heads) {
+            let engine = null; let currentJob = null;
+            if (head.current_customer_engine_id) {
+              const engines = await base44.entities.CustomerEngine.filter({ id: head.current_customer_engine_id }); engine = engines?.[0] || null;
+              const headJobs = await base44.entities.Job.filter({ customer_engine_id: head.current_customer_engine_id }); currentJob = (headJobs || []).find(j => !j.archived && j.stage !== "picked_up") || null;
+            }
+            toast.success(`${head.component_code} · Cylinder Head`, {
+              icon: <Component className="w-4 h-4 text-purple-600" />,
+              description: engine ? `Paired to ${engine.eed_id}${currentJob ? ` • ${currentJob.job_number}` : ""}` : "Currently unpaired",
+              action: currentJob ? { label: "Open Job", onClick: () => navigate(`/JobCard?id=${currentJob.id}`) } : engine ? { label: "Engine", onClick: () => navigate(`/CustomerDetail?id=${engine.customer_id}`) } : { label: "Scan Page", onClick: () => navigate(`/BarcodeScan?code=${encodeURIComponent(code)}`) },
+            });
+          }
         }
       } catch (e) {
         toast.error("Scan lookup failed: " + (e.message || e));
