@@ -37,7 +37,7 @@ export default function DriverNotesModal({ open, onClose, customerId, customerNa
   }, [record, customerId]);
 
   const saveMutation = useMutation({
-    mutationFn: (data) => record ? base44.entities.DriverNote.update(record.id, data) : base44.entities.DriverNote.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => record ? base44.entities.DriverNote.update(record.id, data) : base44.entities.DriverNote.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["driver-note", customerId] });
       qc.invalidateQueries({ queryKey: ["driver-note-cs", customerId] });

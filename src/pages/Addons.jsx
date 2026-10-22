@@ -41,7 +41,7 @@ export default function Addons() {
   });
 
   const createAddonMut = useMutation({
-    mutationFn: (data) => base44.entities.Addon.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Addon.create(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
   });
   const updateAddonMut = useMutation({
@@ -54,7 +54,7 @@ export default function Addons() {
   });
 
   const createCatMut = useMutation({
-    mutationFn: (data) => base44.entities.AddonCategory.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.AddonCategory.create(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["addonCategories"] }); setCategoryDialogOpen(false); setNewCategoryName(""); setNewCategoryDesc(""); toast.success("Category created"); },
   });
   const deleteCatMut = useMutation({

@@ -71,7 +71,7 @@ export default function KitManager() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editing
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editing
       ? base44.entities.PartKit.update(editing.id, data)
       : base44.entities.PartKit.create(data),
     onSuccess: () => {

@@ -86,7 +86,7 @@ export default function PurchaseOrderDetail() {
   }, [po]);
 
   const saveMutation = useMutation({
-    mutationFn: (data) => id
+    mutationFn: /** @param {Record<string, any>} data */ (data) => id
       ? base44.entities.PurchaseOrder.update(id, data)
       : base44.entities.PurchaseOrder.create(data),
     onSuccess: (result) => {

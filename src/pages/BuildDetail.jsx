@@ -139,7 +139,7 @@ export default function BuildDetail() {
   const linkedCustomer = customers.find(c => c.id === (build?.customer_id || localChanges.customer_id));
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.EngineBuild.update(buildId, data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.EngineBuild.update(buildId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["build", buildId] });
       setLocalChanges({});

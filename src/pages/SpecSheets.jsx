@@ -89,7 +89,7 @@ export default function SpecSheets() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.SpecSheet.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.SpecSheet.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["specSheets"] });
       setIsCreateDialogOpen(false);

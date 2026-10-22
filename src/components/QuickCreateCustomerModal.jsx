@@ -20,7 +20,7 @@ export default function QuickCreateCustomerModal({ open, onClose, onCreated, def
   }, [open, defaultPhone]);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Customer.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Customer.create(data),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Customer created");

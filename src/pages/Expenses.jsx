@@ -116,7 +116,7 @@ export default function Expenses() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editing
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editing
       ? base44.entities.Expense.update(editing.id, data)
       : base44.entities.Expense.create(data),
     onSuccess: () => {

@@ -51,7 +51,7 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => base44.entities.Part.update(part.id, data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Part.update(part.id, data),
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: ["parts"] });
       toast.success("Part updated");

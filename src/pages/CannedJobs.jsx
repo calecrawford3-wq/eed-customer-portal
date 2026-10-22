@@ -35,7 +35,7 @@ export default function CannedJobs() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.CannedJob.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.CannedJob.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cannedJobs"] });
       setDialogOpen(false);
@@ -55,7 +55,7 @@ export default function CannedJobs() {
   });
 
   const newVersionMutation = useMutation({
-    mutationFn: (payload) => base44.functions.invoke("createCannedJobVersion", payload),
+    mutationFn: /** @param {Record<string, any>} payload */ (payload) => base44.functions.invoke("createCannedJobVersion", payload),
     onSuccess: (res) => {
       const data = res?.data || res;
       if (data?.error) { toast.error(data.error); return; }

@@ -46,7 +46,7 @@ export default function Customers() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       if (editing) {
         return base44.entities.Customer.update(editing.id, data);
       } else {

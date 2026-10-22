@@ -41,7 +41,7 @@ export default function QuickCreatePartModal({ open, onClose, onCreated }) {
   const reset = () => setForm({ ...empty });
 
   const createMut = useMutation({
-    mutationFn: (data) => base44.entities.Part.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Part.create(data),
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["parts"] });
       toast.success(`Part "${created.name}" added to inventory`);

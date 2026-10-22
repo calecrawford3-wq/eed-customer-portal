@@ -164,7 +164,7 @@ export default function SpecEditor() {
   }, [spec]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.SpecSheet.update(specId, data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.SpecSheet.update(specId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["specSheet", specId] });
       setHasChanges(false);

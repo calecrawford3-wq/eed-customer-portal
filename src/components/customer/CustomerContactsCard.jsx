@@ -26,7 +26,7 @@ export default function CustomerContactsCard({ customerId }) {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editingId
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editingId
       ? base44.entities.CustomerContact.update(editingId, data)
       : base44.entities.CustomerContact.create({ ...data, customer_id: customerId }),
     onSuccess: () => {

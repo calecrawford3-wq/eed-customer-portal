@@ -167,7 +167,7 @@ export default function Builds() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.EngineBuild.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.EngineBuild.create(data),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["builds"] });
       queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });

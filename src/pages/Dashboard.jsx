@@ -64,7 +64,7 @@ export default function Dashboard() {
   });
 
   const expenseMutation = useMutation({
-    mutationFn: (data) => base44.entities.Expense.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Expense.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });

@@ -41,7 +41,7 @@ export default function AddCreditModal({ open, onClose, customers, presetCustome
   const qc = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.AccountCredit.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.AccountCredit.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allAccountCredits"] });
       qc.invalidateQueries({ queryKey: ["accountCredits"] });

@@ -85,7 +85,7 @@ export default function Platforms() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.EnginePlatform.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.EnginePlatform.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
       closeDialog();

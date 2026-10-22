@@ -112,7 +112,7 @@ export default function CustomerEnginesTab({ customerId, customer, platforms = [
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       const sameSerial = allEngines.find(e =>
         e.engine_serial_number === data.engine_serial_number && e.customer_id !== customerId
       );

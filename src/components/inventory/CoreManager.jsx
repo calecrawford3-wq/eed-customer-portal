@@ -72,7 +72,7 @@ export default function CoreManager() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editing
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editing
       ? base44.entities.EngineCore.update(editing.id, data)
       : base44.entities.EngineCore.create(data),
     onSuccess: (savedCore) => {

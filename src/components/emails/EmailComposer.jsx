@@ -105,7 +105,7 @@ export default function EmailComposer({ open, onClose, mode = "compose", sourceM
   }, [open, draft, mode, sourceMessage]);
 
   const sendMut = useMutation({
-    mutationFn: (payload) => base44.functions.invoke("sendZohoMail", payload),
+    mutationFn: /** @param {Record<string, any>} payload */ (payload) => base44.functions.invoke("sendZohoMail", payload),
     onSuccess: async () => {
       toast.success("Email sent");
       if (activeDraftId) { try { await base44.entities.EmailDraft.delete(activeDraftId); qc.invalidateQueries({ queryKey: ["email-drafts"] }); } catch (_) {} }

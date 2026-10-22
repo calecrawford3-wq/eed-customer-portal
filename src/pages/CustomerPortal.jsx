@@ -190,7 +190,7 @@ export default function CustomerPortal() {
   };
 
   const profileMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke("updateCustomerProfile", data).then((r) => r.data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.functions.invoke("updateCustomerProfile", data).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["portal-data"] });
       setProfileOpen(false);
@@ -199,7 +199,7 @@ export default function CustomerPortal() {
   });
 
   const refreshMutation = useMutation({
-    mutationFn: (data) => base44.entities.RefreshRequest.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.RefreshRequest.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["portal-data"] });
       setRefreshOpen(false);

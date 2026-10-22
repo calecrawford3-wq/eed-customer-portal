@@ -346,7 +346,7 @@ export default function InvoiceDetail() {
   }, [settingsData, isNew]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       const result = id
         ? await base44.entities.Invoice.update(id, data)
         : await base44.entities.Invoice.create(data);

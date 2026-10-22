@@ -86,7 +86,7 @@ export default function Settings() {
   }, [settingsData]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       if (settingsData && settingsData[0]) {
         return base44.entities.AppSettings.update(settingsData[0].id, data);
       } else {

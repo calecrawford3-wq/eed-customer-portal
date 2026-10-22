@@ -125,7 +125,7 @@ export default function Inventory() {
   });
 
   const savePartMutation = useMutation({
-    mutationFn: (data) => editingPart
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editingPart
       ? base44.entities.Part.update(editingPart.id, data)
       : base44.entities.Part.create(data),
     onSuccess: () => {
@@ -141,7 +141,7 @@ export default function Inventory() {
   });
 
   const saveLaborMutation = useMutation({
-    mutationFn: (data) => editingLabor
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editingLabor
       ? base44.entities.LaborItem.update(editingLabor.id, data)
       : base44.entities.LaborItem.create(data),
     onSuccess: () => {
@@ -157,7 +157,7 @@ export default function Inventory() {
   });
 
   const saveMachiningMutation = useMutation({
-    mutationFn: (data) => editingMachining
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editingMachining
       ? base44.entities.MachiningItem.update(editingMachining.id, data)
       : base44.entities.MachiningItem.create(data),
     onSuccess: () => {

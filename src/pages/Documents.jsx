@@ -62,7 +62,7 @@ export default function Documents() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.TechnicalDocument.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.TechnicalDocument.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Document uploaded");

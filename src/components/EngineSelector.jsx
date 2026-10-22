@@ -49,7 +49,7 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
 
   const createMutation = useMutation({
     /** @param {Record<string,any>} data */
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       // Check serial number not already used with a different EED ID
       const existing = allEngines.find(e =>
         e.engine_serial_number === data.engine_serial_number && e.customer_id !== customerId

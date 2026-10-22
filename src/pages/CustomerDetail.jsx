@@ -99,7 +99,7 @@ export default function CustomerDetail() {
   const commCount = callLogs.length;
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Customer.update(id, data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Customer.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customer", id] });
       qc.invalidateQueries({ queryKey: ["customers"] });

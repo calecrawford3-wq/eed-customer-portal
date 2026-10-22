@@ -24,7 +24,7 @@ export default function QuickCreateCoreModal({ open, onClose, onCreated, editing
   }, [open, editingCore]);
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editingCore
+    mutationFn: /** @param {Record<string, any>} data */ (data) => editingCore
       ? base44.entities.EngineCore.update(editingCore.id, data)
       : base44.entities.EngineCore.create(data),
     onSuccess: () => {

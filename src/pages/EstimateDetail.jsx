@@ -324,7 +324,7 @@ export default function EstimateDetail() {
   }, [form.deposit_required, form.deposit_type, form.deposit_percent, form.total]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       const result = id
         ? await base44.entities.Estimate.update(id, data)
         : await base44.entities.Estimate.create(data);

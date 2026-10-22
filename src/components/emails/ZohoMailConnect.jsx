@@ -17,7 +17,7 @@ export default function ZohoMailConnect({ open, onClose, onConnected }) {
   const [code, setCode] = useState("");
 
   const connectMut = useMutation({
-    mutationFn: (payload) => base44.functions.invoke("zohoMailOAuth", payload),
+    mutationFn: /** @param {Record<string, any>} payload */ (payload) => base44.functions.invoke("zohoMailOAuth", payload),
     onSuccess: async () => {
       toast.success("Zoho Mail connected!");
       try { await base44.functions.invoke("syncZohoMail"); } catch (_) {}

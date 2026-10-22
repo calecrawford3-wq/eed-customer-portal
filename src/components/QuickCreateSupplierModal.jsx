@@ -19,7 +19,7 @@ export default function QuickCreateSupplierModal({ open, onClose, onCreated, def
   }, [open, defaultPhone]);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Supplier.create(data),
+    mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Supplier.create(data),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       toast.success("Supplier created");

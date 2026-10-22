@@ -92,7 +92,7 @@ export default function EngineCheckInModal({ open, onClose }) {
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: /** @param {Record<string, any>} data */ async (data) => {
       // If refreshing an existing engine, update it instead of creating a new one
       if (data._existing_engine_id) {
         const existingId = data._existing_engine_id;
