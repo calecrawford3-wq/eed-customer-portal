@@ -53,11 +53,25 @@
     "status": {
       "type": "string",
       "enum": [
+        "pending",
         "active",
         "expired",
         "redeemed"
       ],
       "default": "active"
+    },
+    "pending_reason": {
+      "type": "string",
+      "description": "Why a credit is pending and what event releases it."
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When a pending credit became active."
+    },
+    "source_result_id": {
+      "type": "string",
+      "description": "RaceResult ID when a performance credit was generated automatically."
     }
   },
   "required": [

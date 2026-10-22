@@ -1,0 +1,110 @@
+{
+  "name": "RaceResult",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Elite customer/driver this result belongs to"
+    },
+    "myracepass_driver_id": {
+      "type": "string"
+    },
+    "source_result_id": {
+      "type": "string",
+      "description": "Stable MyRacePass event/result identifier used for deduplication"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "event_name": {
+      "type": "string"
+    },
+    "track_name": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "feature_name": {
+      "type": "string"
+    },
+    "start_position": {
+      "type": "integer"
+    },
+    "finish_position": {
+      "type": "integer"
+    },
+    "heat_finish_position": {
+      "type": "integer"
+    },
+    "b_feature_finish_position": {
+      "type": "integer"
+    },
+    "feature_started": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "imported",
+        "credited",
+        "ignored",
+        "needs_review"
+      ],
+      "default": "imported"
+    },
+    "credit_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "myracepass",
+        "manual"
+      ],
+      "default": "myracepass"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_id",
+    "event_date"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

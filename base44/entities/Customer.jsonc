@@ -230,6 +230,39 @@
     },
     "onboarding_garage_completed": {
       "type": "boolean"
+    },
+    "referred_by_customer_id": {
+      "type": "string",
+      "description": "Existing Elite customer who referred this customer. Used by the automated referral credit workflow."
+    },
+    "myracepass_profile_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Public MyRacePass driver profile URL used to identify this customer for automated race-result imports."
+    },
+    "myracepass_driver_id": {
+      "type": "string",
+      "description": "MyRacePass driver/profile ID parsed from the linked profile URL."
+    },
+    "myracepass_sync_status": {
+      "type": "string",
+      "enum": [
+        "not_connected",
+        "ready",
+        "synced",
+        "error"
+      ],
+      "default": "not_connected",
+      "description": "Race-result synchronization status for this customer."
+    },
+    "myracepass_last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful MyRacePass race-result synchronization."
+    },
+    "myracepass_sync_error": {
+      "type": "string",
+      "description": "Safe message from the last MyRacePass synchronization attempt."
     }
   },
   "required": [
