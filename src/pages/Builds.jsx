@@ -397,12 +397,22 @@ export default function Builds() {
     const build = pickupScan;
     const now = new Date().toISOString();
     try {
-      await base44.entities.EngineBuild.update(build.id, { picked_up: true, picked_up_at: now });
+      await base44.entities.EngineBuild.update(build.id, { picked_up: true, picked_up_at: now, storage_location: "" });
       if (build.customer_engine_id) {
         await base44.entities.CustomerEngine.update(build.customer_engine_id, {
           check_in_status: "picked_up",
           picked_up_at: now,
+          storage_location: "",
         }).catch(e => console.warn("Failed to update engine check-in status:", e));
+        try {
+          const components = await base44.entities.EngineComponent.filter({ current_customer_engine_id: build.customer_engine_id });
+          await Promise.all((components || []).map(c => base44.entities.EngineComponent.update(c.id, { storage_location: "" })));
+          const jobs = await base44.entities.Job.filter({ build_id: build.id });
+          await Promise.all((jobs || []).map(j => base44.entities.Job.update(j.id, {
+            storage_location: "",
+            location_history: [...(j.location_history || []), ...(j.storage_location ? [{ from: j.storage_location, to: "", date: now, actor: "Pickup" }] : [])],
+          })));
+        } catch (e) { console.warn("Failed to clear pickup locations:", e); }
       }
       queryClient.invalidateQueries({ queryKey: ["builds"] });
       queryClient.invalidateQueries({ queryKey: ["checked-in-engines"] });
