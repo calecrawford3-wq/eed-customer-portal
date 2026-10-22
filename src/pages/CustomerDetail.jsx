@@ -56,6 +56,12 @@ export default function CustomerDetail() {
     enabled: !!id,
   });
 
+  const { data: customerEngines = [] } = useQuery({
+    queryKey: ["customer-engines-detail", id],
+    queryFn: () => base44.entities.CustomerEngine.filter({ customer_id: id }),
+    enabled: !!id,
+  });
+
   const { data: allBuilds = [] } = useQuery({
     queryKey: ["builds"],
     queryFn: () => base44.entities.EngineBuild.list("-created_date", 200),
@@ -285,7 +291,7 @@ export default function CustomerDetail() {
         </Card>
 
         <Card className="border-0 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base">Racing profile</CardTitle></CardHeader><CardContent className="text-sm space-y-2"><p>Role: {customer.racing_role || 'Not supplied'}</p><p>Classes: {customer.racing_classes || 'Not supplied'}</p><p>Primary track: {customer.racing_primary_track || 'Not supplied'}</p><p>Other tracks: {customer.racing_tracks || 'Not supplied'}</p><p>Racing notes: {customer.racing_notes_public || 'None'}</p><p>Contact confirmed: {customer.onboarding_contact_confirmed ? 'Yes' : 'No'}</p><p>SMS consent: {customer.sms_consent ? 'Yes' : 'No'}</p></CardContent></Card>
-        <RacingGarage customerId={id} />
+        <RacingGarage customerId={id} engines={customerEngines} />
         <CustomerContactsCard customerId={id} />
         </div>
 
