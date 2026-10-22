@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Cpu, Users, ClipboardList, Receipt, ShoppingCart, TrendingDown, ScanLine } from 'lucide-react';
+import { Plus, Cpu, Users, ClipboardList, Receipt, ShoppingCart, TrendingDown, ScanLine, Briefcase } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import EngineCheckInModal from '@/components/engines/EngineCheckInModal';
 
 const actions = [
+  { label: 'New Job', icon: Briefcase, to: '/Jobs?new=1' },
   { label: 'Check In Engine', icon: Cpu, type: 'checkin' },
   { label: 'Scan', icon: ScanLine, to: '/BarcodeScan' },
   { label: 'New Customer', icon: Users, to: '/Customers?new=1' },
-  { label: 'New Estimate', icon: ClipboardList, to: '/EstimateDetail?new=1' },
+  { label: 'Standalone Estimate', icon: ClipboardList, to: '/EstimateDetail?new=1' },
   { label: 'New Invoice', icon: Receipt, to: '/InvoiceDetail?new=1' },
   { label: 'New Purchase Order', icon: ShoppingCart, to: '/PurchaseOrderDetail?new=1' },
   { label: 'New Expense', icon: TrendingDown, to: '/Expenses?new=1' },

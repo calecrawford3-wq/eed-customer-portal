@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, ClipboardList, ScanLine, UserPlus } from 'lucide-react';
+import { Cpu, Briefcase, ScanLine, UserPlus } from 'lucide-react';
 
 const starts = [
-  {label:'New Estimate', icon:ClipboardList, to:'/EstimateDetail?new=1'},
+  {label:'New Job', icon:Briefcase, to:'/Jobs?new=1'},
   {label:'Scan', icon:ScanLine, to:'/BarcodeScan'},
   {label:'New Customer', icon:UserPlus, to:'/Customers?new=1'},
 ];

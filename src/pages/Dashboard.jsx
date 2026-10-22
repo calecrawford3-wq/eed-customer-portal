@@ -31,7 +31,7 @@ export default function Dashboard(){
  const badges={
    Jobs:{value:activeJobs.length,label:`${activeJobs.length} active`,alert:false},
    Customers:{value:pendingRefresh,label:pendingRefresh?'refresh requests':'up to date',alert:pendingRefresh>0},
-   Billing:{value:pendingEstimates+openInvoices,label:`${pendingEstimates} approval${pendingEstimates===1?'':'s'} · ${openInvoices} unpaid`,alert:openInvoices>0||pendingEstimates>0},
+   Billing:{value:0,label:'payments · credits · expenses',alert:false},
    Inventory:{value:lowStock,label:lowStock?'low stock':'stock okay',alert:lowStock>0},
    Purchasing:{value:readyPOs,label:readyPOs?'ready to receive':'no ready POs',alert:readyPOs>0},
    Inbox:{value:Number(unreadMessages||0),label:unreadMessages?'unread':'caught up',alert:Number(unreadMessages||0)>0},

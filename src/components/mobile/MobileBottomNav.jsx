@@ -8,7 +8,7 @@ import GlobalCreateMenu from "@/components/GlobalCreateMenu";
 import {
   Gauge, Briefcase, MessageSquare, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
-  ShieldCheck, Calendar, RefreshCw, DollarSign,
+  ShieldCheck, Calendar, RefreshCw, DollarSign, ClipboardList,
   Award, TrendingDown, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
 } from "lucide-react";
 
@@ -54,6 +54,12 @@ const MORE_SECTIONS = [
     items: [
       { name: "Purchase Orders", page: "PurchaseOrders", icon: ShoppingCart },
       { name: "Suppliers", page: "Suppliers", icon: ShoppingCart },
+    ],
+  },
+  {
+    label: "Standalone Quotes",
+    items: [
+      { name: "Estimates", page: "Estimates", icon: ClipboardList },
     ],
   },
   {
