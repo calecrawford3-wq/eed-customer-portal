@@ -44,6 +44,15 @@ export default function FinishStageButton({ job, build, dark = false }) {
     queryFn: () => base44.entities.TeardownFinding.filter({ job_id: job.id }, { limit: 200 }),
     enabled: !!job.id && shouldRender,
   });
+  const requiresComponentVerification = stage?.next === "ready_for_pickup";
+  const { data: componentVerificationStatus, isLoading: verificationLoading } = useQuery({
+    queryKey: ["job-component-verification-status", job.id],
+    queryFn: async () => {
+      const res = await base44.functions.invoke("checkJobComponentVerification", { job_id: job.id });
+      return res?.data || res || { valid: false };
+    },
+    enabled: !!job.id && shouldRender && requiresComponentVerification,
+  });
 
   // Don't render for pre-activation stages or terminal stages
   if (!shouldRender) return null;
@@ -52,7 +61,19 @@ export default function FinishStageButton({ job, build, dark = false }) {
   const machiningTasks = machiningTasksData?.items || machiningTasksData || [];
   const findings = findingsData?.items || findingsData || [];
 
-  const result = checkStageCompletion({ job, build, buildTasks, machiningTasks, findings });
+  const baseResult = checkStageCompletion({ job, build, buildTasks, machiningTasks, findings });
+  const verificationBlocked = requiresComponentVerification && (verificationLoading || componentVerificationStatus?.valid !== true);
+  const result = verificationBlocked ? {
+    ...baseResult,
+    canFinish: false,
+    blockers: [
+      ...baseResult.blockers,
+      {
+        label: "Verify case and cylinder head",
+        detail: verificationLoading ? "Checking the latest physical component verification…" : (componentVerificationStatus?.reason || "Scan the current case and cylinder head before final QC."),
+      },
+    ],
+  } : baseResult;
 
   const handleFinish = async () => {
     if (!result.canFinish) {

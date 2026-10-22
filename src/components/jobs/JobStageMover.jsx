@@ -96,10 +96,18 @@ export default function JobStageMover({ job, build }) {
       return;
     }
 
-    // "ready_for_pickup" — call shared completion operation
+    // "ready_for_pickup" — require a current physical case/head verification, then call shared completion operation
     if (newStage === "ready_for_pickup") {
       setMoving(true);
       try {
+        const verifyRes = await base44.functions.invoke("checkJobComponentVerification", { job_id: job.id });
+        const verification = verifyRes?.data || verifyRes || {};
+        if (!verification.valid) {
+          toast.error(verification.reason || "Verify the current case and cylinder head before Ready for Pickup.", {
+            action: { label: "Verify", onClick: () => navigate(`/JobCard?id=${job.id}&tab=work&work=verify`) },
+          });
+          return;
+        }
         const res = await base44.functions.invoke("completeEngineBuild", { build_id: job.build_id });
         const result = res?.data || res;
         if (result?.blocked) {
