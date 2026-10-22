@@ -9,7 +9,7 @@ import {
   Gauge, Briefcase, MessageSquare, MoreHorizontal, X, ChevronRight,
   Users, Package, ShoppingCart, Settings2, LifeBuoy,
   ShieldCheck, Calendar, RefreshCw, DollarSign, ClipboardList,
-  Award, TrendingDown, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen,
+  Award, TrendingDown, Wrench, Monitor, ListChecks, FlaskConical, FolderOpen, Printer,
 } from "lucide-react";
 
 /**
@@ -68,6 +68,7 @@ const MORE_SECTIONS = [
       { name: "Payments", page: "Payments", icon: DollarSign },
       { name: "Credits", page: "Credits", icon: Award },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },
+      { name: "Check Printing", page: "CheckPrinting", icon: Printer },
     ],
   },
   {

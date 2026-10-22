@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Search, Trash2, Edit, ShoppingCart, TrendingDown, AlertCircle, Camera, Loader2 } from "lucide-react";
+import { Plus, Search, Trash2, Edit, ShoppingCart, TrendingDown, AlertCircle, Camera, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIES = [
@@ -210,9 +211,12 @@ export default function Expenses() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Expenses</h1>
           <p className="text-slate-500 mt-1">Track costs, COGS, and write-offs</p>
         </div>
-        <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
-          <Plus className="w-4 h-4 mr-2" /> Add Expense
-        </Button>
+        <div className="flex gap-2">
+          <Link to="/CheckPrinting"><Button variant="outline"><Printer className="w-4 h-4 mr-1" /> Print Check</Button></Link>
+          <Button onClick={openNew} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+            <Plus className="w-4 h-4 mr-2" /> Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -321,6 +325,7 @@ export default function Expenses() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
+                      <Link to={`/CheckPrinting?expense_id=${exp.id}`}><Button size="sm" variant="ghost" className="h-7 px-2" title="Print check"><Printer className="w-3.5 h-3.5" /></Button></Link>
                       <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(exp)}><Edit className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => deleteMutation.mutate(exp.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
