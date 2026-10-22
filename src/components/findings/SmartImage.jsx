@@ -37,7 +37,7 @@ export default function SmartImage({ src, alt = "", className = "", style = {} }
       const type = (blob.type || "").toLowerCase();
       const isHeic = type === "image/heic" || type === "image/heif" || type === "image/heic-sequence";
       if (isHeic || isHeicUrl(src)) {
-        const heic2any = (await import("heic2any")).default || (await import("heic2any"));
+        const heic2any = (await import("heic2any")).default;
         const result = await heic2any({ blob, toType: "image/jpeg", quality: 0.9 });
         const jpegBlob = Array.isArray(result) ? result[0] : result;
         const blobUrl = URL.createObjectURL(jpegBlob);

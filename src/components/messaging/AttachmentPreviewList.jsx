@@ -1,7 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
 
-export default function AttachmentPreviewList({ attachments, onRemove, disabled }) {
+export default function AttachmentPreviewList({ attachments, onRemove, disabled = false }) {
   if (!attachments.length) return null;
   return (
     <div className="flex flex-wrap gap-2">

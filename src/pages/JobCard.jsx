@@ -71,7 +71,7 @@ export default function JobCard() {
   const customer = customers.find(c => c.id === job?.customer_id);
   const engine = engines.find(e => e.id === job?.customer_engine_id);
   const platform = platforms.find(p => p.id === job?.platform_id);
-  const invoiceList = (invoices.data?.items || invoices.data || []);
+  const invoiceList = (invoices.data || []);
   const primaryInvoice = invoiceList[0];
 
   // Build Book data (loaded on demand)
@@ -130,9 +130,9 @@ export default function JobCard() {
     setDeleting(false);
   };
 
-  const bookTasks = bookTasksData?.items || bookTasksData || [];
-  const bookFindings = (bookFindingsData?.items || bookFindingsData || []).filter(f => f.status !== "declined" && f.status !== "canceled");
-  const bookReplacements = bookReplacementsData?.items || bookReplacementsData || [];
+  const bookTasks = Array.isArray(bookTasksData) ? bookTasksData : (bookTasksData?.items || []);
+  const bookFindings = (Array.isArray(bookFindingsData) ? bookFindingsData : (bookFindingsData?.items || [])).filter(f => f.status !== "declined" && f.status !== "canceled");
+  const bookReplacements = Array.isArray(bookReplacementsData) ? bookReplacementsData : (bookReplacementsData?.items || []);
   let profitabilityData = null;
   try {
     profitabilityData = job?.profitability_snapshot ? JSON.parse(job.profitability_snapshot) : null;

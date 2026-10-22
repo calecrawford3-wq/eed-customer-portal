@@ -20,7 +20,7 @@ export function generateBarcodeSVG(value, opts = {}) {
   return svg.outerHTML;
 }
 
-export default function BarcodeLabel({ value, title, subtitle, className = "" }) {
+export default function BarcodeLabel({ value, title = "", subtitle = "", className = "" }) {
   const ref = useRef(null);
   useEffect(() => {
     if (ref.current) {

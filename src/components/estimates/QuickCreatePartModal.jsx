@@ -45,7 +45,7 @@ export default function QuickCreatePartModal({ open, onClose, onCreated = () => 
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["parts"] });
       toast.success(`Part "${created.name}" added to inventory`);
-      onCreated?.(created);
+      onCreated(created);
       reset();
     },
     onError: (e) => toast.error("Failed to create part: " + (e.message || e)),

@@ -18,7 +18,7 @@ export default function LinkBuildDialog({ open, onClose, job, currentBuildId }) 
     queryFn: () =>
       base44.entities.EngineBuild.filter(
         { customer_id: job.customer_id },
-        { sort: "-created_date", limit: 100, fields: ["engine_serial_number", "eed_id", "status", "platform_id", "picked_up"] }
+        { sort: "-created_date", limit: 100, fields: ["engine_serial_number", "eed_id", "status", "platform_id", "picked_up", "id"] }
       ),
     enabled: !!job?.customer_id && open,
   });

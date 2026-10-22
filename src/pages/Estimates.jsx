@@ -301,7 +301,7 @@ export default function Estimates() {
                     <td className="px-4 py-3">
                       {e.expiry_date ? (() => {
                         const exp = new Date(e.expiry_date);
-                        const daysLeft = Math.ceil((exp - Date.now()) / 86400000);
+                        const daysLeft = Math.ceil((exp.getTime() - Date.now()) / 86400000);
                         const isExpired = daysLeft < 0 && e.status === "sent";
                         const isSoon = daysLeft >= 0 && daysLeft <= 7 && e.status === "sent";
                         return (

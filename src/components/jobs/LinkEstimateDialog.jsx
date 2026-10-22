@@ -19,7 +19,7 @@ export default function LinkEstimateDialog({ open, onClose, job }) {
     queryFn: () =>
       base44.entities.Estimate.filter(
         { customer_id: job.customer_id, status: { $ne: "expired" }, archived: { $ne: true } },
-        { sort: "-issue_date", limit: 100, fields: ["estimate_number", "status", "total", "issue_date"] }
+        { sort: "-issue_date", limit: 100, fields: ["estimate_number", "status", "total", "issue_date", "id"] }
       ),
     enabled: !!job?.customer_id && open,
   });
