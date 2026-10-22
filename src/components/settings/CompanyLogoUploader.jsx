@@ -8,7 +8,7 @@ import {toast} from 'sonner';
 const ACCEPT='image/png,image/jpeg,image/webp,image/svg+xml';
 const MAX_BYTES=5*1024*1024;
 
-export default function CompanyLogoUploader({value='',onChange,label='Company Logo',disabled=false}){
+export default function CompanyLogoUploader({value='',onChange,label='Company Logo',disabled=false,dark=false}){
  const inputRef=useRef(null);
  const [uploading,setUploading]=useState(false);
  const upload=async file=>{
@@ -25,7 +25,7 @@ export default function CompanyLogoUploader({value='',onChange,label='Company Lo
   finally{setUploading(false);if(inputRef.current)inputRef.current.value='';}
  };
  return <div className="space-y-2">
-  <Label>{label}</Label>
+  <Label className={dark?"text-white":""}>{label}</Label>
   <input ref={inputRef} type="file" accept={ACCEPT} className="hidden" disabled={disabled||uploading} onChange={e=>upload(e.target.files?.[0])}/>
   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
    {value?<div className="flex flex-col sm:flex-row sm:items-center gap-4">

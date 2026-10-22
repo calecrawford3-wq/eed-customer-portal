@@ -8,6 +8,7 @@ import { Bell, CheckCheck, Trash2, ExternalLink, BellRing, Volume2, VolumeX } fr
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import {useCompanyLogo} from "@/hooks/useCompanyLogo";
 
 const TYPE_META = {
   estimate_accepted: { label: "Estimate Accepted", color: "bg-emerald-100 text-emerald-700" },
@@ -44,6 +45,7 @@ function playChime() {
 
 export default function NotificationBell() {
   const qc = useQueryClient();
+  const {logoUrl}=useCompanyLogo("light");
   const [open, setOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(() => {
     try {
@@ -81,7 +83,7 @@ export default function NotificationBell() {
             try {
               const notif = new Notification(n.title || "New Notification", {
                 body: n.message || "",
-                icon: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png",
+                icon: logoUrl,
               });
               notif.onclick = () => {
                 window.focus();
@@ -98,7 +100,7 @@ export default function NotificationBell() {
       }
     });
     return unsubscribe;
-  }, [qc, soundOn]);
+  }, [qc, soundOn, logoUrl]);
 
   // Track unread count for badge animation
   useEffect(() => {

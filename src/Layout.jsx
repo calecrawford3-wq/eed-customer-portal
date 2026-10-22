@@ -9,10 +9,11 @@ import GlobalBarcodeListener from '@/components/GlobalBarcodeListener';
 import {AppSectionNav} from '@/components/navigation/AppLauncher';
 import MobileBottomNav from '@/components/mobile/MobileBottomNav';
 import GlobalCreateMenu from '@/components/GlobalCreateMenu';
+import {useCompanyLogo} from '@/hooks/useCompanyLogo';
 
-const LOGO='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png';
 export default function Layout({children,currentPageName,staffMode=false,staffAllowedPages=[]}){
  const navigate=useNavigate();
+ const {logoUrl}=useCompanyLogo('dark');
  const pageScroller=useRef(null);
  const debugLayout=new URLSearchParams(window.location.search).has('layoutDebug');
  const [layoutMetrics,setLayoutMetrics]=useState(null);
@@ -42,7 +43,7 @@ export default function Layout({children,currentPageName,staffMode=false,staffAl
    {!staffMode&&<GlobalSearch/>}
    <header className="relative z-[100] flex-none text-white border-b border-slate-800 print:hidden" style={{paddingTop:"env(safe-area-inset-top, 0px)",backgroundColor:"#000000",backgroundImage:"none",boxShadow:"none",opacity:1,WebkitBackdropFilter:"none",backdropFilter:"none"}}>
     <div className="mx-auto max-w-screen-2xl min-h-14 px-3 md:px-8 flex items-center justify-between gap-2">
-      <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={LOGO} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
+      <Link to={staffMode?'/EmployeePortal':'/Dashboard'} aria-label="Home" className="flex items-center gap-2 min-w-0"><img src={logoUrl} alt="Elite Engine Development" className="h-8 md:h-10 max-w-40 object-contain"/><span className="hidden lg:block text-xs text-slate-400 border-l border-slate-700 pl-3">SHOP PORTAL</span></Link>
       <nav className="hidden lg:flex items-center gap-1 text-sm mr-2" aria-label="Primary">
         <Link to="/Dashboard" className="rounded-lg px-3 py-2 hover:bg-slate-800">Today</Link>
         <Link to="/Jobs" className="rounded-lg px-3 py-2 hover:bg-slate-800">Jobs</Link>

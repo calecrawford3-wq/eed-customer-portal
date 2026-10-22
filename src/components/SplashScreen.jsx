@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-
-const LOGO_URL =
-  "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c030b5d990c423f12b5d8/a0d24b852_EliteEDNoBG1.png";
+import {usePublicCompanyLogo} from "@/hooks/useCompanyLogo";
 
 /**
  * Branded full-screen splash shown during initial app load while auth,
@@ -9,6 +7,7 @@ const LOGO_URL =
  * Fades out smoothly when `ready` becomes true.
  */
 export default function SplashScreen({ ready }) {
+  const {logoUrl}=usePublicCompanyLogo("dark");
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
 
@@ -52,7 +51,7 @@ export default function SplashScreen({ ready }) {
       {/* Logo */}
       <div className="relative z-10 flex flex-col items-center gap-6 px-6">
         <img
-          src={LOGO_URL}
+          src={logoUrl}
           alt="Elite Engine Development"
           className="h-16 sm:h-20 md:h-24 object-contain animate-[splashPulse_1.8s_ease-in-out_infinite]"
           style={{ filter: "drop-shadow(0 4px 24px rgba(226,4,4,0.35))" }}
