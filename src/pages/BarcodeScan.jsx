@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import BarcodeScanner from "@/components/inventory/BarcodeScanner";
 import BarcodeLabel from "@/components/inventory/BarcodeLabel";
 import PartEditModal from "@/components/inventory/PartEditModal";
+import CreateUnknownTagDialog from "@/components/scan/CreateUnknownTagDialog";
 import ScanMoveLocationDialog from "@/components/scan/ScanMoveLocationDialog";
 
 export default function BarcodeScan() {
@@ -19,6 +20,7 @@ export default function BarcodeScan() {
   const [searching, setSearching] = useState(false);
   const [qtyInputs, setQtyInputs] = useState({}); // `${type}:${id}` -> string
   const [editingPart, setEditingPart] = useState(null);
+  const [unknownCreateCode, setUnknownCreateCode] = useState("");
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -29,21 +31,29 @@ export default function BarcodeScan() {
     setResults([]);
     setQtyInputs({});
     try {
-      const [partsExact, cores, caseTags, caseIds, headTags, headCodes] = await Promise.all([
+      const [partsExact, cores, jobs, caseTags, caseIds, caseSerials, headTags, headCodes, tagVersions] = await Promise.all([
         base44.entities.Part.filter({ part_number: clean }),
         base44.entities.EngineCore.filter({ core_number: clean }),
+        base44.entities.Job.filter({ job_number: clean }),
         base44.entities.CustomerEngine.filter({ tag_code: clean }),
         base44.entities.CustomerEngine.filter({ eed_id: clean }),
+        base44.entities.CustomerEngine.filter({ engine_serial_number: clean }),
         base44.entities.EngineComponent.filter({ tag_code: clean }),
         base44.entities.EngineComponent.filter({ component_code: clean }),
+        base44.entities.IdentityTagVersion.filter({ tag_code: clean }),
       ]);
       let parts = partsExact || [];
       if (!parts.length && clean.length > 11) parts = await base44.entities.Part.filter({ part_number: clean.slice(0, 11) });
       const found = [];
       parts.forEach((p) => found.push({ type: "part", item: p }));
       cores.forEach((c) => found.push({ type: "core", item: c }));
-      [...caseTags,...caseIds].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((e)=>found.push({type:'engine',item:e}));
+      jobs.forEach((j) => found.push({ type: "job", item: j }));
+      [...caseTags,...caseIds,...caseSerials].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((e)=>found.push({type:'engine',item:e}));
       [...headTags,...headCodes].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((h)=>found.push({type:'head',item:h}));
+      const revoked = (tagVersions || []).find(v => v.status === 'revoked');
+      if (found.length === 0 && revoked) found.push({type:'revoked_tag',item:revoked});
+      const looksElite = /^(HEAD|CASE)-[A-Z0-9-]{6,}$/i.test(clean) || /^(HD|CS)-\d{6}$/i.test(clean);
+      if (found.length === 0 && looksElite) found.push({type:'unknown_elite',item:{code:clean}});
       if (found.length === 0) {
         toast.error(`No item found for "${clean}"`);
       } else {
@@ -138,6 +148,9 @@ export default function BarcodeScan() {
         const key = `${r.type}:${item.id}`;
         if (r.type === "engine") return <EngineScanCard key={key} engine={item} navigate={navigate}/>;
         if (r.type === "head") return <HeadScanCard key={key} head={item} navigate={navigate}/>;
+        if (r.type === "job") return <JobScanCard key={key} job={item} navigate={navigate}/>;
+        if (r.type === "revoked_tag") return <RevokedTagCard key={key} tag={item} navigate={navigate}/>;
+        if (r.type === "unknown_elite") return <UnknownEliteTagCard key={key} code={item.code} onCreate={() => setUnknownCreateCode(item.code)} onRetry={reset}/>;
         const isPart = r.type === "part";
         const qVal = qtyInputs[key] ?? String(item.quantity_on_hand ?? 0);
         return (
@@ -250,6 +263,7 @@ export default function BarcodeScan() {
           setEditingPart(null);
         }}
       />
+      <CreateUnknownTagDialog open={!!unknownCreateCode} onClose={() => setUnknownCreateCode("")} code={unknownCreateCode} onCreated={(component) => { setUnknownCreateCode(""); setResults([{ type: component.component_type === "cylinder_head" ? "head" : "unknown_elite", item: component }]); }} />
     </div>
   );
 }
