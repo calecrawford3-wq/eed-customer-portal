@@ -24,7 +24,7 @@ const MAX_BYTES = 1300 * 1024; // ~1.3MB — enough detail for damage inspection
  *    _status: 'uploaded'|'uploading'|'failed', _progress, _file, _localUrl, _signedUrl, _isNew }
  */
 export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
-  const [slots, setSlots] = useState(() =>
+  const [slots, setSlots] = useState(/** @type {() => Array<Record<string, any>>} */ (() =>
     (existingPhotos || []).map((p) => ({
       id: p.id,
       file_uri: p.file_uri,
@@ -36,7 +36,7 @@ export default function FindingPhotoManager({ existingPhotos = [], onChange }) {
       _signedUrl: p.signed_url || "",
       _isNew: false,
     }))
-  );
+  ));
   const [busyCount, setBusyCount] = useState(0);
   const [signedUrlOverrides, setSignedUrlOverrides] = useState({}); // original -> converted for HEIC
   const fileInputRef = useRef(null);

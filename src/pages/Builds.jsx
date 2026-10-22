@@ -1156,7 +1156,7 @@ export default function Builds() {
               <Button
                 variant="destructive"
                 onClick={() => {
-                  const reason = document.getElementById("required-override-reason")?.value?.trim() || "";
+                  const reason = /** @type {HTMLTextAreaElement|null} */ (document.getElementById("required-override-reason"))?.value?.trim() || "";
                   if (!reason) { toast.error("Enter an override reason to proceed"); return; }
                   const crb = completeRequiredBlock;
                   setCompleteRequiredBlock(null);
