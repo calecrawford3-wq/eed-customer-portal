@@ -122,6 +122,11 @@ export default function IntakeEngineDialog({ job, customer, open, onClose, onLin
         storage_location: form.storage_location,
         notes: form.notes,
       });
+      let taggedEngine = created;
+      try {
+        const initialized = await base44.functions.invoke("initializeEngineIdentity", { customer_engine_id: created.id });
+        taggedEngine = { ...created, ...((initialized?.data || initialized)?.engine || {}) };
+      } catch (e) { console.warn("Permanent tag initialization needs retry:", e); }
       // Link to job + estimate
       await base44.entities.Job.update(job.id, { customer_engine_id: created.id, storage_location: form.storage_location, platform_id: form.platform_id });
       if (job.estimate_id) {
@@ -142,9 +147,9 @@ export default function IntakeEngineDialog({ job, customer, open, onClose, onLin
         barcodeValue: created.engine_serial_number,
       });
 
-      setLinkedEngine(created);
+      setLinkedEngine(taggedEngine);
       setStep("done");
-      toast.success(`Engine ${created.eed_id} registered and linked.`);
+      toast.success(`Engine ${taggedEngine.eed_id} registered and linked${taggedEngine.tag_code ? " · laser identity ready" : ""}.`);
     } catch (e) {
       toast.error("Failed to register engine: " + (e.message || e));
     } finally {

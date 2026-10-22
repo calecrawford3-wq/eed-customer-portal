@@ -112,7 +112,14 @@ export default function EngineCheckInModal({ open, onClose }) {
       if (existing) {
         throw new Error(`Serial ${data.engine_serial_number} is already registered as ${existing.eed_id}`);
       }
-      return base44.entities.CustomerEngine.create(data);
+      const created = await base44.entities.CustomerEngine.create(data);
+      try {
+        const initialized = await base44.functions.invoke("initializeEngineIdentity", { customer_engine_id: created.id });
+        return { ...created, ...((initialized?.data || initialized)?.engine || {}) };
+      } catch (e) {
+        console.warn("Engine checked in but permanent tag initialization needs retry:", e);
+        return created;
+      }
     },
     onSuccess: async (created) => {
       qc.invalidateQueries({ queryKey: ["customer-engines"] });

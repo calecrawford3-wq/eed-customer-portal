@@ -64,7 +64,14 @@ export default function EngineSelector({ customerId, value, onChange, platforms 
       if (sameSerial) {
         throw new Error(`Serial number already registered as ${sameSerial.eed_id} for this customer`);
       }
-      return base44.entities.CustomerEngine.create(data);
+      const created = await base44.entities.CustomerEngine.create(data);
+      try {
+        const initialized = await base44.functions.invoke("initializeEngineIdentity", { customer_engine_id: created.id });
+        return { ...created, ...((initialized?.data || initialized)?.engine || {}) };
+      } catch (e) {
+        console.warn("Engine registered but permanent tag initialization needs retry:", e);
+        return created;
+      }
     },
     onSuccess: (created) => {
       setCreateError("");
