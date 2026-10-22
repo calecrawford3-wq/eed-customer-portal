@@ -144,7 +144,7 @@ export default function BarcodeScan() {
       </Card>
 
       {results.map((r) => {
-        const item = r.item;
+        const item = /** @type {any} */ (r.item);
         const key = `${r.type}:${item.id || item.code || item.tag_code || "result"}`;
         if (r.type === "engine") return <EngineScanCard key={key} engine={item} navigate={navigate}/>;
         if (r.type === "head") return <HeadScanCard key={key} head={item} navigate={navigate}/>;
