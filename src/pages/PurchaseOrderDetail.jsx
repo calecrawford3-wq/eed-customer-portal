@@ -55,6 +55,7 @@ export default function PurchaseOrderDetail() {
   const [kitPickerOpen, setKitPickerOpen] = useState(false);
   const [slipModalOpen, setSlipModalOpen] = useState(false);
   const [returnPickerOpen, setReturnPickerOpen] = useState(false);
+  const prefilledJobRef = useRef("");
 
   const { data: settingsList = [] } = useQuery({
     queryKey: ["appSettings"],
@@ -87,6 +88,57 @@ export default function PurchaseOrderDetail() {
     queryKey: ["parts"],
     queryFn: () => base44.entities.Part.list("-created_date", 500),
   });
+
+  const { data: jobReservations = [] } = useQuery({
+    queryKey: ["po-job-reservations", sourceJob?.estimate_id],
+    queryFn: () => base44.entities.PartReservation.filter({ estimate_id: sourceJob.estimate_id }, "-created_date", 200),
+    enabled: !!sourceJob?.estimate_id,
+  });
+  const { data: jobEstimates = [] } = useQuery({
+    queryKey: ["po-job-estimate", sourceJob?.estimate_id],
+    queryFn: () => base44.entities.Estimate.filter({ id: sourceJob.estimate_id }),
+    enabled: !!sourceJob?.estimate_id,
+  });
+  useEffect(() => {
+    if (!isNew || !sourceJob || !parts.length || prefilledJobRef.current === sourceJob.id) return;
+    // Prefer actual inventory shortages. Before approval/reservation, use the estimate's parts.
+    const shortageLines = jobReservations.filter(r => r.status !== "released" && Number(r.quantity_short) > 0)
+      .map(r => ({ part_id: r.part_id, part_number: r.part_number, description: r.part_name, quantity: Number(r.quantity_short) }));
+    const estimateLines = [];
+    if (!jobReservations.length && jobEstimates[0]) {
+      const est = jobEstimates[0];
+      const collect = line => {
+        if (line.is_core_credit) return;
+        if (line.is_kit && line.kit_components?.length) {
+          line.kit_components.forEach(c => estimateLines.push({ part_id: c.part_id, part_number: c.part_number, description: c.name, quantity: (Number(c.quantity) || 1) * (Number(line.quantity) || 1) }));
+        } else if (line.part_id) {
+          estimateLines.push({ part_id: line.part_id, part_number: line.part_number, description: line.item_name, quantity: Number(line.quantity) || 1 });
+        }
+      };
+      (est.line_items || []).forEach(collect);
+      (est.addons || []).filter(a => a.selection_state === "preselected" || a.selection_state === "customer_selected").forEach(a => (a.line_items || []).forEach(collect));
+    }
+    const source = shortageLines.length ? shortageLines : (jobReservations.length ? [] : estimateLines);
+    const grouped = new Map();
+    source.forEach(l => {
+      const key = l.part_id || l.part_number;
+      if (!key) return;
+      const prev = grouped.get(key);
+      grouped.set(key, prev ? { ...prev, quantity: prev.quantity + l.quantity } : { ...l });
+    });
+    const lines = [...grouped.values()].map(l => {
+      const part = parts.find(p => p.id === l.part_id || (!!l.part_number && p.part_number === l.part_number));
+      const quantity = l.quantity;
+      const unit_cost = Number(part?.unit_cost) || 0;
+      return { ...emptyLine, part_id: part?.id || l.part_id || "", part_number: part?.supplier_part_number || l.part_number || "", description: part?.name || l.description || "", quantity, unit_cost, total: quantity * unit_cost };
+    });
+    // Wait until estimate data is loaded when no reservations exist.
+    if (!jobReservations.length && sourceJob.estimate_id && !jobEstimates.length) return;
+    prefilledJobRef.current = sourceJob.id;
+    if (!lines.length) return;
+    const supplierIds = [...new Set(lines.map(l => parts.find(p => p.id === l.part_id)?.supplier_id).filter(Boolean))];
+    setForm(f => ({ ...f, line_items: lines, supplier_id: supplierIds.length === 1 ? supplierIds[0] : f.supplier_id, subtotal: lines.reduce((sum, l) => sum + l.total, 0), total: lines.reduce((sum, l) => sum + l.total, 0) + (Number(f.shipping_cost) || 0) + (Number(f.tax_amount) || 0) }));
+  }, [isNew, sourceJob, parts, jobReservations, jobEstimates]);
 
   const { data: kits = [] } = useQuery({
     queryKey: ["partKits"],
