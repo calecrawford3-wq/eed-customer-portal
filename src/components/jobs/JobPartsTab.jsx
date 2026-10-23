@@ -5,7 +5,8 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Package } from "lucide-react";
+import { ShoppingCart, Package, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function JobPartsTab({ job }) {
   const { data: reservations = [], isLoading } = useQuery({
@@ -20,9 +21,13 @@ export default function JobPartsTab({ job }) {
     enabled: partIds.length > 0,
   });
   const { data: pos = [] } = useQuery({
-    queryKey: ["job-pos", job.build_id, job.estimate_id],
-    queryFn: () => base44.entities.PurchaseOrder.filter({ build_id: job.build_id || "none" }, "-created_date", 50),
-    enabled: !!job.build_id,
+    queryKey: ["job-pos", job.id, job.build_id],
+    queryFn: async () => {
+      const byJob = await base44.entities.PurchaseOrder.filter({ job_id: job.id }, "-created_date", 100);
+      const byBuild = job.build_id ? await base44.entities.PurchaseOrder.filter({ build_id: job.build_id }, "-created_date", 100) : [];
+      return [...new Map([...byBuild, ...byJob].map(po => [po.id, po])).values()];
+    },
+    enabled: !!job.id,
   });
 
   const partMap = new Map((parts).map(p => [p.id, p]));
@@ -86,7 +91,7 @@ export default function JobPartsTab({ job }) {
       </Card>
 
       <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Purchase Orders</CardTitle></CardHeader>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2"><CardTitle className="text-sm flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Purchase Orders</CardTitle><Link to={`/PurchaseOrderDetail?new=1&job_id=${encodeURIComponent(job.id)}`}><Button size="sm" className="bg-[#e20404] hover:bg-[#c00303] text-white"><Plus className="w-4 h-4 mr-1" /> Create PO</Button></Link></CardHeader>
         <CardContent>
           {(pos).length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">No purchase orders linked to this job.</p>
