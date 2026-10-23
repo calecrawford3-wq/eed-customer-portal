@@ -33,12 +33,13 @@ export default function PurchaseOrderDetail() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
   const isNew = params.get("new") === "1";
+  const sourceJobId = isNew ? (params.get("job_id") || "") : "";
   const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     po_number: `PO-${Date.now().toString().slice(-6)}`,
-    supplier_id: "", status: "draft",
+    supplier_id: "", job_id: sourceJobId, status: "draft",
     order_date: new Date().toISOString().split("T")[0],
     expected_date: "",
     line_items: [{ ...emptyLine }],
@@ -67,6 +68,16 @@ export default function PurchaseOrderDetail() {
     enabled: !!id,
   });
 
+  const { data: sourceJobs = [] } = useQuery({
+    queryKey: ["po-source-job", sourceJobId],
+    queryFn: () => base44.entities.Job.filter({ id: sourceJobId }),
+    enabled: !!sourceJobId,
+  });
+  const sourceJob = sourceJobs[0];
+  useEffect(() => {
+    if (isNew && sourceJob) setForm(f => ({ ...f, job_id: sourceJob.id, build_id: sourceJob.build_id || "" }));
+  }, [isNew, sourceJob?.id, sourceJob?.build_id]);
+
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
@@ -92,6 +103,7 @@ export default function PurchaseOrderDetail() {
       : base44.entities.PurchaseOrder.create(data),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["job-pos"] });
       toast.success("Purchase order saved");
       if (isNew) navigate(`/PurchaseOrderDetail?id=${result.id}`);
     },
@@ -301,6 +313,7 @@ export default function PurchaseOrderDetail() {
       }));
 
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["job-pos"] });
       qc.invalidateQueries({ queryKey: ["parts"] });
       qc.invalidateQueries({ queryKey: ["job-parts-tab"] });
       qc.invalidateQueries({ queryKey: ["job-reservations"] });
