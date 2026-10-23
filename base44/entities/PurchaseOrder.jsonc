@@ -2,8 +2,14 @@
   "name": "PurchaseOrder",
   "type": "object",
   "properties": {
-    "supplier_access_token": { "type": "string", "description": "Random supplier update capability. Admin-only entity." },
-    "supplier_token_expires_at": { "type": "string", "format": "date-time" },
+    "supplier_access_token": {
+      "type": "string",
+      "description": "Random supplier update capability. Admin-only entity."
+    },
+    "supplier_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "po_number": {
       "type": "string"
     },
@@ -133,6 +139,10 @@
       },
       "default": [],
       "description": "IDs of receipts that have been processed against this PO, for idempotent receiving. Prevents duplicate inventory increments on retry or repeated submission."
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Optional linked Job Card, including jobs not yet activated into an EngineBuild"
     }
   },
   "required": [
