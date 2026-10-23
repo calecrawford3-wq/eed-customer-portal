@@ -89,7 +89,7 @@ export default function PurchaseOrderDetail() {
     queryFn: () => base44.entities.Part.list("-created_date", 500),
   });
 
-  const { data: jobReservations = [] } = useQuery({
+  const { data: jobReservations = [], isLoading: loadingJobReservations } = useQuery({
     queryKey: ["po-job-reservations", sourceJob?.estimate_id],
     queryFn: () => base44.entities.PartReservation.filter({ estimate_id: sourceJob.estimate_id }, "-created_date", 200),
     enabled: !!sourceJob?.estimate_id,
@@ -100,7 +100,7 @@ export default function PurchaseOrderDetail() {
     enabled: !!sourceJob?.estimate_id,
   });
   useEffect(() => {
-    if (!isNew || !sourceJob || !parts.length || prefilledJobRef.current === sourceJob.id) return;
+    if (!isNew || !sourceJob || !parts.length || loadingJobReservations || prefilledJobRef.current === sourceJob.id) return;
     // Prefer actual inventory shortages. Before approval/reservation, use the estimate's parts.
     const shortageLines = jobReservations.filter(r => r.status !== "released" && Number(r.quantity_short) > 0)
       .map(r => ({ part_id: r.part_id, part_number: r.part_number, description: r.part_name, quantity: Number(r.quantity_short) }));
@@ -138,7 +138,7 @@ export default function PurchaseOrderDetail() {
     if (!lines.length) return;
     const supplierIds = [...new Set(lines.map(l => parts.find(p => p.id === l.part_id)?.supplier_id).filter(Boolean))];
     setForm(f => ({ ...f, line_items: lines, supplier_id: supplierIds.length === 1 ? supplierIds[0] : f.supplier_id, subtotal: lines.reduce((sum, l) => sum + l.total, 0), total: lines.reduce((sum, l) => sum + l.total, 0) + (Number(f.shipping_cost) || 0) + (Number(f.tax_amount) || 0) }));
-  }, [isNew, sourceJob, parts, jobReservations, jobEstimates]);
+  }, [isNew, sourceJob, parts, jobReservations, jobEstimates, loadingJobReservations]);
 
   const { data: kits = [] } = useQuery({
     queryKey: ["partKits"],
