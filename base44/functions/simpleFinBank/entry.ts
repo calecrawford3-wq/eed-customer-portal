@@ -58,6 +58,23 @@ Deno.serve(async req=>{
   await svc.entities.SimpleFinCredential.update(con.id,{last_synced_at:new Date().toISOString(),status:'active'});
   return Response.json({added,accounts:(data.accounts||[]).map((a:any)=>({id:a.id,name:a.name,currency:a.currency}))});
  }
+ if(action==='approve'){
+  const tx=rows(await svc.entities.BankTransaction.filter({id:body.transaction_id}))[0];
+  if(!tx||!String(tx.plaid_transaction_id||'').startsWith('simplefin:'))throw Error('Transaction not found');
+  if(tx.expense_id)return Response.json({expense_id:tx.expense_id,already_matched:true});
+  if(tx.amount<=0||tx.pending)throw Error('Only posted purchases can be expensed');
+  if(body.expense_id){
+   const expense=rows(await svc.entities.Expense.filter({id:body.expense_id}))[0];
+   if(!expense)throw Error('Expense not found');
+   await svc.entities.BankTransaction.update(tx.id,{expense_id:expense.id,status:'matched',receipt_url:expense.receipt_url||tx.receipt_url||''});
+   return Response.json({expense_id:expense.id,matched:true});
+  }
+  const category=String(body.category||'other');
+  if(!['parts_cogs','supplies','tools_equipment','shipping','utilities','rent','labor','marketing','insurance','taxes','warranty_repair','other'].includes(category))throw Error('Invalid category');
+  const expense=await svc.entities.Expense.create({expense_number:'BANK-'+tx.id.slice(-12),description:tx.description||tx.merchant||'Card purchase',vendor:tx.merchant||'',amount:tx.amount,date:tx.date,category,payment_method:'card',is_deductible:!!body.is_deductible,source:'manual',receipt_url:tx.receipt_url||'',notes:'Imported from SimpleFIN transaction '+tx.plaid_transaction_id});
+  await svc.entities.BankTransaction.update(tx.id,{expense_id:expense.id,status:'matched',category});
+  return Response.json({expense_id:expense.id});
+ }
  throw Error('Unknown action');
  }catch(e){return Response.json({error:safe(e)},{status:400});}
 });
