@@ -1,0 +1,50 @@
+{
+  "name": "BankConnection",
+  "type": "object",
+  "properties": {
+    "institution_name": {
+      "type": "string"
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "access_token": {
+      "type": "string"
+    },
+    "cursor": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "connected_at": {
+      "type": "string"
+    },
+    "last_synced_at": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "required": []
+}

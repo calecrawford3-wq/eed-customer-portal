@@ -1,0 +1,68 @@
+{
+  "name": "BankTransaction",
+  "type": "object",
+  "properties": {
+    "plaid_transaction_id": {
+      "type": "string"
+    },
+    "connection_id": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "merchant": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string"
+    },
+    "pending": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string"
+    },
+    "expense_id": {
+      "type": "string"
+    },
+    "receipt_url": {
+      "type": "string"
+    },
+    "suggested_expense_id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "required": []
+}
