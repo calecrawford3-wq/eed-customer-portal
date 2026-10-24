@@ -6,7 +6,7 @@ import {Input} from "@/components/ui/input";
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/ui/select";
 import {toast} from "sonner";
 const categories=["parts_cogs","supplies","tools_equipment","shipping","utilities","rent","labor","marketing","insurance","taxes","other"];
-const invoke=async(name,body)=>{const r=await base44.functions.invoke(name,body);const d=r.data||r;if(d.error)throw Error(d.error);return d;};
+const invoke=async(name,body)=>{try{const r=await base44.functions.invoke(name,body);const d=r.data||r;if(d.error)throw Error(d.error);return d;}catch(e){throw Error(e?.response?.data?.error||e?.data?.error||e?.message||"Bank request failed");}};
 export default function BankFeed({expenses=[]}){
  const qc=useQueryClient(),[busy,setBusy]=useState(false),[token,setToken]=useState(""),[cat,setCat]=useState({});
  const {data:transactions=[]}=useQuery({queryKey:["bank-transactions"],queryFn:()=>base44.entities.BankTransaction.list("-date",500)});
