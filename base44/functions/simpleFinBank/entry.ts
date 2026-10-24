@@ -17,7 +17,8 @@ Deno.serve(async req=>{
   try{decoded=atob(token);}catch{throw Error('Invalid setup token format');}
   const claim=new URL(decoded);
   if(claim.protocol!=='https:'||!['bridge.simplefin.org','beta-bridge.simplefin.org'].includes(claim.hostname)||!claim.pathname.startsWith('/simplefin/claim/'))throw Error('Setup token must come from SimpleFIN Bridge');
-  const response=await fetch(claim.toString(),{method:'POST',headers:{'Content-Length':'0'},redirect:'error'});
+  const response=await fetch(claim.toString(),{method:'POST',headers:{'Content-Length':'0'},redirect:'manual'});
+  if(response.status>=300&&response.status<400)throw Error('Unexpected SimpleFIN redirect during token claim');
   if(response.status===403)throw Error('Setup token was already used or revoked. Generate a new one in SimpleFIN.');
   if(!response.ok)throw Error('SimpleFIN rejected setup token');
   const access=(await response.text()).trim(),url=new URL(access);
@@ -35,7 +36,8 @@ Deno.serve(async req=>{
   url.searchParams.set('version','2');
   // Fetch a rolling window to cover delayed posted transactions and corrections.
   url.searchParams.set('start-date',String(Math.floor(Date.now()/1000)-120*86400));
-  const response=await fetch(url.toString(),{headers:{Authorization:auth},redirect:'error'});
+  const response=await fetch(url.toString(),{headers:{Authorization:auth},redirect:'manual'});
+  if(response.status>=300&&response.status<400)throw Error('Unexpected SimpleFIN redirect during sync');
   if(response.status===403)throw Error('SimpleFIN access expired or revoked. Reconnect.');
   if(!response.ok)throw Error('SimpleFIN sync failed (HTTP '+response.status+')');
   const data=await response.json();
