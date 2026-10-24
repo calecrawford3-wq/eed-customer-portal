@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Search, Trash2, Edit, ShoppingCart, TrendingDown, AlertCircle, Camera, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
+import BankFeed from "@/components/expenses/BankFeed";
 
 const CATEGORIES = [
   { value: "parts_cogs", label: "Parts / COGS" },
@@ -206,6 +207,7 @@ export default function Expenses() {
 
   return (
     <div className="p-4 md:p-8">
+      <BankFeed expenses={expenses} />
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Expenses</h1>
