@@ -1,4 +1,5 @@
 import JsBarcode from 'jsbarcode';
+import { eliteLogoPath, eliteLogoTransform } from './eliteLogoPath';
 
 // Simple, font-independent 5x7 vector lettering. LaserGRBL does not reliably import SVG <text>.
 const FONT = {
@@ -64,7 +65,7 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
  <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
- ${lettering('ELITE',255,17,39,220)}
+ <path d="${eliteLogoPath}" transform="${eliteLogoTransform}" fill="#000"/>
  ${lettering('ENGINE DEVELOPMENT',255,63,12,220)}
  <rect x="147" y="82" width="216" height="2" fill="#000"/>
  ${lettering(type,255,88,9,75)}
