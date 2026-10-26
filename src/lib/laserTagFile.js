@@ -46,7 +46,7 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
  try { JsBarcode(svg, String(value), { format:'CODE128', width:1, height:40, displayValue:false, margin:0 }); }
  catch (error) { console.warn('Invalid laser tag barcode', error); return ''; }
- const bars = [...svg.querySelectorAll('rect')].filter(el => Number(el.getAttribute('width')) > 0);
+ const bars = [...svg.querySelectorAll('g rect')].filter(el => Number(el.getAttribute('width')) > 0);
  const totalWidth = Number(svg.getAttribute('width')) || bars.reduce((m, b) => Math.max(m, Number(b.getAttribute('x') || 0) + Number(b.getAttribute('width'))), 0);
  if (!totalWidth) return '';
  const scale = Math.min(1, maxWidth / totalWidth);
