@@ -81,3 +81,43 @@ export function downloadLaserTagSvgContent(svg,args={}) {
  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 export function downloadLaserTagSvg(args){const svg=buildLaserTagSvg(args);downloadLaserTagSvgContent(svg,args);return svg;}
+
+// Raster artwork for LaserGRBL's line-to-line engraving mode.
+// 20 pixels/mm keeps small barcode modules and lettering crisp at 51 x 19 mm.
+export async function downloadLaserTagPngContent(svg, args = {}) {
+ const widthMm = Number(args.widthMm) || 51;
+ const heightMm = Number(args.heightMm) || 19;
+ const pixelsPerMm = 20;
+ const width = Math.round(widthMm * pixelsPerMm);
+ const height = Math.round(heightMm * pixelsPerMm);
+ const canvas = document.createElement('canvas');
+ canvas.width = width;
+ canvas.height = height;
+ const context = canvas.getContext('2d');
+ if (!context) throw new Error('Cannot initialize tag image canvas');
+ context.fillStyle = '#ffffff';
+ context.fillRect(0, 0, width, height);
+ const image = new Image();
+ const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+ const url = URL.createObjectURL(blob);
+ try {
+  await new Promise((resolve, reject) => {
+   image.onload = resolve;
+   image.onerror = () => reject(new Error('Could not render tag SVG as PNG'));
+   image.src = url;
+  });
+  context.drawImage(image, 0, 0, width, height);
+ } finally {
+  URL.revokeObjectURL(url);
+ }
+ const pngBlob = await new Promise((resolve, reject) =>
+  canvas.toBlob(result => result ? resolve(result) : reject(new Error('PNG export failed')), 'image/png'));
+ const pngUrl = URL.createObjectURL(pngBlob);
+ const anchor = document.createElement('a');
+ anchor.href = pngUrl;
+ anchor.download = `${String(args.displayId || 'elite-tag').replace(/[^A-Za-z0-9_-]+/g, '_')}-${args.kind || 'tag'}-LaserGRBL.png`;
+ document.body.appendChild(anchor);
+ anchor.click();
+ anchor.remove();
+ setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
+}

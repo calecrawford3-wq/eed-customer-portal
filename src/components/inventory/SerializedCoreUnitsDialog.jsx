@@ -13,7 +13,7 @@ import ReplaceIdentityTagDialog from '@/components/engines/ReplaceIdentityTagDia
 import ComponentSpecSheetDialog from '@/components/engines/ComponentSpecSheetDialog';
 import ComponentRepairTicketDialog from '@/components/inventory/ComponentRepairTicketDialog';
 import InstallComponentDialog from '@/components/engines/InstallComponentDialog';
-import {buildLaserTagSvg,downloadLaserTagSvgContent} from '@/lib/laserTagFile';
+import {buildLaserTagSvg,downloadLaserTagSvgContent,downloadLaserTagPngContent} from '@/lib/laserTagFile';
 const pretty=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const LIFE=['active','in_machining','waiting_on_parts','spare','damaged','retired','scrapped'];
 export default function SerializedCoreUnitsDialog({open,onClose,core,platforms=[]}){const qc=useQueryClient(),type=core?.category==='cylinder_head'?'cylinder_head':'engine_case';const [adding,setAdding]=useState(false),[platformId,setPlatformId]=useState(''),[serial,setSerial]=useState(''),[location,setLocation]=useState(''),[credit,setCredit]=useState(''),[acquisition,setAcquisition]=useState(''),[sellValue,setSellValue]=useState(''),[created,setCreated]=useState(null),[replace,setReplace]=useState(null),[specTarget,setSpecTarget]=useState(null),[repairTarget,setRepairTarget]=useState(null),[installTarget,setInstallTarget]=useState(null);
