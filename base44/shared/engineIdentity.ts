@@ -9,7 +9,7 @@ async function ensureTagVersion(service:any,{ownerType,engineId='',component:any
  if(existing.length){const same=existing.find((v:any)=>(engineId&&v.customer_engine_id===engineId)||(component?.id&&v.component_id===component.id));if(same)return same;throw new Error('Scan token collision detected. Regenerate the tag token.');}
  const versions=ownerType==='customer_engine'?rows(await service.entities.IdentityTagVersion.filter({customer_engine_id:engineId})):rows(await service.entities.IdentityTagVersion.filter({component_id:component?.id}));
  const linkedEngineId=engineId||component?.current_customer_engine_id||component?.origin_customer_engine_id||'';
- const shortScanCode=await uniqueValue(service.entities.IdentityTagVersion,'short_scan_code',()=>randomChars(6));
+ const shortScanCode=await uniqueValue(service.entities.IdentityTagVersion,'short_scan_code',()=>randomDigits(8));
  return service.entities.IdentityTagVersion.create({owner_type:ownerType,customer_engine_id:linkedEngineId,component_id:component?.id||'',component_type:component?.component_type||'engine_case',identity_display:identityDisplay,tag_code:tagCode,short_scan_code:shortScanCode,version_number:(Math.max(0,...versions.map((v:any)=>Number(v.version_number)||0))+1),status:'active',template_version:templateVersion,width_mm:widthMm,height_mm:heightMm,generated_at:new Date().toISOString(),generated_by:'Elite'});
 }
 export async function newTagCode(service:any,prefix:string){
