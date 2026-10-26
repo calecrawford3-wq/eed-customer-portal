@@ -37,7 +37,7 @@ export default function BarcodeScan() {
     setResults([]);
     setQtyInputs({});
     try {
-      const [partsExact, cores, jobs, caseTags, caseIds, caseSerials, headTags, headCodes, tagVersions] = await Promise.all([
+      const [partsExact, cores, jobs, caseTags, caseIds, caseSerials, headTags, headCodes, tagVersions, shortTagVersions] = await Promise.all([
         base44.entities.Part.filter({ part_number: clean }),
         base44.entities.EngineCore.filter({ core_number: clean }),
         base44.entities.Job.filter({ job_number: clean }),
@@ -47,6 +47,7 @@ export default function BarcodeScan() {
         base44.entities.EngineComponent.filter({ tag_code: clean }),
         base44.entities.EngineComponent.filter({ component_code: clean }),
         base44.entities.IdentityTagVersion.filter({ tag_code: clean }),
+        base44.entities.IdentityTagVersion.filter({ short_scan_code: clean }),
       ]);
       let parts = partsExact || [];
       if (!parts.length && clean.length > 11) parts = await base44.entities.Part.filter({ part_number: clean.slice(0, 11) });
@@ -56,7 +57,19 @@ export default function BarcodeScan() {
       jobs.forEach((j) => found.push({ type: "job", item: j }));
       [...caseTags,...caseIds,...caseSerials].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((e)=>found.push({type:'engine',item:e}));
       [...headTags,...headCodes].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).forEach((c)=>found.push({type:c.component_type==='engine_case'?'case_component':'head',item:c}));
-      const revoked = (tagVersions || []).find(v => v.status === 'revoked');
+      const matchingVersions = [...(tagVersions || []), ...(shortTagVersions || [])];
+      for (const version of matchingVersions.filter(v => v.status === 'active')) {
+        if (version.component_id) {
+          const components = await base44.entities.EngineComponent.filter({ id: version.component_id });
+          const component = components?.[0];
+          if (component && !found.some(f => f.item?.id === component.id)) found.push({ type: component.component_type === 'engine_case' ? 'case_component' : 'head', item: component });
+        } else if (version.customer_engine_id) {
+          const engines = await base44.entities.CustomerEngine.filter({ id: version.customer_engine_id });
+          const engine = engines?.[0];
+          if (engine && !found.some(f => f.item?.id === engine.id)) found.push({ type: 'engine', item: engine });
+        }
+      }
+      const revoked = matchingVersions.find(v => v.status === 'revoked');
       if (found.length === 0 && revoked) found.push({type:'revoked_tag',item:revoked});
       const looksElite = /^(HEAD|CASE)-[A-Z0-9-]{6,}$/i.test(clean) || /^(HD|CS)-\d{6}$/i.test(clean);
       if (found.length === 0 && looksElite) found.push({type:'unknown_elite',item:{code:clean}});
