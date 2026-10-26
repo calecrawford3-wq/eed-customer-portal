@@ -67,6 +67,10 @@
     },
     "replacement_reason": {
       "type": "string"
+    },
+    "short_scan_code": {
+      "type": "string",
+      "description": "Unique short staff-only barcode alias for this physical tag version"
     }
   },
   "required": [
