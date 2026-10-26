@@ -65,7 +65,7 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
  const bars = [...svg.querySelectorAll('g rect')].filter(el => Number(el.getAttribute('width')) > 0);
  const totalWidth = Number(svg.getAttribute('width')) || bars.reduce((m, b) => Math.max(m, Number(b.getAttribute('x') || 0) + Number(b.getAttribute('width'))), 0);
  if (!totalWidth) return '';
- const scale = Math.min(1, maxWidth / totalWidth);
+ const scale = maxWidth / totalWidth;
  const offset = x + (maxWidth - totalWidth * scale) / 2;
  return bars.map(b => {
   const bx = offset + Number(b.getAttribute('x') || 0) * scale;
@@ -76,7 +76,7 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
 export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- const barcode = barcodeGeometry(tagCode, 99, 110, 312, 31);
+ const barcode = barcodeGeometry(tagCode, 109, 110, 292, 31);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
  <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
@@ -85,8 +85,8 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  <rect x="109" y="89" width="292" height="1.6" fill="#000"/>
  ${boldLettering(type,255,95,11,85)}
  ${barcode}
- ${boldLettering(displayId,255,148,25,280)}
- ${secondary ? boldLettering(secondary,255,176,11,290) : ''}
+ ${boldLettering(displayId,255,146,24,280)}
+ ${secondary ? boldLettering(secondary,255,171,10,290) : ''}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
