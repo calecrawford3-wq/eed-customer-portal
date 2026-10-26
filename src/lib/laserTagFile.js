@@ -91,17 +91,16 @@ function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
 export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- const barcode = barcodeGeometry(tagCode, 109, 110, 292, 31, barcodeInverted);
+ const barcode = barcodeGeometry(tagCode, 55, 94, 400, 54, barcodeInverted);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
  <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
  <path d="${eliteLogoPath}" transform="${eliteLogoTransform}" fill="#000"/>
  ${boldLettering('ENGINE DEVELOPMENT',255,65,17,290)}
- <rect x="109" y="89" width="292" height="1.6" fill="#000"/>
- ${boldLettering(type,255,95,11,85)}
+ <rect x="109" y="85" width="292" height="1.6" fill="#000"/>
  ${barcode}
- ${boldLettering(displayId,255,146,24,280)}
- ${secondary ? boldLettering(secondary,255,171,10,290) : ''}
+ ${boldLettering(displayId,255,153,14,280)}
+ ${secondary ? boldLettering(secondary,255,174,9,290) : ''}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
