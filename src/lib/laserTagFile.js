@@ -1,5 +1,6 @@
 import JsBarcode from 'jsbarcode';
 import { eliteLogoPath, eliteLogoTransform } from './eliteLogoPath';
+import { tagGlyphs } from './tagFontPaths';
 
 // Simple, font-independent 5x7 vector lettering. LaserGRBL does not reliably import SVG <text>.
 const FONT = {
@@ -42,6 +43,20 @@ function lettering(value, centerX, y, height, maxWidth) {
  });
  return segments.length ? `<path d="${segments.join('')}" fill="#000"/>` : '';
 }
+function boldLettering(value, centerX, top, height, maxWidth) {
+ const chars = String(value ?? '').toUpperCase().split('');
+ const glyphs = chars.map(c => tagGlyphs[c] || tagGlyphs[' ']);
+ const total = glyphs.reduce((sum,g) => sum + g.advance,0) + Math.max(0,glyphs.length-1)*50;
+ const scale = Math.min(height/760, maxWidth/Math.max(total,1));
+ const startX = centerX-total*scale/2;
+ let offset = 0;
+ const paths = glyphs.map(g => {
+  const path = g.path ? `<path d="${g.path}" transform="translate(${(startX+offset*scale).toFixed(3)} ${(top+height).toFixed(3)}) scale(${scale.toFixed(6)})" fill="#000"/>` : '';
+  offset += g.advance+50;
+  return path;
+ });
+ return paths.join('');
+}
 function barcodeGeometry(value, x, y, maxWidth, height) {
  if (!value) return '';
  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -61,17 +76,17 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
 export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- const barcode = barcodeGeometry(tagCode, 90, 96, 330, 34);
+ const barcode = barcodeGeometry(tagCode, 99, 110, 312, 31);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
  <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
  <path d="${eliteLogoPath}" transform="${eliteLogoTransform}" fill="#000"/>
- ${lettering('ENGINE DEVELOPMENT',255,63,12,220)}
- <rect x="147" y="82" width="216" height="2" fill="#000"/>
- ${lettering(type,255,88,9,75)}
+ ${boldLettering('ENGINE DEVELOPMENT',255,65,17,290)}
+ <rect x="109" y="89" width="292" height="1.6" fill="#000"/>
+ ${boldLettering(type,255,95,11,85)}
  ${barcode}
- ${lettering(displayId,255,139,24,330)}
- ${secondary ? lettering(secondary,255,170,11,330) : ''}
+ ${boldLettering(displayId,255,148,25,280)}
+ ${secondary ? boldLettering(secondary,255,176,11,290) : ''}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
