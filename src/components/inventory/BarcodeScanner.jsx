@@ -16,6 +16,8 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
   const [manual, setManual] = useState("");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
   const readerId = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
   const scannerRef = useRef(null);
   const startingRef = useRef(false);
@@ -30,6 +32,19 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
     return trimmed.length > 11 ? trimmed.slice(0, 11) : trimmed;
   };
 
+  const setTorch = async (enabled) => {
+    const track = scannerRef.current?.getRunningTrack?.();
+    if (!track) return false;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: enabled }] });
+      setTorchOn(enabled);
+      return true;
+    } catch {
+      setTorchOn(false);
+      return false;
+    }
+  };
+
   const stopCamera = async () => {
     const scanner = scannerRef.current;
     scannerRef.current = null;
@@ -39,6 +54,8 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
       try { scanner.clear(); } catch (e) {}
     }
     setScanning(false);
+    setTorchOn(false);
+    setTorchSupported(false);
   };
 
   const startCamera = async () => {
@@ -63,6 +80,10 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
         () => {}
       );
       setScanning(true);
+      const track = scanner.getRunningTrack?.();
+      const supported = Boolean(track?.getCapabilities?.()?.torch);
+      setTorchSupported(supported);
+      if (supported) await setTorch(true);
     } catch (e) {
       scannerRef.current = null;
       setError("Could not access camera. Check camera permission and try again.");
@@ -125,7 +146,12 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
             <Camera className="w-4 h-4 mr-1" /> Open Camera
           </Button>
         )}
-        {scanning && <p className="text-xs text-slate-400 text-center">Camera is ready. Point it at any Elite tag or supported barcode.</p>}
+        {scanning && (
+          <>
+            {torchSupported && <Button type="button" variant="outline" size="sm" onClick={() => void setTorch(!torchOn)}>{torchOn ? "Flashlight On · Tap to Turn Off" : "Turn On Flashlight"}</Button>}
+            <p className="text-xs text-slate-400 text-center">Camera is ready. Point it at any Elite tag or supported barcode.</p>
+          </>
+        )}
         <details className="w-full max-w-sm">
           <summary className="cursor-pointer text-xs text-center text-slate-500">Tag unreadable? Enter the printed ID manually</summary>
           <form onSubmit={submitManual} className="flex gap-2 mt-2">
