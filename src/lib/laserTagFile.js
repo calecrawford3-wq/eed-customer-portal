@@ -57,7 +57,7 @@ function boldLettering(value, centerX, top, height, maxWidth) {
  });
  return paths.join('');
 }
-function barcodeGeometry(value, x, y, maxWidth, height) {
+function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
  if (!value) return '';
  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
  try { JsBarcode(svg, String(value), { format:'CODE128', width:1, height:40, displayValue:false, margin:0 }); }
@@ -78,6 +78,7 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
  const rect = (left, right) => right - left > 0.001
   ? `<rect x="${left.toFixed(3)}" y="${y}" width="${(right-left).toFixed(3)}" height="${height}" fill="#000"/>`
   : '';
+ if (!inverted) return segments.map(bar => rect(bar.start, bar.end)).join('');
  let cursor = x;
  let engraved = '';
  for (const bar of segments) {
@@ -87,10 +88,10 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
  engraved += rect(cursor, x + maxWidth);
  return engraved;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19}) {
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- const barcode = barcodeGeometry(tagCode, 109, 110, 292, 31);
+ const barcode = barcodeGeometry(tagCode, 109, 110, 292, 31, barcodeInverted);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
  <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
