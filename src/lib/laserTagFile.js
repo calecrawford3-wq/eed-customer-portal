@@ -67,11 +67,21 @@ function barcodeGeometry(value, x, y, maxWidth, height) {
  if (!totalWidth) return '';
  const scale = maxWidth / totalWidth;
  const offset = x + (maxWidth - totalWidth * scale) / 2;
- return bars.map(b => {
-  const bx = offset + Number(b.getAttribute('x') || 0) * scale;
-  const bw = Number(b.getAttribute('width')) * scale;
-  return `<rect x="${bx.toFixed(3)}" y="${y}" width="${bw.toFixed(3)}" height="${height}" fill="#000"/>`;
+ // Red anodized aluminum engraves SILVER, so leave the barcode bars RED
+ // (dark) and engrave the spaces/quiet zones SILVER (light).
+ // Use a single even-odd compound path: outer silver panel minus dark bars.
+ // Reserve 2 mm quiet zones on both sides; do not crop the barcode modules.
+ const quiet = 20;
+ const innerWidth = Math.max(1, maxWidth - 2 * quiet);
+ const moduleScale = innerWidth / totalWidth;
+ const innerX = x + quiet;
+ const outer = `M${x} ${y}h${maxWidth}v${height}h-${maxWidth}z`;
+ const holes = bars.map(b => {
+  const bx = innerX + Number(b.getAttribute('x') || 0) * moduleScale;
+  const bw = Number(b.getAttribute('width')) * moduleScale;
+  return `M${bx.toFixed(3)} ${y}v${height}h${bw.toFixed(3)}v-${height}z`;
  }).join('');
+ return `<path d="${outer}${holes}" fill="#000" fill-rule="evenodd"/>`;
 }
 export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
