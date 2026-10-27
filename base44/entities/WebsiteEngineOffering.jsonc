@@ -1,0 +1,11 @@
+{
+  "name":"WebsiteEngineOffering","type":"object",
+  "properties":{
+    "platform":{"type":"string"},"stage":{"type":"integer"},
+    "canned_job_id":{"type":"string"},
+    "addon_ids":{"type":"array","items":{"type":"string"},"default":[]},
+    "is_published":{"type":"boolean","default":false},
+    "notes":{"type":"string"}
+  },"required":["platform","stage","canned_job_id"],
+  "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
+}
