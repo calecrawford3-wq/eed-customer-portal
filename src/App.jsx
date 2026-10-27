@@ -6,6 +6,7 @@ import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
 import SiteStore from './pages/publicsite/SiteStore';
+import SiteCart from './pages/publicsite/SiteCart';
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -175,6 +176,7 @@ const routes = createRoutesFromElements(
       <Route path="builder" element={<SiteBuilder />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="store" element={<SiteStore />} />
+      <Route path="cart" element={<SiteCart />} />
     </Route>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
     <Route path="/PortalAccess" element={<PortalAccess />} />
