@@ -1,3 +1,4 @@
+import eliteLogoVector from './eliteLogoVector.txt?raw';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 const FULL_ELITE_LOGO = 'https://media.base44.com/images/public/6a8dd6d29eea1fd6752efdfe/687f4dd96_Elite_Logo_LaserGRBL_Black_White1.png';
@@ -108,11 +109,7 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} identification tag</title>
  <desc>Laser-ready tag artwork. Left branding, right QR; no physical outline or mounting holes.</desc>
- <path d="${eliteTagLogoPath}" transform="translate(-10 -25) scale(0.175)" fill="#000"/>
- <path d="M17 76 H333 L323 109 H7 Z" fill="#000"/>
- ${boldLettering('ENGINE DEVELOPMENT',168,82,21,294).replaceAll('fill="#000"','fill="#fff"')}
- <rect x="20" y="123" width="302" height="2" fill="#000"/>
- <rect x="20" y="128" width="302" height="2" fill="#000"/>
+ <g transform="translate(12 13) scale(0.151)">${eliteLogoVector}</g>
  <path d="M20 143 H285 L277 165 H12 Z" fill="#000"/>
  ${boldLettering(type,146,146,15,250).replaceAll('fill="#000"','fill="#fff"')}
  <path d="M289 143 l12 0 -10 22 -12 0z M306 143 l12 0 -10 22 -12 0z" fill="#000"/>
