@@ -5,11 +5,11 @@ Deno.serve(async req=>{
  try {
   const sdk=createClientFromRequest(req);const svc=sdk.asServiceRole;
   const offerings=rows(await svc.entities.WebsiteEngineOffering.list()).filter((o:any)=>o.is_published===true);
-  const [jobs,addons,parts,labor,machining]=await Promise.all([
-   svc.entities.CannedJob.list(),svc.entities.Addon.list(),svc.entities.Part.list(),svc.entities.LaborItem.list(),svc.entities.MachiningItem.list()
+  const [jobs,addons,parts,labor,machining,cores]=await Promise.all([
+   svc.entities.CannedJob.list(),svc.entities.Addon.list(),svc.entities.Part.list(),svc.entities.LaborItem.list(),svc.entities.MachiningItem.list(),svc.entities.EngineCore.list()
   ]).then((all:any[])=>all.map(rows));
   const byId=(arr:any[])=>new Map(arr.map((v:any)=>[v.id,v]));
-  const jm=byId(jobs),am=byId(addons),pm=byId(parts),lm=byId(labor),mm=byId(machining);
+  const jm=byId(jobs),am=byId(addons),pm=byId(parts),lm=byId(labor),mm=byId(machining),cm=byId(cores);
   const price=(item:any)=>{
    if(!item)return null;
    let total=0;
@@ -34,7 +34,9 @@ Deno.serve(async req=>{
     const amount=addon.price_override!==undefined&&addon.price_override!==null?num(addon.price_override):price(addon);
     if(amount!==null)options.push({id:addon.id,name:String(addon.name||''),description:String(addon.description||''),price:amount,buildSheet:buildSheet(addon)});
    }
-   output.push({platform:String(offering.platform),stage:Number(offering.stage),basePrice:base,buildSheet:buildSheet(job),addons:options,available:base!==null});
+   const selectedCore=cm.get(offering.core_id);
+   const core=(selectedCore?.status==='active'&&num(selectedCore.quantity_on_hand)>0&&Number.isFinite(Number(selectedCore.sell_price)))?{name:String(selectedCore.name||'Elite-supplied core'),price:num(selectedCore.sell_price)}:null;
+   output.push({core,platform:String(offering.platform),stage:Number(offering.stage),basePrice:base,buildSheet:buildSheet(job),addons:options,available:base!==null});
   }
   return Response.json({offerings:output,pricingSource:'current_catalog',generatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:'Pricing temporarily unavailable'},{status:503});}
