@@ -101,30 +101,29 @@ function qrGeometry(value, x, y, size) {
  }
  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#fff"/><g fill="#000">${cells.join('')}</g>`;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=19,heightMm=51,barcodeInverted=false}) {
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
  const type = kind === 'head' ? 'CYLINDER HEAD' : kind === 'component' ? 'COMPONENT' : 'ENGINE CASE';
  const w = Number(widthMm), h = Number(heightMm);
- if (!Number.isFinite(w) || !Number.isFinite(h) || w < 18 || h < 45) throw new Error('Tag needs at least 18 × 45 mm for legible QR engraving');
- // Portrait 19 x 51 mm red anodized tag, 3 mm holes centered at both rounded ends.
- // 10 SVG units = 1 mm. Keep 6 mm clear at each end for the holes and edges.
- const W = w * 10, H = h * 10;
- const qrSize = Math.min(W - 22, 165);
- const qrX = (W - qrSize)/2;
- const qrY = H * 0.435;
- const logoWidth = W - 20;
- // Source vector is 2000 x 650; fit the entire mark without changing its proportions.
- const logoScale = logoWidth / 2000;
- const logoTop = 77;
- const idTop = qrY + qrSize + 16;
- return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${W} ${H}">
- <title>Elite Engine Development ${esc(type)} ${esc(displayId)} identification tag</title>
- <desc>Portrait engraving for ${w} × ${h} mm aluminum tags with 3 mm mounting holes. Hole locations reserved, not engraved.</desc>
- <g transform="translate(${((W-logoWidth)/2).toFixed(3)} ${logoTop}) scale(${logoScale.toFixed(6)})">${eliteLogoVector}</g>
- <rect x="13" y="156" width="${W-26}" height="23" fill="#000"/>
- ${boldLettering(type,W/2,161,14,W-36).replaceAll('fill="#000"','fill="#fff"')}
- ${qrGeometry(tagCode,qrX,qrY,qrSize)}
- ${boldLettering(displayId,W/2,idTop,18,W-18)}
- ${lettering('INTERNAL USE ONLY',W/2,idTop+30,9,W-24)}
+ if (!Number.isFinite(w) || !Number.isFinite(h) || w < 51 || h < 19) {
+  throw new Error('Horizontal QR template requires at least 51 mm wide × 19 mm tall');
+ }
+ // Native 51 × 19 mm aluminum tags, mounted landscape. The existing 3 mm
+ // holes sit at the centers of the two short ends. Keep the artwork between
+ // them; no cut or hole geometry is ever included in the engraving file.
+ // Preserve design proportions when larger tags are selected.
+ const qr=qrGeometry(tagCode,326,10,121);
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 510 190">
+ <title>Elite Engine Development ${esc(type)} ${esc(displayId)} horizontal identification tag</title>
+ <desc>Landscape 51 × 19 mm artwork; real QR with 4-module quiet zone, original vector logo, clear of mounting holes. No hole outlines.</desc>
+ <g transform="translate(54 15) scale(0.130)">${eliteLogoVector}</g>
+ <path d="M57 117 H308 L300 147 H49 Z" fill="#000"/>
+ ${boldLettering(type,176,124,17,240).replaceAll('fill="#000"','fill="#fff"')}
+ ${boldLettering('TULSA OK USA',174,158,10,225)}
+ <rect x="316" y="12" width="2" height="166" fill="#000"/>
+ ${qr}
+ ${boldLettering(displayId,386,140,19,136)}
+ <rect x="322" y="163" width="128" height="1.5" fill="#000"/>
+ ${lettering('INTERNAL USE ONLY',385,172,8,128)}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
