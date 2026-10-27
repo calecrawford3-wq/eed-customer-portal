@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import SiteShell from './pages/publicsite/SiteShell';
 import WebsiteEnginePricing from './pages/WebsiteEnginePricing';
 import WebsiteStoreCatalog from './pages/WebsiteStoreCatalog';
+import WebsiteOrderFulfillment from './pages/WebsiteOrderFulfillment';
 import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
@@ -196,6 +197,7 @@ const routes = createRoutesFromElements(
       <Route path="Credits" element={<Credits />} />
       <Route path="WebsiteEnginePricing" element={<WebsiteEnginePricing />} />
       <Route path="WebsiteStoreCatalog" element={<WebsiteStoreCatalog />} />
+      <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
