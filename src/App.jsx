@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import SiteShell from './pages/publicsite/SiteShell';
+import SiteHome from './pages/publicsite/SiteHome';
+import SiteBuilder from './pages/publicsite/SiteBuilder';
+import SiteEngines from './pages/publicsite/SiteEngines';
+import SiteStore from './pages/publicsite/SiteStore';
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -163,6 +168,12 @@ const configPageRoutes = Object.entries(Pages).map(([path, Page]) =>
 
 const routes = createRoutesFromElements(
   <>
+    <Route path="/site" element={<SiteShell />}>
+      <Route index element={<SiteHome />} />
+      <Route path="builder" element={<SiteBuilder />} />
+      <Route path="engines" element={<SiteEngines />} />
+      <Route path="store" element={<SiteStore />} />
+    </Route>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
     <Route path="/PortalAccess" element={<PortalAccess />} />
     <Route path="/guest/:type/:token" element={<GuestPayment />} />
