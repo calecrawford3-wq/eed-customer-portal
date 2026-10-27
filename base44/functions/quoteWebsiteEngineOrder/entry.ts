@@ -1,6 +1,6 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
 const rows=(v:any):any[]=>Array.isArray(v)?v:v?.items||[];
-const money=(v:any)=>Number.isFinite(Number(v))&&Number(v)>=0?Math.round(Number(v)*100):null;
+const money=(v:any)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Number(v)>=0?Math.round(Number(v)*100):null;
 const fail=(message:string,status=400)=>Response.json({error:message},{status,headers:{'Cache-Control':'no-store'}});
 export default async function(req:Request){
  if(req.method!=='POST')return fail('Method not allowed',405);

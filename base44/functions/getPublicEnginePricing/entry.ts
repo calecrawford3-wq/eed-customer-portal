@@ -35,7 +35,7 @@ export default async function(req:Request){
     if(amount!==null)options.push({id:addon.id,name:String(addon.name||''),description:String(addon.description||''),price:amount,buildSheet:buildSheet(addon)});
    }
    const selectedCore=cm.get(offering.core_id);
-   const core=(selectedCore?.status==='active'&&num(selectedCore.quantity_on_hand)>0&&Number.isFinite(Number(selectedCore.sell_price)))?{name:String(selectedCore.name||'Elite-supplied core'),price:num(selectedCore.sell_price)}:null;
+   const core=(selectedCore?.status==='active'&&num(selectedCore.quantity_on_hand)>0&&selectedCore.sell_price!==null&&selectedCore.sell_price!==undefined&&Number.isFinite(Number(selectedCore.sell_price)))?{name:String(selectedCore.name||'Elite-supplied core'),price:num(selectedCore.sell_price)}:null;
    output.push({core,platform:String(offering.platform),stage:Number(offering.stage),basePrice:base,buildSheet:buildSheet(job),addons:options,available:base!==null});
   }
   return Response.json({offerings:output,pricingSource:'current_catalog',generatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
