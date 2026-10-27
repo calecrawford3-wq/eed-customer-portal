@@ -91,17 +91,17 @@ function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
  engraved += rect(cursor, x + maxWidth);
  return engraved;
 }
-function qrGeometry(value, x, y, size) {
+function qrGeometry(value, x, y, size, inverted = false) {
  if (!value) throw new Error('Missing permanent tag scan code');
  const qr = QRCode.create(String(value), { errorCorrectionLevel: 'H' });
  const n = qr.modules.size, quiet = 4, unit = size / (n + quiet * 2);
  const cells = [];
  for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
-  if (qr.modules.get(row, col)) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${unit.toFixed(3)}" height="${unit.toFixed(3)}"/>`);
+  if (Boolean(qr.modules.get(row, col)) !== inverted) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${unit.toFixed(3)}" height="${unit.toFixed(3)}"/>`);
  }
- return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#fff"/><g fill="#000">${cells.join('')}</g>`;
+ return `<g fill="#000">${cells.join('')}</g>`;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=true}) {
  const type = kind === 'head' ? 'CYLINDER HEAD' : kind === 'component' ? 'COMPONENT' : 'ENGINE CASE';
  const w = Number(widthMm), h = Number(heightMm);
  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 51 || h < 19) {
@@ -111,10 +111,10 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  // holes sit at the centers of the two short ends. Keep the artwork between
  // them; no cut or hole geometry is ever included in the engraving file.
  // Preserve design proportions when larger tags are selected.
- const qr=qrGeometry(tagCode,326,10,121);
+ const qr=qrGeometry(tagCode,326,10,121,barcodeInverted);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} horizontal identification tag</title>
- <desc>Landscape 51 × 19 mm artwork; real QR with 4-module quiet zone, original vector logo, clear of mounting holes. No hole outlines.</desc>
+ <desc>Landscape 51 × 19 mm artwork; real QR with 4-module quiet zone, inverted for red anodized aluminum, original vector logo, clear of mounting holes. No hole outlines.</desc>
  <g transform="translate(54 15) scale(0.130)">${eliteLogoVector}</g>
  <path d="M57 117 H308 L300 147 H49 Z" fill="#000"/>
  ${boldLettering(type,176,124,17,240).replaceAll('fill="#000"','fill="#fff"')}
