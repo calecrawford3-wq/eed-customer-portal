@@ -1,7 +1,7 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
 const rows=(v:any):any[]=>Array.isArray(v)?v:v?.items||[];
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):0;
-Deno.serve(async req=>{
+export default async function(req:Request){
  try {
   const sdk=createClientFromRequest(req);const svc=sdk.asServiceRole;
   const offerings=rows(await svc.entities.WebsiteEngineOffering.list()).filter((o:any)=>o.is_published===true);
@@ -40,4 +40,4 @@ Deno.serve(async req=>{
   }
   return Response.json({offerings:output,pricingSource:'current_catalog',generatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:'Pricing temporarily unavailable'},{status:503});}
-});
+}
