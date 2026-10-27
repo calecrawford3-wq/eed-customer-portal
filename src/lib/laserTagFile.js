@@ -95,11 +95,12 @@ function qrGeometry(value, x, y, size, inverted = true) {
  if (!/^\d{8}$/.test(String(value))) throw new Error('Tag needs an eight-digit short scan code');
  // Eight numeric digits fit a 21x21 Version 1 QR at Level M.
  const qr = QRCode.create(String(value), { version: 1, errorCorrectionLevel: 'M' });
- const n = qr.modules.size, quiet = 4, unit = size / (n + quiet * 2);
+ const n = qr.modules.size, quiet = 4, engravedQuiet = 2, unit = size / (n + quiet * 2);
  const cells = [];
  // On red anodized aluminum, engrave all light cells INCLUDING the quiet zone
- // to silver, leaving dark red data modules unengraved. Standard QR polarity.
- for (let row = -quiet; row < n + quiet; row++) for (let col = -quiet; col < n + quiet; col++) {
+ // to silver, leaving dark red data modules unengraved. The engraved border is
+ // two modules wide; the other two modules remain clear of other artwork.
+ for (let row = -engravedQuiet; row < n + engravedQuiet; row++) for (let col = -engravedQuiet; col < n + engravedQuiet; col++) {
   const dark = row >= 0 && row < n && col >= 0 && col < n && Boolean(qr.modules.get(row,col));
   if (dark !== inverted) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${(unit+0.001).toFixed(3)}" height="${(unit+0.001).toFixed(3)}"/>`);
  }
