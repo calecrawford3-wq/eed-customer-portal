@@ -1,4 +1,5 @@
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 const eliteTagLogoPath = 'M1983,218 1729,218 1639,306 1537,589 1860,590 1887,515 1752,515 1751,512 1781,434 1894,434 1899,429 1921,362 1807,361 1830,295 1955,293ZM1188,590 1375,589 1481,296 1484,293 1612,293 1684,218 1196,218 1170,293 1295,294ZM1164,218 922,219 960,237 967,245 873,501 910,590 1029,589ZM579,218 624,242 529,499 532,511 569,590 875,589 845,514 712,514 819,218ZM190,219 242,245 115,589 535,590 502,514 331,515 330,512 360,434 475,434 500,362 385,362 410,294 535,293 561,218Z';
 import { tagGlyphs } from './tagFontPaths';
 
@@ -88,19 +89,32 @@ function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
  engraved += rect(cursor, x + maxWidth);
  return engraved;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=true}) {
+function qrGeometry(value, x, y, size) {
+ if (!value) throw new Error('Missing permanent tag scan code');
+ const qr = QRCode.create(String(value), { errorCorrectionLevel: 'H' });
+ const n = qr.modules.size, quiet = 4, unit = size / (n + quiet * 2);
+ const cells = [];
+ for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
+  if (qr.modules.get(row, col)) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${unit.toFixed(3)}" height="${unit.toFixed(3)}"/>`);
+ }
+ return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#fff"/><g fill="#000">${cells.join('')}</g>`;
+}
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- const barcode = barcodeGeometry(tagCode, 55, 94, 400, 54, barcodeInverted);
+ // QR contains the existing short scan code. Both portal camera and 2D USB
+ // scanner resolve this same token, without exposing any customer data.
+ const qr = qrGeometry(tagCode, 346, 17, 155);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
- <title>Elite Engine Development ${esc(type)} ${esc(displayId)} engraving only</title>
- <desc>Engraving geometry only. No blank outline, hole guides, text objects or travel lines.</desc>
- <path d="${eliteTagLogoPath}" transform="translate(60 -38) scale(0.19)" fill="#000"/>
- ${boldLettering('ENGINE DEVELOPMENT',255,76,10,330)}
- <rect x="109" y="85" width="292" height="1.6" fill="#000"/>
- ${barcode}
- ${boldLettering(displayId,255,153,14,280)}
- ${secondary ? boldLettering(secondary,255,174,9,290) : ''}
+ <title>Elite Engine Development ${esc(type)} ${esc(displayId)} permanent identification</title>
+ <desc>High contrast QR with 4-module quiet zone. No drill holes. Scan-test engraved metal.</desc>
+ <path d="${eliteTagLogoPath}" transform="translate(20 -25) scale(0.155)" fill="#000"/>
+ ${boldLettering('ENGINE DEVELOPMENT',178,73,11,295)}
+ <rect x="20" y="91" width="302" height="2" fill="#000"/>
+ ${boldLettering(type,171,100,13,260)}
+ ${boldLettering(displayId,171,122,24,290)}
+ ${secondary ? boldLettering(secondary,171,157,12,285) : ''}
+ ${qr}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {

@@ -69,7 +69,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
       scannerRef.current = scanner;
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 12, qrbox: (viewWidth, viewHeight) => ({ width: Math.min(Math.floor(viewWidth * 0.9), 360), height: Math.min(Math.floor(viewHeight * 0.38), 90) }), aspectRatio: 1.8 },
+        { fps: 12, qrbox: (viewWidth, viewHeight) => ({ width: Math.min(Math.floor(viewWidth * 0.78), Math.floor(viewHeight * 0.78), 260), height: Math.min(Math.floor(viewWidth * 0.78), Math.floor(viewHeight * 0.78), 260) }), aspectRatio: 1.0 },
         (decoded) => {
           if (decoded && decoded !== lastScan.current) {
             lastScan.current = decoded;
@@ -130,7 +130,7 @@ export default function BarcodeScanner({ onScan, autoFocus = true, placeholder =
           <div id={readerId.current} className="w-full min-h-[190px] [&_video]:!object-cover" />
           {scanning && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[90%] h-[72px] max-w-[360px] rounded-sm border border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.16)]">
+              <div className="relative w-[70%] aspect-square max-w-[260px] rounded-sm border border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.16)]">
                 <div className="absolute inset-y-1 left-1/2 w-[2px] -translate-x-1/2 bg-red-500 shadow-[0_0_7px_2px_rgba(239,68,68,0.8)]" />
                 <span className="absolute -top-1 -left-1 h-4 w-4 border-l-[3px] border-t-[3px] border-red-500" />
                 <span className="absolute -top-1 -right-1 h-4 w-4 border-r-[3px] border-t-[3px] border-red-500" />
