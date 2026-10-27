@@ -109,8 +109,8 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} identification tag</title>
  <desc>Laser-ready tag artwork. Left branding, right QR; no physical outline or mounting holes.</desc>
  <path d="${eliteTagLogoPath}" transform="translate(-10 -25) scale(0.175)" fill="#000"/>
- <path d="M23 101 H332 L326 118 H17 Z" fill="#000"/>
- <g transform="translate(0 0)">${boldLettering('ENGINE DEVELOPMENT',174,103,12,300).replaceAll('fill="#000"','fill="#fff"')}</g>
+ <path d="M17 76 H333 L323 109 H7 Z" fill="#000"/>
+ ${boldLettering('ENGINE DEVELOPMENT',168,82,21,294).replaceAll('fill="#000"','fill="#fff"')}
  <rect x="20" y="123" width="302" height="2" fill="#000"/>
  <rect x="20" y="128" width="302" height="2" fill="#000"/>
  <path d="M20 143 H285 L277 165 H12 Z" fill="#000"/>
