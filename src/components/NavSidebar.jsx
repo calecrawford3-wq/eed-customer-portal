@@ -101,6 +101,17 @@ const navSections = [
     secondary: [],
   },
   {
+    label: "Website Management",
+    icon: ShoppingCart,
+    main: { name: "Website Orders", page: "WebsiteCartOrders" },
+    secondary: [
+      { name: "Store Catalog", page: "WebsiteStoreCatalog", icon: Package },
+      { name: "Engine Stage Builds", page: "WebsiteEnginePricing", icon: Wrench },
+      { name: "Order Fulfillment", page: "WebsiteOrderFulfillment", icon: Truck },
+      { name: "Website Media", page: "WebsiteMediaManager", icon: Monitor },
+    ],
+  },
+  {
     label: "Settings",
     icon: Settings2,
     main: { name: "Settings", page: "Settings" },
