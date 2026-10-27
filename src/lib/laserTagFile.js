@@ -88,7 +88,7 @@ function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
  engraved += rect(cursor, x + maxWidth);
  return engraved;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=true}) {
  const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
  const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
  const barcode = barcodeGeometry(tagCode, 55, 94, 400, 54, barcodeInverted);
