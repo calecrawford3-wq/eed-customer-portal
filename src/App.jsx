@@ -4,6 +4,7 @@ import WebsiteEnginePricing from './pages/WebsiteEnginePricing';
 import WebsiteStoreCatalog from './pages/WebsiteStoreCatalog';
 import WebsiteOrderFulfillment from './pages/WebsiteOrderFulfillment';
 import WebsiteMediaManager from './pages/WebsiteMediaManager';
+import WebsiteCartOrders from './pages/WebsiteCartOrders';
 import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
@@ -200,6 +201,7 @@ const routes = createRoutesFromElements(
       <Route path="WebsiteStoreCatalog" element={<WebsiteStoreCatalog />} />
       <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
+      <Route path="WebsiteCartOrders" element={<WebsiteCartOrders />} />
       <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
