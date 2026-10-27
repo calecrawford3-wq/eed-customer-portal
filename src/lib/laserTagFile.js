@@ -1,5 +1,6 @@
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
+const FULL_ELITE_LOGO = 'https://media.base44.com/images/public/6a8dd6d29eea1fd6752efdfe/687f4dd96_Elite_Logo_LaserGRBL_Black_White1.png';
 const eliteTagLogoPath = 'M1983,218 1729,218 1639,306 1537,589 1860,590 1887,515 1752,515 1751,512 1781,434 1894,434 1899,429 1921,362 1807,361 1830,295 1955,293ZM1188,590 1375,589 1481,296 1484,293 1612,293 1684,218 1196,218 1170,293 1295,294ZM1164,218 922,219 960,237 967,245 873,501 910,590 1029,589ZM579,218 624,242 529,499 532,511 569,590 875,589 845,514 712,514 819,218ZM190,219 242,245 115,589 535,590 502,514 331,515 330,512 360,434 475,434 500,362 385,362 410,294 535,293 561,218Z';
 import { tagGlyphs } from './tagFontPaths';
 
@@ -108,8 +109,7 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} permanent identification</title>
  <desc>High contrast QR with 4-module quiet zone. No drill holes. Scan-test engraved metal.</desc>
- <path d="${eliteTagLogoPath}" transform="translate(20 -25) scale(0.155)" fill="#000"/>
- ${boldLettering('ENGINE DEVELOPMENT',178,73,11,295)}
+ <image href="${FULL_ELITE_LOGO}" x="20" y="15" width="302" height="72" preserveAspectRatio="xMidYMid meet"/>
  <rect x="20" y="91" width="302" height="2" fill="#000"/>
  ${boldLettering(type,171,100,13,260)}
  ${boldLettering(displayId,171,122,24,290)}
