@@ -1,0 +1,129 @@
+{
+  "name": "WebsitePartsFulfillment",
+  "type": "object",
+  "properties": {
+    "purchase_id": {
+      "type": "string"
+    },
+    "order_number": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "invoice_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "awaiting_payment",
+        "ready_to_pick",
+        "picking",
+        "packed",
+        "label_ready",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "on_hold"
+      ],
+      "default": "awaiting_payment"
+    },
+    "payment_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "recipient_name": {
+      "type": "string"
+    },
+    "recipient_email": {
+      "type": "string"
+    },
+    "shipping_address": {
+      "type": "string"
+    },
+    "shipping_method": {
+      "type": "string"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price_cents": {
+            "type": "integer"
+          },
+          "quantity_picked": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "subtotal_cents": {
+      "type": "integer"
+    },
+    "shipping_cents": {
+      "type": "integer"
+    },
+    "tax_cents": {
+      "type": "integer"
+    },
+    "carrier": {
+      "type": "string"
+    },
+    "tracking_number": {
+      "type": "string"
+    },
+    "shipping_label_url": {
+      "type": "string"
+    },
+    "packed_at": {
+      "type": "string"
+    },
+    "shipped_at": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "purchase_id",
+    "order_number",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
