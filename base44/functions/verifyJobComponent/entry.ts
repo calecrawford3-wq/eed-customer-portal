@@ -17,7 +17,20 @@ Deno.serve(async req=>{try{
   await recordIdentityEvent(service,{eventType:'qc_verification',engineId:engine.id,componentId:expectedHead.id,componentCode:expectedHead.component_code,jobId:job.id,eventKey:`qc:${job.id}:${verification.id}`,details:{status:'passed',case_component_id:caseComponent?.id||'',head_component_id:expectedHead.id},actor,dedupeSeconds:0});
   return Response.json({success:true,match:true,type:'complete',verification,engine:{id:engine.id,eed_id:engine.eed_id,serial:engine.engine_serial_number,tag_code:engine.tag_code},case_component:caseComponent,head:{id:expectedHead.id,component_code:expectedHead.component_code,tag_code:expectedHead.tag_code}});
  }
- const code=String(body.code||'').trim();if(!code)return Response.json({error:'Scan code required'},{status:400});
+ let code=String(body.code||'').trim();if(!code)return Response.json({error:'Scan code required'},{status:400});
+ // Engraved QR codes contain an eight-digit IdentityTagVersion.short_scan_code,
+ // not the longer component tag_code. Resolve only active, current tag versions.
+ const shortCode=code.replace(/\s+/g,'');
+ if(/^\d{8}$/.test(shortCode)){
+  const versions=rows(await service.entities.IdentityTagVersion.filter({short_scan_code:shortCode}));
+  const active=versions.filter((v:any)=>v.status==='active');
+  if(active.length!==1)return Response.json({success:false,recognized:false,type:'unknown',match:false,code,reason:active.length?'Ambiguous tag code':'Unknown or revoked tag code'});
+  const version=active[0];
+  const taggedComponent=version.component_id?rows(await service.entities.EngineComponent.filter({id:version.component_id}))[0]:null;
+  if(taggedComponent?.current_tag_version_id!==version.id)return Response.json({success:false,recognized:false,type:'unknown',match:false,code,reason:'Replaced or inactive physical tag'});
+  code=taggedComponent?.tag_code||version.tag_code||code;
+ }
+
  if(matchesCaseScan(engine,code)){await recordIdentityEvent(service,{eventType:'component_scanned',engineId:engine.id,componentId:caseComponent?.id||'',componentCode:caseComponent?.component_code||engine.eed_id,jobId:job.id,eventKey:`scan:${job.id}:case:${engine.id}`,details:{scan_type:'case',match:true},actor});return Response.json({success:true,recognized:true,type:'case',match:true,engine:{id:engine.id,eed_id:engine.eed_id,serial:engine.engine_serial_number,tag_code:engine.tag_code},case_component:caseComponent});}
  const scannedHead=await findHead(service,code);
  if(scannedHead){const ok=!!expectedHead&&matchesHeadScan(expectedHead,scannedHead);await recordIdentityEvent(service,{eventType:'component_scanned',engineId:engine.id,componentId:scannedHead.id,componentCode:scannedHead.component_code,jobId:job.id,eventKey:`scan:${job.id}:head:${scannedHead.id}`,details:{scan_type:'head',match:ok},actor});if(ok)return Response.json({success:true,recognized:true,type:'head',match:true,head:{id:expectedHead.id,component_code:expectedHead.component_code,tag_code:expectedHead.tag_code},engine:{id:engine.id,eed_id:engine.eed_id}});await service.entities.JobComponentVerification.create({job_id:job.id,verified_job_id:job.id,customer_engine_id:engine.id,verified_case_component_id:body.case_verified?caseComponent?.id||'':'',expected_case_tag_code:engine.tag_code,scanned_case_tag_code:body.case_code||'',expected_head_component_id:expectedHead?.id||'',expected_head_code:expectedHead?.component_code||'',scanned_head_component_id:scannedHead.id,scanned_head_code:scannedHead.component_code,status:'failed_head',case_verified:!!body.case_verified,head_verified:false,verified_by:actor,verified_at:new Date().toISOString(),notes:expectedHead?`Wrong head scanned: ${scannedHead.component_code}`:`Head ${scannedHead.component_code} scanned but no head is paired to this engine`});return Response.json({success:false,recognized:true,type:'head',match:false,expected:expectedHead?{id:expectedHead.id,component_code:expectedHead.component_code,tag_code:expectedHead.tag_code}:null,scanned:{id:scannedHead.id,component_code:scannedHead.component_code,tag_code:scannedHead.tag_code,current_customer_engine_id:scannedHead.current_customer_engine_id},engine:{id:engine.id,eed_id:engine.eed_id}});}
