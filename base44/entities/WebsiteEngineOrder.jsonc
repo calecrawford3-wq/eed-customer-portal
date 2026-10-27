@@ -1,0 +1,143 @@
+{
+  "name": "WebsiteEngineOrder",
+  "type": "object",
+  "properties": {
+    "order_reference": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_checkout",
+        "checkout_started",
+        "paid",
+        "cancelled",
+        "needs_review"
+      ],
+      "default": "pending_checkout"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "integer"
+    },
+    "core_supply": {
+      "type": "string"
+    },
+    "core_id": {
+      "type": "string"
+    },
+    "canned_job_id": {
+      "type": "string"
+    },
+    "addon_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "buyer_name": {
+      "type": "string"
+    },
+    "buyer_email": {
+      "type": "string"
+    },
+    "buyer_phone": {
+      "type": "string"
+    },
+    "buyer_address": {
+      "type": "string"
+    },
+    "base_build_cents": {
+      "type": "integer"
+    },
+    "core_cents": {
+      "type": "integer"
+    },
+    "addons_cents": {
+      "type": "integer"
+    },
+    "subtotal_cents": {
+      "type": "integer"
+    },
+    "deposit_cents": {
+      "type": "integer"
+    },
+    "remaining_cents": {
+      "type": "integer"
+    },
+    "payment_choice": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "full"
+      ]
+    },
+    "amount_due_cents": {
+      "type": "integer"
+    },
+    "tax_cents": {
+      "type": "integer"
+    },
+    "fee_cents": {
+      "type": "integer"
+    },
+    "pricing_snapshot": {
+      "type": "string"
+    },
+    "stripe_session_id": {
+      "type": "string"
+    },
+    "stripe_payment_intent": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "invoice_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "paid_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "order_reference",
+    "idempotency_key",
+    "platform",
+    "stage",
+    "buyer_email",
+    "subtotal_cents",
+    "amount_due_cents"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
