@@ -101,20 +101,27 @@ function qrGeometry(value, x, y, size) {
  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#fff"/><g fill="#000">${cells.join('')}</g>`;
 }
 export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
- const type = kind === 'head' ? 'HEAD' : kind === 'component' ? 'COMP' : 'CASE';
- const secondary = kind !== 'head' && serial ? `SN ${serial}` : '';
- // QR contains the existing short scan code. Both portal camera and 2D USB
- // scanner resolve this same token, without exposing any customer data.
- const qr = qrGeometry(tagCode, 346, 17, 155);
+ const type = kind === 'head' ? 'CYLINDER HEAD' : kind === 'component' ? 'COMPONENT' : 'ENGINE CASE';
+ // Reference layout: full Elite mark on left, component banner and Tulsa origin;
+ // right-hand QR, visible ID and internal-only legend. No engraved mounting holes.
+ const qr = qrGeometry(tagCode, 371, 12, 125);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
- <title>Elite Engine Development ${esc(type)} ${esc(displayId)} permanent identification</title>
- <desc>High contrast QR with 4-module quiet zone. No drill holes. Scan-test engraved metal.</desc>
- <image href="${FULL_ELITE_LOGO}" x="20" y="15" width="302" height="72" preserveAspectRatio="xMidYMid meet"/>
- <rect x="20" y="91" width="302" height="2" fill="#000"/>
- ${boldLettering(type,171,100,13,260)}
- ${boldLettering(displayId,171,122,24,290)}
- ${secondary ? boldLettering(secondary,171,157,12,285) : ''}
+ <title>Elite Engine Development ${esc(type)} ${esc(displayId)} identification tag</title>
+ <desc>Laser-ready tag artwork. Left branding, right QR; no physical outline or mounting holes.</desc>
+ <path d="${eliteTagLogoPath}" transform="translate(-10 -25) scale(0.175)" fill="#000"/>
+ <path d="M23 101 H332 L326 118 H17 Z" fill="#000"/>
+ <g transform="translate(0 0)">${boldLettering('ENGINE DEVELOPMENT',174,103,12,300).replaceAll('fill="#000"','fill="#fff"')}</g>
+ <rect x="20" y="123" width="302" height="2" fill="#000"/>
+ <rect x="20" y="128" width="302" height="2" fill="#000"/>
+ <path d="M20 143 H285 L277 165 H12 Z" fill="#000"/>
+ ${boldLettering(type,146,146,15,250).replaceAll('fill="#000"','fill="#fff"')}
+ <path d="M289 143 l12 0 -10 22 -12 0z M306 143 l12 0 -10 22 -12 0z" fill="#000"/>
+ ${boldLettering('TULSA, OK USA',161,174,10,260)}
+ <rect x="340" y="12" width="2" height="166" fill="#000"/>
  ${qr}
+ ${boldLettering(displayId,433,140,18,155)}
+ <rect x="352" y="163" width="146" height="1.5" fill="#000"/>
+ ${lettering('SCAN FOR INTERNAL USE ONLY',425,170,7,145)}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
