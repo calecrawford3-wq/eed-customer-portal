@@ -18,6 +18,12 @@ Deno.serve(async req=>{
    for(const line of item.machining_items||[]){const m=mm.get(line.machining_item_id);if(!m||m.status==='inactive')return null;total+=num(m.price);}
    return Math.round(total*100)/100;
   };
+  // Explicit public allowlist: no costs, internal notes, supplier data, catalog IDs, or line-item prices.
+  const buildSheet=(item:any)=>({
+   parts:(item?.line_items||[]).map((line:any)=>({name:String(pm.get(line.part_id)?.name||line.item_name||'Included component'),quantity:num(line.quantity||1)})),
+   labor:(item?.labor_items||[]).map((line:any)=>({name:String(lm.get(line.labor_item_id)?.name||line.name||'Labor service')})),
+   machining:(item?.machining_items||[]).map((line:any)=>({name:String(mm.get(line.machining_item_id)?.name||line.name||'Machining operation')}))
+  });
   const output=[];
   for(const offering of offerings){
    let job=jm.get(offering.canned_job_id);
@@ -26,9 +32,9 @@ Deno.serve(async req=>{
    const base=price(job);const options=[];
    for(const id of offering.addon_ids||[]){const addon=am.get(id);if(!addon||addon.status==='archived')continue;
     const amount=addon.price_override!==undefined&&addon.price_override!==null?num(addon.price_override):price(addon);
-    if(amount!==null)options.push({id:addon.id,name:String(addon.name||''),description:String(addon.description||''),price:amount});
+    if(amount!==null)options.push({id:addon.id,name:String(addon.name||''),description:String(addon.description||''),price:amount,buildSheet:buildSheet(addon)});
    }
-   output.push({platform:String(offering.platform),stage:Number(offering.stage),basePrice:base,addons:options,available:base!==null});
+   output.push({platform:String(offering.platform),stage:Number(offering.stage),basePrice:base,buildSheet:buildSheet(job),addons:options,available:base!==null});
   }
   return Response.json({offerings:output,pricingSource:'current_catalog',generatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:'Pricing temporarily unavailable'},{status:503});}
