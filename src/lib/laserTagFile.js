@@ -101,24 +101,30 @@ function qrGeometry(value, x, y, size) {
  }
  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#fff"/><g fill="#000">${cells.join('')}</g>`;
 }
-export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=51,heightMm=19,barcodeInverted=false}) {
+export function buildLaserTagSvg({kind='case',displayId,componentId='',serial='',platform='',tagCode,widthMm=19,heightMm=51,barcodeInverted=false}) {
  const type = kind === 'head' ? 'CYLINDER HEAD' : kind === 'component' ? 'COMPONENT' : 'ENGINE CASE';
- // Reference layout: full Elite mark on left, component banner and Tulsa origin;
- // right-hand QR, visible ID and internal-only legend. No engraved mounting holes.
- const qr = qrGeometry(tagCode, 371, 12, 125);
- return `<svg xmlns="http://www.w3.org/2000/svg" width="${Number(widthMm)}mm" height="${Number(heightMm)}mm" viewBox="0 0 510 190">
+ const w = Number(widthMm), h = Number(heightMm);
+ if (!Number.isFinite(w) || !Number.isFinite(h) || w < 18 || h < 45) throw new Error('Tag needs at least 18 × 45 mm for legible QR engraving');
+ // Portrait 19 x 51 mm red anodized tag, 3 mm holes centered at both rounded ends.
+ // 10 SVG units = 1 mm. Keep 6 mm clear at each end for the holes and edges.
+ const W = w * 10, H = h * 10;
+ const qrSize = Math.min(W - 22, 165);
+ const qrX = (W - qrSize)/2;
+ const qrY = H * 0.435;
+ const logoWidth = W - 20;
+ // Source vector is 2000 x 650; fit the entire mark without changing its proportions.
+ const logoScale = logoWidth / 2000;
+ const logoTop = 77;
+ const idTop = qrY + qrSize + 16;
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${W} ${H}">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} identification tag</title>
- <desc>Laser-ready tag artwork. Left branding, right QR; no physical outline or mounting holes.</desc>
- <g transform="translate(12 13) scale(0.151)">${eliteLogoVector}</g>
- <path d="M20 143 H285 L277 165 H12 Z" fill="#000"/>
- ${boldLettering(type,146,146,15,250).replaceAll('fill="#000"','fill="#fff"')}
- <path d="M289 143 l12 0 -10 22 -12 0z M306 143 l12 0 -10 22 -12 0z" fill="#000"/>
- ${boldLettering('TULSA, OK USA',161,174,10,260)}
- <rect x="340" y="12" width="2" height="166" fill="#000"/>
- ${qr}
- ${boldLettering(displayId,433,140,18,155)}
- <rect x="352" y="163" width="146" height="1.5" fill="#000"/>
- ${lettering('SCAN FOR INTERNAL USE ONLY',425,170,7,145)}
+ <desc>Portrait engraving for ${w} × ${h} mm aluminum tags with 3 mm mounting holes. Hole locations reserved, not engraved.</desc>
+ <g transform="translate(${((W-logoWidth)/2).toFixed(3)} ${logoTop}) scale(${logoScale.toFixed(6)})">${eliteLogoVector}</g>
+ <rect x="13" y="156" width="${W-26}" height="23" fill="#000"/>
+ ${boldLettering(type,W/2,161,14,W-36).replaceAll('fill="#000"','fill="#fff"')}
+ ${qrGeometry(tagCode,qrX,qrY,qrSize)}
+ ${boldLettering(displayId,W/2,idTop,18,W-18)}
+ ${lettering('INTERNAL USE ONLY',W/2,idTop+30,9,W-24)}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
