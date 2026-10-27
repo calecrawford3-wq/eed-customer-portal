@@ -12,10 +12,13 @@ export default async function(req:Request){
   if(order.status==='paid'&&order.processed_at)return Response.json({success:true,duplicate:true,orderReference:order.order_reference});
   if(order.status!=='needs_review'||!order.stripe_payment_intent||!order.stripe_session_id||!order.paid_at)return fail('A verified payment is required',409);
   if(order.processing_claim)return fail('Order processing already claimed; staff recovery required',409);
-  const claim=crypto.randomUUID();const claimed=await entity.updateMany({id:order.id,status:'needs_review',processing_claim:{$in:['',null]}},{$set:{processing_claim:claim,processing_started_at:new Date().toISOString(),status:'processing'}});
+  const claim=crypto.randomUUID();const claimed=await entity.updateMany({id:order.id,status:'needs_review',$or:[{processing_claim:{$exists:false}},{processing_claim:''},{processing_claim:null}]},{$set:{processing_claim:claim,processing_started_at:new Date().toISOString(),status:'processing'}});
   order=rows(await entity.filter({id:order.id}))[0];if(order?.processing_claim!==claim)return fail('Order processing already claimed',409);
   const lines=order.items_snapshot||[];
   if(!lines.length||lines.some((l:any)=>!['engine','part'].includes(l.type)))throw Error('Invalid order snapshot');
+  const sum=(field:string)=>lines.reduce((n:number,l:any)=>n+Number(l[field]||0),0);
+  if(sum('totalCents')!==order.subtotal_cents||sum('dueCents')!==order.due_today_cents||sum('totalCents')-sum('dueCents')!==order.remaining_engine_cents)throw Error('Order allocation does not reconcile');
+  if(!Number.isSafeInteger(order.total_charge_cents)||order.total_charge_cents!==order.due_today_cents+(order.tax_cents||0)+(order.shipping_cents||0)+(order.fee_cents||0))throw Error('Stripe charge allocation does not reconcile');
   // A verified Stripe receipt must be linked to a single known customer. Do not guess on duplicate emails.
   let customerId=order.customer_id;
   if(!customerId){const customers=rows(await svc.entities.Customer.filter({email:order.buyer_email}));if(customers.length!==1)throw Error('Customer identity needs staff review');customerId=customers[0].id;await entity.update(order.id,{customer_id:customerId});}
@@ -24,7 +27,7 @@ export default async function(req:Request){
   let invoice=rows(await svc.entities.Invoice.filter({invoice_number:invoiceNumber}))[0];
   if(!invoice){
    const line_items=lines.map((l:any,i:number)=>({item_name:l.name||`${l.type} ${i+1}`,part_id:l.type==='part'?l.partId:'',part_number:l.sku||'',quantity:l.quantity||1,unit_price:l.totalCents/100,total:l.totalCents/100,engine_section:l.type==='engine'?`Engine ${i+1}`:''}));
-   invoice=await svc.entities.Invoice.create({invoice_number:invoiceNumber,customer_id:customerId,status:'partial',issue_date:new Date().toISOString().slice(0,10),is_combined:true,line_items,subtotal:order.subtotal_cents/100,tax_amount:(order.tax_cents||0)/100,shipping_cost:(order.shipping_cents||0)/100,total:(order.subtotal_cents+(order.tax_cents||0)+(order.shipping_cents||0)+(order.fee_cents||0))/100,amount_paid:order.total_charge_cents/100,balance_due:order.remaining_engine_cents/100,payments:[{amount:order.total_charge_cents/100,method:'card',date:new Date(order.paid_at).toISOString().slice(0,10),note:`Verified website Stripe payment ${order.stripe_session_id} / ${order.stripe_payment_intent}`,stripe_session_id:order.stripe_session_id,stripe_payment_intent:order.stripe_payment_intent}]});
+   invoice=await svc.entities.Invoice.create({invoice_number:invoiceNumber,customer_id:customerId,status:order.remaining_engine_cents>0?'partial':'paid',issue_date:new Date().toISOString().slice(0,10),is_combined:true,line_items,subtotal:order.subtotal_cents/100,tax_amount:(order.tax_cents||0)/100,shipping_cost:(order.shipping_cents||0)/100,total:(order.subtotal_cents+(order.tax_cents||0)+(order.shipping_cents||0)+(order.fee_cents||0))/100,amount_paid:order.total_charge_cents/100,balance_due:order.remaining_engine_cents/100,payments:[{amount:order.total_charge_cents/100,method:'card',date:new Date(order.paid_at).toISOString().slice(0,10),note:`Verified website Stripe payment ${order.stripe_session_id} / ${order.stripe_payment_intent}`,stripe_session_id:order.stripe_session_id,stripe_payment_intent:order.stripe_payment_intent}]});
   }
   await entity.update(order.id,{invoice_id:invoice.id});
   const jobs=[];let sequence=0;
