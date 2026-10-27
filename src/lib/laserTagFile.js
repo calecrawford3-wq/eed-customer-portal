@@ -91,13 +91,17 @@ function barcodeGeometry(value, x, y, maxWidth, height, inverted = false) {
  engraved += rect(cursor, x + maxWidth);
  return engraved;
 }
-function qrGeometry(value, x, y, size, inverted = false) {
- if (!value) throw new Error('Missing permanent tag scan code');
- const qr = QRCode.create(String(value), { errorCorrectionLevel: 'H' });
+function qrGeometry(value, x, y, size, inverted = true) {
+ if (!/^\d{8}$/.test(String(value))) throw new Error('Tag needs an eight-digit short scan code');
+ // Eight numeric digits fit a 21x21 Version 1 QR at Level M.
+ const qr = QRCode.create(String(value), { version: 1, errorCorrectionLevel: 'M' });
  const n = qr.modules.size, quiet = 4, unit = size / (n + quiet * 2);
  const cells = [];
- for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
-  if (Boolean(qr.modules.get(row, col)) !== inverted) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${unit.toFixed(3)}" height="${unit.toFixed(3)}"/>`);
+ // On red anodized aluminum, engrave all light cells INCLUDING the quiet zone
+ // to silver, leaving dark red data modules unengraved. Standard QR polarity.
+ for (let row = -quiet; row < n + quiet; row++) for (let col = -quiet; col < n + quiet; col++) {
+  const dark = row >= 0 && row < n && col >= 0 && col < n && Boolean(qr.modules.get(row,col));
+  if (dark !== inverted) cells.push(`<rect x="${(x+(col+quiet)*unit).toFixed(3)}" y="${(y+(row+quiet)*unit).toFixed(3)}" width="${(unit+0.001).toFixed(3)}" height="${(unit+0.001).toFixed(3)}"/>`);
  }
  return `<g fill="#000">${cells.join('')}</g>`;
 }
@@ -111,7 +115,7 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  // holes sit at the centers of the two short ends. Keep the artwork between
  // them; no cut or hole geometry is ever included in the engraving file.
  // Preserve design proportions when larger tags are selected.
- const qr=qrGeometry(tagCode,326,10,121,barcodeInverted);
+ const qr=qrGeometry(tagCode,314,8,150,barcodeInverted);
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 510 190">
  <title>Elite Engine Development ${esc(type)} ${esc(displayId)} horizontal identification tag</title>
  <desc>Landscape 51 × 19 mm artwork; real QR with 4-module quiet zone, inverted for red anodized aluminum, original vector logo, clear of mounting holes. No hole outlines.</desc>
@@ -121,9 +125,9 @@ export function buildLaserTagSvg({kind='case',displayId,componentId='',serial=''
  ${boldLettering('TULSA OK USA',174,158,10,225)}
  <rect x="316" y="12" width="2" height="166" fill="#000"/>
  ${qr}
- ${boldLettering(displayId,386,140,19,136)}
- <rect x="322" y="163" width="128" height="1.5" fill="#000"/>
- ${lettering('INTERNAL USE ONLY',385,172,8,128)}
+ ${boldLettering(displayId,389,161,14,147)}
+ 
+ ${lettering('INTERNAL USE',389,181,6,145)}
  </svg>`;
 }
 export function downloadLaserTagSvgContent(svg,args={}) {
