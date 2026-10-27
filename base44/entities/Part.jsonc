@@ -102,6 +102,23 @@
         "special_order"
       ],
       "default": "active"
+    },
+    "website_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit opt-in to display this part in the public Elite website store"
+    },
+    "website_description": {
+      "type": "string",
+      "description": "Optional customer-facing description"
+    },
+    "website_image_url": {
+      "type": "string",
+      "description": "Optional public image URL"
+    },
+    "website_featured": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [
