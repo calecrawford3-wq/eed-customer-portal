@@ -16,6 +16,12 @@ export default async function(req:Request){
   const quoteResponse=await quoteCart(new Request(req.url,{method:'POST',headers:req.headers,body:JSON.stringify({items:body.items})}));
   if(!quoteResponse.ok)return fail('Cart prices or availability changed; please review your cart',409);
   const quote=await quoteResponse.json();
+  // Never create a payment-eligible order with incomplete shipping inputs.
+  // Pickup is allowed without parcel dimensions; shipped parts require measurements and carrier rates.
+  if(shipping.method==='ship'&&quote.partCount>0&&quote.missingShippingItems?.length)return fail('Shipping measurements or a manual quote are required for: '+quote.missingShippingItems.join(', '),409);
+  if(shipping.method==='ship'&&!/^\d{5}(?:-\d{4})?$/.test(safeAddress.postal_code))return fail('Enter a valid US ZIP code');
+  if(shipping.method==='ship'&&!/^[A-Za-z]{2}$/.test(safeAddress.state))return fail('Enter a two-letter state abbreviation');
+
   // Determine jurisdiction from delivery destination, never the buyer's billing address.
   // Pickup is sourced at the shop. Other states require separate nexus configuration.
   const destinationState=shipping.method==='pickup'?'OK':safeAddress.state.trim().toUpperCase();
