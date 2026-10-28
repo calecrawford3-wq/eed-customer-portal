@@ -10,7 +10,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export default function AddonDialog({ open, onClose, addon, onSave, isPending }) {
+export default function AddonDialog({ open, onClose, addon, isDuplicate = false, onSave, isPending }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -71,7 +71,7 @@ export default function AddonDialog({ open, onClose, addon, onSave, isPending })
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{addon ? "Edit Addon" : "New Addon"}</DialogTitle>
+          <DialogTitle>{isDuplicate ? "Duplicate Addon" : addon ? "Edit Addon" : "New Addon"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -127,7 +127,7 @@ export default function AddonDialog({ open, onClose, addon, onSave, isPending })
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={handleSave} className="bg-[#e20404] hover:bg-[#c00303] text-white" disabled={!name.trim() || isPending}>
-              {addon ? "Save Changes" : "Create Addon"}
+              {isDuplicate ? "Create Copy" : addon ? "Save Changes" : "Create Addon"}
             </Button>
           </div>
         </div>

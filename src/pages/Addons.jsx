@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Sparkles, Pencil, Trash2, MoreVertical, FolderPlus, Package, Wrench, Cog } from "lucide-react";
+import { Plus, Search, Sparkles, Pencil, Trash2, Copy, MoreVertical, FolderPlus, Package, Wrench, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ export default function Addons() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [addonDialogOpen, setAddonDialogOpen] = useState(false);
   const [editingAddon, setEditingAddon] = useState(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDesc, setNewCategoryDesc] = useState("");
@@ -42,11 +43,11 @@ export default function Addons() {
 
   const createAddonMut = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Addon.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); setIsDuplicate(false); },
   });
   const updateAddonMut = useMutation({
     mutationFn: /** @param {Record<string, any>} args */ ({ id, data }) => base44.entities.Addon.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["addons"] }); setAddonDialogOpen(false); setEditingAddon(null); setIsDuplicate(false); },
   });
   const deleteAddonMut = useMutation({
     mutationFn: /** @param {string} id */ (id) => base44.entities.Addon.delete(id),
@@ -63,8 +64,16 @@ export default function Addons() {
   });
 
   const handleSaveAddon = (data) => {
-    if (editingAddon) updateAddonMut.mutate({ id: editingAddon.id, data });
+    if (editingAddon && !isDuplicate) updateAddonMut.mutate({ id: editingAddon.id, data });
     else createAddonMut.mutate(data);
+  };
+
+  const closeAddonDialog = () => { setAddonDialogOpen(false); setEditingAddon(null); setIsDuplicate(false); };
+
+  const openDuplicate = (addon) => {
+    setEditingAddon({ ...addon, name: `${addon.name} (Copy)` });
+    setIsDuplicate(true);
+    setAddonDialogOpen(true);
   };
 
   const handleCreateCategory = () => {
@@ -92,7 +101,7 @@ export default function Addons() {
           <Button variant="outline" onClick={() => setCategoryDialogOpen(true)}>
             <FolderPlus className="w-4 h-4 mr-2" /> New Category
           </Button>
-          <Button onClick={() => { setEditingAddon(null); setAddonDialogOpen(true); }} className="bg-[#e20404] hover:bg-[#c00303] text-white">
+          <Button onClick={() => { setEditingAddon(null); setIsDuplicate(false); setAddonDialogOpen(true); }} className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> New Addon
           </Button>
         </div>
@@ -190,8 +199,11 @@ export default function Addons() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setEditingAddon(addon); setAddonDialogOpen(true); }}>
+                            <DropdownMenuItem onClick={() => { setEditingAddon(addon); setIsDuplicate(false); setAddonDialogOpen(true); }}>
                               <Pencil className="w-4 h-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDuplicate(addon)}>
+                              <Copy className="w-4 h-4 mr-2" /> Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600" onClick={() => { if (confirm(`Delete addon "${addon.name}"?`)) deleteAddonMut.mutate(addon.id); }}>
                               <Trash2 className="w-4 h-4 mr-2" /> Delete
@@ -210,8 +222,9 @@ export default function Addons() {
 
       <AddonDialog
         open={addonDialogOpen}
-        onClose={() => { setAddonDialogOpen(false); setEditingAddon(null); }}
+        onClose={closeAddonDialog}
         addon={editingAddon}
+        isDuplicate={isDuplicate}
         onSave={handleSaveAddon}
         isPending={createAddonMut.isPending || updateAddonMut.isPending}
       />
