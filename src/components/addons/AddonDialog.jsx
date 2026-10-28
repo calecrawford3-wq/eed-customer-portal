@@ -16,7 +16,6 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
   const [categoryId, setCategoryId] = useState("");
   const [priceOverride, setPriceOverride] = useState("");
   const [status, setStatus] = useState("active");
-  const [compatiblePlatforms,setCompatiblePlatforms]=useState([]);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState({ line_items: [], labor_items: [], machining_items: [] });
 
@@ -32,7 +31,6 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       setCategoryId(addon.category_id || "");
       setPriceOverride(addon.price_override != null ? String(addon.price_override) : "");
       setStatus(addon.status || "active");
-      setCompatiblePlatforms(addon.compatible_platforms || []);
       setNotes(addon.notes || "");
       setItems({
         line_items: addon.line_items || [],
@@ -45,7 +43,6 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       setCategoryId("");
       setPriceOverride("");
       setStatus("active");
-      setCompatiblePlatforms([]);
       setNotes("");
       setItems({ line_items: [], labor_items: [], machining_items: [] });
     }
@@ -66,7 +63,6 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       machining_items: items.machining_items || [],
       price_override: po,
       status,
-      compatible_platforms:compatiblePlatforms,
       notes: notes.trim(),
     });
   };
@@ -123,7 +119,6 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
               </Select>
             </div>
           </div>
-          <div className="space-y-2"><Label>Compatible engine platforms (website builder)</Label><p className="text-xs text-slate-500">Select only the engine types this add-on fits. Unassigned add-ons will not appear in the public configurator.</p><div className="flex flex-wrap gap-5">{['Suzuki GSX-R600','Yamaha YZF-R6'].map(platform=><label key={platform} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={compatiblePlatforms.includes(platform)} onChange={e=>setCompatiblePlatforms(v=>e.target.checked?[...v,platform]:v.filter(x=>x!==platform))}/>{platform}</label>)}</div></div>
           <CannedItemsEditor cannedItems={items} onChange={setItems} showMachining />
           <div className="space-y-2">
             <Label>Notes</Label>
