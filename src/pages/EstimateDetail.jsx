@@ -69,6 +69,7 @@ export default function EstimateDetail() {
   const id = params.get("id");
   const isNew = params.get("new") === "1";
   const prefillCustomerId = params.get("customer_id");
+  const prefillInquiryId = params.get("website_inquiry_id");
   const prefillBuildId = params.get("build_id");
   const prefillEngineId = params.get("customer_engine_id");
   const prefillJobId = params.get("job_id");
@@ -315,6 +316,19 @@ export default function EstimateDetail() {
       }));
     }
   }, [isNew, prefillCustomerId, prefillBuildId, prefillEngineId]);
+
+  // Carry website inquiry details into an internal draft, never into priced line items.
+  useEffect(() => {
+    if (!isNew || !prefillInquiryId || !prefillCustomerId) return;
+    let active = true;
+    base44.entities.WebsiteInquiry.filter({id:prefillInquiryId}).then(result => {
+      const inquiry = (Array.isArray(result)?result:result?.items||[])[0];
+      if (!active || !inquiry || inquiry.customer_id !== prefillCustomerId) return;
+      const context = `Website inquiry ${inquiry.reference||''}\nCategory: ${inquiry.category||''}\nPlatform: ${inquiry.platform||'Not specified'}\nCustomer request:\n${inquiry.message||''}`;
+      setForm(f => ({...f,internal_notes:f.internal_notes?.includes(inquiry.reference)?f.internal_notes:[f.internal_notes,context].filter(Boolean).join('\n\n')}));
+    }).catch(() => {});
+    return () => {active=false};
+  }, [isNew,prefillInquiryId,prefillCustomerId]);
 
   // Auto-calculate deposit amount when in percent mode
   useEffect(() => {
