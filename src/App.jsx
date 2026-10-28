@@ -205,6 +205,7 @@ const routes = createRoutesFromElements(
       <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
       <Route path="WebsiteCartOrders" element={<WebsiteCartOrders />} />
+      <Route path="WebsiteMachiningRequests" element={<WebsiteMachiningRequests />} />
       <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
