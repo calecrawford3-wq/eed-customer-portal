@@ -5,7 +5,7 @@ import {useSiteMedia} from './useSiteMedia';
 // Original Elite Engine Development website photography, used until overridden in Website Media.
 const originalPhotos={
  home_hero:{url:'https://static.wixstatic.com/media/5e81b8_79a8e3e5b8e0492a9ca77aeb11843320~mv2.jpg',alt:'Elite Engine Development original racing photography'},
- home_shop:{url:'https://media.base44.com/images/public/698c030b5d990c423f12b5d8/9b792b5e7_IMG_4533.jpeg',alt:'Elite micro sprint race car being track tested on dirt'},
+ home_shop:{url:'https://media.base44.com/images/public/698c030b5d990c423f12b5d8/c5cedbdad_elite_track_replacement.jpg',alt:'Elite micro sprint race car being track tested on dirt'},
  home_engine:{url:'https://static.wixstatic.com/media/5e81b8_6deab6c5b4c642bd8543baaba3d51bc8~mv2.jpg',alt:'Elite Engine Development engine photography'}
 };
 const Btn=({to,children,light=false})=><Link to={to} className={`inline-flex items-center justify-center gap-3 px-7 py-4 text-xs uppercase font-bold tracking-[.18em] transition ${light?'bg-white text-black hover:bg-zinc-200':'border border-white/30 hover:bg-white/10'}`}>{children}<ArrowUpRight size={16}/></Link>;
