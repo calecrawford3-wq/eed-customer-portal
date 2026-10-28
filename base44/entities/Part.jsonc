@@ -119,6 +119,28 @@
     "website_featured": {
       "type": "boolean",
       "default": false
+    },
+    "website_shipping_weight_oz": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Packed item weight in ounces for website carrier quotes"
+    },
+    "website_shipping_length_in": {
+      "type": "number",
+      "minimum": 0
+    },
+    "website_shipping_width_in": {
+      "type": "number",
+      "minimum": 0
+    },
+    "website_shipping_height_in": {
+      "type": "number",
+      "minimum": 0
+    },
+    "website_shipping_requires_quote": {
+      "type": "boolean",
+      "default": false,
+      "description": "Require manual shipping quote for oversized or special handling parts"
     }
   },
   "required": [
