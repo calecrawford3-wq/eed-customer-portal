@@ -1,6 +1,76 @@
 {
- "name":"WebsiteInquiry","type":"object",
- "properties":{"reference":{"type":"string"},"name":{"type":"string"},"email":{"type":"string"},"phone":{"type":"string"},"category":{"type":"string"},"platform":{"type":"string"},"message":{"type":"string"},"status":{"type":"string","enum":["new","reviewing","responded","closed"],"default":"new"}},
- "required":["reference","name","email","category","message"],
- "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
+  "name": "WebsiteInquiry",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewing",
+        "responded",
+        "closed"
+      ],
+      "default": "new"
+    },
+    "followup_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "reference",
+    "name",
+    "email",
+    "category",
+    "message"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
