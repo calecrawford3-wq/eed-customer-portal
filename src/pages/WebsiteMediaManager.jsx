@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {base44} from '@/api/base44Client';
-const slots=[['home_hero','Homepage hero'],['home_shop','Homepage shop image'],['home_engine','Homepage engine image'],['engines_hero','Engine programs banner']];
+const slots=[['home_hero','Homepage hero'],['home_shop','Homepage shop image'],['home_engine','Homepage engine image'],['engines_hero','Engine programs banner'],['results_hero','Racing results hero'],['development_hero','Development hero'],['injection_hero','FDS hero'],['injection_full_system','Complete FDS system'],['injection_ecu','FuelTech ECU'],['injection_harness','Elite Harness'],['showcase_hero','Showcase hero'],['showcase_suzuki','Showcase Suzuki engine'],['showcase_yamaha','Showcase Yamaha engine']];
 const rows=v=>Array.isArray(v)?v:v?.items||[];
 export default function WebsiteMediaManager(){const [items,setItems]=useState([]),[busy,setBusy]=useState(''),[error,setError]=useState('');const [drafts,setDrafts]=useState({});
  const load=async()=>{try{const result=rows(await base44.entities.WebsiteMedia.list());setItems(result);setDrafts(Object.fromEntries(slots.map(([slot])=>[slot,result.find(x=>x.slot===slot)||{slot,image_url:'',alt_text:'',caption:'',is_published:false}]))) }catch{setError('Could not load website images')}};

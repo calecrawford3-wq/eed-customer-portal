@@ -1,6 +1,6 @@
 {
  "name":"WebsiteMedia","type":"object",
- "properties":{"slot":{"type":"string","enum":["home_hero","home_shop","home_engine","engines_hero"]},"image_url":{"type":"string"},"alt_text":{"type":"string"},"caption":{"type":"string"},"is_published":{"type":"boolean","default":false}},
+ "properties":{"slot":{"type":"string","enum":["home_hero","home_shop","home_engine","engines_hero","results_hero","development_hero","injection_hero","injection_full_system","injection_ecu","injection_harness","showcase_hero","showcase_suzuki","showcase_yamaha"]},"image_url":{"type":"string"},"alt_text":{"type":"string"},"caption":{"type":"string"},"is_published":{"type":"boolean","default":false}},
  "required":["slot","image_url","alt_text"],
  "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
 }

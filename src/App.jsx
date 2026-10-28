@@ -18,6 +18,7 @@ import SiteShowcase from './pages/publicsite/SiteShowcase';
 import SiteInquiry from './pages/publicsite/SiteInquiry';
 import SiteMachiningForm from './pages/publicsite/SiteMachiningForm';
 import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
+import WebsiteInquiries from './pages/WebsiteInquiries';
 import SiteStore from './pages/publicsite/SiteStore';
 import SiteCart from './pages/publicsite/SiteCart';
 import { Toaster } from "@/components/ui/toaster"
@@ -222,6 +223,7 @@ const routes = createRoutesFromElements(
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
       <Route path="WebsiteCartOrders" element={<WebsiteCartOrders />} />
       <Route path="WebsiteMachiningRequests" element={<WebsiteMachiningRequests />} />
+      <Route path="WebsiteInquiries" element={<WebsiteInquiries />} />
       <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
