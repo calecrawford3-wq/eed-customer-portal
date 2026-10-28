@@ -16,9 +16,16 @@ export default async function(req:Request){
   const quoteResponse=await quoteCart(new Request(req.url,{method:'POST',headers:req.headers,body:JSON.stringify({items:body.items})}));
   if(!quoteResponse.ok)return fail('Cart prices or availability changed; please review your cart',409);
   const quote=await quoteResponse.json();
+  // Determine jurisdiction from delivery destination, never the buyer's billing address.
+  // Pickup is sourced at the shop. Other states require separate nexus configuration.
+  const destinationState=shipping.method==='pickup'?'OK':safeAddress.state.trim().toUpperCase();
+  const oklahomaTaxJurisdiction=destinationState==='OK';
+  // A global build tax default is not a verified destination-specific state + local rate.
+  // Keep tax pending until the actual taxable products/services and local jurisdiction are resolved.
+  const taxJurisdiction=oklahomaTaxJurisdiction?'oklahoma':'out_of_state_nexus_review';
   // Do not mistake uncalculated shipping or taxes for zero. No draft order should be chargeable yet.
   const sdk=createClientFromRequest(req);
   const order=await sdk.asServiceRole.entities.WebsiteCartOrder.create({order_reference:'EC-'+crypto.randomUUID().slice(0,12).toUpperCase(),status:'draft',buyer_name:name,buyer_email:email,buyer_phone:phone,shipping_method:shipping.method,shipping_address:safeAddress,items_snapshot:quote.lines,subtotal_cents:quote.subtotalCents,due_today_cents:quote.dueTodayCents,remaining_engine_cents:quote.remainingEngineCents,pricing_verified_at:new Date().toISOString()});
-  return Response.json({orderReference:order.order_reference,status:'draft',checkoutEnabled:false,subtotalCents:quote.subtotalCents,dueTodayCents:quote.dueTodayCents,remainingEngineCents:quote.remainingEngineCents,taxStatus:'pending',shippingStatus:'pending'},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({orderReference:order.order_reference,status:'draft',checkoutEnabled:false,subtotalCents:quote.subtotalCents,dueTodayCents:quote.dueTodayCents,remainingEngineCents:quote.remainingEngineCents,taxStatus:'pending',taxJurisdiction,deliveryState:destinationState,shippingStatus:'pending'},{headers:{'Cache-Control':'no-store'}});
  }catch{return fail('Unable to prepare cart order',503)}
 }
