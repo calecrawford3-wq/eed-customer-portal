@@ -319,6 +319,15 @@
     "completion_date": {
       "type": "string",
       "format": "date"
+    },
+    "feedback_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful customer feedback request email timestamp"
+    },
+    "feedback_request_count": {
+      "type": "number",
+      "default": 0
     }
   },
   "required": [

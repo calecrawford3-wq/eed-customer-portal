@@ -1,0 +1,41 @@
+{
+  "name": "Engine Pickup Feedback Requests",
+  "description": "Daily 8 AM Central sends one customer feedback email 3 days after pickup, for pickups on or after Oct 28 2026. Older pickups require manual action.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 13 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "engine_pickup_feedback_requests",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "engineFeedbackDigest",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
