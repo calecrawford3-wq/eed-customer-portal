@@ -3,4 +3,4 @@ Allow: /site
 Disallow: /CustomerPortal
 Disallow: /WebsiteInquiries
 Disallow: /WebsiteTestimonials
-Sitemap: https://race-engine-specs.base44.app/sitemap.xml
+Sitemap: https://eliteenginedevelopment.com/sitemap.xml
