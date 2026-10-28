@@ -26,7 +26,7 @@ export default async function(req:Request){
   };
   const base=price(job);if(base===null)return fail('Base build pricing is unavailable',409);
   const selected=[];let addonCents=0;
-  for(const id of body.addonIds){if(!(offer.addon_ids||[]).includes(id))return fail('An upgrade is no longer available',409);const addon:any=am.get(id);if(!addon||addon.status==='archived')return fail('An upgrade is unavailable',409);const amount=addon.price_override===null||addon.price_override===undefined?price(addon):money(addon.price_override);if(amount===null)return fail('An upgrade requires repricing',409);addonCents+=amount;selected.push({id,name:String(addon.name||''),price:amount/100});}
+  for(const id of body.addonIds){if(!(offer.addon_ids||[]).includes(id))return fail('An upgrade is no longer available',409);const addon:any=am.get(id);if(!addon||addon.status==='archived'||!addon.compatible_platforms?.includes(body.platform))return fail('An upgrade is unavailable for this engine',409);const amount=addon.price_override===null||addon.price_override===undefined?price(addon):money(addon.price_override);if(amount===null)return fail('An upgrade requires repricing',409);addonCents+=amount;selected.push({id,name:String(addon.name||''),price:amount/100});}
   let coreCents=0,coreName='Customer-supplied';
   if(body.core==='Elite-supplied'){const core:any=cm.get(offer.core_id);coreCents=money(core?.sell_price)??-1;if(!core||core.status!=='active'||Number(core.quantity_on_hand)<=0||coreCents<0)return fail('Elite-supplied core is unavailable',409);coreName=String(core.name||'Elite-supplied core');}
   const total=base+addonCents+coreCents,due=Math.round(base*.5)+addonCents+coreCents;

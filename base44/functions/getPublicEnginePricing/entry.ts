@@ -30,7 +30,7 @@ export default async function(req:Request){
    if(job?.version_group_id){const latest=jobs.find((j:any)=>j.version_group_id===job.version_group_id&&j.is_latest===true&&j.status==='active');if(latest)job=latest;}
    if(!job||job.status==='archived')continue;
    const base=price(job);const options=[];
-   for(const id of offering.addon_ids||[]){const addon=am.get(id);if(!addon||addon.status==='archived')continue;
+   for(const id of offering.addon_ids||[]){const addon=am.get(id);if(!addon||addon.status==='archived'||!addon.compatible_platforms?.includes(offering.platform))continue;
     const amount=addon.price_override!==undefined&&addon.price_override!==null?num(addon.price_override):price(addon);
     if(amount!==null)options.push({id:addon.id,name:String(addon.name||''),description:String(addon.description||''),price:amount,buildSheet:buildSheet(addon)});
    }

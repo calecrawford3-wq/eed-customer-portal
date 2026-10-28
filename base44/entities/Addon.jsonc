@@ -87,6 +87,17 @@
     },
     "notes": {
       "type": "string"
+    },
+    "compatible_platforms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Suzuki GSX-R600",
+          "Yamaha YZF-R6"
+        ]
+      },
+      "description": "Engine platforms this add-on supports. Empty means not eligible for website engine builder."
     }
   },
   "required": [
