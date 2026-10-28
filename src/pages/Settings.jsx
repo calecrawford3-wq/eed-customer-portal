@@ -197,6 +197,16 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        {/* Shipping integration setup — secrets are never saved to AppSettings. */}
+        <TabsContent value="shipping">
+          <Card className="border-0 shadow-sm"><CardHeader><CardTitle>Website Shipping — EasyPost</CardTitle></CardHeader><CardContent className="space-y-4">
+            <p className="text-sm text-slate-600">Connect discounted USPS/UPS shipping rates for website parts orders. Engine freight is billed separately when the engine is ready. Local pickup is free.</p>
+            <div className="rounded-lg border p-4 space-y-2"><h3 className="font-semibold">EasyPost API key</h3><p className="text-sm text-slate-600">For security, add the key in the app's encrypted Base44 Secrets manager, not in a regular settings field. Never paste an API key into notes or inventory records.</p><div className="flex flex-wrap gap-3"><a className="underline text-sm text-blue-700" href="https://www.easypost.com/" target="_blank" rel="noopener noreferrer">Create / open EasyPost account</a><a className="underline text-sm text-blue-700" href="https://app.base44.com/" target="_blank" rel="noopener noreferrer">Open Base44 app editor → Secrets</a></div><p className="text-sm">Secret name: <code className="font-mono bg-slate-100 px-2 py-1 rounded select-all">EASYPOST_API_KEY</code></p><p className="text-xs text-slate-500">Start with your EasyPost test key. When rates and checkout have been verified, replace it with your production key.</p></div>
+            <div className="rounded-lg border p-4"><h3 className="font-semibold">Shipping origin</h3><p className="text-sm text-slate-600 mt-1">Rates use your company street address, city, state and ZIP from Company Settings. Confirm those details before testing carrier rates.</p><Button className="mt-3" variant="outline" onClick={()=>openTab('company')}>Open Company Settings</Button></div>
+            <p className="text-xs text-amber-700">Shipping API setup does not activate checkout. Tax calculation, rate verification and payment safeguards must pass testing first.</p>
+          </CardContent></Card>
+        </TabsContent>
+
         {/* Billing Defaults */}
         <TabsContent value="billing">
           <div className="mb-4 rounded-xl border bg-white p-4">

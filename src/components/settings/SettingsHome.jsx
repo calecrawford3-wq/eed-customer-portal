@@ -1,11 +1,12 @@
 import React, {useState} from 'react';
 import {Link} from 'react-router-dom';
 import {Input} from '@/components/ui/input';
-import {Search, Building2, Receipt, CreditCard, Users, Wrench, Workflow, Package, MonitorSmartphone, Mail, Shield, ChevronRight} from 'lucide-react';
+import {Search, Building2, Receipt, Truck, CreditCard, Users, Wrench, Workflow, Package, MonitorSmartphone, Mail, Shield, ChevronRight} from 'lucide-react';
 
 export const SETTINGS_CATEGORIES = [
  {name:'Company',tab:'company',icon:Building2,description:'Business identity, contact details and branding'},
  {name:'Billing',tab:'billing',icon:Receipt,description:'Invoice, estimate and pricing defaults'},
+ {name:'Shipping',tab:'shipping',icon:Truck,description:'EasyPost API key and website shipping setup'},
  {name:'Payments',tab:'payments',icon:CreditCard,description:'Stripe, payment methods and reconciliation'},
  {name:'Employees',tab:'employees',icon:Users,description:'Staff records and individual page permissions'},
  {name:'Engines',tab:'engines',icon:Wrench,description:'Platforms, spec sheets and replacement rules'},
