@@ -1,0 +1,75 @@
+{
+  "name": "WebsiteMachiningRequest",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "service": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "delivery_preference": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewing",
+        "quoted",
+        "approved",
+        "received",
+        "in_progress",
+        "completed",
+        "declined"
+      ],
+      "default": "new"
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "reference",
+    "name",
+    "email",
+    "service"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
