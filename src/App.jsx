@@ -8,6 +8,8 @@ import WebsiteCartOrders from './pages/WebsiteCartOrders';
 import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
+import SiteMachining from './pages/publicsite/SiteMachining';
+import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
 import SiteStore from './pages/publicsite/SiteStore';
 import SiteCart from './pages/publicsite/SiteCart';
 import { Toaster } from "@/components/ui/toaster"
@@ -178,6 +180,7 @@ const routes = createRoutesFromElements(
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
       <Route path="engines" element={<SiteEngines />} />
+      <Route path="machining" element={<SiteMachining />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
     </Route>
