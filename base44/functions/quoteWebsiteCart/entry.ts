@@ -10,7 +10,7 @@ export default async function(req:Request){
   if(!Array.isArray(cart)||cart.length<1||cart.length>40)return fail('Cart must contain 1 to 40 items');
   const sdk=createClientFromRequest(req),svc=sdk.asServiceRole;
   const parts=rows(await svc.entities.Part.list());const pm=new Map(parts.map((p:any)=>[p.id,p]));
-  const requestedParts=new Map<string,number>();const lines:any[]=[];let subtotal=0,due=0,engineCount=0,partCount=0,eliteCoreCount=0;
+  const requestedParts=new Map<string,number>();const lines:any[]=[];let subtotal=0,due=0,engineCount=0,partCount=0,eliteCoreCount=0;const shippingItems:any[]=[];const missingShipping:string[]=[];
   for(const item of cart){if(!item||!['part','engine'].includes(item.type))return fail('Invalid cart item');
    if(item.type==='part'){
     const id=item.id,qty=item.quantity;
@@ -20,6 +20,10 @@ export default async function(req:Request){
     const totalQty=(requestedParts.get(id)||0)+qty;requestedParts.set(id,totalQty);
     if(p.status!=='special_order'&&Number(p.quantity_on_hand||0)<totalQty)return fail(`Insufficient inventory for ${String(p.name||'a part')}`,409);
     const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
+    const dims=['website_shipping_weight_oz','website_shipping_length_in','website_shipping_width_in','website_shipping_height_in'];
+    const measures=dims.map(k=>Number(p[k]));
+    if(p.website_shipping_requires_quote===true||dims.some((k,i)=>p[k]===null||p[k]===undefined||p[k]===''||!Number.isFinite(measures[i])||measures[i]<=0))missingShipping.push(String(p.part_number||p.name||id));
+    else shippingItems.push({partId:id,quantity:qty,weightOz:measures[0],lengthIn:measures[1],widthIn:measures[2],heightIn:measures[3]});
     lines.push({type:'part',partId:id,sku:String(p.part_number||''),name:String(p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
    }else{
     if(item.quantity!==1||!Number.isInteger(item.stage)||!Array.isArray(item.addonIds))return fail('Invalid engine configuration');
@@ -35,6 +39,6 @@ export default async function(req:Request){
   }
   if(eliteCoreCount>0){const offerings=rows(await svc.entities.WebsiteEngineOffering.list()),cores=rows(await svc.entities.EngineCore.list());const coreMap=new Map(cores.map((c:any)=>[c.id,c]));const demand=new Map<string,number>();for(const line of lines){if(line.type!=='engine'||line.core!=='Elite-supplied')continue;const offering=offerings.find((o:any)=>o.is_published===true&&o.platform===line.platform&&Number(o.stage)===line.stage);if(!offering?.core_id)return fail('Engine core is no longer available',409);demand.set(offering.core_id,(demand.get(offering.core_id)||0)+1)}for(const [id,qty] of demand){const core:any=coreMap.get(id);if(!core||core.status!=='active'||Number(core.quantity_on_hand||0)<qty)return fail('Insufficient Elite engine cores for this cart',409)}}
   if(!Number.isSafeInteger(subtotal)||!Number.isSafeInteger(due)||subtotal<=0)return fail('Invalid cart amount',409);
-  return Response.json({lines,engineCount,partCount,subtotalCents:subtotal,dueTodayCents:due,remainingEngineCents:subtotal-due,shippingStatus:'not_calculated',taxStatus:'not_calculated',checkoutEnabled:false,pricedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({lines,engineCount,partCount,subtotalCents:subtotal,dueTodayCents:due,remainingEngineCents:subtotal-due,shippingStatus:partCount===0?'engine_shipping_invoiced_separately':missingShipping.length?'missing_package_data':'carrier_rates_pending',shippingItems,missingShippingItems:missingShipping,taxStatus:'not_calculated',checkoutEnabled:false,pricedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
  }catch{return fail('Unable to verify cart pricing',503)}
 }
