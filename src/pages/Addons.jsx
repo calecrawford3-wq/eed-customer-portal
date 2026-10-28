@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import AddonDialog from "@/components/addons/AddonDialog";
+import { computeAddonPrice } from "@/lib/addonPricing";
 import { toast } from "sonner";
 
 export default function Addons() {
@@ -40,6 +41,20 @@ export default function Addons() {
     queryKey: ["addons"],
     queryFn: () => base44.entities.Addon.list("-created_date", 500),
   });
+
+  const { data: parts = [] } = useQuery({
+    queryKey: ["parts"],
+    queryFn: () => base44.entities.Part.list("-created_date", 500),
+  });
+  const { data: laborItems = [] } = useQuery({
+    queryKey: ["laborItems"],
+    queryFn: () => base44.entities.LaborItem.list("-created_date", 200),
+  });
+  const { data: machiningItems = [] } = useQuery({
+    queryKey: ["machiningItems"],
+    queryFn: () => base44.entities.MachiningItem.list("-created_date", 200),
+  });
+  const catalog = { parts, laborItems, machiningItems };
 
   const createAddonMut = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ (data) => base44.entities.Addon.create(data),
@@ -182,11 +197,16 @@ export default function Addons() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{addon.category_name || "Uncategorized"}</Badge>
-                            {addon.price_override != null && <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">Flat ${Number(addon.price_override).toFixed(2)}</Badge>}
+                            {addon.price_override != null && <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">Flat price</Badge>}
                           </div>
                           <p className="text-sm font-medium text-slate-900 mt-1.5">{addon.name}</p>
                           {addon.description && <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{addon.description}</p>}
-                          <div className="flex gap-3 mt-2 text-xs text-slate-500">
+                          <p className="text-base font-semibold text-slate-900 mt-2">
+                            ${(addon.price_override != null && Number.isFinite(Number(addon.price_override))
+                              ? Number(addon.price_override)
+                              : computeAddonPrice(addon, catalog)).toFixed(2)}
+                          </p>
+                          <div className="flex gap-3 mt-1 text-xs text-slate-500">
                             <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {partCount}</span>
                             <span className="flex items-center gap-1"><Wrench className="w-3 h-3" /> {laborCount}</span>
                             <span className="flex items-center gap-1"><Cog className="w-3 h-3" /> {machCount}</span>
