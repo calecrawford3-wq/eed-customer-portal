@@ -9,6 +9,7 @@ import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
 import SiteMachining from './pages/publicsite/SiteMachining';
+import SiteMachiningForm from './pages/publicsite/SiteMachiningForm';
 import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
 import SiteStore from './pages/publicsite/SiteStore';
 import SiteCart from './pages/publicsite/SiteCart';
@@ -181,6 +182,7 @@ const routes = createRoutesFromElements(
       <Route path="builder" element={<SiteBuilder />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
+      <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
     </Route>
