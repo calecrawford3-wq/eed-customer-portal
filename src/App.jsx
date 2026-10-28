@@ -14,6 +14,8 @@ import SiteResults from './pages/publicsite/SiteResults';
 import SiteAbout from './pages/publicsite/SiteAbout';
 import SiteDevelopment from './pages/publicsite/SiteDevelopment';
 import SiteContact from './pages/publicsite/SiteContact';
+import SiteShowcase from './pages/publicsite/SiteShowcase';
+import SiteInquiry from './pages/publicsite/SiteInquiry';
 import SiteMachiningForm from './pages/publicsite/SiteMachiningForm';
 import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
 import SiteStore from './pages/publicsite/SiteStore';
@@ -192,6 +194,8 @@ const routes = createRoutesFromElements(
       <Route path="about" element={<SiteAbout />} />
       <Route path="development" element={<SiteDevelopment />} />
       <Route path="contact" element={<SiteContact />} />
+      <Route path="showcase" element={<SiteShowcase />} />
+      <Route path="inquiry" element={<SiteInquiry />} />
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
