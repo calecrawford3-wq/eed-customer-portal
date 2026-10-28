@@ -110,6 +110,7 @@ const navSections = [
       { name: "Order Fulfillment", page: "WebsiteOrderFulfillment", icon: Truck },
       { name: "Website Media", page: "WebsiteMediaManager", icon: Monitor },
       { name: "Website Inquiries", page: "WebsiteInquiries", icon: MessageSquare },
+      { name: "Testimonials", page: "WebsiteTestimonials", icon: MessageSquare },
     ],
   },
   {

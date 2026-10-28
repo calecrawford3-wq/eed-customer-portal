@@ -19,6 +19,8 @@ import SiteInquiry from './pages/publicsite/SiteInquiry';
 import SiteMachiningForm from './pages/publicsite/SiteMachiningForm';
 import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
 import WebsiteInquiries from './pages/WebsiteInquiries';
+import WebsiteTestimonials from './pages/WebsiteTestimonials';
+import SiteTestimonials from './pages/publicsite/SiteTestimonials';
 import SiteStore from './pages/publicsite/SiteStore';
 import SiteCart from './pages/publicsite/SiteCart';
 import { Toaster } from "@/components/ui/toaster"
@@ -196,6 +198,7 @@ const routes = createRoutesFromElements(
       <Route path="development" element={<SiteDevelopment />} />
       <Route path="contact" element={<SiteContact />} />
       <Route path="showcase" element={<SiteShowcase />} />
+      <Route path="testimonials" element={<SiteTestimonials />} />
       <Route path="inquiry" element={<SiteInquiry />} />
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="store" element={<SiteStore />} />
@@ -224,6 +227,7 @@ const routes = createRoutesFromElements(
       <Route path="WebsiteCartOrders" element={<WebsiteCartOrders />} />
       <Route path="WebsiteMachiningRequests" element={<WebsiteMachiningRequests />} />
       <Route path="WebsiteInquiries" element={<WebsiteInquiries />} />
+      <Route path="WebsiteTestimonials" element={<WebsiteTestimonials />} />
       <Route path="PaymentMigration" element={<Navigate to="/Settings?tab=payments" replace />} />
       <Route path="CustomerPortal" element={<CustomerPortal />} />
       <Route path="EmployeePortal" element={<EmployeePortal />} />
