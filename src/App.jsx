@@ -185,8 +185,11 @@ const configPageRoutes = Object.entries(Pages).map(([path, Page]) =>
   <Route key={path} path={path} element={<Page />} />
 );
 
+const isPublicWebsiteDomain = ['eliteenginedevelopment.com','www.eliteenginedevelopment.com'].includes(window.location.hostname.toLowerCase());
+
 const routes = createRoutesFromElements(
   <>
+    {isPublicWebsiteDomain && <Route path="/" element={<SiteShell />}><Route index element={<SiteHome />} /></Route>}
     <Route path="/site" element={<SiteShell />}>
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
