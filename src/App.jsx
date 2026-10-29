@@ -192,6 +192,11 @@ const isPublicWebsiteDomain = ['eliteenginedevelopment.com','www.eliteenginedeve
 const routes = createRoutesFromElements(
   <>
     {isPublicWebsiteDomain && <Route path="/" element={<SiteShell />}><Route index element={<SiteHome />} /></Route>}
+    {isPublicWebsiteDomain && <Route path="/product-page/elite-600cc-micro-sprint-race-engine" element={<Navigate to="/site/engines" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/shop" element={<Navigate to="/site/store" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/contact" element={<Navigate to="/site/contact" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/builds" element={<Navigate to="/site/showcase" replace />} />}
+
     <Route path="/site" element={<SiteShell />}>
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
