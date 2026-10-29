@@ -1,0 +1,64 @@
+{
+  "name": "WebsiteVisitEvent",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "page_title": {
+      "type": "string"
+    },
+    "referrer_host": {
+      "type": "string"
+    },
+    "device": {
+      "type": "string"
+    },
+    "utm_source": {
+      "type": "string"
+    },
+    "utm_medium": {
+      "type": "string"
+    },
+    "utm_campaign": {
+      "type": "string"
+    },
+    "event_label": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number"
+    },
+    "occurred_at": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
