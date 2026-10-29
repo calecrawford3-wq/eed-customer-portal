@@ -37,6 +37,24 @@
     },
     "occurred_at": {
       "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "number"
+    },
+    "core": {
+      "type": "string"
+    },
+    "addon_id": {
+      "type": "string"
+    },
+    "addon_name": {
+      "type": "string"
+    },
+    "conversion_type": {
+      "type": "string"
     }
   },
   "rls": {
