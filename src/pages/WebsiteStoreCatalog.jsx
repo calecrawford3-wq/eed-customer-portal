@@ -11,7 +11,9 @@ export default function WebsiteStoreCatalog(){
  const load=async()=>{try{setParts(await base44.entities.Part.list())}catch(e){toast.error('Could not load parts')}finally{setLoading(false)}};
  useEffect(()=>{load()},[]);
  const shown=useMemo(()=>parts.filter(p=>[p.name,p.part_number,p.category].join(' ').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>Number(!!b.website_published)-Number(!!a.website_published)||a.name.localeCompare(b.name)),[parts,query]);
- const categoryCards=useMemo(()=>{const map=new Map();parts.forEach(p=>{const k=p.category||'other';map.set(k,(map.get(k)||0)+1)});return [...map.entries()].map(([key,count])=>({key,count})).sort((a,b)=>a.key.localeCompare(b.key))},[parts]);
+ const [storeCategories,setStoreCategories]=useState([]);
+ const loadCategories=async()=>{try{const d=await base44.entities.StoreCategory.list();setStoreCategories(Array.isArray(d)?d:d?.items||[])}catch(e){toast.error('Could not load store categories')}};
+ useEffect(()=>{loadCategories()},[]);
  const save=async(part,patch)=>{setSaving(part.id);try{await base44.entities.Part.update(part.id,patch);setParts(all=>all.map(p=>p.id===part.id?{...p,...patch}:p));toast.success('Store listing updated')}catch(e){toast.error('Unable to save listing');throw e}finally{setSaving('')}};
  return <main className="max-w-6xl mx-auto p-6 lg:p-10">
   <h1 className="text-3xl font-bold">Website Store Catalog</h1>
@@ -19,7 +21,7 @@ export default function WebsiteStoreCatalog(){
   <section className="mt-8 border rounded-xl bg-slate-50 p-5">
    <h2 className="font-bold">Store category cards</h2>
    <p className="text-sm text-slate-600 mt-1 mb-4">Customers see these cards at the top of the public store. Add a photo and display name for each category; the first card is always Shop All.</p>
-   {loading?<p className="text-sm text-slate-500">Loading categories…</p>:<StoreCategoryManager categories={categoryCards}/>}
+   {loading?<p className="text-sm text-slate-500">Loading categories…</p>:<StoreCategoryManager categories={storeCategories} onChange={loadCategories}/>}
   </section>
   <input className="mt-6 border rounded p-3 w-full" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search parts by name, number or category" aria-label="Search inventory"/>
   {loading?<p className="mt-8">Loading inventory…</p>:<div className="mt-6 space-y-3">{shown.map(p=><article key={p.id} className="border bg-white rounded-xl p-5 flex flex-col lg:flex-row lg:items-start justify-between gap-5">
@@ -29,6 +31,7 @@ export default function WebsiteStoreCatalog(){
     {p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
     <div className="mt-4"><ProductPhotoManager part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/></div>
     <ProductListingContentEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>
+    <div className="mt-4 rounded-lg border p-3"><p className="font-semibold text-sm">Storefront categories</p><p className="text-xs text-slate-500 mb-2">Shop All automatically includes every published product.</p><div className="flex flex-wrap gap-3">{storeCategories.filter(c=>c.category_key!=='All').map(c=><label key={c.id} className="inline-flex gap-2 items-center text-sm"><input type="checkbox" disabled={saving===p.id} checked={(p.website_store_categories||[]).includes(c.category_key)} onChange={e=>{const current=p.website_store_categories||[];save(p,{website_store_categories:e.target.checked?[...new Set([...current,c.category_key])]:current.filter(k=>k!==c.category_key)})}}/>{c.label||c.category_key}</label>)}{!storeCategories.length&&<p className="text-xs text-slate-500">Create storefront categories above to assign products.</p>}</div></div>
     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
      {[['website_shipping_weight_oz','Weight (oz)'],['website_shipping_length_in','Length (in)'],['website_shipping_width_in','Width (in)'],['website_shipping_height_in','Height (in)']].map(([key,label])=><label key={key} className="text-xs text-slate-600">{label}<Input type="number" min="0" step="0.01" value={shippingDrafts[p.id]?.[key]??p[key]??''} onChange={e=>setShippingDrafts(d=>({...d,[p.id]:{...d[p.id],[key]:e.target.value}}))} className="mt-1"/></label>)}
      <label className="col-span-2 sm:col-span-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={shippingDrafts[p.id]?.website_shipping_requires_quote??!!p.website_shipping_requires_quote} onChange={e=>setShippingDrafts(d=>({...d,[p.id]:{...d[p.id],website_shipping_requires_quote:e.target.checked}}))}/> Requires custom shipping quote</label>
