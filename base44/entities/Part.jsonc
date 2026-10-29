@@ -142,6 +142,13 @@
         }
       }
     },
+    "website_store_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "website_featured": {
       "type": "boolean",
       "default": false
