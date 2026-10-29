@@ -124,6 +124,24 @@
       "default": [],
       "description": "Additional public product photo URLs shown in the website store gallery. The first photo is the primary listing image."
     },
+    "website_details": {
+      "type": "array",
+      "default": [],
+      "description": "Customer-facing expandable information sections for the website listing. Each entry has a custom heading chosen by the shop and the content revealed when a customer opens that dropdown.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Heading shown on the dropdown (e.g. Fitment, Install Notes, What's Included)"
+          },
+          "content": {
+            "type": "string",
+            "description": "Information revealed when the customer opens the dropdown"
+          }
+        }
+      }
+    },
     "website_featured": {
       "type": "boolean",
       "default": false

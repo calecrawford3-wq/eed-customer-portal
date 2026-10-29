@@ -5,13 +5,17 @@ const images=(part:any)=>{
  const list=[part.website_image_url,...(Array.isArray(part.website_images)?part.website_images:[])].filter((u:any)=>typeof u==='string'&&/^https:\/\//.test(u));
  return [...new Set(list)].slice(0,8);
 };
+const details=(part:any)=>(Array.isArray(part.website_details)?part.website_details:[])
+ .map((d:any)=>({label:String(d?.label||'').trim().slice(0,80),content:String(d?.content||'').trim().slice(0,2000)}))
+ .filter((d:any)=>d.label&&d.content)
+ .slice(0,8);
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
  try{
   const sdk=createClientFromRequest(req),svc=sdk.asServiceRole;
   const all=rows(await svc.entities.Part.list());
   const products=all.filter((p:any)=>p.website_published===true&&p.status!=='discontinued'&&p.sell_price!==null&&p.sell_price!==undefined&&p.sell_price!==''&&Number.isFinite(Number(p.sell_price))&&Number(p.sell_price)>=0)
-   .map((p:any)=>{const photos=images(p);return {id:String(p.id),name:String(p.name||''),sku:String(p.part_number||''),description:String(p.website_description||p.description||'').slice(0,600),category:String(p.category||'other'),price:Number(p.sell_price),imageUrl:photos[0]||'',images:photos,featured:p.website_featured===true,availability:p.status==='special_order'?'Special order':Number(p.quantity_on_hand)>0?'In stock':'Contact for availability'};})
+   .map((p:any)=>{const photos=images(p);const inStock=Number(p.quantity_on_hand)>0;return {id:String(p.id),name:String(p.name||''),sku:String(p.part_number||''),description:String(p.website_description||p.description||'').slice(0,600),category:String(p.category||'other'),price:Number(p.sell_price),imageUrl:photos[0]||'',images:photos,details:details(p),featured:p.website_featured===true,inStock,availability:inStock?(p.status==='special_order'?'Special order':'In stock'):'Out of stock'};})
    .sort((a:any,b:any)=>Number(b.featured)-Number(a.featured)||a.name.localeCompare(b.name));
   const settings=await websiteStoreSettings(svc);
   return Response.json({products,checkoutEnabled:settings.checkoutEnabled,updatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});

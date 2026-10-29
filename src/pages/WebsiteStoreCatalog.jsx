@@ -3,6 +3,7 @@ import {base44} from '@/api/base44Client';
 import {toast} from 'sonner';
 import {Input} from '@/components/ui/input';
 import ProductPhotoManager from '@/components/store/ProductPhotoManager';
+import ProductListingContentEditor from '@/components/store/ProductListingContentEditor';
 export default function WebsiteStoreCatalog(){
  const [shippingDrafts,setShippingDrafts]=useState({});
  const [parts,setParts]=useState([]),[loading,setLoading]=useState(true),[query,setQuery]=useState(''),[saving,setSaving]=useState('');
@@ -20,6 +21,7 @@ export default function WebsiteStoreCatalog(){
     <p className="text-sm text-slate-500">{p.part_number} · {p.category} · ${Number(p.sell_price||0).toFixed(2)} · {p.quantity_on_hand||0} in stock</p>
     {p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
     <div className="mt-4"><ProductPhotoManager part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/></div>
+    <ProductListingContentEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>
     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
      {[['website_shipping_weight_oz','Weight (oz)'],['website_shipping_length_in','Length (in)'],['website_shipping_width_in','Width (in)'],['website_shipping_height_in','Height (in)']].map(([key,label])=><label key={key} className="text-xs text-slate-600">{label}<Input type="number" min="0" step="0.01" value={shippingDrafts[p.id]?.[key]??p[key]??''} onChange={e=>setShippingDrafts(d=>({...d,[p.id]:{...d[p.id],[key]:e.target.value}}))} className="mt-1"/></label>)}
      <label className="col-span-2 sm:col-span-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={shippingDrafts[p.id]?.website_shipping_requires_quote??!!p.website_shipping_requires_quote} onChange={e=>setShippingDrafts(d=>({...d,[p.id]:{...d[p.id],website_shipping_requires_quote:e.target.checked}}))}/> Requires custom shipping quote</label>
