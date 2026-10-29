@@ -1,10 +1,167 @@
 {
- "name":"WebsiteCartOrder","type":"object",
- "properties":{
- "order_reference":{"type":"string"},"checkout_token_hash":{"type":"string"},"status":{"type":"string","enum":["draft","pending_checkout","paid","processing","needs_review","cancelled","refunded"],"default":"draft"},
- "buyer_name":{"type":"string"},"buyer_email":{"type":"string"},"buyer_phone":{"type":"string"},"shipping_method":{"type":"string","enum":["ship","pickup"]},"shipping_address":{"type":"object","properties":{"line1":{"type":"string"},"line2":{"type":"string"},"city":{"type":"string"},"state":{"type":"string"},"postal_code":{"type":"string"},"country":{"type":"string"}}},
- "items_snapshot":{"type":"array","items":{"type":"object"}},"subtotal_cents":{"type":"integer"},"due_today_cents":{"type":"integer"},"remaining_engine_cents":{"type":"integer"},"shipping_cents":{"type":"integer"},"tax_cents":{"type":"integer"},"fee_cents":{"type":"integer"},"total_charge_cents":{"type":"integer"},"pricing_verified_at":{"type":"string","format":"date-time"},
- "stripe_session_id":{"type":"string"},"stripe_payment_intent":{"type":"string"},"paid_at":{"type":"string","format":"date-time"},"customer_id":{"type":"string"},"invoice_id":{"type":"string"},"engine_job_ids":{"type":"array","items":{"type":"string"}},"fulfillment_id":{"type":"string"},"fulfillment_error":{"type":"string"},"processing_claim":{"type":"string"},"processing_started_at":{"type":"string","format":"date-time"},"processed_at":{"type":"string","format":"date-time"}},
- "required":["order_reference","status","buyer_email","items_snapshot","subtotal_cents","due_today_cents"],
- "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
+  "name": "WebsiteCartOrder",
+  "type": "object",
+  "properties": {
+    "order_reference": {
+      "type": "string"
+    },
+    "checkout_token_hash": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_checkout",
+        "paid",
+        "processing",
+        "needs_review",
+        "cancelled",
+        "refunded"
+      ],
+      "default": "draft"
+    },
+    "shopper_user_id": {
+      "type": "string"
+    },
+    "buyer_name": {
+      "type": "string"
+    },
+    "buyer_email": {
+      "type": "string"
+    },
+    "buyer_phone": {
+      "type": "string"
+    },
+    "shipping_method": {
+      "type": "string",
+      "enum": [
+        "ship",
+        "pickup"
+      ]
+    },
+    "shipping_address": {
+      "type": "object",
+      "properties": {
+        "line1": {
+          "type": "string"
+        },
+        "line2": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    },
+    "items_snapshot": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "subtotal_cents": {
+      "type": "integer"
+    },
+    "due_today_cents": {
+      "type": "integer"
+    },
+    "remaining_engine_cents": {
+      "type": "integer"
+    },
+    "shipping_cents": {
+      "type": "integer"
+    },
+    "tax_cents": {
+      "type": "integer"
+    },
+    "fee_cents": {
+      "type": "integer"
+    },
+    "total_charge_cents": {
+      "type": "integer"
+    },
+    "pricing_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stripe_session_id": {
+      "type": "string"
+    },
+    "stripe_payment_intent": {
+      "type": "string"
+    },
+    "paid_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "invoice_id": {
+      "type": "string"
+    },
+    "engine_job_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fulfillment_id": {
+      "type": "string"
+    },
+    "fulfillment_error": {
+      "type": "string"
+    },
+    "processing_claim": {
+      "type": "string"
+    },
+    "processing_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "order_reference",
+    "status",
+    "buyer_email",
+    "items_snapshot",
+    "subtotal_cents",
+    "due_today_cents"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
