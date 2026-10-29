@@ -27,6 +27,7 @@ import PortalDocumentDialog from '@/components/portal/PortalDocumentDialog';
 import CardOnFileSettings from '@/components/portal/CardOnFileSettings';
 import AccountSetup, { accountContactComplete } from '@/components/portal/AccountSetup';
 import RacingGarage from '@/components/portal/RacingGarage';
+import PortalWebsiteOrders from '@/components/portal/PortalWebsiteOrders';
 import PortalTour from '@/components/portal/PortalTour';
 import { useAuth } from "@/lib/AuthContext";
 import {resolveCompanyLogo} from "@/lib/companyLogo";
@@ -509,10 +510,11 @@ export default function CustomerPortal() {
             <Button className="min-h-11 whitespace-normal bg-[#e20404] hover:bg-red-700" onClick={() => setPortalTab('invoices')}>View & Pay Invoices</Button>
           </div>
         </section>}
-        <div className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-slate-200 bg-white p-1" aria-label="Portal navigation">
+        <div className="mb-5 grid grid-cols-2 sm:grid-cols-5 gap-1 rounded-xl border border-slate-200 bg-white p-1" aria-label="Portal navigation">
           <button data-tour="home" onClick={()=>goPortalSection('home')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='home'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Home</button>
           <button data-tour="engines" onClick={()=>goPortalSection('engines')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='engines'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>My Engines</button>
           <button data-tour="documents" onClick={()=>goPortalSection('documents')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='documents'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Documents & Payments</button>
+          <button onClick={()=>goPortalSection('website-orders')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='website-orders'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Store Orders</button>
           <button data-tour="account" onClick={()=>goPortalSection('account')} className={`min-h-11 rounded-lg px-2 text-xs sm:text-sm font-semibold ${portalSection==='account'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}>Account</button>
         </div>
         {portalSection === 'engines' && <div className="mb-4 flex gap-2"><Button size="sm" variant={portalTab==='engines'?'default':'outline'} onClick={()=>setPortalTab('engines')}>Engines</Button><Button size="sm" variant={portalTab==='builds'?'default':'outline'} onClick={()=>setPortalTab('builds')}>Build History</Button></div>}
@@ -524,6 +526,8 @@ export default function CustomerPortal() {
               <p className="mt-1 text-sm text-slate-600">Use Home for what needs attention. My Engines keeps engine and build history together. Documents & Payments contains approvals, estimates, findings, invoices, credits and tax records.</p>
             </div>
           </TabsContent>
+
+          <TabsContent value="website-orders" className="mt-0"><PortalWebsiteOrders /></TabsContent>
 
           {/* ─── My Engines ─── */}
           <TabsContent value="engines">
