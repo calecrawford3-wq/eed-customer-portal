@@ -15,7 +15,7 @@ export default function WebsiteStoreCatalog(){
  const storeParts=useMemo(()=>parts.filter(p=>p.website_published||p.website_store_name||p.website_featured||(p.website_store_categories||[]).length||(p.website_variants||[]).length),[parts]);
  const shown=useMemo(()=>storeParts.filter(p=>(filter==='all'||(filter==='published'?p.website_published:!p.website_published))&&[p.website_store_name,p.name,p.part_number,p.category].join(' ').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>Number(!!b.website_published)-Number(!!a.website_published)||(a.website_store_name||a.name).localeCompare(b.website_store_name||b.name)),[storeParts,query,filter]);
  const inventoryMatches=useMemo(()=>parts.filter(p=>p.status!=='discontinued'&&[p.name,p.part_number,p.category].join(' ').toLowerCase().includes(inventoryQuery.toLowerCase())).slice(0,30),[parts,inventoryQuery]);
- const createListing=async(publish)=>{if(!selectedPart||!newName.trim()){toast.error('Enter a product name and select an inventory item');return}try{await save(selectedPart,{website_store_name:newName.trim(),website_published:publish});setEditingId(selectedPart.id);setAdding(false);setQuery('');setFilter('all')}catch{}};
+ const createListing=async(publish)=>{if(!selectedPart||!newName.trim()){toast.error('Enter a product name and select an inventory item');return}if(storeParts.some(p=>p.id===selectedPart.id)){toast.error('This inventory item already has a store listing. Edit the existing product instead.');return}try{await save(selectedPart,{website_store_name:newName.trim(),website_published:publish});setEditingId(selectedPart.id);setAdding(false);setQuery('');setFilter('all')}catch{}};
  const [storeCategories,setStoreCategories]=useState([]);
  const loadCategories=async()=>{try{const d=await base44.entities.StoreCategory.list();setStoreCategories(Array.isArray(d)?d:d?.items||[])}catch(e){toast.error('Could not load store categories')}};
  useEffect(()=>{loadCategories()},[]);
@@ -34,7 +34,7 @@ export default function WebsiteStoreCatalog(){
   {loading?<p className="mt-8">Loading inventory…</p>:<div className="mt-6 space-y-3">{shown.map(p=><article key={p.id} className="border bg-white rounded-xl p-5 flex flex-col lg:flex-row lg:items-start justify-between gap-5">
    <div className="min-w-0 flex-1">
     <h2 className="font-bold">{p.website_store_name||p.name}</h2><p className="text-xs text-slate-500">Inventory: {p.name}</p>
-    <p className="text-sm text-slate-500">{p.part_number} · {p.category} · ${Number(p.sell_price||0).toFixed(2)} · {p.quantity_on_hand||0} in stock</p>
+    <p className="text-sm text-slate-500">{p.part_number} · {p.category} · ${Number(p.sell_price||0).toFixed(2)} · {p.quantity_on_hand||0} in stock · {p.website_published?'Published':'Draft'}</p>
     {p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
     {editingId===p.id&&<><div className="mt-4"><ProductPhotoManager part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/></div>
     <ProductListingContentEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>
