@@ -52,7 +52,7 @@ export default async function(req:Request){
   const total=subtotal+shipping+tax;
   if(total<50)return fail('Total must be at least $0.50 for Stripe');
   const appId=Deno.env.get('BASE44_APP_ID')||'';
-  const session=await new Stripe(key).checkout.sessions.create({mode:'payment',customer_email:order.recipient_email,line_items:[{price_data:{currency:'usd',product_data:{name:'Elite manual order '+order.order_number},unit_amount:total},quantity:1}],success_url:'https://eliteenginedevelopment.com/site/cart/success',cancel_url:'https://eliteenginedevelopment.com/',metadata:{source:'eed_manual_order',fulfillment_id:order.id,app_id:appId}},{idempotencyKey:'manual-'+order.id+'-'+total});
+  const session=await new Stripe(key).checkout.sessions.create({mode:'payment',customer_email:order.recipient_email,line_items:[{price_data:{currency:'usd',product_data:{name:'Elite manual order '+order.order_number},unit_amount:total},quantity:1}],success_url:'https://eliteenginedevelopment.com/?manual_payment=success',cancel_url:'https://eliteenginedevelopment.com/?manual_payment=cancelled',metadata:{source:'eed_manual_order',fulfillment_id:order.id,app_id:appId}},{idempotencyKey:'manual-'+order.id+'-'+total});
   if(!session.url)return fail('Unable to generate payment link',503);
   await svc.entities.WebsitePartsFulfillment.update(order.id,{tax_cents:tax,manual_payment_session_id:session.id,manual_payment_url:session.url});
   return Response.json({url:session.url,totalCents:total});
