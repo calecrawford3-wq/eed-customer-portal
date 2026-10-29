@@ -10,3 +10,5 @@ Disallow: /estimate/
 Disallow: /guest/
 Disallow: /site/cart
 Sitemap: https://eliteenginedevelopment.com/sitemap.xml
+Sitemap: https://eliteenginedevelopment.com/sitemap-pages.xml
+Sitemap: https://eliteenginedevelopment.com/functions/dynamicArticleSitemap

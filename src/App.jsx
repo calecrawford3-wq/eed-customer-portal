@@ -112,11 +112,6 @@ const ALL_PAGE_NAMES = [...new Set([...Object.keys(Pages), ...EXPLICIT_PAGE_NAME
  * CustomerPortal (non-admin) or admin Layout + <Outlet/> (admin).
  */
 function AdminLayout() {
-  // Public marketing hostname must never send anonymous search visitors to staff sign-in.
-  // This guard also catches legacy paths not covered by an explicit redirect.
-  if (['eliteenginedevelopment.com','www.eliteenginedevelopment.com'].includes(window.location.hostname.toLowerCase())) {
-    return <Navigate to="/site" replace />;
-  }
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
   const location = useLocation();
   const [splashGone, setSplashGone] = useState(false);
@@ -136,6 +131,13 @@ function AdminLayout() {
       return () => clearTimeout(t);
     }
   }, [loading]);
+
+  // Public marketing hostname must never send anonymous search visitors to staff sign-in.
+  // This guard also catches legacy paths not covered by an explicit redirect.
+  // Declared after all hooks so hook order stays identical on every render.
+  if (['eliteenginedevelopment.com','www.eliteenginedevelopment.com'].includes(window.location.hostname.toLowerCase())) {
+    return <Navigate to="/site" replace />;
+  }
 
   if (loading) return <SplashScreen ready={false} />;
 
