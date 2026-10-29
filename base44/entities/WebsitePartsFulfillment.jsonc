@@ -74,6 +74,24 @@
     "subtotal_cents": {
       "type": "integer"
     },
+    "manual_shipping_selection": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "manual_payment_session_id": {
+      "type": "string"
+    },
+    "manual_payment_url": {
+      "type": "string"
+    },
+    "manual_paid_at": {
+      "type": "string"
+    },
+    "manual_payment_reference": {
+      "type": "string"
+    },
     "shipping_cents": {
       "type": "integer"
     },
