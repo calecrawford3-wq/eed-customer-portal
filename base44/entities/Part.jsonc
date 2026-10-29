@@ -142,6 +142,10 @@
         }
       }
     },
+    "website_store_name": {
+      "type": "string",
+      "description": "Public storefront title, independent of inventory name"
+    },
     "website_customization": {
       "type": "object",
       "description": "Optional buyer-entered personalization field configuration"
