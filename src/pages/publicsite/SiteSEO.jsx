@@ -2,6 +2,7 @@ import {seoServices} from './SiteSEOService';
 import {useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
 const pages={
+ resources:['Engine Resources | Elite Engine Development','Technical guides for Suzuki GSX-R600 and Yamaha R6 micro sprint engines, engine refreshes, machining and fuel injection.'],
  legal:['Terms and Conditions | Elite Engine Development','Official Elite Engine Development terms and conditions of sale, service, transfer, confidentiality, and website use, effective October 30, 2024.'],
  '': ['Elite Engine Development | Micro Sprint Racing Engines','Suzuki GSX-R600 and Yamaha YZF-R6 micro sprint race engines. Precision engine builds, refreshes, machining, fuel injection and real track testing.'],
  engines:['600cc Micro Sprint Engine Programs | Elite Engine Development','Explore Elite GSX-R600 and Yamaha R6 racing engine refreshes, track-ready builds and Elite Spec engine programs.'],
