@@ -23,7 +23,7 @@ export async function quoteWebsiteCart(svc:any,cart:any){
    if(custom.length>60||(!config?.enabled&&custom)||(config?.enabled&&config.required&&!custom)||(config?.enabled&&custom.length>Math.min(60,Math.max(1,Number(config.maxLength)||20))))return {error:'Invalid personalization for selected product',status:400};
    if(typeof id!=='string'||!Number.isSafeInteger(qty)||qty<1||qty>99)return {error:'Invalid part quantity',status:400};
    const p:any=pm.get(id),unit=cents(p?.sell_price);
-   if(!p||p.website_published!==true||p.status==='discontinued'||unit===null)return {error:'A part is no longer available',status:409};
+   if(!p||(!parentId&&p.website_published!==true)||p.status==='discontinued'||unit===null)return {error:'A part is no longer available',status:409};
    const totalQty=(requestedParts.get(id)||0)+qty;requestedParts.set(id,totalQty);
    if(Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
    const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
