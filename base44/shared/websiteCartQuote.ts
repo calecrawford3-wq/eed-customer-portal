@@ -15,15 +15,21 @@ export async function quoteWebsiteCart(svc:any,cart:any){
   if(!item||!['part','engine'].includes(item.type))return {error:'Invalid cart item',status:400};
   if(item.type==='part'){
    const id=item.id,qty=item.quantity;
+   const parentId=typeof item.parentId==='string'?item.parentId:'';
+   const parent:any=parentId?pm.get(parentId):null;
+   if(parentId&&(!parent||parent.website_published!==true||!Array.isArray(parent.website_variants)||!parent.website_variants.some((v:any)=>v.partId===id)))return {error:'Invalid product selection',status:409};
+   const custom=typeof item.personalization==='string'?item.personalization.trim():'';
+   const config:any=parentId?parent?.website_customization:pm.get(id)?.website_customization;
+   if(custom.length>60||(!config?.enabled&&custom)||(config?.enabled&&config.required&&!custom)||(config?.enabled&&custom.length>Math.min(60,Math.max(1,Number(config.maxLength)||20))))return {error:'Invalid personalization for selected product',status:400};
    if(typeof id!=='string'||!Number.isSafeInteger(qty)||qty<1||qty>99)return {error:'Invalid part quantity',status:400};
    const p:any=pm.get(id),unit=cents(p?.sell_price);
    if(!p||p.website_published!==true||p.status==='discontinued'||unit===null)return {error:'A part is no longer available',status:409};
    const totalQty=(requestedParts.get(id)||0)+qty;requestedParts.set(id,totalQty);
-   if(p.status!=='special_order'&&Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
+   if(Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
    const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
    // Store shipping is a flat rate; oversized or special-handling parts need a staff quote.
    if(p.website_shipping_requires_quote===true)missingShipping.push(String(p.part_number||p.name||id));
-   lines.push({type:'part',partId:id,sku:String(p.part_number||''),name:String(p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
+   lines.push({type:'part',partId:id,parentId:parentId||undefined,personalization:custom||undefined,sku:String(p.part_number||''),name:parentId?String(parent.name||'')+' — '+String(p.name||''):String(p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
   }else{
    if(item.quantity!==1||!Number.isInteger(item.stage)||!Array.isArray(item.addonIds))return {error:'Invalid engine configuration',status:400};
    const priced=await quoteEngineConfiguration(svc,{platform:item.platform,stage:item.stage,core:item.core,addonIds:item.addonIds});
