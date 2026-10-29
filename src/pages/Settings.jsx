@@ -74,7 +74,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams,setSearchParams] = useSearchParams();
-  const activeTab = ['overview','company','billing','payments','employees','engines','shop','inventory','portal','communications','system','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+  const activeTab = ['overview','company','billing','shipping','payments','employees','engines','shop','inventory','portal','communications','system','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
   const openTab = tab=>setSearchParams(tab==='overview'?{}:{tab});
   const [form, setForm] = useState(defaultSettings);
 
