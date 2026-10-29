@@ -11,7 +11,7 @@ export default function SiteStore(){
  const [categoryList,setCategoryList]=useState([]);
  const [products,setProducts]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(false),[query,setQuery]=useState(''),[category,setCategory]=useState('All'),[checkoutEnabled,setCheckoutEnabled]=useState(false),[active,setActive]=useState(null);
  useEffect(()=>{let alive=true;base44Public.functions.invoke('getPublicStoreCatalog',{}).then(r=>{const data=r?.data||r;if(!alive)return;setProducts(data?.products||[]);setCategoryList(data?.categories||[]);setCheckoutEnabled(data?.checkoutEnabled===true)}).catch(()=>{if(alive)setError(true)}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[]);
- const shown=products.filter(p=>(category==='All'||p.category===category)&&[p.name,p.sku,p.description].join(' ').toLowerCase().includes(query.toLowerCase()));
+ const shown=products.filter(p=>(category==='All'||(p.storeCategories||[]).includes(category))&&[p.name,p.sku,p.description].join(' ').toLowerCase().includes(query.toLowerCase()));
  return <main className="max-w-7xl mx-auto px-6 lg:px-10 py-24 min-h-[70vh]">
   <p className="text-red-500 uppercase tracking-[.3em] text-xs font-bold">Elite parts &amp; equipment</p>
   <h1 className="text-6xl md:text-8xl font-black tracking-[-.07em] uppercase mt-5">THE STORE.</h1>
