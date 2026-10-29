@@ -142,6 +142,18 @@
         }
       }
     },
+    "website_customization": {
+      "type": "object",
+      "description": "Optional buyer-entered personalization field configuration"
+    },
+    "website_variants": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Customer-selectable inventory part variants with their own SKU, price and stock"
+    },
     "website_store_categories": {
       "type": "array",
       "items": {
