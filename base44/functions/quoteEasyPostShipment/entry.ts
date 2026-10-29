@@ -13,7 +13,7 @@ export default async function(req:Request){
   if(typeof fulfillmentId!=='string'||!Array.isArray(packages)||packages.length<1||packages.length>10)return fail('Invalid shipment request');
   const svc=sdk.asServiceRole;
   const order=rows(await svc.entities.WebsitePartsFulfillment.filter({id:fulfillmentId}))[0];
-  if(!order||!order.payment_verified||['cancelled','awaiting_payment'].includes(order.status))return fail('A verified, active order is required',403);
+  if(!order||order.status==='cancelled')return fail('An active order is required',403);
   const origin=rows(await svc.entities.ShippingOrigin.list())[0];
   if(!origin)return fail('Set the shipping origin address in Boxes & Packaging first',409);
   let to:any={};try{to=JSON.parse(order.shipping_address||'{}')}catch{return fail('Shipping destination must be a structured address',409)}
