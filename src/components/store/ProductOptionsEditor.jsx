@@ -9,7 +9,7 @@ export default function ProductOptionsEditor({part,onSave,disabled}){
  const [busy,setBusy]=useState(false);
  const [searches,setSearches]=useState({});
  const [openPicker,setOpenPicker]=useState(null);
- useEffect(()=>{setStoreName(part.website_store_name||'');setConfig(part.website_customization||{enabled:false,label:'Driver number',required:false,maxLength:20});setVariants(part.website_variants||[])},[part.id,part.website_customization,part.website_variants]);
+ useEffect(()=>{setStoreName(part.website_store_name||'');setConfig(part.website_customization||{enabled:false,label:'Driver number',required:false,maxLength:20});setVariants((part.website_variants||[]).length?[...(part.website_variants||[]).filter(v=>v.partId===part.id),...(!(part.website_variants||[]).some(v=>v.partId===part.id)?[{partId:part.id,label:part.name}]:[]),...(part.website_variants||[]).filter(v=>v.partId!==part.id)]:[])},[part.id,part.website_customization,part.website_variants]);
  useEffect(()=>{base44.entities.Part.list().then(d=>setCatalog(Array.isArray(d)?d:d?.items||[])).catch(()=>{})},[]);
  const save=async()=>{if(variants.some(v=>!v.partId||!v.label?.trim())||new Set(variants.map(v=>v.partId)).size!==variants.length){toast.error('Every option needs a unique inventory part and a display label');return}setBusy(true);try{await onSave({website_store_name:storeName.trim(),website_customization:{...config,maxLength:Math.min(60,Math.max(1,Number(config.maxLength)||20))},website_variants:variants.length?[{partId:part.id,label:(variants.find(v=>v.partId===part.id)?.label||part.name).trim()},...variants.filter(v=>v.partId!==part.id).map(v=>({label:v.label.trim(),partId:v.partId}))]:[]})}catch{}finally{setBusy(false)}};
  return <div className="mt-4 border-t pt-4 space-y-3">
