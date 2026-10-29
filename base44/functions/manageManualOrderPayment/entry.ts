@@ -35,7 +35,7 @@ export default async function(req:Request){
   }
   const settings=await websiteStoreSettings(svc);
   let address:any={};try{address=JSON.parse(order.shipping_address||'{}')}catch{}
-  const state=String(address.state||'').toUpperCase();
+  const state=String(address.state||'').trim().toUpperCase().replace(/^OKLAHOMA$/,'OK');
   const tax=Math.round((state==='OK'?Number(order.subtotal_cents||0)+total:0)*settings.taxRatePercent/100);
   await svc.entities.WebsitePartsFulfillment.update(order.id,{shipping_cents:total,tax_cents:tax,manual_shipping_selection:selected});
   return Response.json({subtotalCents:order.subtotal_cents,shippingCents:total,taxCents:tax,totalCents:Number(order.subtotal_cents||0)+total+tax});
@@ -47,7 +47,7 @@ export default async function(req:Request){
   const settings=await websiteStoreSettings(svc);
   const shipping=Number(order.shipping_cents||0),subtotal=Number(order.subtotal_cents||0);
   let address:any={};try{address=JSON.parse(order.shipping_address||'{}')}catch{}
-  const state=order.shipping_method==='pickup'?'OK':String(address.state||'').toUpperCase();
+  const state=order.shipping_method==='pickup'?'OK':String(address.state||'').trim().toUpperCase().replace(/^OKLAHOMA$/,'OK');
   const tax=Math.round((state==='OK'?subtotal+shipping:0)*settings.taxRatePercent/100);
   const total=subtotal+shipping+tax;
   if(total<50)return fail('Total must be at least $0.50 for Stripe');
