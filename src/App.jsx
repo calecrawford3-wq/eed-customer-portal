@@ -82,6 +82,7 @@ import EstimateViewer from './pages/EstimateViewer';
 import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
 import PublicLegalViewer from './pages/PublicLegalViewer';
+import SiteLegal from './pages/publicsite/SiteLegal';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
@@ -204,6 +205,7 @@ const routes = createRoutesFromElements(
     {isPublicWebsiteDomain && <Route path="/contact" element={<Navigate to="/site/contact" replace />} />}
     {isPublicWebsiteDomain && <Route path="/builds" element={<Navigate to="/site/showcase" replace />} />}
 
+    <Route path="/legal" element={<SiteShell />}><Route index element={<SiteLegal />} /></Route>
     <Route path="/site" element={<SiteShell />}>
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
@@ -222,6 +224,7 @@ const routes = createRoutesFromElements(
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
+      <Route path="legal" element={<SiteLegal />} />
     </Route>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
     <Route path="/PortalAccess" element={isPublicWebsiteDomain ? <Navigate to="/site" replace /> : <PortalAccess />} />
