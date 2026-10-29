@@ -1,0 +1,6 @@
+{
+ "name":"WebsiteSEOPage","type":"object",
+ "properties":{"slug":{"type":"string"},"title":{"type":"string"},"meta_description":{"type":"string"},"primary_keyword":{"type":"string"},"body_markdown":{"type":"string"},"status":{"type":"string","default":"draft"},"updated_by_ai":{"type":"boolean","default":false}},
+ "required":["slug","title","status"],
+ "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
+}

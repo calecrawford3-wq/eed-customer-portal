@@ -1,3 +1,4 @@
+import WebsiteSEOManager from './pages/WebsiteSEOManager';
 import SiteSEOService from './pages/publicsite/SiteSEOService';
 import React, { useState, useEffect } from 'react'
 import SiteShell from './pages/publicsite/SiteShell';
@@ -238,6 +239,7 @@ const routes = createRoutesFromElements(
       <Route path="Credits" element={<Credits />} />
       <Route path="WebsiteEnginePricing" element={<WebsiteEnginePricing />} />
       <Route path="WebsiteAnalytics" element={<WebsiteAnalytics />} />
+      <Route path="WebsiteSEOManager" element={<WebsiteSEOManager />} />
       <Route path="WebsiteStoreCatalog" element={<WebsiteStoreCatalog />} />
       <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
