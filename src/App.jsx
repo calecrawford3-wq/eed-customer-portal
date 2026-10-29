@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import SiteShell from './pages/publicsite/SiteShell';
 import WebsiteEnginePricing from './pages/WebsiteEnginePricing';
+import WebsiteAnalytics from './pages/WebsiteAnalytics';
 import WebsiteStoreCatalog from './pages/WebsiteStoreCatalog';
 import WebsiteOrderFulfillment from './pages/WebsiteOrderFulfillment';
 import WebsiteMediaManager from './pages/WebsiteMediaManager';
@@ -224,6 +225,7 @@ const routes = createRoutesFromElements(
       {configPageRoutes}
       <Route path="Credits" element={<Credits />} />
       <Route path="WebsiteEnginePricing" element={<WebsiteEnginePricing />} />
+      <Route path="WebsiteAnalytics" element={<WebsiteAnalytics />} />
       <Route path="WebsiteStoreCatalog" element={<WebsiteStoreCatalog />} />
       <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
