@@ -211,6 +211,9 @@ const routes = createRoutesFromElements(
     {isPublicWebsiteDomain && <Route path="/" element={<SiteShell />}><Route index element={<SiteHome />} /></Route>}
     {isPublicWebsiteDomain && <Route path="/product-page/elite-600cc-micro-sprint-race-engine" element={<Navigate to="/site/engines" replace />} />}
     {isPublicWebsiteDomain && <Route path="/shop" element={<Navigate to="/site/store" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/cart" element={<Navigate to="/site/cart" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/checkout" element={<Navigate to="/site/cart" replace />} />}
+    {isPublicWebsiteDomain && <Route path="/site/checkout" element={<Navigate to="/site/cart" replace />} />}
     {isPublicWebsiteDomain && <Route path="/contact" element={<Navigate to="/site/contact" replace />} />}
     {isPublicWebsiteDomain && <Route path="/builds" element={<Navigate to="/site/showcase" replace />} />}
 
