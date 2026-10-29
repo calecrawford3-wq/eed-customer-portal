@@ -29,7 +29,7 @@ export async function quoteWebsiteCart(svc:any,cart:any){
    const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
    // Store shipping is a flat rate; oversized or special-handling parts need a staff quote.
    if(p.website_shipping_requires_quote===true)missingShipping.push(String(p.part_number||p.name||id));
-   lines.push({type:'part',partId:id,parentId:parentId||undefined,personalization:custom||undefined,sku:String(p.part_number||''),name:parentId?String(parent.name||'')+' — '+String(p.name||''):String(p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
+   lines.push({type:'part',partId:id,parentId:parentId||undefined,personalization:custom||undefined,sku:String(p.part_number||''),name:parentId?String(parent.website_store_name||parent.name||'')+' — '+String(parent.website_variants?.find((v:any)=>v.partId===id)?.label||p.name||''):String(p.website_store_name||p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
   }else{
    if(item.quantity!==1||!Number.isInteger(item.stage)||!Array.isArray(item.addonIds))return {error:'Invalid engine configuration',status:400};
    const priced=await quoteEngineConfiguration(svc,{platform:item.platform,stage:item.stage,core:item.core,addonIds:item.addonIds});
