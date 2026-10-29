@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {base44} from '@/api/base44Client';
+import {base44,base44Public} from '@/api/base44Client';
 import {toast} from 'sonner';
 import {Input} from '@/components/ui/input';
 import ProductPhotoManager from '@/components/store/ProductPhotoManager';
@@ -8,6 +8,8 @@ import StoreCategoryManager from '@/components/store/StoreCategoryManager';
 import ProductOptionsEditor from '@/components/store/ProductOptionsEditor';
 export default function WebsiteStoreCatalog(){
  const [shippingDrafts,setShippingDrafts]=useState({});
+ const [publicCheck,setPublicCheck]=useState({});
+ const verifyPublic=async p=>{setPublicCheck(v=>({...v,[p.id]:'Checking public catalog…'}));try{const r=await base44Public.functions.invoke('getPublicStoreCatalog',{});const d=r.data||r;if(d.error)throw Error(d.error);const found=(d.products||[]).find(x=>String(x.id)===String(p.id));setPublicCheck(v=>({...v,[p.id]:found?'Visible in public catalog feed. If missing on site, select Shop All, clear search and reload.':'Not returned by public catalog feed. Check inventory status, sell price and published flag.'}))}catch(e){setPublicCheck(v=>({...v,[p.id]:'Public catalog check failed: '+(e.message||'Unable to load')}))}};
  const [editorSection,setEditorSection]=useState('details');
  const [adding,setAdding]=useState(false),[inventoryQuery,setInventoryQuery]=useState(''),[newName,setNewName]=useState(''),[selectedPart,setSelectedPart]=useState(null),[editingId,setEditingId]=useState(null),[filter,setFilter]=useState('all');
  const [parts,setParts]=useState([]),[loading,setLoading]=useState(true),[query,setQuery]=useState(''),[saving,setSaving]=useState('');
@@ -36,7 +38,7 @@ export default function WebsiteStoreCatalog(){
    <div className="min-w-0 flex-1">
     <h2 className="font-bold">{p.website_store_name||p.name}</h2><p className="text-xs text-slate-500">Inventory: {p.name}</p>
     <p className="text-sm text-slate-500">{p.part_number} · {p.category} · ${Number(p.sell_price||0).toFixed(2)} · {p.quantity_on_hand||0} in stock · {p.website_published?'Published':'Draft'}</p>
-    {p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
+    <button type="button" className="text-xs underline text-blue-700 mt-2" onClick={()=>verifyPublic(p)}>Check public store visibility</button>{publicCheck[p.id]&&<p className="text-xs text-slate-600 mt-1">{publicCheck[p.id]}</p>}{p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
     {editingId===p.id&&<><nav aria-label="Product editor sections" className="flex flex-wrap gap-2 mt-5 mb-3">{[['details','Description'],['media','Photos'],['options','Variants & name'],['categories','Categories'],['shipping','Shipping']].map(([key,label])=><button type="button" key={key} onClick={()=>setEditorSection(key)} className={'rounded-lg border px-3 py-2 text-xs font-semibold '+(editorSection===key?'bg-slate-900 text-white':'bg-white text-slate-700')}>{label}</button>)}</nav>{editorSection==='media'&&<div className="mt-4"><ProductPhotoManager part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/></div>}
     {editorSection==='details'&&<ProductListingContentEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>} 
     {editorSection==='options'&&<ProductOptionsEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>} 
