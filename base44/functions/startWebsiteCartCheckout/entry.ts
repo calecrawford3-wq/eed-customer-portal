@@ -24,7 +24,7 @@ export default async function(req:Request){
 
   // Re-price from the catalog on every attempt so a stale cart can never be charged.
   const cartItems=(order.items_snapshot||[]).map((line:any)=>line.type==='part'
-    ?{type:'part',id:line.partId,quantity:line.quantity}
+    ?{type:'part',id:line.partId,parentId:line.parentId||undefined,personalization:line.personalization||'',quantity:line.quantity}
     :{type:'engine',platform:line.platform,stage:line.stage,core:line.core,addonIds:line.addonIds||[],quantity:1});
   const quoted=await quoteWebsiteCart(svc,cartItems);
   if(quoted.error)return fail('Cart prices or availability changed. Please review your cart.',409);
