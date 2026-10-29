@@ -19,6 +19,7 @@ export default async function(req:Request){
   if(!order.payment_verified)await svc.entities.WebsitePartsFulfillment.update(order.id,{payment_verified:true,status:'ready_to_pick',manual_paid_at:new Date().toISOString(),manual_payment_reference:String(session.payment_intent||session.id)});
   return Response.json({paid:true});
  }
+ if(order.order_payment_review_required)return fail('This order has a pending financial adjustment. Resolve it before collecting payment.',409);
  if(order.payment_verified||order.status==='cancelled'||order.manual_payment_session_id)return fail('Order is paid, cancelled, or already has a payment link',409);
  if(body.action==='set_shipping'){
   if(order.shipping_method!=='ship')return fail('This is a pickup order');
