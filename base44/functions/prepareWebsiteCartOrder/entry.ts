@@ -37,7 +37,7 @@ export default async function(req:Request){
 
   const token=[...crypto.getRandomValues(new Uint8Array(24))].map(b=>b.toString(16).padStart(2,'0')).join('');
   const order=await svc.entities.WebsiteCartOrder.create({
-    order_reference:'EC-'+crypto.randomUUID().slice(0,12).toUpperCase(),
+    order_reference:'EC-'+crypto.randomUUID().replace(/-/g,'').slice(0,12).toUpperCase(),
     status:'draft',
     checkout_token_hash:await sha256(token),
     buyer_name:name,buyer_email:email,buyer_phone:phone,
