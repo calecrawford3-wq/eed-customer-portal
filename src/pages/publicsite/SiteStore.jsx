@@ -4,12 +4,13 @@ import {Search,Package,ArrowUpRight,Images} from 'lucide-react';
 import {base44Public} from '@/api/base44Client';
 import {useCart} from './CartContext';
 import StoreProductDialog from '@/components/store/StoreProductDialog';
+import StoreCategoryCards from '@/components/store/StoreCategoryCards';
 const title=s=>String(s||'other').replace(/_/g,' ').replace(/\b\w/g,x=>x.toUpperCase());
 export default function SiteStore(){
  const {addPart}=useCart();
+ const [categoryList,setCategoryList]=useState([]);
  const [products,setProducts]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(false),[query,setQuery]=useState(''),[category,setCategory]=useState('All'),[checkoutEnabled,setCheckoutEnabled]=useState(false),[active,setActive]=useState(null);
- useEffect(()=>{let alive=true;base44Public.functions.invoke('getPublicStoreCatalog',{}).then(r=>{const data=r?.data||r;if(!alive)return;setProducts(data?.products||[]);setCheckoutEnabled(data?.checkoutEnabled===true)}).catch(()=>{if(alive)setError(true)}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[]);
- const categories=useMemo(()=>['All',...new Set(products.map(p=>p.category))], [products]);
+ useEffect(()=>{let alive=true;base44Public.functions.invoke('getPublicStoreCatalog',{}).then(r=>{const data=r?.data||r;if(!alive)return;setProducts(data?.products||[]);setCategoryList(data?.categories||[]);setCheckoutEnabled(data?.checkoutEnabled===true)}).catch(()=>{if(alive)setError(true)}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false}},[]);
  const shown=products.filter(p=>(category==='All'||p.category===category)&&[p.name,p.sku,p.description].join(' ').toLowerCase().includes(query.toLowerCase()));
  return <main className="max-w-7xl mx-auto px-6 lg:px-10 py-24 min-h-[70vh]">
   <p className="text-red-500 uppercase tracking-[.3em] text-xs font-bold">Elite parts &amp; equipment</p>
@@ -18,8 +19,8 @@ export default function SiteStore(){
   <div className="mt-8 border-l-2 border-red-600 pl-5 text-zinc-400 text-sm">{checkoutEnabled?'Secure card checkout is live. Parts ship from our Oklahoma shop or can be picked up locally.':'Online checkout is opening soon. Browse the catalog and contact Elite to order today.'}</div>
   <div className="mt-14 flex flex-col sm:flex-row gap-3">
    <label className="flex flex-1 items-center gap-3 border border-white/20 bg-[#191b1e] px-4 py-3"><Search size={18} className="text-zinc-500"/><input className="w-full bg-transparent outline-none text-sm placeholder:text-zinc-500" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search parts or part numbers" aria-label="Search products"/></label>
-   <select className="bg-[#191b1e] border border-white/20 p-3 text-sm" value={category} onChange={e=>setCategory(e.target.value)} aria-label="Filter by category">{categories.map(c=><option key={c} value={c}>{c==='All'?c:title(c)}</option>)}</select>
   </div>
+  {!loading&&!error&&<StoreCategoryCards categories={categoryList} products={products} active={category} onSelect={setCategory}/>}
   {loading?<p className="text-zinc-400 mt-12">Loading Elite catalog…</p>:error?<p className="mt-12 text-zinc-400">The catalog is temporarily unavailable. Please check back soon.</p>:shown.length?<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8">{shown.map(p=><article key={p.id} className="border border-white/10 bg-[#181a1d] overflow-hidden">
    <button type="button" onClick={()=>setActive(p)} aria-label={`View ${p.name}`} className="block w-full aspect-[4/3] bg-[#22252a] flex items-center justify-center overflow-hidden relative group">{p.imageUrl?<img src={p.imageUrl} alt={p.name} loading="lazy" className="w-full h-full object-contain"/>:<Package size={58} className="text-zinc-600"/>}{p.images?.length>1&&<span className="absolute bottom-3 right-3 inline-flex items-center gap-1 bg-black/70 text-[10px] uppercase tracking-widest px-2 py-1"><Images size={12}/>{p.images.length}</span>}</button>
    <div className="p-6"><p className="text-red-500 text-[11px] tracking-[.2em] uppercase font-semibold">{title(p.category)}</p><h2 className="text-xl font-bold mt-3"><button type="button" onClick={()=>setActive(p)} className="text-left hover:text-red-400">{p.name}</button></h2><p className="text-zinc-500 text-xs mt-1">{p.sku}</p>{p.description&&<p className="text-zinc-400 text-sm mt-4 line-clamp-3">{p.description}</p>}<div className="flex justify-between items-end gap-4 mt-8"><div><p className={p.inStock===false?'text-red-500 text-[11px] font-semibold uppercase tracking-wide':'text-zinc-500 text-xs'}>{p.availability}</p><p className="text-2xl font-black mt-1">${p.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</p></div><button type="button" onClick={()=>addPart(p)} disabled={p.inStock===false} className="bg-white text-black text-xs font-bold uppercase tracking-widest px-4 py-3 hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed">{p.inStock===false?'Out of stock':'Add to cart'}</button></div></div>

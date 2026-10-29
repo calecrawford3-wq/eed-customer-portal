@@ -4,16 +4,23 @@ import {toast} from 'sonner';
 import {Input} from '@/components/ui/input';
 import ProductPhotoManager from '@/components/store/ProductPhotoManager';
 import ProductListingContentEditor from '@/components/store/ProductListingContentEditor';
+import StoreCategoryManager from '@/components/store/StoreCategoryManager';
 export default function WebsiteStoreCatalog(){
  const [shippingDrafts,setShippingDrafts]=useState({});
  const [parts,setParts]=useState([]),[loading,setLoading]=useState(true),[query,setQuery]=useState(''),[saving,setSaving]=useState('');
  const load=async()=>{try{setParts(await base44.entities.Part.list())}catch(e){toast.error('Could not load parts')}finally{setLoading(false)}};
  useEffect(()=>{load()},[]);
  const shown=useMemo(()=>parts.filter(p=>[p.name,p.part_number,p.category].join(' ').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>Number(!!b.website_published)-Number(!!a.website_published)||a.name.localeCompare(b.name)),[parts,query]);
+ const categoryCards=useMemo(()=>{const map=new Map();parts.forEach(p=>{const k=p.category||'other';map.set(k,(map.get(k)||0)+1)});return [...map.entries()].map(([key,count])=>({key,count})).sort((a,b)=>a.key.localeCompare(b.key))},[parts]);
  const save=async(part,patch)=>{setSaving(part.id);try{await base44.entities.Part.update(part.id,patch);setParts(all=>all.map(p=>p.id===part.id?{...p,...patch}:p));toast.success('Store listing updated')}catch(e){toast.error('Unable to save listing');throw e}finally{setSaving('')}};
  return <main className="max-w-6xl mx-auto p-6 lg:p-10">
   <h1 className="text-3xl font-bold">Website Store Catalog</h1>
   <p className="text-slate-600 mt-2">Choose which inventory parts appear on the public Elite website. Selling prices update from inventory automatically. Internal costs and supplier details are never published.</p>
+  <section className="mt-8 border rounded-xl bg-slate-50 p-5">
+   <h2 className="font-bold">Store category cards</h2>
+   <p className="text-sm text-slate-600 mt-1 mb-4">Customers see these cards at the top of the public store. Add a photo and display name for each category; the first card is always Shop All.</p>
+   {loading?<p className="text-sm text-slate-500">Loading categories…</p>:<StoreCategoryManager categories={categoryCards}/>}
+  </section>
   <input className="mt-6 border rounded p-3 w-full" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search parts by name, number or category" aria-label="Search inventory"/>
   {loading?<p className="mt-8">Loading inventory…</p>:<div className="mt-6 space-y-3">{shown.map(p=><article key={p.id} className="border bg-white rounded-xl p-5 flex flex-col lg:flex-row lg:items-start justify-between gap-5">
    <div className="min-w-0 flex-1">
