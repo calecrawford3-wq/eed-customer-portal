@@ -17,6 +17,7 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
   const [priceOverride, setPriceOverride] = useState("");
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
+  const [compatiblePlatforms, setCompatiblePlatforms] = useState([]);
   const [items, setItems] = useState({ line_items: [], labor_items: [], machining_items: [] });
 
   const { data: categories = [] } = useQuery({
@@ -32,6 +33,7 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       setPriceOverride(addon.price_override != null ? String(addon.price_override) : "");
       setStatus(addon.status || "active");
       setNotes(addon.notes || "");
+      setCompatiblePlatforms(addon.compatible_platforms || []);
       setItems({
         line_items: addon.line_items || [],
         labor_items: addon.labor_items || [],
@@ -44,6 +46,7 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       setPriceOverride("");
       setStatus("active");
       setNotes("");
+      setCompatiblePlatforms([]);
       setItems({ line_items: [], labor_items: [], machining_items: [] });
     }
   }, [addon, open]);
@@ -64,6 +67,7 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
       price_override: po,
       status,
       notes: notes.trim(),
+      compatible_platforms: compatiblePlatforms,
     });
   };
 
@@ -119,6 +123,7 @@ export default function AddonDialog({ open, onClose, addon, isDuplicate = false,
               </Select>
             </div>
           </div>
+          <div className="space-y-2"><Label>Compatible engine platforms</Label><div className="flex flex-wrap gap-5">{["Suzuki GSX-R600","Yamaha YZF-R6"].map(platform=><label key={platform} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={compatiblePlatforms.includes(platform)} onChange={e=>setCompatiblePlatforms(prev=>e.target.checked?[...prev,platform]:prev.filter(x=>x!==platform))}/>{platform}</label>)}</div><p className="text-xs text-slate-500">Select all platforms this add-on supports. Leave both unchecked for an unassigned add-on.</p></div>
           <CannedItemsEditor cannedItems={items} onChange={setItems} showMachining />
           <div className="space-y-2">
             <Label>Notes</Label>
