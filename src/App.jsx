@@ -33,6 +33,7 @@ import WebsiteTestimonials from './pages/WebsiteTestimonials';
 import SiteTestimonials from './pages/publicsite/SiteTestimonials';
 import SiteStore from './pages/publicsite/SiteStore';
 import SiteCart from './pages/publicsite/SiteCart';
+import SiteAccount from './pages/publicsite/SiteAccount';
 import SiteOrderSuccess from './pages/publicsite/SiteOrderSuccess';
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
@@ -240,6 +241,7 @@ const routes = createRoutesFromElements(
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
+      <Route path="account" element={<SiteAccount />} />
       <Route path="cart/success" element={<SiteOrderSuccess />} />
       <Route path="legal" element={<SiteLegal />} />
     </Route>
