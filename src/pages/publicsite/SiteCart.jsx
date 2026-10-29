@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {base44Public} from '@/api/base44Client';
+import {base44,base44Public} from '@/api/base44Client';
 import {Link} from 'react-router-dom';
 import {ShoppingCart,Trash2,Plus,Minus,ShieldCheck} from 'lucide-react';
 import {useCart} from './CartContext';
@@ -8,6 +8,7 @@ const err=e=>e?.response?.data?.error||e?.message||'Something went wrong. Please
 export default function SiteCart(){
  const {items,count,setQuantity,remove,clear}=useCart();
  const [buyer,setBuyer]=useState({name:'',email:'',phone:''});
+ const [shopper,setShopper]=useState(null),[checkoutMode,setCheckoutMode]=useState('guest');
  const [shippingAddress,setShippingAddress]=useState({line1:'',line2:'',city:'',state:'',postal_code:''});
  const [addressSuggestions,setAddressSuggestions]=useState([]),[addressLoading,setAddressLoading]=useState(false),[addressConfigured,setAddressConfigured]=useState(null),[addressChosen,setAddressChosen]=useState(false);
  const [quote,setQuote]=useState(null),[quoteError,setQuoteError]=useState(''),[verifying,setVerifying]=useState(false),[delivery,setDelivery]=useState('ship');
@@ -15,6 +16,7 @@ export default function SiteCart(){
  const cartPayload=()=>items.map(i=>i.type==='part'?{type:'part',id:i.id,parentId:i.parentId||undefined,personalization:i.personalization||'',quantity:i.quantity}:{type:'engine',platform:i.platform,stage:i.stage,core:i.core,addonIds:i.addonIds||[],quantity:1});
  useEffect(()=>{if(!items.length){setQuote(null);return}let active=true;setQuote(null);setQuoteError('');setVerifying(true);const timer=setTimeout(()=>{base44Public.functions.invoke('quoteWebsiteCart',{items:items.map(i=>i.type==='part'?{type:'part',id:i.id,parentId:i.parentId||undefined,personalization:i.personalization||'',quantity:i.quantity}:{type:'engine',platform:i.platform,stage:i.stage,core:i.core,addonIds:i.addonIds||[],quantity:1})}).then(r=>{if(active)setQuote(r?.data||r)}).catch(e=>{if(active)setQuoteError(err(e))}).finally(()=>{if(active)setVerifying(false)})},350);return()=>{active=false;clearTimeout(timer)}},[items]);
  useEffect(()=>{const q=shippingAddress.line1.trim();if(delivery!=='ship'||addressChosen||q.length<4){setAddressSuggestions([]);return}let active=true;const timer=setTimeout(async()=>{setAddressLoading(true);try{const r=await base44Public.functions.invoke('suggestCheckoutAddress',{text:q}),d=r.data||r;if(active){setAddressSuggestions(d.suggestions||[]);setAddressConfigured(d.configured===true)}}catch{if(active)setAddressSuggestions([])}finally{if(active)setAddressLoading(false)}},350);return()=>{active=false;clearTimeout(timer)}},[shippingAddress.line1,addressChosen,delivery]);
+ useEffect(()=>{let active=true;(async()=>{try{const u=await base44.auth.me();if(!active||!u)return;setShopper(u);setCheckoutMode('account');const r=await base44.functions.invoke('manageWebsiteShopperAccount',{action:'get'}),d=r.data||r;if(!active)return;setBuyer(v=>({name:d.profile?.name||u.full_name||v.name,email:u.email||v.email,phone:d.profile?.phone||v.phone}));if(d.profile?.address?.line1){setShippingAddress(v=>({...v,...d.profile.address}));setAddressChosen(true)}}catch{}})();return()=>{active=false}},[]);
  const subtotal=items.reduce((n,x)=>n+(Number(x.price)||0)*x.quantity,0);
  const deposit=items.reduce((n,x)=>n+(x.type==='engine'?(Number(x.deposit)||0):(Number(x.price)||0))*x.quantity,0);
  const checkoutEnabled=quote?.checkoutEnabled===true;
@@ -69,7 +71,9 @@ export default function SiteCart(){
      <p className="text-xs text-zinc-500 mt-3">{delivery==='pickup'?'Pickup is free. We will email you when your order is ready to collect. Oklahoma sales tax still applies.':'Shipping is charged at the store flat rate. Engine freight is billed separately when the build is complete.'}</p>
     </fieldset>
     <section className="mt-6 border-t border-white/15 pt-5">
-     <h3 className="font-semibold text-sm">Customer details</h3>
+     <h3 className="font-semibold text-sm">Checkout options</h3>
+     {shopper?<div className="mt-3 space-y-2 text-sm"><p className="text-green-300">Signed in as {shopper.email}</p><label className="flex gap-2 items-center"><input type="radio" checked={checkoutMode==='account'} onChange={()=>setCheckoutMode('account')}/> Checkout with my account</label><label className="flex gap-2 items-center"><input type="radio" checked={checkoutMode==='guest'} onChange={()=>setCheckoutMode('guest')}/> Checkout as guest</label><Link className="block underline text-zinc-300 mt-2" to="/site/account">My account, saved address & orders</Link></div>:<div className="mt-3 text-sm"><p className="text-zinc-400">You can pay without creating an account.</p><button type="button" className="mt-3 bg-white text-black font-bold px-4 py-3" onClick={()=>base44.auth.redirectToLogin(window.location.href)}>Sign in / Create account</button><p className="text-zinc-400 mt-3">Or continue as guest below.</p></div>}
+     <h3 className="font-semibold text-sm mt-6">Customer details</h3>
      <p className="text-zinc-400 text-xs mt-1">For your receipt and order updates. No account required.</p>
      <div className="mt-4 space-y-3">{[['name','Full name','name'],['email','Email address','email'],['phone','Phone number','tel']].map(([key,label,type])=><label key={key} className="block text-xs text-zinc-300">{label}<input type={type} autoComplete={type} value={buyer[key]} onChange={e=>setBuyer(v=>({...v,[key]:e.target.value}))} className="block w-full mt-1.5 bg-[#111315] border border-white/20 p-3 text-white text-sm focus:border-red-500 outline-none"/></label>)}</div>
      {delivery==='ship'&&<>
