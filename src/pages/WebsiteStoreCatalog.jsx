@@ -8,6 +8,7 @@ import StoreCategoryManager from '@/components/store/StoreCategoryManager';
 import ProductOptionsEditor from '@/components/store/ProductOptionsEditor';
 export default function WebsiteStoreCatalog(){
  const [shippingDrafts,setShippingDrafts]=useState({});
+ const [editorSection,setEditorSection]=useState('details');
  const [adding,setAdding]=useState(false),[inventoryQuery,setInventoryQuery]=useState(''),[newName,setNewName]=useState(''),[selectedPart,setSelectedPart]=useState(null),[editingId,setEditingId]=useState(null),[filter,setFilter]=useState('all');
  const [parts,setParts]=useState([]),[loading,setLoading]=useState(true),[query,setQuery]=useState(''),[saving,setSaving]=useState('');
  const load=async()=>{try{setParts(await base44.entities.Part.list())}catch(e){toast.error('Could not load parts')}finally{setLoading(false)}};
