@@ -1,6 +1,12 @@
 User-agent: *
-Allow: /site
+Allow: /
 Disallow: /CustomerPortal
+Disallow: /PortalAccess
+Disallow: /WebsiteAnalytics
 Disallow: /WebsiteInquiries
 Disallow: /WebsiteTestimonials
+Disallow: /invoice/
+Disallow: /estimate/
+Disallow: /guest/
+Disallow: /site/cart
 Sitemap: https://eliteenginedevelopment.com/sitemap.xml
