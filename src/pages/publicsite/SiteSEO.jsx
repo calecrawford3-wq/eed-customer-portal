@@ -9,6 +9,7 @@ const pages={
  legal:['Terms and Conditions | Elite Engine Development','Official Elite Engine Development terms and conditions of sale, service, transfer, confidentiality, and website use, effective October 30, 2024.'],
  '': ['Micro Sprint Engine Builders | Elite Engine Development','Oklahoma-based 600cc micro sprint engine builders specializing in Suzuki GSX-R600 and Yamaha YZF-R6 racing engines, refreshes, precision machining and track development.'],
  engines:['600cc Micro Sprint Racing Engines & Builders | Elite','Shop Suzuki GSX-R600 and Yamaha R6 micro sprint racing engine builds and refreshes. Compare Elite engine programs, pricing and track-ready options.'],
+ store:['Store | Elite Engine Development','Shop Elite Engine Development performance products, FuelTech equipment, wiring harnesses, racing accessories, and merchandise.'],
  builder:['Configure a Micro Sprint Racing Engine | Elite','Configure your Suzuki GSX-R600 or Yamaha YZF-R6 micro sprint engine program with Elite Engine Development.'],
  machining:['Cylinder Head Machining & Valve Jobs | Elite','Micro sprint cylinder head valve jobs, valve seat work, head resurfacing and engine case decking. Mail-in machining services.'],
  injection:['Elite FDS Fuel Delivery System | Elite Engine Development','Elite FDS bolt-on fuel delivery and FuelTech engine management, exclusively for Elite engine customers.'],
