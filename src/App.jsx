@@ -1,6 +1,7 @@
 import SiteSEOArticle from './pages/publicsite/SiteSEOArticle';
 import SiteResources from './pages/publicsite/SiteResources';
 import SiteBrandAssets from './pages/publicsite/SiteBrandAssets';
+import SiteGearCharts from './pages/publicsite/SiteGearCharts';
 import WebsiteSEOManager from './pages/WebsiteSEOManager';
 import SiteSEOService from './pages/publicsite/SiteSEOService';
 import React, { useState, useEffect } from 'react'
@@ -215,6 +216,8 @@ const routes = createRoutesFromElements(
       <Route path="articles/:slug" element={<SiteSEOArticle />} />
       <Route path="resources" element={<SiteResources />} />
       <Route path="logos" element={<SiteBrandAssets />} />
+      <Route path="gear-charts" element={<SiteGearCharts />} />
+      <Route path="gear-charts/:slug" element={<SiteGearCharts />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
       <Route path="injection" element={<SiteInjection />} />
