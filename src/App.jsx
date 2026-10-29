@@ -1,3 +1,4 @@
+import SiteSEOArticle from './pages/publicsite/SiteSEOArticle';
 import WebsiteSEOManager from './pages/WebsiteSEOManager';
 import SiteSEOService from './pages/publicsite/SiteSEOService';
 import React, { useState, useEffect } from 'react'
@@ -207,6 +208,7 @@ const routes = createRoutesFromElements(
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
       <Route path="services/:slug" element={<SiteSEOService />} />
+      <Route path="articles/:slug" element={<SiteSEOArticle />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
       <Route path="injection" element={<SiteInjection />} />
