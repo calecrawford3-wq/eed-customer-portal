@@ -12,6 +12,7 @@ import WebsiteStoreCatalog from './pages/WebsiteStoreCatalog';
 import WebsiteOrderFulfillment from './pages/WebsiteOrderFulfillment';
 import WebsiteMediaManager from './pages/WebsiteMediaManager';
 import WebsiteCartOrders from './pages/WebsiteCartOrders';
+import WebsiteManager from './pages/WebsiteManager';
 import SiteHome from './pages/publicsite/SiteHome';
 import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
@@ -259,6 +260,7 @@ const routes = createRoutesFromElements(
       <Route path="WebsiteStoreCatalog" element={<WebsiteStoreCatalog />} />
       <Route path="WebsiteOrderFulfillment" element={<WebsiteOrderFulfillment />} />
       <Route path="WebsiteMediaManager" element={<WebsiteMediaManager />} />
+      <Route path="WebsiteManager" element={<WebsiteManager />} />
       <Route path="WebsiteCartOrders" element={<WebsiteCartOrders />} />
       <Route path="WebsiteMachiningRequests" element={<WebsiteMachiningRequests />} />
       <Route path="WebsiteInquiries" element={<WebsiteInquiries />} />
