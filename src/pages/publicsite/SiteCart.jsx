@@ -28,7 +28,7 @@ export default function SiteCart(){
   if(delivery==='ship'&&(!shippingAddress.line1.trim()||!shippingAddress.city.trim()||!shippingAddress.state.trim()||!/^\d{5}(-\d{4})?$/.test(shippingAddress.postal_code.trim()))){setSubmitError('Enter a complete US shipping address with a valid ZIP code.');return}
   setSubmitting(true);
   try{
-   const prepared=await base44Public.functions.invoke('prepareWebsiteCartOrder',{items:cartPayload(),buyer,shipping:{method:delivery,address:delivery==='ship'?{...shippingAddress,country:'US'}:{}}});
+   const prepared=await (checkoutMode==='account'&&shopper?base44:base44Public).functions.invoke('prepareWebsiteCartOrder',{items:cartPayload(),buyer,checkoutMode,shipping:{method:delivery,address:delivery==='ship'?{...shippingAddress,country:'US'}:{}}});
    const order=prepared?.data||prepared;
    if(!order?.orderReference)throw new Error(order?.error||'Unable to prepare your order');
    const started=await base44Public.functions.invoke('startWebsiteCartCheckout',{orderReference:order.orderReference,checkoutToken:order.checkoutToken});
