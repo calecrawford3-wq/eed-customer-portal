@@ -8,7 +8,8 @@ export default async function(req:Request){
  if(req.method!=='POST')return fail('Method not allowed',405);
  try{
   const body=await req.json().catch(()=>({}));
-  const svc=createClientFromRequest(req).asServiceRole;
+  const sdk=createClientFromRequest(req),svc=sdk.asServiceRole;
+  const shopper=body?.checkoutMode==='account'?await sdk.auth.me().catch(()=>null):null;
   const settings=await websiteStoreSettings(svc);
   if(!settings.checkoutEnabled)return fail('Online checkout is not open yet',403);
   const buyer=body?.buyer||{},shipping=body?.shipping||{};
@@ -40,6 +41,7 @@ export default async function(req:Request){
     order_reference:'EC-'+crypto.randomUUID().replace(/-/g,'').slice(0,12).toUpperCase(),
     status:'draft',
     checkout_token_hash:await sha256(token),
+    shopper_user_id:shopper?.id&&String(shopper.email||'').toLowerCase()===email?String(shopper.id):'',
     buyer_name:name,buyer_email:email,buyer_phone:phone,
     shipping_method:shipping.method,
     shipping_address:shipping.method==='ship'?safeAddress:{},
