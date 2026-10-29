@@ -5,6 +5,7 @@ import {Input} from '@/components/ui/input';
 import ProductPhotoManager from '@/components/store/ProductPhotoManager';
 import ProductListingContentEditor from '@/components/store/ProductListingContentEditor';
 import StoreCategoryManager from '@/components/store/StoreCategoryManager';
+import ProductOptionsEditor from '@/components/store/ProductOptionsEditor';
 export default function WebsiteStoreCatalog(){
  const [shippingDrafts,setShippingDrafts]=useState({});
  const [parts,setParts]=useState([]),[loading,setLoading]=useState(true),[query,setQuery]=useState(''),[saving,setSaving]=useState('');
@@ -31,6 +32,7 @@ export default function WebsiteStoreCatalog(){
     {p.status==='discontinued'&&<p className="text-red-700 text-xs">Discontinued — never shown publicly</p>}
     <div className="mt-4"><ProductPhotoManager part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/></div>
     <ProductListingContentEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>
+    <ProductOptionsEditor part={p} disabled={saving===p.id} onSave={patch=>save(p,patch)}/>
     <div className="mt-4 rounded-lg border p-3"><p className="font-semibold text-sm">Storefront categories</p><p className="text-xs text-slate-500 mb-2">Shop All automatically includes every published product.</p><div className="flex flex-wrap gap-3">{storeCategories.filter(c=>c.category_key!=='All').map(c=><label key={c.id} className="inline-flex gap-2 items-center text-sm"><input type="checkbox" disabled={saving===p.id} checked={(p.website_store_categories||[]).includes(c.category_key)} onChange={e=>{const current=p.website_store_categories||[];save(p,{website_store_categories:e.target.checked?[...new Set([...current,c.category_key])]:current.filter(k=>k!==c.category_key)})}}/>{c.label||c.category_key}</label>)}{!storeCategories.length&&<p className="text-xs text-slate-500">Create storefront categories above to assign products.</p>}</div></div>
     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
      {[['website_shipping_weight_oz','Weight (oz)'],['website_shipping_length_in','Length (in)'],['website_shipping_width_in','Width (in)'],['website_shipping_height_in','Height (in)']].map(([key,label])=><label key={key} className="text-xs text-slate-600">{label}<Input type="number" min="0" step="0.01" value={shippingDrafts[p.id]?.[key]??p[key]??''} onChange={e=>setShippingDrafts(d=>({...d,[p.id]:{...d[p.id],[key]:e.target.value}}))} className="mt-1"/></label>)}
