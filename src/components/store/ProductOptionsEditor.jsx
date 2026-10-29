@@ -4,7 +4,7 @@ import {toast} from 'sonner';
 export default function ProductOptionsEditor({part,onSave,disabled}){
  const [storeName,setStoreName]=useState(part.website_store_name||'');
  const [config,setConfig]=useState(part.website_customization||{enabled:false,label:'Driver number',required:false,maxLength:20});
- const [variants,setVariants]=useState(part.website_variants||[]);
+ const [variants,setVariants]=useState((part.website_variants||[]).length?[...(part.website_variants||[]).filter(v=>v.partId===part.id),...(!(part.website_variants||[]).some(v=>v.partId===part.id)?[{partId:part.id,label:part.name}]:[]),...(part.website_variants||[]).filter(v=>v.partId!==part.id)]:[]);
  const [catalog,setCatalog]=useState([]);
  const [busy,setBusy]=useState(false);
  const [searches,setSearches]=useState({});
