@@ -74,6 +74,21 @@
     "subtotal_cents": {
       "type": "integer"
     },
+    "order_revision_history": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "order_adjustment_due_cents": {
+      "type": "integer"
+    },
+    "order_adjustment_refund_cents": {
+      "type": "integer"
+    },
+    "order_payment_review_required": {
+      "type": "boolean"
+    },
     "manual_shipping_selection": {
       "type": "array",
       "items": {
