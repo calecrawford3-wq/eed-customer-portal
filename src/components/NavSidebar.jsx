@@ -103,9 +103,10 @@ const navSections = [
   {
     label: "Website Management",
     icon: ShoppingCart,
-    main: { name: "Website Orders", page: "WebsiteCartOrders" },
+    main: { name: "Website Dashboard", page: "WebsiteManager" },
     secondary: [
-      { name: "Store Catalog", page: "WebsiteStoreCatalog", icon: Package },
+      { name: "Orders", page: "WebsiteCartOrders", icon: ShoppingCart },
+      { name: "Products", page: "WebsiteStoreCatalog", icon: Package },
       { name: "Engine Stage Builds", page: "WebsiteEnginePricing", icon: Wrench },
       { name: "Website Analytics", page: "WebsiteAnalytics", icon: BarChart2 },
       { name: "Order Fulfillment", page: "WebsiteOrderFulfillment", icon: Truck },
