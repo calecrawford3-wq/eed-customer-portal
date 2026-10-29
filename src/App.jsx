@@ -1,3 +1,4 @@
+import SiteSEOService from './pages/publicsite/SiteSEOService';
 import React, { useState, useEffect } from 'react'
 import SiteShell from './pages/publicsite/SiteShell';
 import WebsiteEnginePricing from './pages/WebsiteEnginePricing';
@@ -194,6 +195,7 @@ const routes = createRoutesFromElements(
     <Route path="/site" element={<SiteShell />}>
       <Route index element={<SiteHome />} />
       <Route path="builder" element={<SiteBuilder />} />
+      <Route path="services/:slug" element={<SiteSEOService />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
       <Route path="injection" element={<SiteInjection />} />
