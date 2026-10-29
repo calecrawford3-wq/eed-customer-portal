@@ -1,0 +1,57 @@
+{
+  "name": "WebsiteStoreSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Settings key, always 'global'"
+    },
+    "checkout_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the public store accepts online card payments through Stripe Checkout"
+    },
+    "shipping_flat_cents": {
+      "type": "number",
+      "default": 0,
+      "description": "Flat shipping charge in cents for shipped parts orders"
+    },
+    "free_shipping_threshold_cents": {
+      "type": "number",
+      "default": 0,
+      "description": "Parts subtotal in cents that earns free shipping. 0 disables the threshold."
+    },
+    "pickup_instructions": {
+      "type": "string",
+      "description": "Pickup instructions shown to the customer in the cart"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -116,6 +116,14 @@
       "type": "string",
       "description": "Optional public image URL"
     },
+    "website_images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Additional public product photo URLs shown in the website store gallery. The first photo is the primary listing image."
+    },
     "website_featured": {
       "type": "boolean",
       "default": false
