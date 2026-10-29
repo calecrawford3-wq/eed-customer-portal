@@ -4,7 +4,7 @@ import {Package} from 'lucide-react';
 import ProductDetailSections from '@/components/store/ProductDetailSections';
 const title=s=>String(s||'other').replace(/_/g,' ').replace(/\b\w/g,x=>x.toUpperCase());
 export default function StoreProductDialog({product,onClose,onAdd}){
- const [active,setActive]=useState(0),[variantId,setVariantId]=useState(''),[personalization,setPersonalization]=useState('');
+ const [active,setActive]=useState(0),[variantId,setVariantId]=useState(''),[personalization,setPersonalization]=useState(''),[quantity,setQuantity]=useState(1);
  if(!product)return null;
  const photos=product.images?.length?product.images:(product.imageUrl?[product.imageUrl]:[]);
  const variants=product.variants||[];const selected=variants.find(v=>v.partId===variantId);const inStock=variants.length?!!selected?.inStock:product.inStock!==false;const custom=product.customization;const customValid=!custom?.enabled||((!custom.required||!!personalization.trim())&&personalization.trim().length<=(custom.maxLength||20));const add=()=>{if(!inStock||!customValid)return;onAdd({...product,id:selected?.partId||product.id,parentId:selected?product.id:undefined,sku:selected?.sku||product.sku,price:selected?.price??product.price,name:selected?product.name+' — '+selected.label:product.name,personalization:custom?.enabled?personalization.trim():'',variantLabel:selected?.label||''});setVariantId('');setPersonalization('')};
