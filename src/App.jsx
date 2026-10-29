@@ -106,6 +106,11 @@ const ALL_PAGE_NAMES = [...new Set([...Object.keys(Pages), ...EXPLICIT_PAGE_NAME
  * CustomerPortal (non-admin) or admin Layout + <Outlet/> (admin).
  */
 function AdminLayout() {
+  // Public marketing hostname must never send anonymous search visitors to staff sign-in.
+  // This guard also catches legacy paths not covered by an explicit redirect.
+  if (['eliteenginedevelopment.com','www.eliteenginedevelopment.com'].includes(window.location.hostname.toLowerCase())) {
+    return <Navigate to="/site" replace />;
+  }
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
   const location = useLocation();
   const [splashGone, setSplashGone] = useState(false);
@@ -216,7 +221,7 @@ const routes = createRoutesFromElements(
       <Route path="cart" element={<SiteCart />} />
     </Route>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
-    <Route path="/PortalAccess" element={<PortalAccess />} />
+    <Route path="/PortalAccess" element={isPublicWebsiteDomain ? <Navigate to="/site" replace /> : <PortalAccess />} />
     <Route path="/guest/:type/:token" element={<GuestPayment />} />
     <Route path="/forgot-password" element={<PortalAccess initialMode="forgot" />} />
     <Route path="/reset-password" element={<PortalResetPassword />} />
