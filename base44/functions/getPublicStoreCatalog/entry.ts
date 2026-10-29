@@ -18,14 +18,11 @@ export default async function(req:Request){
    .map((p:any)=>{const photos=images(p);const inStock=Number(p.quantity_on_hand)>0;return {id:String(p.id),name:String(p.name||''),sku:String(p.part_number||''),description:String(p.website_description||p.description||'').slice(0,600),category:String(p.category||'other'),storeCategories:Array.isArray(p.website_store_categories)?p.website_store_categories.filter((x:any)=>typeof x==='string'):[],price:Number(p.sell_price),imageUrl:photos[0]||'',images:photos,details:details(p),featured:p.website_featured===true,inStock,availability:inStock?(p.status==='special_order'?'Special order':'In stock'):'Out of stock'};})
    .sort((a:any,b:any)=>Number(b.featured)-Number(a.featured)||a.name.localeCompare(b.name));
   const overrides=new Map<string,any>();rows(await svc.entities.StoreCategory.list()).forEach((c:any)=>overrides.set(String(c.category_key||''),c));
-  const counts=new Map<string,number>();const firstImage=new Map<string,string>();
-  products.forEach((p:any)=>{counts.set(p.category,(counts.get(p.category)||0)+1);if(p.imageUrl&&!firstImage.get(p.category))firstImage.set(p.category,p.imageUrl)});
-  const categories=[...counts.entries()].map(([key,count])=>{
-   const meta=overrides.get(key)||{};
-   const label=String(meta.label||'').trim().slice(0,60)||key.replace(/_/g,' ').replace(/\b\w/g,x=>x.toUpperCase());
-   const image=typeof meta.image_url==='string'&&/^https:\/\//.test(meta.image_url)?meta.image_url:firstImage.get(key)||'';
-   return {key,label,imageUrl:image,count,sortOrder:Number(meta.sort_order)||0,visible:meta.visible!==false};
-  }).filter((c:any)=>c.visible).sort((a:any,b:any)=>a.sortOrder-b.sortOrder||a.label.localeCompare(b.label)).map(({visible,...c}:any)=>c);
+  const categories=[...overrides.values()].filter((c:any)=>c.visible!==false&&c.category_key!=='All').map((c:any)=>{
+   const key=String(c.category_key||'');const matching=products.filter((p:any)=>p.storeCategories.includes(key));
+   const image=typeof c.image_url==='string'&&/^https:\/\//.test(c.image_url)?c.image_url:matching.find((p:any)=>p.imageUrl)?.imageUrl||'';
+   return {key,label:String(c.label||key).trim().slice(0,60),imageUrl:image,count:matching.length,sortOrder:Number(c.sort_order)||0};
+  }).filter((c:any)=>c.key).sort((a:any,b:any)=>a.sortOrder-b.sortOrder||a.label.localeCompare(b.label));
   const settings=await websiteStoreSettings(svc);
   return Response.json({products,categories,checkoutEnabled:settings.checkoutEnabled,updatedAt:new Date().toISOString()},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:'Catalog temporarily unavailable'},{status:503});}
