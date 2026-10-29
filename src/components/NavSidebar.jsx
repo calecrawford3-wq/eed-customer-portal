@@ -107,6 +107,7 @@ const navSections = [
     secondary: [
       { name: "Store Catalog", page: "WebsiteStoreCatalog", icon: Package },
       { name: "Engine Stage Builds", page: "WebsiteEnginePricing", icon: Wrench },
+      { name: "Website Analytics", page: "WebsiteAnalytics", icon: BarChart2 },
       { name: "Order Fulfillment", page: "WebsiteOrderFulfillment", icon: Truck },
       { name: "Website Media", page: "WebsiteMediaManager", icon: Monitor },
       { name: "Website Inquiries", page: "WebsiteInquiries", icon: MessageSquare },
