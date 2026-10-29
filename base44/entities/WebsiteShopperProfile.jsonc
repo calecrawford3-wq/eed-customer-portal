@@ -1,0 +1,50 @@
+{
+  "name": "WebsiteShopperProfile",
+  "type": "object",
+  "properties": {
+    "auth_user_id": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "default_shipping_address": {
+      "type": "object"
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "auth_user_id",
+    "email"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
