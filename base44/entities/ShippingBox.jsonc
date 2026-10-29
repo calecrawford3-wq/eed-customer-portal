@@ -1,0 +1,69 @@
+{
+  "name": "ShippingBox",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "inside_length_in": {
+      "type": "number"
+    },
+    "inside_width_in": {
+      "type": "number"
+    },
+    "inside_height_in": {
+      "type": "number"
+    },
+    "empty_weight_oz": {
+      "type": "number"
+    },
+    "max_weight_lb": {
+      "type": "number"
+    },
+    "cost_dollars": {
+      "type": "number"
+    },
+    "quantity_on_hand": {
+      "type": "integer"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "inside_length_in",
+    "inside_width_in",
+    "inside_height_in",
+    "empty_weight_oz"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
