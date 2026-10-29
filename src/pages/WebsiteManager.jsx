@@ -7,6 +7,7 @@ const sections=[
  {title:'Products',desc:'Create listings, link inventory, edit photos and variants',to:'/WebsiteStoreCatalog',icon:Package},
  {title:'Orders',desc:'Review purchases, payments and order allocation',to:'/WebsiteCartOrders',icon:ShoppingBag},
  {title:'Fulfillment',desc:'Pick, pack, track and ship orders',to:'/WebsiteOrderFulfillment',icon:Truck},
+ {title:'Boxes & Packaging',desc:'Stocked boxes, inside dimensions and weights',to:'/WebsiteShippingBoxes',icon:Package},
  {title:'Shipping settings',desc:'Checkout shipping prices and carrier configuration',to:'/Settings?tab=shipping',icon:Settings},
  {title:'Website analytics',desc:'Traffic, engagement and conversions',to:'/WebsiteAnalytics',icon:ChartNoAxesCombined},
  {title:'Customer inquiries',desc:'New website leads and requests',to:'/WebsiteInquiries',icon:MessageSquare},
