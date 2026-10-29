@@ -4,7 +4,7 @@
   "properties": {
     "category_key": {
       "type": "string",
-      "description": "Inventory part category this card represents (e.g. block, valvetrain, gaskets)"
+      "description": "Independent public storefront category, unrelated to inventory category"
     },
     "label": {
       "type": "string",
