@@ -27,6 +27,7 @@ import SiteContact from './pages/publicsite/SiteContact';
 import SiteShowcase from './pages/publicsite/SiteShowcase';
 import SiteInquiry from './pages/publicsite/SiteInquiry';
 import SiteMachiningForm from './pages/publicsite/SiteMachiningForm';
+import SiteSuperfinishingForm from './pages/publicsite/SiteSuperfinishingForm';
 import WebsiteMachiningRequests from './pages/WebsiteMachiningRequests';
 import WebsiteInquiries from './pages/WebsiteInquiries';
 import WebsiteTestimonials from './pages/WebsiteTestimonials';
@@ -240,6 +241,7 @@ const routes = createRoutesFromElements(
       <Route path="testimonials" element={<SiteTestimonials />} />
       <Route path="inquiry" element={<SiteInquiry />} />
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
+      <Route path="machining/superfinishing-work-order" element={<SiteSuperfinishingForm />} />
       <Route path="store" element={<SiteStore />} />
       <Route path="cart" element={<SiteCart />} />
       <Route path="account" element={<SiteAccount />} />
