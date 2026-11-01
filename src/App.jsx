@@ -2,6 +2,7 @@ import SiteSEOArticle from './pages/publicsite/SiteSEOArticle';
 import SiteResources from './pages/publicsite/SiteResources';
 import SiteBrandAssets from './pages/publicsite/SiteBrandAssets';
 import SiteGearCharts from './pages/publicsite/SiteGearCharts';
+import SiteGearingCalculator from './pages/publicsite/SiteGearingCalculator';
 import WebsiteSEOManager from './pages/WebsiteSEOManager';
 import SiteSEOService from './pages/publicsite/SiteSEOService';
 import React, { useState, useEffect } from 'react'
@@ -229,6 +230,7 @@ const routes = createRoutesFromElements(
       <Route path="resources" element={<SiteResources />} />
       <Route path="logos" element={<SiteBrandAssets />} />
       <Route path="gear-charts" element={<SiteGearCharts />} />
+      <Route path="gearing-calculator" element={<SiteGearingCalculator />} />
       <Route path="gear-charts/:slug" element={<SiteGearCharts />} />
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
