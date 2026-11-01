@@ -3,7 +3,7 @@ import {gearCharts} from './SiteGearCharts';
 import {useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
 const pages={
- 'harnesstech-partnership':['Elite & HarnessTech Motorsport Wiring Partnership | Elite Engine Development','Why Elite Engine Development partnered with Australian motorsport wiring specialist HarnessTech for clean, race-ready micro sprint engine, injection and wiring packages.'],
+ 'harnesstech-partnership':['Elite × HarnessTech FuelTech & FDS Development Partnership | Elite','Discover how Elite and HarnessTech collaborate on FuelTech ECU setup, tuning guidance, FDS development and quality motorsport wiring for U.S. and Australian racers.'],
  'gearing-calculator':['Free Micro Sprint Gearing Calculator & MPH Tool | Elite','Free micro sprint gearing calculator for Suzuki GSX-R600 and Yamaha R6. Compare sprockets, overall drive ratios and theoretical MPH, then print a race setup sheet.'],
  'gear-charts':['Free Micro Sprint Gear Charts & Gear Ratios | Elite','Free Suzuki GSX-R600 and Yamaha R6 micro sprint gear charts. Download PDF sprocket ratio tables for 2006–2009 Suzuki, 2011+ Suzuki and 2006–2021 Yamaha R6.'],
  logos:['Elite Logo Downloads | Elite Engine Development','Download official Elite Engine Development logos for dark and light backgrounds for race car graphics and team materials.'],
