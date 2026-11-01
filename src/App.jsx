@@ -21,6 +21,7 @@ import SiteBuilder from './pages/publicsite/SiteBuilder';
 import SiteEngines from './pages/publicsite/SiteEngines';
 import SiteMachining from './pages/publicsite/SiteMachining';
 import SiteInjection from './pages/publicsite/SiteInjection';
+import SiteHarnessTech from './pages/publicsite/SiteHarnessTech';
 import SiteResults from './pages/publicsite/SiteResults';
 import SiteAbout from './pages/publicsite/SiteAbout';
 import SiteDevelopment from './pages/publicsite/SiteDevelopment';
@@ -235,6 +236,7 @@ const routes = createRoutesFromElements(
       <Route path="engines" element={<SiteEngines />} />
       <Route path="machining" element={<SiteMachining />} />
       <Route path="injection" element={<SiteInjection />} />
+      <Route path="harnesstech-partnership" element={<SiteHarnessTech />} />
       <Route path="results" element={<SiteResults />} />
       <Route path="about" element={<SiteAbout />} />
       <Route path="development" element={<SiteDevelopment />} />
