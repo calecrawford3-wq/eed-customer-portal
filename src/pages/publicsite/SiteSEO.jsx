@@ -15,7 +15,7 @@ const pages={
  cart:['Cart & Checkout | Elite Engine Development','Review your shopping cart, shipping details and secure checkout with Elite Engine Development.'],
  account:['My Store Account | Elite Engine Development','Manage your saved address and review your Elite website orders.'],
  builder:['Configure a Micro Sprint Racing Engine | Elite','Configure your Suzuki GSX-R600 or Yamaha YZF-R6 micro sprint engine program with Elite Engine Development.'],
- machining:['Cylinder Head Machining & Valve Jobs | Elite','Micro sprint cylinder head valve jobs, valve seat work, head resurfacing and engine case decking. Mail-in machining services.'],
+ machining:['Performance Valve Jobs & Cylinder Head Machining | Elite','Performance 5-angle and radius valve jobs, GSX-R600 and Yamaha R6 cylinder head machining, valve seats, head milling, case decking and isotropic superfinishing.'],
  injection:['Elite FDS Fuel Delivery System | Elite Engine Development','Elite FDS bolt-on fuel delivery and FuelTech engine management, exclusively for Elite engine customers.'],
  results:['Elite Racing Results & Team Elite | Elite Engine Development','See racing results and highlights from Elite-powered 600cc micro sprint engines.'],
  about:['About Elite Engine Development | Racing Engine Specialists','Oklahoma-based 600cc micro sprint racing engine specialists. Dyno development and real track testing in our own cars.'],
