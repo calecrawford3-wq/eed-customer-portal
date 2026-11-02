@@ -149,6 +149,7 @@
       "type": "string",
       "description": "Public storefront title, independent of inventory name"
     },
+    "website_option_groups": {"type":"array","items":{"type":"object"},"default":[],"description":"Customer dropdown groups and per-choice price adjustments"},
     "website_customization": {
       "type": "object",
       "description": "Optional buyer-entered personalization field configuration"
