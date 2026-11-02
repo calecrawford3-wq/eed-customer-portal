@@ -35,6 +35,7 @@ import WebsiteInquiries from './pages/WebsiteInquiries';
 import WebsiteTestimonials from './pages/WebsiteTestimonials';
 import SiteTestimonials from './pages/publicsite/SiteTestimonials';
 import SiteStore from './pages/publicsite/SiteStore';
+import SiteStoreProduct from './pages/publicsite/SiteStoreProduct';
 import SiteCart from './pages/publicsite/SiteCart';
 import SiteAccount from './pages/publicsite/SiteAccount';
 import SiteFullPortal from './pages/publicsite/SiteFullPortal';
@@ -247,6 +248,7 @@ const routes = createRoutesFromElements(
       <Route path="machining/work-order" element={<SiteMachiningForm />} />
       <Route path="machining/superfinishing-work-order" element={<SiteSuperfinishingForm />} />
       <Route path="store" element={<SiteStore />} />
+      <Route path="store/product/:id" element={<SiteStoreProduct />} />
       <Route path="cart" element={<SiteCart />} />
       <Route path="account" element={<SiteAccount />} />
       <Route path="portal" element={<SiteFullPortal />} />
