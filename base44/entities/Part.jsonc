@@ -108,6 +108,9 @@
       "default": false,
       "description": "Explicit opt-in to display this part in the public Elite website store"
     },
+    "website_seo_title": {"type":"string","description":"Optional SEO page title override for published product"},
+    "website_seo_description": {"type":"string","description":"Optional SEO meta description override for published product"},
+    "website_brand": {"type":"string","description":"Product manufacturer or brand for product structured data"},
     "website_description": {
       "type": "string",
       "description": "Optional customer-facing description"
