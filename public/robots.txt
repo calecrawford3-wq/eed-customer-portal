@@ -12,3 +12,4 @@ Disallow: /site/cart
 Sitemap: https://eliteenginedevelopment.com/sitemap.xml
 Sitemap: https://eliteenginedevelopment.com/sitemap-pages.xml
 Sitemap: https://eliteenginedevelopment.com/functions/dynamicArticleSitemap
+Sitemap: https://eliteenginedevelopment.com/functions/dynamicProductSitemap
