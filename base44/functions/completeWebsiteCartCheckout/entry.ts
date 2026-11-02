@@ -48,7 +48,7 @@ export default async function(req:Request){
     buyerEmail:final.buyer_email,
     shippingMethod:final.shipping_method,
     shippingAddress:final.shipping_address||{},
-    items:(final.items_snapshot||[]).map((line:any)=>({name:line.name,quantity:line.quantity,unitCents:line.unitCents||0,totalCents:line.totalCents||0,type:line.type})),
+    items:(final.items_snapshot||[]).map((line:any)=>({name:line.name,personalization:line.personalization||'',optionLabels:line.optionLabels||{},quantity:line.quantity,unitCents:line.unitCents||0,totalCents:line.totalCents||0,type:line.type})),
     subtotalCents:final.subtotal_cents,
     shippingCents:final.shipping_cents||0,
     taxCents:final.tax_cents||0,
