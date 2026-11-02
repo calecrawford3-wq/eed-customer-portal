@@ -22,14 +22,22 @@ export async function quoteWebsiteCart(svc:any,cart:any){
    const config:any=parentId?parent?.website_customization:pm.get(id)?.website_customization;
    if(custom.length>60||(!config?.enabled&&custom)||(config?.enabled&&config.required&&!custom)||(config?.enabled&&custom.length>Math.min(60,Math.max(1,Number(config.maxLength)||20))))return {error:'Invalid personalization for selected product',status:400};
    if(typeof id!=='string'||!Number.isSafeInteger(qty)||qty<1||qty>99)return {error:'Invalid part quantity',status:400};
-   const p:any=pm.get(id),unit=cents(p?.sell_price);
+   const optionOwner:any=parentId?parent:pm.get(id);
+   const groups=Array.isArray(optionOwner?.website_option_groups)?optionOwner.website_option_groups:[];
+   const selections=item.optionChoices&&typeof item.optionChoices==='object'&&!Array.isArray(item.optionChoices)?item.optionChoices:{};
+   if(Object.keys(selections).length>groups.length)return {error:'Invalid product options',status:400};
+   let addonCents=custom?cents(config?.price)||0:0;
+   const optionLabels:any={};
+   for(const group of groups){const key=String(group.id||group.label||'');const value=selections[key];if(value===undefined||value===''){if(group.required)return {error:'A required product option is missing',status:400};continue;}const choice=(Array.isArray(group.options)?group.options:[]).find((o:any)=>o.label===value);if(!choice)return {error:'Invalid product option',status:400};const fee=cents(choice.price);if(fee===null||fee>10000000)return {error:'Invalid product option price',status:400};addonCents+=fee;optionLabels[String(group.label||key)]=String(value);}
+   if(Object.keys(selections).some(key=>!groups.some((g:any)=>String(g.id||g.label||'')===key)))return {error:'Unknown product option',status:400};
+   const p:any=pm.get(id),baseUnit=cents(p?.sell_price),unit=baseUnit===null?null:baseUnit+addonCents;
    if(!p||(!parentId&&p.website_published!==true)||p.status==='discontinued'||unit===null)return {error:'A part is no longer available',status:409};
    const totalQty=(requestedParts.get(id)||0)+qty;requestedParts.set(id,totalQty);
    if(Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
    const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
    // Store shipping is a flat rate; oversized or special-handling parts need a staff quote.
    if(p.website_shipping_requires_quote===true)missingShipping.push(String(p.part_number||p.name||id));
-   lines.push({type:'part',partId:id,parentId:parentId||undefined,personalization:custom||undefined,sku:String(p.part_number||''),name:parentId?String(parent.website_store_name||parent.name||'')+' — '+String(parent.website_variants?.find((v:any)=>v.partId===id)?.label||p.name||''):String(p.website_store_name||p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
+   lines.push({type:'part',partId:id,parentId:parentId||undefined,personalization:custom||undefined,optionChoices:selections,optionLabels,customizationCents:addonCents,sku:String(p.part_number||''),name:parentId?String(parent.website_store_name||parent.name||'')+' — '+String(parent.website_variants?.find((v:any)=>v.partId===id)?.label||p.name||''):String(p.website_store_name||p.name||''),quantity:qty,unitCents:unit,totalCents:amount,dueCents:amount});
   }else{
    if(item.quantity!==1||!Number.isInteger(item.stage)||!Array.isArray(item.addonIds))return {error:'Invalid engine configuration',status:400};
    const priced=await quoteEngineConfiguration(svc,{platform:item.platform,stage:item.stage,core:item.core,addonIds:item.addonIds});
