@@ -35,7 +35,7 @@ export async function quoteWebsiteCart(svc:any,cart:any){
    const p:any=pm.get(id),baseUnit=cents(p?.sell_price),unit=baseUnit===null?null:baseUnit+addonCents;
    if(!p||(!parentId&&p.website_published!==true)||p.status==='discontinued'||unit===null)return {error:'A part is no longer available',status:409};
    const totalQty=(requestedParts.get(id)||0)+qty;requestedParts.set(id,totalQty);
-   if(Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
+   if((parentId?parent?.website_inventory_policy:p.website_inventory_policy)!=='unlimited'&&p.website_inventory_policy!=='unlimited'&&Number(p.quantity_on_hand||0)<totalQty)return {error:`Insufficient inventory for ${String(p.name||'a part')}`,status:409};
    const amount=unit*qty;subtotal+=amount;due+=amount;partCount+=qty;
    // Store shipping is a flat rate; oversized or special-handling parts need a staff quote.
    if(p.website_shipping_requires_quote===true)missingShipping.push(String(p.part_number||p.name||id));

@@ -132,6 +132,7 @@ export async function allocateWebsiteCartOrder(svc: any, orderId: string) {
   for (const line of lines.filter((item: any) => item.type === 'part')) {
     const part = rows(await svc.entities.Part.filter({ id: line.partId }))[0];
     if (!part) { shortages.push(`${line.name || line.sku || line.partId} (removed from inventory)`); continue; }
+    if (part.website_inventory_policy === 'unlimited' || (line.parentId && rows(await svc.entities.Part.filter({id:line.parentId}))[0]?.website_inventory_policy === 'unlimited')) continue;
     const quantity = Number(line.quantity) || 0;
     const onHand = Number(part.quantity_on_hand) || 0;
     if (onHand < quantity) shortages.push(`${line.name || line.sku || part.part_number} (${onHand} of ${quantity} in stock)`);
