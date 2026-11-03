@@ -348,7 +348,9 @@ export default function EstimateDetail() {
       if (isNew && prefillJobId && estimateId) {
         await base44.entities.Job.update(prefillJobId, { estimate_id: estimateId, is_engine_build: true });
       }
-      if (estimateId) {
+      // Standalone quotes stay off the job board: only engine-build estimates
+      // (or one saved into an existing job) get a Job reconciled on save.
+      if (estimateId && (prefillJobId || data.is_engine_build)) {
         await base44.functions.invoke("ensureJobForEstimate", { estimate_id: estimateId, activate: true });
       }
       // Credits are redeemed only when the estimate is approved (see redeemCreditsOnApproval),
