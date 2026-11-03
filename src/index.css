@@ -309,3 +309,10 @@
     page-break-inside: avoid;
   }
   }
+/* Discourage casual saving of public site images without blocking text selection, links, or forms. */
+.elite-public-site img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
