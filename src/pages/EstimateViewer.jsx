@@ -3,6 +3,7 @@ import PublicGuestPaymentShare from "@/components/portal/PublicGuestPaymentShare
 import { useParams } from "react-router-dom";
 import { base44Public } from "@/api/base44Client";
 import {resolveCompanyLogo} from "@/lib/companyLogo";
+import {withAllowancePricing} from "@/lib/pricingAllowance";
 
 const formatMoney = (value) => {
   if (value === null || value === undefined || isNaN(value)) return "$0.00";
@@ -164,6 +165,9 @@ export default function EstimateViewer({ buildVersion }) {
     setPaymentModalOpen(true);
   };
 
+  // Display-only copy: the pricing allowance is folded into each item price.
+  const displayEstimate = withAllowancePricing(data?.estimate);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Version indicator */}
@@ -301,7 +305,7 @@ export default function EstimateViewer({ buildVersion }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.estimate.line_items.map((item, idx) => (
+                    {displayEstimate.line_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
                         <td className="py-3 text-slate-900">{item.item_name}</td>
                         <td className="text-center py-3 text-slate-600">{item.quantity}</td>
@@ -313,7 +317,7 @@ export default function EstimateViewer({ buildVersion }) {
                 </table>
                 {/* Mobile stacked cards */}
                 <div className="sm:hidden space-y-3">
-                  {data.estimate.line_items.map((item, idx) => (
+                  {displayEstimate.line_items.map((item, idx) => (
                     <div key={idx} className="border border-slate-200 rounded-lg p-3">
                       <p className="font-medium text-slate-900 text-sm">{item.item_name}</p>
                       <div className="flex justify-between items-center mt-2 text-sm">
@@ -339,7 +343,7 @@ export default function EstimateViewer({ buildVersion }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.estimate.labor_items.map((item, idx) => (
+                    {displayEstimate.labor_items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
                         <td className="py-3 text-slate-900">
                           {item.name}
@@ -352,7 +356,7 @@ export default function EstimateViewer({ buildVersion }) {
                 </table>
                 {/* Mobile stacked cards */}
                 <div className="sm:hidden space-y-3">
-                  {data.estimate.labor_items.map((item, idx) => (
+                  {displayEstimate.labor_items.map((item, idx) => (
                     <div key={idx} className="border border-slate-200 rounded-lg p-3">
                       <p className="font-medium text-slate-900 text-sm">{item.name}</p>
                       {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
@@ -381,7 +385,7 @@ export default function EstimateViewer({ buildVersion }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.estimate.machining_items.map((item, idx) => {
+                    {displayEstimate.machining_items.map((item, idx) => {
                       const qty = Number(item.quantity) || 1;
                       const price = Number(item.price) || 0;
                       return (
@@ -400,7 +404,7 @@ export default function EstimateViewer({ buildVersion }) {
                 </table>
                 {/* Mobile stacked cards */}
                 <div className="sm:hidden space-y-3">
-                  {data.estimate.machining_items.map((item, idx) => {
+                  {displayEstimate.machining_items.map((item, idx) => {
                     const qty = Number(item.quantity) || 1;
                     const price = Number(item.price) || 0;
                     return (
@@ -426,7 +430,7 @@ export default function EstimateViewer({ buildVersion }) {
                 </h3>
                 <p className="text-sm text-slate-500 mb-4">Select any addons you'd like added to your build. Your total updates when you confirm below.</p>
                 <div className="space-y-3">
-                  {data.estimate.addons.map((addon, idx) => {
+                  {displayEstimate.addons.map((addon, idx) => {
                     const isPreselected = addon.selection_state === 'preselected';
                     const isCustomerSelected = addon.selection_state === 'customer_selected';
                     const checked = isPreselected || isCustomerSelected || selectedOptionalUids.includes(addon.uid);

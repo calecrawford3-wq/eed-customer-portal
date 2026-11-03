@@ -3,11 +3,14 @@ import React from "react";
 import { getCountryName } from "@/components/CountrySelect";
 
 import { resolveCompanyLogo } from "@/lib/companyLogo";
+import { withAllowancePricing } from "@/lib/pricingAllowance";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
-export default function PrintableEstimate({ estimate, customer, settings, customerEngine, platform, specSheet }) {
-  if (!estimate) return null;
+export default function PrintableEstimate({ estimate: sourceEstimate, customer, settings, customerEngine, platform, specSheet }) {
+  if (!sourceEstimate) return null;
+  // Customers see the allowance folded into each item price, never as a line.
+  const estimate = withAllowancePricing(sourceEstimate);
 
   const issueDate = estimate.issue_date ? new Date(estimate.issue_date).toLocaleDateString() : "N/A";
   const expiryDate = estimate.expiry_date ? new Date(estimate.expiry_date).toLocaleDateString() : "N/A";
@@ -52,10 +55,9 @@ export default function PrintableEstimate({ estimate, customer, settings, custom
         </div>
         <div style={{ backgroundColor: "#f8f8f8", padding: "16px", borderRadius: "8px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span>Subtotal (including pricing allowance):</span>
+            <span>Subtotal:</span>
             <span>${Number(estimate.subtotal || 0).toFixed(2)}</span>
           </div>
-          {Number(estimate.pricing_allowance_amount)>0&&<div style={{fontSize:"11px",color:"#666",marginBottom:"8px"}}>Includes {estimate.pricing_allowance_rate}% pricing allowance: ${Number(estimate.pricing_allowance_amount).toFixed(2)}</div>}
           {Number(estimate.tax_amount) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
               <span>Tax ({estimate.tax_rate}%):</span>

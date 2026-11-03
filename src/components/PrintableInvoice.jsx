@@ -3,6 +3,7 @@ import React from "react";
 import { getCountryName } from "@/components/CountrySelect";
 
 import { resolveCompanyLogo } from "@/lib/companyLogo";
+import { withAllowancePricing } from "@/lib/pricingAllowance";
 
 const STAGE_LABELS = { stock: "Stock", stage_1: "Stage 1", stage_2: "Stage 2", stage_3: "Stage 3", contract: "Contract", custom: "Custom" };
 
@@ -89,8 +90,10 @@ function SectionedItems({ invoice }) {
   );
 }
 
-export default function PrintableInvoice({ invoice, customer, settings, customerEngine, platform, specSheet = null }) {
-  if (!invoice || !customer) return null;
+export default function PrintableInvoice({ invoice: sourceInvoice, customer, settings, customerEngine, platform, specSheet = null }) {
+  if (!sourceInvoice || !customer) return null;
+  // Customers see the allowance folded into each item price, never as a line.
+  const invoice = withAllowancePricing(sourceInvoice);
 
   const invoiceDate = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString() : "N/A";
   const dueDate = invoice.due_date
@@ -215,10 +218,9 @@ export default function PrintableInvoice({ invoice, customer, settings, customer
 
         <div className="inv-totals">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-            <span>Subtotal (including pricing allowance):</span>
+            <span>Subtotal:</span>
             <span>${Number(invoice.subtotal || 0).toFixed(2)}</span>
           </div>
-          {Number(invoice.pricing_allowance_amount)>0&&<div style={{fontSize:"10px",color:"#666",marginBottom:"4px"}}>Includes {invoice.pricing_allowance_rate}% pricing allowance: ${Number(invoice.pricing_allowance_amount).toFixed(2)}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
             <span>Tax{invoice.tax_rate ? ` (${invoice.tax_rate}%)` : ""}:</span>
             <span>${Number(invoice.tax_amount || 0).toFixed(2)}</span>

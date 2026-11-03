@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PortalLegalDocument from '@/components/legal/PortalLegalDocument';
 import { formatMoney } from '@/lib/money';
+import { withAllowancePricing } from '@/lib/pricingAllowance';
 import GuestPaymentShare from './GuestPaymentShare';
 import PortalPaymentReceipt from './PortalPaymentReceipt';
 
@@ -147,7 +148,6 @@ export default function PortalDocumentDialog({ selection, customerId, onClose, o
             {['estimate', 'invoice'].includes(selection.type) && !['void', 'declined', 'expired'].includes(doc.status) && <GuestPaymentShare type={selection.type} id={selection.id} />}
             <dl className="space-y-2 text-sm border-t pt-4">
               <Total label="Subtotal" value={doc.subtotal} />
-              {Number(doc.pricing_allowance_amount)>0&&<p className="text-xs text-slate-500">Subtotal includes {doc.pricing_allowance_rate}% pricing allowance (${Number(doc.pricing_allowance_amount).toFixed(2)}).</p>}
               {Number(doc.discount_amount) > 0 && <Total label="Discount" value={-Number(doc.discount_amount)} />}
               <Total label="Tax" value={doc.tax_amount} />
               {Number(doc.shipping_cost) > 0 && <Total label="Shipping" value={doc.shipping_cost} />}
@@ -202,12 +202,14 @@ function Total({ label, value }) {
 }
 
 export function DocumentCharges({ doc }) {
+  // Pricing allowance is folded into each item price rather than shown as a line.
+  const display = withAllowancePricing(doc);
   const groups = [
-    ['Parts & services', (doc.line_items || []).map(v => ({ name: v.item_name, quantity: v.quantity, price: v.unit_price, total: v.total }))],
-    ['Labor', (doc.labor_items || []).map(v => ({ name: v.name, description: v.description, total: v.price }))],
-    ['Machining', (doc.machining_items || []).map(v => ({ name: v.name, description: v.description, quantity: v.quantity || 1, price: v.price, total: Number(v.price || 0) * Number(v.quantity || 1) }))],
-    ['Additional services', (doc.outsourced_services || []).map(v => ({ name: v.name, description: v.description, total: v.price }))],
-    ['Selected options', (doc.addons || []).filter(v => ['preselected', 'customer_selected'].includes(v.selection_state)).map(v => ({ name: v.name, description: v.description, total: v.price }))],
+    ['Parts & services', (display.line_items || []).map(v => ({ name: v.item_name, quantity: v.quantity, price: v.unit_price, total: v.total }))],
+    ['Labor', (display.labor_items || []).map(v => ({ name: v.name, description: v.description, total: v.price }))],
+    ['Machining', (display.machining_items || []).map(v => ({ name: v.name, description: v.description, quantity: v.quantity || 1, price: v.price, total: Number(v.price || 0) * Number(v.quantity || 1) }))],
+    ['Additional services', (display.outsourced_services || []).map(v => ({ name: v.name, description: v.description, total: v.price }))],
+    ['Selected options', (display.addons || []).filter(v => ['preselected', 'customer_selected'].includes(v.selection_state)).map(v => ({ name: v.name, description: v.description, total: v.price }))],
   ];
   return <div className="space-y-4">{groups.filter(([, rows]) => rows.length).map(([label, rows]) => <section key={label}><h3 className="mb-2 text-sm font-semibold text-slate-500">{label}</h3><div className="divide-y rounded-xl border border-slate-200">{rows.map((row, index) => <div key={index} className="p-3"><div className="flex items-start justify-between gap-4"><p className="min-w-0 break-words font-medium text-slate-900">{row.name || 'Service'}</p><p className="shrink-0 font-semibold tabular-nums">{formatMoney(row.total)}</p></div>{row.quantity != null && <p className="mt-1 text-xs text-slate-500">Qty {row.quantity} × {formatMoney(row.price)}</p>}{row.description && <p className="mt-1 break-words text-sm text-slate-600">{row.description}</p>}</div>)}</div></section>)}</div>;
 }

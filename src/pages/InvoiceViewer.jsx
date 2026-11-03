@@ -10,6 +10,7 @@ import { AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { getCountryName } from "@/components/CountrySelect";
+import { withAllowancePricing } from "@/lib/pricingAllowance";
 import PublicAdditionalWorkSection from "@/components/public/PublicAdditionalWorkSection";
 import {resolveCompanyLogo} from "@/lib/companyLogo";
 
@@ -32,7 +33,8 @@ export default function InvoiceViewer() {
     enabled: !!publicAccessToken,
   });
 
-  const inv = viewerData?.invoice;
+  // Display-only copy: the pricing allowance is folded into each item price.
+  const inv = withAllowancePricing(viewerData?.invoice);
   const customer = viewerData?.customer;
   const settings = viewerData?.settings;
   const customerEngine = viewerData?.customerEngine;
