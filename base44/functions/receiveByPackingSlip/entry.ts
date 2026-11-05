@@ -58,7 +58,9 @@ export default async function(req) {
     // confirmed-status check plus the PO receipt_log makes this fully idempotent.
     const receiptId = `slip:${packing_slip_id}`;
     const operationId = `receive-slip:${packing_slip_id}`;
-    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId, receiptId);
+    let invoiceNumber = '';
+    try { invoiceNumber = String(JSON.parse(slip.extracted_data || '{}').invoice_number || '').trim().slice(0,100); } catch {}
+    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId, receiptId, invoiceNumber);
 
     // Mark the packing slip as confirmed
     await base44.asServiceRole.entities.PackingSlip.update(packing_slip_id, {

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Trash2, Send, Printer, AlertTriangle, PackageCheck, CheckCircle2, Package, Boxes, FileText, Undo2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -575,14 +576,12 @@ export default function PurchaseOrderDetail() {
           <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}
         </Button>
         {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
-          <Button variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-50" onClick={openReceiveMode}>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={openReceiveMode}>
             <PackageCheck className="w-4 h-4 mr-1" /> Receive Items
           </Button>
         )}
         {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
-          <Button variant="outline" className="border-blue-400 text-blue-700 hover:bg-blue-50" onClick={() => setSlipModalOpen(true)}>
-            <FileText className="w-4 h-4 mr-1" /> Receive by Packing Slip
-          </Button>
+
         )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
@@ -766,15 +765,15 @@ export default function PurchaseOrderDetail() {
       </Card>
 
       {/* Receiving workspace */}
-      {receiveMode && <Card className="mb-6 border border-emerald-200 shadow-md overflow-hidden">
-        <CardHeader className="bg-slate-900 text-white flex flex-row items-center justify-between gap-4"><div><CardTitle className="flex gap-2 items-center text-xl"><PackageCheck className="w-5 h-5"/> Receive Purchase Order</CardTitle><p className="text-slate-300 text-sm mt-2">Review delivered quantities, supplier pricing, and inventory updates before posting.</p></div><Button variant="outline" className="text-slate-900" onClick={()=>{setReceiveMode(false);setReviewReceipt(false)}}>Close</Button></CardHeader>
-        <CardContent className="p-4 md:p-6 space-y-5 bg-slate-50">
+      <Dialog open={receiveMode} onOpenChange={open=>{if(!open&&!receiving){setReceiveMode(false);setReviewReceipt(false)}}}><DialogContent className="max-w-5xl w-[min(96vw,1100px)] max-h-[92vh] overflow-y-auto p-0 gap-0 bg-slate-50"><div>
+        <div className="bg-slate-900 text-white flex flex-wrap items-center justify-between gap-4 p-5"><div><h2 className="flex gap-2 items-center text-xl font-bold"><PackageCheck className="w-5 h-5"/> Receive Purchase Order</h2><p className="text-slate-300 text-sm mt-2">Review delivered quantities, supplier pricing, and inventory updates before posting.</p></div><Button variant="outline" className="text-slate-900" onClick={()=>{setReceiveMode(false);setReviewReceipt(false);setSlipModalOpen(true)}}><FileText className="w-4 h-4 mr-2"/> Scan supplier invoice</Button></div>
+        <div className="p-4 md:p-6 space-y-5 bg-slate-50">
           <div className="bg-white rounded-xl border p-4 grid md:grid-cols-2 gap-4"><label className="text-sm font-semibold">Supplier invoice number<Input value={supplierInvoiceNumber} maxLength={100} onChange={e=>setSupplierInvoiceNumber(e.target.value)} placeholder="Enter supplier invoice #" className="mt-2"/></label><div className="text-sm"><p className="font-semibold">Receipt summary</p><p className="text-slate-500 mt-2">{(form.line_items||[]).filter((l,i)=>Number(receiveQtys[i])>0).length} line items selected · {(form.line_items||[]).reduce((n,l,i)=>n+Math.max(0,Number(receiveQtys[i])||0),0)} units</p><p className="text-xs text-slate-500 mt-1">Each partial receipt can have its own supplier invoice number.</p></div></div>
           <div className="space-y-3">{(form.line_items||[]).map((line,idx)=>{const received=Number(line.received_qty)||0;const remaining=Math.max(0,(Number(line.quantity)||0)-received);const qty=Number(receiveQtys[idx])||0;const cost=Number(receiveCosts[idx]??line.unit_cost??0);const sell=Number(receiveSellPrices[idx]??0);const margin=sell>0?(sell-cost)/sell*100:null;return <div key={idx} className="bg-white border rounded-xl p-4 space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-xs text-slate-500">{line.part_number||'Unlinked item'}</p><h3 className="font-semibold text-base mt-1">{line.description}</h3></div><div className="text-right text-xs text-slate-500">Ordered {line.quantity} · Received {received}<p className="font-bold text-slate-800 mt-1">{remaining} outstanding</p></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3"><label className="text-xs font-semibold text-slate-600">Receive now<Input type="number" min="0" max={remaining} step="1" value={receiveQtys[idx]??0} onChange={e=>{setReceiveQtys(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1" disabled={!remaining}/></label><label className="text-xs font-semibold text-slate-600">Unit cost ($)<Input type="number" min="0" step="0.01" value={receiveCosts[idx]??0} onChange={e=>{setReceiveCosts(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1"/></label><label className="text-xs font-semibold text-slate-600">Selling price ($)<Input type="number" min="0" step="0.01" value={receiveSellPrices[idx]??0} onChange={e=>{setReceiveSellPrices(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1"/></label><div className="rounded-lg bg-slate-50 border p-3"><p className="text-xs text-slate-500">Projected margin</p><p className={`font-bold text-xl mt-1 ${margin!==null&&margin<20?'text-amber-700':'text-slate-800'}`}>{margin===null?'—':margin.toFixed(1)+'%'}</p></div></div><div className="flex flex-wrap gap-5 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={receiveUpdateCost[idx]!==false} onChange={e=>{setReceiveUpdateCost(v=>({...v,[idx]:e.target.checked}));setReviewReceipt(false)}}/>Update inventory cost</label><label className="flex items-center gap-2"><input type="checkbox" checked={receiveUpdateSell[idx]===true} onChange={e=>{setReceiveUpdateSell(v=>({...v,[idx]:e.target.checked}));setReviewReceipt(false)}}/>Apply selling price immediately</label></div>{qty>remaining&&<p className="text-red-600 text-xs">Quantity exceeds outstanding amount.</p>}</div>})}</div>
           {reviewReceipt&&<div className="rounded-xl border-2 border-emerald-500 bg-emerald-50 p-4"><h3 className="font-bold text-emerald-900">Review receipt before posting</h3><p className="text-sm mt-2">Supplier invoice: {supplierInvoiceNumber.trim()||'Not provided'} · {(form.line_items||[]).filter((l,i)=>Number(receiveQtys[i])>0).length} lines. Accepted quantities will be added to inventory. Checked cost and selling-price changes will be applied immediately.</p></div>}
           <div className="flex flex-wrap justify-end gap-3 border-t pt-4"><Button variant="outline" onClick={()=>{setReceiveMode(false);setReviewReceipt(false)}}>Cancel</Button>{!reviewReceipt?<Button onClick={()=>{const values=Object.values(receiveQtys).map(Number);if(!values.some(v=>v>0)){toast.error('Enter a quantity to receive');return}if((form.line_items||[]).some((l,i)=>!Number.isFinite(Number(receiveQtys[i]))||Number(receiveQtys[i])<0||Number(receiveQtys[i])>Number(l.quantity||0)-Number(l.received_qty||0))){toast.error('Check receiving quantities');return}setReviewReceipt(true)}}>Review receipt</Button>:<Button className="bg-emerald-600 hover:bg-emerald-700" disabled={receiving} onClick={handleReceiveItems}>{receiving?'Posting receipt…':'Post receipt & update inventory'}</Button>}</div>
-        </CardContent>
-      </Card>}
+        </div>
+      </div></DialogContent></Dialog>
 
       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Special instructions, notes for supplier..." /></div>
 
