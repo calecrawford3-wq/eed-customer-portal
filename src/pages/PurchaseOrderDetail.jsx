@@ -771,7 +771,7 @@ export default function PurchaseOrderDetail() {
             <Button variant="ghost" size="sm" className="text-slate-400" onClick={() => setReceiveMode(false)}>Cancel</Button>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <p className="text-sm text-slate-500 mb-4">Enter the quantity received for each item. Inventory will be updated automatically for linked parts.</p>
+            <p className="text-sm text-slate-500 mb-4">Enter quantities and updated supplier costs. Check “Apply sell price” for any new selling price you want activated immediately in inventory and the website store when this receipt posts. Leave it unchecked to retain existing pricing rules.</p>
             <table className="w-full text-sm mb-4">
               <thead>
                 <tr className="border-b border-slate-200">

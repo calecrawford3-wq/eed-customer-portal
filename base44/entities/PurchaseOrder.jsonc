@@ -132,6 +132,7 @@
     "notes": {
       "type": "string"
     },
+    "receipt_price_history": {"type":"array","default":[],"items":{"type":"object"},"description":"Cost and sell-price changes applied when purchase order receipts are posted"},
     "receipt_log": {
       "type": "array",
       "items": {

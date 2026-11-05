@@ -183,5 +183,5 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     }
   }
 
-  return { po_status: newStatus, inventory_updates: inventoryUpdates, shortage_allocations: shortageAllocations, jobs_updated: jobsUpdated };
+  return { po_status: newStatus, inventory_updates: inventoryUpdates, price_changes: priceChanges, shortage_allocations: shortageAllocations, jobs_updated: jobsUpdated };
 }
