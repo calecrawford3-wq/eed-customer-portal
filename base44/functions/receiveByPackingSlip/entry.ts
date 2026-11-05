@@ -60,7 +60,9 @@ export default async function(req) {
     const operationId = `receive-slip:${packing_slip_id}`;
     let invoiceNumber = '';
     try { invoiceNumber = String(JSON.parse(slip.extracted_data || '{}').invoice_number || '').trim().slice(0,100); } catch {}
-    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId, receiptId, invoiceNumber);
+    const confirmedInvoice = typeof body.supplier_invoice_number==='string'?body.supplier_invoice_number.trim():invoiceNumber;
+    if(confirmedInvoice.length>100)return Response.json({error:'Supplier invoice number too long'},{status:400});
+    const result = await receivePOItems(base44.asServiceRole, po_id, receivedItems, operationId, receiptId, confirmedInvoice);
 
     // Mark the packing slip as confirmed
     await base44.asServiceRole.entities.PackingSlip.update(packing_slip_id, {

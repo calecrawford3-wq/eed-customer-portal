@@ -21,6 +21,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
   const [step, setStep] = useState("upload"); // upload | extracting | review | receiving | done
   const [file, setFile] = useState(null);
   const [extraction, setExtraction] = useState(null);
+  const [invoiceNumber,setInvoiceNumber] = useState('');
   const [reviewItems, setReviewItems] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
@@ -30,6 +31,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
     setStep("upload");
     setFile(null);
     setExtraction(null);
+    setInvoiceNumber('');
     setReviewItems([]);
     setResults(null);
     setError(null);
@@ -73,6 +75,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
       }
 
       setExtraction(data.extracted);
+      setInvoiceNumber(data.extracted?.invoice_number||'');
       setPackingSlipId(data.packing_slip_id);
       setReviewItems((data.items || []).map(item => ({
         ...item,
@@ -114,6 +117,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
         packing_slip_id: packingSlipId,
         po_id: po.id,
         confirmed_items: confirmedItems,
+        supplier_invoice_number:invoiceNumber.trim(),
       });
       const data = res?.data || res;
       if (data.error) throw new Error(data.error);
@@ -166,7 +170,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
                   <span className="text-slate-400">({(file.size / 1024).toFixed(0)} KB)</span>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">Click to select a packing slip (PDF, image, or spreadsheet)</p>
+                <p className="text-sm text-slate-400">Select a supplier invoice or packing slip (PDF, image, or spreadsheet)</p>
               )}
               <Button variant="outline" className="mt-4" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4 mr-2" /> Choose File
@@ -192,6 +196,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
               <Badge variant="outline">PO Ref: {extraction.po_reference || "Not detected"}</Badge>
             </div>
 
+            <label className="block text-sm font-semibold">Supplier invoice number<Input className="mt-1" maxLength={100} value={invoiceNumber} onChange={e=>setInvoiceNumber(e.target.value)} placeholder="Confirm or enter supplier invoice #"/></label>
             {(hasUnmatched || hasAmbiguous || discrepancyCount > 0) && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
                 {hasUnmatched && <p className="text-xs text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {reviewItems.filter(it => it.match_status === "unmatched").length} item(s) could not be matched to the PO — these will not be received.</p>}
