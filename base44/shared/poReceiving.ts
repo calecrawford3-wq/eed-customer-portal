@@ -54,6 +54,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     const idx = Number(item.line_idx);
     const qty = Number(item.qty);
     const cost = item.unit_cost;
+    if (item.update_sell_price === true && (!Number.isFinite(Number(item.sell_price)) || item.sell_price === '' || Number(item.sell_price) < 0)) throw new Error('Selling price must be a valid nonnegative amount');
     if (!Number.isInteger(idx) || idx < 0 || idx >= lines.length || seenIndices.has(idx)) {
       throw new Error("Invalid or duplicate purchase order line index");
     }
@@ -78,6 +79,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     }
   }
   const inventoryUpdates = [];
+  const priceChanges = [];
   const shortageAllocations = [];
   const jobsToRecompute = new Set();
 
@@ -86,6 +88,9 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
     const idx = Number(item.line_idx);
     const qty = roundQty(item.qty || 0);
     const unitCost = item.unit_cost != null ? Number(item.unit_cost) : null;
+    const updateCost = item.update_cost !== false && unitCost !== null;
+    const updateSell = item.update_sell_price === true;
+    const requestedSell = updateSell ? Number(item.sell_price) : null;
     // All indices and quantities were validated before any inventory mutation.
 
     const line = { ...lines[idx] };
@@ -104,21 +109,19 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
         // Quantity and durable receipt marker change in ONE conditional write.
         // A crash after this write cannot add the same receipt line twice.
         const movementKey = `po:${poId}:${receiptId}:${idx}`;
+        const priceUpdates = {};
+        if (updateCost) priceUpdates.unit_cost = unitCost;
+        if (updateSell) priceUpdates.sell_price = requestedSell;
+        else if (updateCost && part.use_markup && part.markup_percentage) priceUpdates.sell_price = Number((unitCost * (1 + part.markup_percentage / 100)).toFixed(2));
         const movement = await base44.entities.Part.updateMany(
           { id: line.part_id, inventory_operation_keys: { $ne: movementKey } },
-          { $inc: { quantity_on_hand: qty }, $addToSet: { inventory_operation_keys: movementKey } }
+          { $inc: { quantity_on_hand: qty }, $addToSet: { inventory_operation_keys: movementKey }, ...(Object.keys(priceUpdates).length ? { $set: priceUpdates } : {}) }
         );
         if (movement?.updated !== 1 && movement?.updated !== 0) {
           throw new Error("Inventory movement outcome unknown; reconcile this receipt before retrying");
         }
         const applied = movement.updated === 1;
-        if (applied && unitCost != null) {
-          const partUpdates = { unit_cost: unitCost };
-          if (part.use_markup && part.markup_percentage) {
-            partUpdates.sell_price = parseFloat((unitCost * (1 + part.markup_percentage / 100)).toFixed(2));
-          }
-          await base44.entities.Part.update(line.part_id, partUpdates);
-        }
+        if (applied && Object.keys(priceUpdates).length) priceChanges.push({part_id:line.part_id,part_number:part.part_number||'',old_cost:Number(part.unit_cost)||0,new_cost:updateCost?unitCost:Number(part.unit_cost)||0,old_sell_price:Number(part.sell_price)||0,new_sell_price:priceUpdates.sell_price??Number(part.sell_price)||0,receipt_id:receiptId});
         const currentPartRes = await base44.entities.Part.filter({ id: line.part_id });
         const currentPart = (currentPartRes.items || currentPartRes || [])[0];
         inventoryUpdates.push({ part_id: line.part_id, added: applied ? qty : 0, new_on_hand: currentPart?.quantity_on_hand, already_applied: !applied });
@@ -161,6 +164,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
   };
   if (receiptId) {
     poUpdates.receipt_log = [...(po.receipt_log || []), receiptId];
+    poUpdates.receipt_price_history = [...(po.receipt_price_history || []), ...priceChanges.map(change=>({...change,received_at:new Date().toISOString()}))];
   }
   await base44.entities.PurchaseOrder.update(poId, poUpdates);
 

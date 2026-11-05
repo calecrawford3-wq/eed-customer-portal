@@ -51,6 +51,9 @@ export default function PurchaseOrderDetail() {
   const [receiveMode, setReceiveMode] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
   const [receiveCosts, setReceiveCosts] = useState({});
+  const [receiveSellPrices, setReceiveSellPrices] = useState({});
+  const [receiveUpdateCost, setReceiveUpdateCost] = useState({});
+  const [receiveUpdateSell, setReceiveUpdateSell] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [kitPickerOpen, setKitPickerOpen] = useState(false);
   const [slipModalOpen, setSlipModalOpen] = useState(false);
@@ -297,13 +300,21 @@ export default function PurchaseOrderDetail() {
   const openReceiveMode = () => {
     const initialQtys = {};
     const initialCosts = {};
+    const initialSell = {}, initialApplyCost = {}, initialApplySell = {};
     (form.line_items || []).forEach((line, idx) => {
       const remaining = (line.quantity || 0) - (line.received_qty || 0);
       initialQtys[idx] = remaining > 0 ? remaining : 0;
       initialCosts[idx] = line.unit_cost || 0;
+      const part = (parts || []).find(p => p.id === line.part_id);
+      initialSell[idx] = part?.sell_price ?? 0;
+      initialApplyCost[idx] = true;
+      initialApplySell[idx] = false;
     });
     setReceiveQtys(initialQtys);
     setReceiveCosts(initialCosts);
+    setReceiveSellPrices(initialSell);
+    setReceiveUpdateCost(initialApplyCost);
+    setReceiveUpdateSell(initialApplySell);
     setReceiveMode(true);
   };
 
@@ -311,7 +322,7 @@ export default function PurchaseOrderDetail() {
     setReceiving(true);
     try {
       const receivedItems = (form.line_items || [])
-        .map((line, idx) => ({ line_idx: idx, qty: Number(receiveQtys[idx] || 0), unit_cost: Number(receiveCosts[idx] ?? line.unit_cost ?? 0) }))
+        .map((line, idx) => ({ line_idx: idx, qty: Number(receiveQtys[idx] || 0), unit_cost: Number(receiveCosts[idx] ?? line.unit_cost ?? 0), update_cost:receiveUpdateCost[idx]!==false, update_sell_price:receiveUpdateSell[idx]===true, sell_price:Number(receiveSellPrices[idx]??0) }))
         .filter(item => item.qty > 0);
 
       if (receivedItems.length === 0) {
@@ -770,6 +781,8 @@ export default function PurchaseOrderDetail() {
                   <th className="text-center py-2 font-medium text-slate-600 w-24">Already Recv'd</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-24">Receiving Now</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-28">Unit Cost</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-36">New sell price</th>
+                  <th className="text-center py-2 font-medium text-slate-600 w-24">Margin</th>
                   <th className="text-center py-2 font-medium text-slate-600 w-20">Status</th>
                 </tr>
               </thead>
@@ -807,8 +820,11 @@ export default function PurchaseOrderDetail() {
                             min="0"
                             step="0.01"
                           />
+                          <label className="flex items-center gap-1 text-xs mt-1"><input type="checkbox" checked={receiveUpdateCost[idx]!==false} onChange={e=>setReceiveUpdateCost(v=>({...v,[idx]:e.target.checked}))}/>Apply cost</label>
                         </div>
                       </td>
+                      <td className="py-2 px-2"><div className="w-32 mx-auto"><Input type="number" min="0" step="0.01" value={receiveSellPrices[idx]??0} onChange={e=>setReceiveSellPrices(v=>({...v,[idx]:e.target.value}))} className="h-8 text-right"/><label className="flex items-center gap-1 text-xs mt-1"><input type="checkbox" checked={receiveUpdateSell[idx]===true} onChange={e=>setReceiveUpdateSell(v=>({...v,[idx]:e.target.checked}))}/>Apply sell price</label></div></td>
+                      <td className="py-2 text-center text-xs">{Number(receiveSellPrices[idx])>0?(((Number(receiveSellPrices[idx])-Number(receiveCosts[idx]??line.unit_cost??0))/Number(receiveSellPrices[idx]))*100).toFixed(1)+'%':'—'}</td>
                       <td className="py-2 text-center">
                         {isFullyReceived ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
