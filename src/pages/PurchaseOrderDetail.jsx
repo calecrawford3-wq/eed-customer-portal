@@ -580,9 +580,6 @@ export default function PurchaseOrderDetail() {
             <PackageCheck className="w-4 h-4 mr-1" /> Receive Items
           </Button>
         )}
-        {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
-
-        )}
         <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save"}
         </Button>
