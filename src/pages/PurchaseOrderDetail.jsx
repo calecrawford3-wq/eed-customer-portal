@@ -158,13 +158,32 @@ export default function PurchaseOrderDetail() {
   }, [po]);
 
   const saveMutation = useMutation({
-    mutationFn: /** @param {Record<string, any>} data */ (data) => id
-      ? base44.entities.PurchaseOrder.update(id, data)
-      : base44.entities.PurchaseOrder.create(data),
+    mutationFn: async (data) => {
+      if (!id) return base44.entities.PurchaseOrder.create(data);
+      // A regular Save must never rewrite receiving-managed quantities,
+      // costs, totals, status, receipt IDs or invoice history.
+      // Editable PO lines are saved only before any receiving has occurred.
+      const currentResult = await base44.entities.PurchaseOrder.filter({id});
+      const current = (Array.isArray(currentResult)?currentResult:currentResult?.items||[])[0];
+      if (!current) throw new Error('Purchase order no longer exists');
+      const received = (current.line_items||[]).some(l=>Number(l.received_qty)>0) ||
+        (current.receipt_log||[]).length>0 || ['partial','received'].includes(current.status);
+      if (received) {
+        return base44.entities.PurchaseOrder.update(id, {
+          notes:data.notes||'', expected_date:data.expected_date||'',
+          shipping_address:data.shipping_address||''
+        });
+      }
+      const {receipt_log,receipt_history,receipt_price_history,supplier_invoice_number,received_date,...editable} = data;
+      // Preserve the current receipt status and accounting fields if the
+      // form is stale, even on an unreceived PO.
+      return base44.entities.PurchaseOrder.update(id,{...editable,status:current.status});
+    },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["po", id] });
       qc.invalidateQueries({ queryKey: ["job-pos"] });
-      toast.success("Purchase order saved");
+      toast.success("Purchase order saved; posted receiving and pricing records preserved");
       if (isNew) navigate(`/PurchaseOrderDetail?id=${result.id}`);
     },
   });
