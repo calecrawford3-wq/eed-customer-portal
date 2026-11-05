@@ -49,6 +49,14 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
   if (po.status === "cancelled") throw new Error("Cannot receive a cancelled purchase order");
 
   const lines = [...(po.line_items || [])];
+  // Resolve linked parts once, concurrently. The previous path fetched each
+  // part for validation, again for posting, and again after posting.
+  const partIds = [...new Set(receivedItems.map(item => lines[Number(item.line_idx)]?.part_id).filter(Boolean))];
+  const partEntries = await Promise.all(partIds.map(async id => {
+    const response = await base44.entities.Part.filter({id});
+    return [id, (response.items || response || [])[0]];
+  }));
+  const partsById = new Map(partEntries);
   const seenIndices = new Set();
   for (const item of receivedItems) {
     const idx = Number(item.line_idx);
@@ -72,8 +80,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
       throw new Error("Receipt quantity exceeds the unreceived purchase order quantity");
     }
     if (lines[idx].part_id) {
-      const parts = await base44.entities.Part.filter({ id: lines[idx].part_id });
-      if (!(parts.items || parts || [])[0]) {
+      if (!partsById.get(lines[idx].part_id)) {
         throw new Error("Linked inventory part is missing; receipt was not applied");
       }
     }
@@ -103,8 +110,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
 
     // Update inventory for linked parts
     if (line.part_id) {
-      const partRes = await base44.entities.Part.filter({ id: line.part_id });
-      const part = (partRes.items || partRes || [])[0];
+      const part = partsById.get(line.part_id);
       if (part) {
         // Quantity and durable receipt marker change in ONE conditional write.
         // A crash after this write cannot add the same receipt line twice.
@@ -122,9 +128,9 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
         }
         const applied = movement.updated === 1;
         if (applied && Object.keys(priceUpdates).length) priceChanges.push({part_id:line.part_id,part_number:part.part_number||'',old_cost:Number(part.unit_cost)||0,new_cost:updateCost?unitCost:Number(part.unit_cost)||0,old_sell_price:Number(part.sell_price)||0,new_sell_price:priceUpdates.sell_price??Number(part.sell_price)||0,receipt_id:receiptId});
-        const currentPartRes = await base44.entities.Part.filter({ id: line.part_id });
-        const currentPart = (currentPartRes.items || currentPartRes || [])[0];
-        inventoryUpdates.push({ part_id: line.part_id, added: applied ? qty : 0, new_on_hand: currentPart?.quantity_on_hand, already_applied: !applied });
+        // The final on-hand count is fetched in one concurrent pass after
+        // all writes, instead of an extra read after every receipt line.
+        inventoryUpdates.push({ part_id: line.part_id, added: applied ? qty : 0, new_on_hand: null, already_applied: !applied });
 
         // Allocate received qty to outstanding shortages (locked per-part)
         const alloc = await allocateReceiptToShortages(base44, {
@@ -141,6 +147,14 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
       }
     }
   }
+
+  // Refresh final stock counts concurrently without altering stock or locks.
+  const finalStocks = await Promise.all([...new Set(inventoryUpdates.map(u=>u.part_id))].map(async partId=>{
+    const result = await base44.entities.Part.filter({id:partId});
+    return [partId,(result.items||result||[])[0]?.quantity_on_hand];
+  }));
+  const stockById = new Map(finalStocks);
+  for (const update of inventoryUpdates) update.new_on_hand = stockById.get(update.part_id);
 
   // Determine new PO status
   const allReceived = lines.every((l) => (l.received_qty || 0) >= (l.quantity || 0));
