@@ -26,6 +26,8 @@ export default async function(req) {
     // Stable receipt ID for idempotent receiving — the UI should pass the same
     // receipt_id on retry so a repeated submission doesn't double-increment stock.
     const receiptId = body.receipt_id;
+    const supplierInvoiceNumber = typeof body.supplier_invoice_number === 'string' ? body.supplier_invoice_number.trim() : '';
+    if (supplierInvoiceNumber.length > 100) return Response.json({error:'Supplier invoice number is too long'},{status:400});
     if (typeof receiptId !== "string" || !receiptId || receiptId.length > 200) {
       return Response.json({ error: "Stable receipt_id required for safe receiving" }, { status: 400 });
     }
@@ -36,7 +38,7 @@ export default async function(req) {
     }
 
     const operationId = `receive-po:${poId}:${receiptId}`;
-    const result = await receivePOItems(base44.asServiceRole, poId, receivedItems, operationId, receiptId);
+    const result = await receivePOItems(base44.asServiceRole, poId, receivedItems, operationId, receiptId, supplierInvoiceNumber);
 
     return Response.json({ success: true, po_id: poId, ...result });
   } catch (error) {

@@ -132,6 +132,8 @@
     "notes": {
       "type": "string"
     },
+    "supplier_invoice_number": {"type":"string","description":"Most recent supplier invoice number recorded when receiving"},
+    "receipt_history": {"type":"array","default":[],"items":{"type":"object"},"description":"Receipt history including supplier invoice number and quantities"},
     "receipt_price_history": {"type":"array","default":[],"items":{"type":"object"},"description":"Cost and sell-price changes applied when purchase order receipts are posted"},
     "receipt_log": {
       "type": "array",

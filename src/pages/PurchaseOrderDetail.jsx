@@ -49,6 +49,8 @@ export default function PurchaseOrderDetail() {
   const [receiving, setReceiving] = useState(false);
   const pendingReceiptId = useRef(null);
   const [receiveMode, setReceiveMode] = useState(false);
+  const [supplierInvoiceNumber,setSupplierInvoiceNumber] = useState('');
+  const [reviewReceipt,setReviewReceipt] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState({});
   const [receiveCosts, setReceiveCosts] = useState({});
   const [receiveSellPrices, setReceiveSellPrices] = useState({});
@@ -310,6 +312,7 @@ export default function PurchaseOrderDetail() {
       initialApplyCost[idx] = true;
       initialApplySell[idx] = false;
     });
+    setSupplierInvoiceNumber('');setReviewReceipt(false);
     setReceiveQtys(initialQtys);
     setReceiveCosts(initialCosts);
     setReceiveSellPrices(initialSell);
@@ -337,6 +340,7 @@ export default function PurchaseOrderDetail() {
         po_id: id,
         received_items: receivedItems,
         receipt_id: pendingReceiptId.current,
+        supplier_invoice_number:supplierInvoiceNumber.trim(),
       });
 
       const data = result?.data || result;
@@ -380,7 +384,7 @@ export default function PurchaseOrderDetail() {
       qc.invalidateQueries({ queryKey: ["parts"] });
       qc.invalidateQueries({ queryKey: ["job-parts-tab"] });
       qc.invalidateQueries({ queryKey: ["job-reservations"] });
-      setReceiveMode(false);
+      setReceiveMode(false);setReviewReceipt(false);
 
       let msg = `Items received — ${(data.inventory_updates || []).length} inventory record(s) updated`;
       if (allocCount > 0) msg += `, ${allocCount} shortage(s) resolved`;
@@ -761,95 +765,16 @@ export default function PurchaseOrderDetail() {
         </CardContent>
       </Card>
 
-      {/* Receive Items Panel */}
-      {receiveMode && (
-        <Card className="border-0 shadow-sm mb-6 border-l-4 border-l-emerald-400">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2 text-emerald-700">
-              <PackageCheck className="w-4 h-4" /> Receive Items
-            </CardTitle>
-            <Button variant="ghost" size="sm" className="text-slate-400" onClick={() => setReceiveMode(false)}>Cancel</Button>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <p className="text-sm text-slate-500 mb-4">Enter quantities and updated supplier costs. Check “Apply sell price” for any new selling price you want activated immediately in inventory and the website store when this receipt posts. Leave it unchecked to retain existing pricing rules.</p>
-            <table className="w-full text-sm mb-4">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600">Part</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Description</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-24">Ordered</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-24">Already Recv'd</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-24">Receiving Now</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-28">Unit Cost</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-36">New sell price</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-24">Margin</th>
-                  <th className="text-center py-2 font-medium text-slate-600 w-20">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(form.line_items || []).map((line, idx) => {
-                  const alreadyReceived = line.received_qty || 0;
-                  const remaining = (line.quantity || 0) - alreadyReceived;
-                  const receivingNow = Number(receiveQtys[idx] || 0);
-                  const totalAfter = alreadyReceived + receivingNow;
-                  const isFullyReceived = totalAfter >= (line.quantity || 0);
-                  return (
-                    <tr key={idx} className="border-b border-slate-100">
-                      <td className="py-2 pr-2 font-mono text-xs text-slate-500">{line.part_number || "Custom"}</td>
-                      <td className="py-2 pr-3 text-slate-700">{line.description}</td>
-                      <td className="py-2 text-center">{line.quantity}</td>
-                      <td className="py-2 text-center text-slate-500">{alreadyReceived}</td>
-                      <td className="py-2 px-2">
-                        <Input
-                          type="number"
-                          value={receiveQtys[idx] ?? remaining}
-                          onChange={e => setReceiveQtys(q => ({ ...q, [idx]: Number(e.target.value) }))}
-                          className="text-center border-emerald-200 focus:border-emerald-400 h-8 w-20 mx-auto"
-                          min="0"
-                          max={remaining}
-                        />
-                      </td>
-                      <td className="py-2 px-2">
-                        <div className="relative w-24 mx-auto">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
-                          <Input
-                            type="number"
-                            value={receiveCosts[idx] ?? line.unit_cost ?? 0}
-                            onChange={e => setReceiveCosts(c => ({ ...c, [idx]: Number(e.target.value) }))}
-                            className="text-right border-emerald-200 focus:border-emerald-400 h-8 pl-5"
-                            min="0"
-                            step="0.01"
-                          />
-                          <label className="flex items-center gap-1 text-xs mt-1"><input type="checkbox" checked={receiveUpdateCost[idx]!==false} onChange={e=>setReceiveUpdateCost(v=>({...v,[idx]:e.target.checked}))}/>Apply cost</label>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2"><div className="w-32 mx-auto"><Input type="number" min="0" step="0.01" value={receiveSellPrices[idx]??0} onChange={e=>setReceiveSellPrices(v=>({...v,[idx]:e.target.value}))} className="h-8 text-right"/><label className="flex items-center gap-1 text-xs mt-1"><input type="checkbox" checked={receiveUpdateSell[idx]===true} onChange={e=>setReceiveUpdateSell(v=>({...v,[idx]:e.target.checked}))}/>Apply sell price</label></div></td>
-                      <td className="py-2 text-center text-xs">{Number(receiveSellPrices[idx])>0?(((Number(receiveSellPrices[idx])-Number(receiveCosts[idx]??line.unit_cost??0))/Number(receiveSellPrices[idx]))*100).toFixed(1)+'%':'—'}</td>
-                      <td className="py-2 text-center">
-                        {isFullyReceived ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
-                        ) : (
-                          <span className="text-xs text-amber-600">{remaining - receivingNow} left</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="flex justify-end">
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={handleReceiveItems}
-                disabled={receiving}
-              >
-                <PackageCheck className="w-4 h-4 mr-2" />
-                {receiving ? "Processing..." : "Confirm Receipt & Update Inventory"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Receiving workspace */}
+      {receiveMode && <Card className="mb-6 border border-emerald-200 shadow-md overflow-hidden">
+        <CardHeader className="bg-slate-900 text-white flex flex-row items-center justify-between gap-4"><div><CardTitle className="flex gap-2 items-center text-xl"><PackageCheck className="w-5 h-5"/> Receive Purchase Order</CardTitle><p className="text-slate-300 text-sm mt-2">Review delivered quantities, supplier pricing, and inventory updates before posting.</p></div><Button variant="outline" className="text-slate-900" onClick={()=>{setReceiveMode(false);setReviewReceipt(false)}}>Close</Button></CardHeader>
+        <CardContent className="p-4 md:p-6 space-y-5 bg-slate-50">
+          <div className="bg-white rounded-xl border p-4 grid md:grid-cols-2 gap-4"><label className="text-sm font-semibold">Supplier invoice number<Input value={supplierInvoiceNumber} maxLength={100} onChange={e=>setSupplierInvoiceNumber(e.target.value)} placeholder="Enter supplier invoice #" className="mt-2"/></label><div className="text-sm"><p className="font-semibold">Receipt summary</p><p className="text-slate-500 mt-2">{(form.line_items||[]).filter((l,i)=>Number(receiveQtys[i])>0).length} line items selected · {(form.line_items||[]).reduce((n,l,i)=>n+Math.max(0,Number(receiveQtys[i])||0),0)} units</p><p className="text-xs text-slate-500 mt-1">Each partial receipt can have its own supplier invoice number.</p></div></div>
+          <div className="space-y-3">{(form.line_items||[]).map((line,idx)=>{const received=Number(line.received_qty)||0;const remaining=Math.max(0,(Number(line.quantity)||0)-received);const qty=Number(receiveQtys[idx])||0;const cost=Number(receiveCosts[idx]??line.unit_cost??0);const sell=Number(receiveSellPrices[idx]??0);const margin=sell>0?(sell-cost)/sell*100:null;return <div key={idx} className="bg-white border rounded-xl p-4 space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-xs text-slate-500">{line.part_number||'Unlinked item'}</p><h3 className="font-semibold text-base mt-1">{line.description}</h3></div><div className="text-right text-xs text-slate-500">Ordered {line.quantity} · Received {received}<p className="font-bold text-slate-800 mt-1">{remaining} outstanding</p></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3"><label className="text-xs font-semibold text-slate-600">Receive now<Input type="number" min="0" max={remaining} step="1" value={receiveQtys[idx]??0} onChange={e=>{setReceiveQtys(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1" disabled={!remaining}/></label><label className="text-xs font-semibold text-slate-600">Unit cost ($)<Input type="number" min="0" step="0.01" value={receiveCosts[idx]??0} onChange={e=>{setReceiveCosts(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1"/></label><label className="text-xs font-semibold text-slate-600">Selling price ($)<Input type="number" min="0" step="0.01" value={receiveSellPrices[idx]??0} onChange={e=>{setReceiveSellPrices(v=>({...v,[idx]:e.target.value}));setReviewReceipt(false)}} className="mt-1"/></label><div className="rounded-lg bg-slate-50 border p-3"><p className="text-xs text-slate-500">Projected margin</p><p className={`font-bold text-xl mt-1 ${margin!==null&&margin<20?'text-amber-700':'text-slate-800'}`}>{margin===null?'—':margin.toFixed(1)+'%'}</p></div></div><div className="flex flex-wrap gap-5 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={receiveUpdateCost[idx]!==false} onChange={e=>{setReceiveUpdateCost(v=>({...v,[idx]:e.target.checked}));setReviewReceipt(false)}}/>Update inventory cost</label><label className="flex items-center gap-2"><input type="checkbox" checked={receiveUpdateSell[idx]===true} onChange={e=>{setReceiveUpdateSell(v=>({...v,[idx]:e.target.checked}));setReviewReceipt(false)}}/>Apply selling price immediately</label></div>{qty>remaining&&<p className="text-red-600 text-xs">Quantity exceeds outstanding amount.</p>}</div>})}</div>
+          {reviewReceipt&&<div className="rounded-xl border-2 border-emerald-500 bg-emerald-50 p-4"><h3 className="font-bold text-emerald-900">Review receipt before posting</h3><p className="text-sm mt-2">Supplier invoice: {supplierInvoiceNumber.trim()||'Not provided'} · {(form.line_items||[]).filter((l,i)=>Number(receiveQtys[i])>0).length} lines. Accepted quantities will be added to inventory. Checked cost and selling-price changes will be applied immediately.</p></div>}
+          <div className="flex flex-wrap justify-end gap-3 border-t pt-4"><Button variant="outline" onClick={()=>{setReceiveMode(false);setReviewReceipt(false)}}>Cancel</Button>{!reviewReceipt?<Button onClick={()=>{const values=Object.values(receiveQtys).map(Number);if(!values.some(v=>v>0)){toast.error('Enter a quantity to receive');return}if((form.line_items||[]).some((l,i)=>!Number.isFinite(Number(receiveQtys[i]))||Number(receiveQtys[i])<0||Number(receiveQtys[i])>Number(l.quantity||0)-Number(l.received_qty||0))){toast.error('Check receiving quantities');return}setReviewReceipt(true)}}>Review receipt</Button>:<Button className="bg-emerald-600 hover:bg-emerald-700" disabled={receiving} onClick={handleReceiveItems}>{receiving?'Posting receipt…':'Post receipt & update inventory'}</Button>}</div>
+        </CardContent>
+      </Card>}
 
       <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={4} placeholder="Special instructions, notes for supplier..." /></div>
 

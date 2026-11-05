@@ -17,7 +17,7 @@ import { allocateReceiptToShortages, recomputeJobPartsReadiness, roundQty } from
 
 export { receivePOItems };
 
-async function receivePOItems(base44, poId, receivedItems, operationId, receiptId) {
+async function receivePOItems(base44, poId, receivedItems, operationId, receiptId, supplierInvoiceNumber = "") {
   // Load the PO
   const poRes = await base44.entities.PurchaseOrder.filter({ id: poId });
   const po = (poRes.items || poRes || [])[0];
@@ -164,6 +164,8 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
   };
   if (receiptId) {
     poUpdates.receipt_log = [...(po.receipt_log || []), receiptId];
+    poUpdates.supplier_invoice_number = supplierInvoiceNumber || po.supplier_invoice_number || '';
+    poUpdates.receipt_history = [...(po.receipt_history || []), {receipt_id:receiptId,supplier_invoice_number:supplierInvoiceNumber,received_at:new Date().toISOString(),items:receivedItems.map(i=>({line_idx:i.line_idx,qty:i.qty,unit_cost:i.unit_cost,update_sell_price:i.update_sell_price===true,sell_price:i.update_sell_price===true?i.sell_price:null}))}];
     poUpdates.receipt_price_history = [...(po.receipt_price_history || []), ...priceChanges.map(change=>({...change,received_at:new Date().toISOString()}))];
   }
   await base44.entities.PurchaseOrder.update(poId, poUpdates);
