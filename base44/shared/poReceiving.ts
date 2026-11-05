@@ -117,7 +117,19 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
         const movementKey = `po:${poId}:${receiptId}:${idx}`;
         const priceUpdates = {};
         if (updateCost) priceUpdates.unit_cost = unitCost;
-        if (updateSell) priceUpdates.sell_price = requestedSell;
+        if (updateSell) {
+          priceUpdates.sell_price = requestedSell;
+          // An explicitly entered selling price takes precedence over the
+          // existing automatic markup. Record its effective markup when cost
+          // is positive, and disable auto markup for zero-cost items.
+          const effectiveCost = updateCost ? unitCost : Number(part.unit_cost);
+          if (Number.isFinite(effectiveCost) && effectiveCost > 0) {
+            priceUpdates.markup_percentage = Number(((requestedSell / effectiveCost - 1) * 100).toFixed(4));
+            priceUpdates.use_markup = true;
+          } else {
+            priceUpdates.use_markup = false;
+          }
+        }
         else if (updateCost && part.use_markup && part.markup_percentage) priceUpdates.sell_price = Number((unitCost * (1 + part.markup_percentage / 100)).toFixed(2));
         const movement = await base44.entities.Part.updateMany(
           { id: line.part_id, inventory_operation_keys: { $ne: movementKey } },

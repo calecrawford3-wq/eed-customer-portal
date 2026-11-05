@@ -253,7 +253,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
                           placeholder={it.unit_cost != null ? String(it.unit_cost) : "—"}
                         />
                       </td>
-                      <td className="py-2 px-2"><Input type="number" min="0" step="0.01" className="h-8 w-24 text-right" placeholder="Optional" value={it.confirmed_sell_price} onChange={e=>updateReviewItem(idx,'confirmed_sell_price',e.target.value)}/><label className="text-xs flex items-center gap-1 mt-1"><input type="checkbox" checked={it.update_sell_price===true} onChange={e=>updateReviewItem(idx,'update_sell_price',e.target.checked)}/>Apply price</label></td>
+                      <td className="py-2 px-2"><Input type="number" min="0" step="0.01" className="h-8 w-24 text-right" placeholder="Optional" value={it.confirmed_sell_price} onChange={e=>setReviewItems(items=>items.map((it2,i)=>i===idx?{...it2,confirmed_sell_price:e.target.value,update_sell_price:e.target.value!==''}:it2))}/><p className="text-xs text-slate-500 mt-1">{it.update_sell_price?'Applies on receipt':'Leave blank to keep current price'}</p></td>
                       <td className="py-2 pl-2 text-center">
                         {it.match_status === "matched" && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
                         {it.match_status === "unmatched" && <Badge className="bg-red-100 text-red-700 text-xs">Unmatched</Badge>}
