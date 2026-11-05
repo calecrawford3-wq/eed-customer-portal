@@ -48,6 +48,8 @@ export default async function(req) {
         line_idx: Number(ci.line_idx),
         qty: Number(ci.qty),
         unit_cost: ci.unit_cost != null ? Number(ci.unit_cost) : null,
+        update_sell_price:ci.update_sell_price===true,
+        sell_price:ci.update_sell_price===true?ci.sell_price:null,
       }));
 
     if (receivedItems.length === 0) {

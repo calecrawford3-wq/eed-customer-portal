@@ -105,6 +105,8 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
           part_id: it.confirmed_part_id || it.matched_part_id || "",
           qty: Number(it.confirmed_qty),
           unit_cost: it.confirmed_unit_cost !== "" ? Number(it.confirmed_unit_cost) : null,
+          update_sell_price:it.update_sell_price===true,
+          sell_price:it.update_sell_price===true?Number(it.confirmed_sell_price):null,
         }));
 
       if (confirmedItems.length === 0) {
@@ -217,6 +219,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
                     <th className="text-center py-2 px-2">Slip Qty</th>
                     <th className="text-center py-2 px-2">Receive Qty</th>
                     <th className="text-right py-2 px-2">Unit Cost</th>
+                    <th className="text-right py-2 px-2">New sell price</th>
                     <th className="text-center py-2 pl-2">Match</th>
                   </tr>
                 </thead>
@@ -250,6 +253,7 @@ export default function PackingSlipReceiveModal({ open, onClose, po }) {
                           placeholder={it.unit_cost != null ? String(it.unit_cost) : "—"}
                         />
                       </td>
+                      <td className="py-2 px-2"><Input type="number" min="0" step="0.01" className="h-8 w-24 text-right" placeholder="Optional" value={it.confirmed_sell_price} onChange={e=>updateReviewItem(idx,'confirmed_sell_price',e.target.value)}/><label className="text-xs flex items-center gap-1 mt-1"><input type="checkbox" checked={it.update_sell_price===true} onChange={e=>updateReviewItem(idx,'update_sell_price',e.target.checked)}/>Apply price</label></td>
                       <td className="py-2 pl-2 text-center">
                         {it.match_status === "matched" && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
                         {it.match_status === "unmatched" && <Badge className="bg-red-100 text-red-700 text-xs">Unmatched</Badge>}

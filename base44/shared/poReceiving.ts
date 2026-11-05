@@ -156,6 +156,15 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
   const stockById = new Map(finalStocks);
   for (const update of inventoryUpdates) update.new_on_hand = stockById.get(update.part_id);
 
+  // Verify requested price changes persisted before reporting success.
+  for (const change of priceChanges) {
+    const result = await base44.entities.Part.filter({id:change.part_id});
+    const actual = (result.items||result||[])[0];
+    if (!actual || Math.abs(Number(actual.unit_cost||0)-change.new_cost)>0.005 || Math.abs(Number(actual.sell_price||0)-change.new_sell_price)>0.005) {
+      throw new Error('Receipt inventory was updated, but price verification failed for '+change.part_number+'. Check inventory before retrying; do not post another receipt.');
+    }
+  }
+
   // Determine new PO status
   const allReceived = lines.every((l) => (l.received_qty || 0) >= (l.quantity || 0));
   const anyReceived = lines.some((l) => (l.received_qty || 0) > 0);
