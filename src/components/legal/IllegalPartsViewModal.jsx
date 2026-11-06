@@ -1,3 +1,5 @@
+import LegalSealPhoto from "@/components/legal/LegalSealPhoto";
+import SealTagPhoto from "@/components/legal/SealTagPhoto";
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -94,7 +96,7 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId = null
                     <div className="grid grid-cols-3 gap-2">
                       {doc.seal_tag_photos.map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                          <img src={url} alt={`Seal photo ${i + 1}`} className="w-full h-24 object-cover rounded border border-slate-200 hover:opacity-90 transition-opacity" />
+                          <SealTagPhoto src={url} alt={`Seal photo ${i + 1}`} className="w-full h-24 object-cover rounded border border-slate-200 hover:opacity-90 transition-opacity" />
                         </a>
                       ))}
                     </div>

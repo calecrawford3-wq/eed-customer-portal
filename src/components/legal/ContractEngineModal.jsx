@@ -1,3 +1,4 @@
+import {isHeicFile,convertHeicBlob} from "@/lib/heicUtils";
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { FileText, Loader2, Upload, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import SignaturePad from "@/components/SignaturePad";
+import {isHeicFile,convertHeicBlob} from "@/lib/heicUtils";
 
 const CONTRACT_ENGINE_BODY = `ELITE ENGINE DEVELOPMENT
 CONTRACT ENGINE RESEARCH, INTELLECTUAL PROPERTY, AND USE AGREEMENT
@@ -83,7 +85,12 @@ export default function ContractEngineModal({ open, onClose, onCreated, estimate
     setUploadingPhoto(true);
     for (const file of files) {
       try {
-        const res = await base44.integrations.Core.UploadFile({ file });
+        let uploadFile=file;
+        if(isHeicFile(file)){
+          const converted=await convertHeicBlob(file);
+          uploadFile=new File([converted],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'});
+        }
+        const res = await base44.integrations.Core.UploadFile({ file:uploadFile });
         const url = res?.file_url || /** @type {any} */ (res)?.data?.file_url;
         if (url) setPhotos(prev => [...prev, { url, name: file.name }]);
       } catch (err) {
