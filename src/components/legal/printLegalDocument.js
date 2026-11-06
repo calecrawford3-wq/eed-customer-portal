@@ -1,4 +1,5 @@
 import {ensureDisplayableUrl} from "@/lib/heicUtils";
+import {ensureDisplayableUrl} from "@/lib/heicUtils";
 // Opens a complete, standalone print layout. The browser's print dialog can save it as PDF.
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeImage = value => {
