@@ -49,11 +49,17 @@ const heicCache = new Map();
 export async function ensureDisplayableUrl(url) {
   if (!url || !isHeicUrl(url)) return url;
   if (heicCache.has(url)) return heicCache.get(url);
-  const resp = await fetch(url);
-  if (!resp.ok) return url;
-  const blob = await resp.blob();
-  const jpegBlob = await convertHeicBlob(blob);
-  const blobUrl = URL.createObjectURL(jpegBlob);
+  // Convert the actual HEIC bytes; do not rely on remote Content-Type,
+  // which may be application/octet-stream and previously caused silent skips.
+  const response = await fetch(url, { mode: 'cors' });
+  if (!response.ok) throw new Error(`Seal photo download failed (${response.status})`);
+  const bytes = await response.arrayBuffer();
+  const input = new Blob([bytes], { type: 'image/heic' });
+  const converter = await getHeic2any();
+  const converted = await converter({ blob: input, toType: 'image/jpeg', quality: 0.9 });
+  const jpeg = Array.isArray(converted) ? converted[0] : converted;
+  if (!jpeg || !jpeg.size) throw new Error('HEIC photo conversion produced no image');
+  const blobUrl = URL.createObjectURL(new Blob([jpeg], {type:'image/jpeg'}));
   heicCache.set(url, blobUrl);
   return blobUrl;
 }
