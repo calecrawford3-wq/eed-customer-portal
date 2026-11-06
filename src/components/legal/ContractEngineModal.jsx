@@ -97,6 +97,8 @@ export default function ContractEngineModal({ open, onClose, onCreated, estimate
   const removePhoto = (idx) => setPhotos(prev => prev.filter((_, i) => i !== idx));
 
   const handleConfirm = async () => {
+    if (photos.length===0) {toast.error('Upload at least one seal tag photograph so it appears in the contract.');return;}
+    if (uploadingPhoto) {toast.error('Wait for seal tag photographs to finish uploading.');return;}
     if (!adminSignature) {
       toast.error("Admin signature is required before creating the contract");
       return;
@@ -195,7 +197,7 @@ export default function ContractEngineModal({ open, onClose, onCreated, estimate
               </button>
             </div>
             <input ref={photoRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-            <p className="text-xs text-slate-400 mt-1">Upload photos of each seal tag and the engine serial number plate</p>
+            <p className="text-xs text-slate-400 mt-1">Required: upload clear photographs of the installed seal tags. They will appear as Exhibit A in the customer contract and printed PDF.</p>
           </div>
 
           {/* Agreement text */}

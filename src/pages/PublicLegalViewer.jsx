@@ -40,7 +40,7 @@ export default function PublicLegalViewer(){
       <h2 className="text-xl font-bold">{doc.title||'Agreement'}</h2><p className="text-sm text-slate-500">Status: {doc.status?.replaceAll('_',' ')}</p>
       <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-4 font-sans text-sm leading-relaxed">{doc.body}</pre>
       {doc.seal_tag_numbers&&<p className="text-sm">Seal tags: {doc.seal_tag_numbers}</p>}
-      {(doc.seal_tag_photos||[]).map((src,i)=><img key={i} src={src} alt={'Seal tag '+(i+1)} className="max-h-48 rounded-lg object-contain"/>)}
+      {doc.document_type==='contract_engine'&&<section className="rounded-lg border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold text-blue-900">Exhibit A — Seal Tag & Engine Identification Photographs</h3><p className="mt-1 text-xs text-blue-800">These attached photographs are part of the agreement and identify the seals on this engine.</p>{(doc.seal_tag_photos||[]).length?<div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">{doc.seal_tag_photos.map((src,i)=><figure key={i} className="rounded border bg-white p-2"><img src={src} alt={'Contract engine seal tag photograph '+(i+1)} className="w-full max-h-72 object-contain"/><figcaption className="text-xs text-slate-600 mt-2">Seal tag / engine identification photograph {i+1}</figcaption></figure>)}</div>:<p className="text-sm text-amber-700 mt-2">No seal tag photographs are attached to this contract.</p>}</section>}
       {ready&&<div className="space-y-3 border-t pt-4">
         <h3 className="font-semibold">Sign agreement</h3>
         <p className="text-xs text-slate-600">Read the complete agreement above before signing. Your electronic signature will be saved to this document.</p>
