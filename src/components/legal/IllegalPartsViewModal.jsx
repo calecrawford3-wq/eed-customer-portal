@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, Clock, Printer, FileText, Tag, Image } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import {printLegalDocument} from "./printLegalDocument";
 
 export default function IllegalPartsViewModal({ open, onClose, estimateId = null, invoiceId = null, customerEngineId = null, documentType = "", documentId = null }) {
   const [doc, setDoc] = useState(null);
@@ -132,8 +133,8 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId = null
 
         <DialogFooter>
           {doc && (
-            <Button variant="outline" onClick={() => window.print()} className="mr-auto">
-              <Printer className="w-4 h-4 mr-1" /> Print
+            <Button variant="outline" onClick={() => printLegalDocument(doc)} className="mr-auto">
+              <Printer className="w-4 h-4 mr-1" /> Print / Save PDF
             </Button>
           )}
           <Button variant="outline" onClick={onClose}>Close</Button>
