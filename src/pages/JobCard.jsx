@@ -16,6 +16,7 @@ import JobWorkTab from "@/components/jobs/JobWorkTab";
 import JobBillingHistoryTab from "@/components/jobs/JobBillingHistoryTab";
 import JobNextAction from "@/components/jobs/JobNextAction";
 import JobProfitabilityTab from "@/components/jobs/JobProfitabilityTab";
+import JobLegalDocumentsTab from "@/components/jobs/JobLegalDocumentsTab";
 import PrintableBuildBook from "@/components/builds/PrintableBuildBook";
 import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
 import { BookOpen, ClipboardList, ScanLine } from "lucide-react";
@@ -250,12 +251,13 @@ export default function JobCard() {
 
       <div className="px-4 md:px-8 mt-4">
         <Tabs value={activeTab} onValueChange={(v) => navigateJobArea(v)}>
-          <TabsList className="grid grid-cols-5 h-auto gap-1 bg-white border border-slate-200 p-1 overflow-x-auto">
+          <TabsList className="grid grid-cols-6 h-auto gap-1 bg-white border border-slate-200 p-1 overflow-x-auto">
             <TabsTrigger value="overview" className="min-h-10">Overview</TabsTrigger>
             <TabsTrigger value="work" className="min-h-10">Work</TabsTrigger>
             <TabsTrigger value="findings" className="min-h-10">Findings</TabsTrigger>
             <TabsTrigger value="parts" className="min-h-10">Parts</TabsTrigger>
             <TabsTrigger value="billing" className="min-h-10">Billing & History</TabsTrigger>
+            <TabsTrigger value="documents" className="min-h-10">Agreements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
@@ -269,6 +271,7 @@ export default function JobCard() {
             <JobFindingsTab job={job} estimate={estimate} build={build} invoices={invoiceList} />
           </TabsContent>
           <TabsContent value="parts" className="mt-4"><JobPartsTab job={job} /></TabsContent>
+          <TabsContent value="documents" className="mt-4"><JobLegalDocumentsTab job={job}/></TabsContent>
           <TabsContent value="billing" className="mt-4">
             <JobBillingHistoryTab job={job} estimate={estimate} invoices={invoiceList} customer={customer} initialSection={initialBillingSection} />
           </TabsContent>
