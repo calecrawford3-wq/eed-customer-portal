@@ -1,6 +1,5 @@
 import React from 'react';
-import {useDisplayImage} from '@/hooks/useDisplayImage';
-export default function SealTagPhoto({src,alt,className=''}){
- const {url,loading}=useDisplayImage(src);
- return loading?<div className="rounded bg-slate-100 p-4 text-xs text-slate-500">Loading seal photograph…</div>:<img src={url||src} alt={alt} className={className}/>;
-}
+import LegalSealPhoto from './LegalSealPhoto';
+// Single renderer shared by admin, portal and public agreement pages.
+// Never fall back to a raw HEIC URL: browsers display a blank image.
+export default function SealTagPhoto(props){return <LegalSealPhoto {...props}/>;}
