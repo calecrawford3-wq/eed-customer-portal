@@ -158,8 +158,8 @@ export default function PortalLegalDocument({ doc, onSigned }) {
             )}
 
             {/* Signatures */}
-            <div className={adminSigned ? "grid grid-cols-2 gap-4" : "space-y-4"}>
-              {adminSigned && (
+            <div className={adminSigned && currentDoc.document_type !== "illegal_parts" ? "grid grid-cols-2 gap-4" : "space-y-4"}>
+              {adminSigned && currentDoc.document_type !== "illegal_parts" && (
                 <div className="border border-slate-200 rounded-lg p-4">
                   <p className="text-xs font-medium text-slate-500 uppercase mb-2">Elite Engine Rep</p>
                   <img src={currentDoc.admin_signature} alt="Admin signature" className="max-h-20 object-contain bg-white rounded border border-slate-100 p-1" />

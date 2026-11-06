@@ -35,7 +35,7 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId = null
 
   const adminSigned = !!doc?.admin_signature;
   const customerSigned = !!doc?.customer_signature;
-  const fullySigned = adminSigned && customerSigned;
+  const fullySigned = doc?.document_type === 'illegal_parts' ? customerSigned : adminSigned && customerSigned;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -104,8 +104,8 @@ export default function IllegalPartsViewModal({ open, onClose, estimateId = null
             )}
 
             {/* Signatures */}
-            <div className={adminSigned ? "grid grid-cols-2 gap-4" : "space-y-4"}>
-              {adminSigned && (
+            <div className={adminSigned && doc.document_type !== "illegal_parts" ? "grid grid-cols-2 gap-4" : "space-y-4"}>
+              {adminSigned && doc.document_type !== "illegal_parts" && (
                 <div className="border border-slate-200 rounded-lg p-4">
                   <p className="text-xs font-medium text-slate-500 uppercase mb-2">Elite Engine Rep</p>
                   <img src={doc.admin_signature} alt="Admin signature" className="max-h-20 object-contain bg-white rounded border border-slate-100 p-1" />
