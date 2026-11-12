@@ -108,11 +108,32 @@
       "default": false,
       "description": "Explicit opt-in to display this part in the public Elite website store"
     },
-    "website_inventory_policy": {"type":"string","enum":["tracked","unlimited"],"default":"tracked","description":"Storefront stock policy; unlimited is for made-to-order products"},
-    "website_show_stock_quantity": {"type":"boolean","default":false,"description":"Show available quantity on the public storefront when inventory is tracked"},
-    "website_seo_title": {"type":"string","description":"Optional SEO page title override for published product"},
-    "website_seo_description": {"type":"string","description":"Optional SEO meta description override for published product"},
-    "website_brand": {"type":"string","description":"Product manufacturer or brand for product structured data"},
+    "website_inventory_policy": {
+      "type": "string",
+      "enum": [
+        "tracked",
+        "unlimited"
+      ],
+      "default": "tracked",
+      "description": "Storefront stock policy; unlimited is for made-to-order products"
+    },
+    "website_show_stock_quantity": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show available quantity on the public storefront when inventory is tracked"
+    },
+    "website_seo_title": {
+      "type": "string",
+      "description": "Optional SEO page title override for published product"
+    },
+    "website_seo_description": {
+      "type": "string",
+      "description": "Optional SEO meta description override for published product"
+    },
+    "website_brand": {
+      "type": "string",
+      "description": "Product manufacturer or brand for product structured data"
+    },
     "website_description": {
       "type": "string",
       "description": "Optional customer-facing description"
@@ -151,7 +172,14 @@
       "type": "string",
       "description": "Public storefront title, independent of inventory name"
     },
-    "website_option_groups": {"type":"array","items":{"type":"object"},"default":[],"description":"Customer dropdown groups and per-choice price adjustments"},
+    "website_option_groups": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Customer dropdown groups and per-choice price adjustments"
+    },
     "website_customization": {
       "type": "object",
       "description": "Optional buyer-entered personalization field configuration"
@@ -196,6 +224,19 @@
       "type": "boolean",
       "default": false,
       "description": "Require manual shipping quote for oversized or special handling parts"
+    },
+    "turn14_item_id": {
+      "type": "string"
+    },
+    "turn14_map_price": {
+      "type": "number"
+    },
+    "turn14_available_quantity": {
+      "type": "number",
+      "default": 0
+    },
+    "turn14_dropship_controller_id": {
+      "type": "string"
     }
   },
   "required": [
