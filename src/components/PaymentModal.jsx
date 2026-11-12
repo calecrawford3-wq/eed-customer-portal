@@ -1,3 +1,4 @@
+import CardOnFilePanel from "@/components/customers/CardOnFilePanel";
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,9 @@ const METHOD_CONFIG = {
   other: { label: "Other", icon: CheckSquare, color: "bg-slate-100 text-slate-700" },
 };
 
-export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onRecord, title = "Record Payment" }) {
+export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onRecord, title = "Record Payment", customerId, customerEmail, customerName, documentType, documentId, cardBalanceDue }) {
   const [amount, setAmount] = useState("");
+  const [paymentTab,setPaymentTab]=useState("record");
   const [method, setMethod] = useState("cash");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -33,7 +35,7 @@ export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onR
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -41,7 +43,15 @@ export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onR
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
+        {customerId && documentId && (
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <Button variant={paymentTab==='record'?'default':'outline'} onClick={()=>setPaymentTab('record')}>Record Cash / Check / Other</Button>
+            <Button variant={paymentTab==='stripe'?'default':'outline'} onClick={()=>setPaymentTab('stripe')}>Charge Card</Button>
+          </div>
+        )}
+        {paymentTab==='stripe' && customerId && documentId ? (
+          <CardOnFilePanel customerId={customerId} customerEmail={customerEmail} customerName={customerName} documentType={documentType} documentId={documentId} balanceDue={cardBalanceDue ?? balanceDue ?? 0} />
+        ) : <div className="space-y-4 mt-2">
           {balanceDue !== undefined && (
             <div className="bg-slate-50 rounded-lg p-3 flex justify-between text-sm">
               <span className="text-slate-500">Balance Due</span>
@@ -124,7 +134,7 @@ export default function PaymentModal({ open, onClose, balanceDue, totalPaid, onR
               Record Payment
             </Button>
           </div>
-        </div>
+        </div>}
       </DialogContent>
     </Dialog>
   );

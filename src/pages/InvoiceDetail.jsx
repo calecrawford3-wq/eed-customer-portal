@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import GuestPaymentShare from "@/components/portal/GuestPaymentShare";
-import CardOnFilePanel from "@/components/customers/CardOnFilePanel";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -1117,6 +1116,12 @@ export default function InvoiceDetail() {
       )}
 
       <PaymentModal
+        customerId={form.customer_id}
+        customerEmail={customer?.email}
+        customerName={`${customer?.first_name || ""} ${customer?.last_name || ""}`.trim()}
+        documentType="invoice"
+        documentId={id}
+        cardBalanceDue={Math.max(0,Number(form.balance_due ?? (Number(form.total||0)-Number(form.amount_paid||0)-Number(form.applied_credits||0))))}
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         balanceDue={form.balance_due ?? form.total ?? 0}
@@ -1527,19 +1532,6 @@ export default function InvoiceDetail() {
       </div>
 
       {id && form.customer_id && ["sent","partial","overdue"].includes(form.status) && <div id="invoice-guest-payment-share" className="mb-5"><GuestPaymentShare type="invoice" id={id} /></div>}
-
-      {form.customer_id && (
-        <div className="mb-5">
-          <CardOnFilePanel
-            documentType="invoice"
-            documentId={id}
-            balanceDue={Math.max(0,Number(form.balance_due ?? (Number(form.total||0)-Number(form.amount_paid||0)-Number(form.applied_credits||0))))}
-            customerId={form.customer_id}
-            customerEmail={customer?.email}
-            customerName={`${customer?.first_name || ""} ${customer?.last_name || ""}`.trim()}
-          />
-        </div>
-      )}
 
       {/* Payment History */}
       {(form.payments || []).length > 0 && (
