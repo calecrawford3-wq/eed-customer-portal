@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
+import Turn14ImportModal from "@/components/inventory/Turn14ImportModal";
 import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
@@ -60,6 +61,7 @@ export default function Inventory() {
   const [laborForm, setLaborForm] = useState(emptyLabor);
   const [machiningForm, setMachiningForm] = useState(emptyMachining);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [turn14ImportOpen,setTurn14ImportOpen]=useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [printLabelsOpen, setPrintLabelsOpen] = useState(false);
   const [labelPreselectId, setLabelPreselectId] = useState(null);
@@ -267,6 +269,7 @@ export default function Inventory() {
             <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" /> Import CSV
             </Button>
+            <Button variant="outline" onClick={()=>setTurn14ImportOpen(true)}>Import Turn 14</Button>
             <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
             <Button variant="outline" onClick={() => setPrintLabelsOpen(true)}>
               <Printer className="w-4 h-4 mr-2" /> Print Labels
@@ -405,7 +408,8 @@ export default function Inventory() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle>{editingPart ? "Edit Part" : "New Part"}</DialogTitle>
-              <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
+              <Button variant="outline" onClick={()=>setTurn14ImportOpen(true)}>Import Turn 14</Button>
+            <MotosportBrowseButton label="Browse MotoSport" onPick={pickPartFromCatalog} />
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
@@ -615,6 +619,7 @@ export default function Inventory() {
         onClose={() => setSupplierModalOpen(false)}
         onCreated={(s) => setPartForm(f => ({ ...f, supplier_id: s.id }))}
       />
+      <Turn14ImportModal open={turn14ImportOpen} onClose={()=>setTurn14ImportOpen(false)} onImported={()=>qc.invalidateQueries({queryKey:['parts']})}/>
       <PartCsvImportModal open={csvImportOpen} onClose={() => setCsvImportOpen(false)} />
       <PrintLabelsModal
         open={printLabelsOpen}
