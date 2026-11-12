@@ -13,12 +13,17 @@ const errMessage = (e) => e?.response?.data?.error || e?.data?.error || e?.messa
  * Staff can create a secure Stripe setup link (the customer types the card on
  * Stripe, never here), copy/email it, and remove a saved card.
  */
-export default function CardOnFilePanel({ customerId, customerEmail, customerName = '' }) {
+export default function CardOnFilePanel({ customerId, customerEmail, customerName = '', documentType = '', documentId = '', balanceDue = 0 }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState('');
   const [error, setError] = useState('');
+  const [chargeCardId,setChargeCardId]=useState('');
+  const [chargeAmount,setChargeAmount]=useState('');
+  const [chargeAuthorized,setChargeAuthorized]=useState(false);
+  const [chargeBusy,setChargeBusy]=useState(false);
+  const [chargeRequestId,setChargeRequestId]=useState(null);
 
   useEffect(() => {
     if (!customerId) { setStatus(null); setLink(''); return; }
@@ -57,6 +62,24 @@ export default function CardOnFilePanel({ customerId, customerEmail, customerNam
     } catch (e) { setError(errMessage(e)); } finally { setBusy(false); }
   }
 
+  async function chargeCard() {
+    if(!chargeAuthorized){setError('Confirm customer authorization for this charge');return;}
+    const amountCents=Math.round(Number(chargeAmount)*100);
+    if(!Number.isSafeInteger(amountCents)||amountCents<50||amountCents>Math.round(Number(balanceDue)*100)){setError('Enter an amount between $0.50 and the unpaid balance');return;}
+    const requestId=chargeRequestId||crypto.randomUUID();setChargeRequestId(requestId);
+    setChargeBusy(true);setError('');
+    try{
+      const r=await base44.functions.invoke('chargeCardOnFile',{document_type:documentType,document_id:documentId,payment_method_id:chargeCardId,amount_cents:amountCents,customer_authorized:true,request_id:requestId});
+      const result=r.data||r;
+      if(result.error)throw new Error(result.error);
+      if(!result.success)throw new Error('Charge was not completed');
+      setChargeRequestId(null);setChargeAuthorized(false);setChargeAmount('');setChargeCardId('');
+      toast.success('Card charged and payment recorded');
+      window.location.reload();
+    }catch(e){setError(errMessage(e)+' If a charge may have succeeded, check Stripe before retrying.');}
+    finally{setChargeBusy(false);}
+  }
+
   async function copyLink() {
     try { await navigator.clipboard.writeText(link); toast.success('Link copied'); }
     catch { setError('Select and copy the link below.'); }
@@ -80,6 +103,16 @@ export default function CardOnFilePanel({ customerId, customerEmail, customerNam
             </Button>
           </div>
         ))}
+        {documentId && ['invoice','estimate'].includes(documentType) && Number(balanceDue)>0 && cards.length>0 && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-3">
+            <p className="font-semibold text-sm">Charge card on file</p>
+            <p className="text-xs text-slate-600">Balance: ${Number(balanceDue).toFixed(2)}. Only use this for a charge the customer has authorized. The card is processed securely by Stripe.</p>
+            <select className="w-full rounded border p-2 text-sm bg-white" value={chargeCardId} disabled={chargeBusy} onChange={e=>{setChargeCardId(e.target.value);setChargeRequestId(null)}}><option value="">Select saved card</option>{cards.map(card=><option key={card.id} value={card.id}>{card.brand} ending {card.last4} · {card.exp_month}/{card.exp_year}</option>)}</select>
+            <Input type="number" min="0.50" max={Number(balanceDue)} step="0.01" placeholder="Amount to charge ($)" value={chargeAmount} disabled={chargeBusy} onChange={e=>{setChargeAmount(e.target.value);setChargeRequestId(null)}}/>
+            <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" className="mt-0.5" checked={chargeAuthorized} disabled={chargeBusy} onChange={e=>setChargeAuthorized(e.target.checked)}/>I confirm the customer authorized this specific charge for the amount shown.</label>
+            <Button className="bg-emerald-700 hover:bg-emerald-800" disabled={chargeBusy||!chargeAuthorized||!chargeCardId||!chargeAmount} onClick={chargeCard}>{chargeBusy?'Processing charge…':'Charge saved card'}</Button>
+          </div>
+        )}
         {status?.auto_authorized && (
           <p className="text-xs text-amber-700">This customer authorized future overdue collection. Automatic charging is not active.</p>
         )}

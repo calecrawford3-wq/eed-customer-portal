@@ -1531,6 +1531,9 @@ export default function InvoiceDetail() {
       {form.customer_id && (
         <div className="mb-5">
           <CardOnFilePanel
+            documentType="invoice"
+            documentId={id}
+            balanceDue={Math.max(0,Number(form.balance_due ?? (Number(form.total||0)-Number(form.amount_paid||0)-Number(form.applied_credits||0))))}
             customerId={form.customer_id}
             customerEmail={customer?.email}
             customerName={`${customer?.first_name || ""} ${customer?.last_name || ""}`.trim()}
