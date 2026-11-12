@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import PartCsvImportModal from "@/components/inventory/PartCsvImportModal";
 import Turn14ImportModal from "@/components/inventory/Turn14ImportModal";
+import Turn14FeedDiagnostics from "@/components/inventory/Turn14FeedDiagnostics";
 import QuickCreateSupplierModal from "@/components/QuickCreateSupplierModal";
 import KitManager from "@/components/inventory/KitManager";
 import CoreManager from "@/components/inventory/CoreManager";
@@ -249,6 +250,7 @@ export default function Inventory() {
 
         {/* ─── Parts Tab ─── */}
         <TabsContent value="parts">
+          <Turn14FeedDiagnostics />
           <div className="flex gap-3 mb-4 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
