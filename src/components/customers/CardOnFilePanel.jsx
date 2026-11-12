@@ -24,6 +24,10 @@ export default function CardOnFilePanel({ customerId, customerEmail, customerNam
   const [chargeAuthorized,setChargeAuthorized]=useState(false);
   const [chargeBusy,setChargeBusy]=useState(false);
   const [chargeRequestId,setChargeRequestId]=useState(null);
+  const [manualAmount,setManualAmount]=useState('');
+  const [manualBusy,setManualBusy]=useState(false);
+  const [manualRequestId,setManualRequestId]=useState(null);
+  const [manualAuthorized,setManualAuthorized]=useState(false);
 
   useEffect(() => {
     if (!customerId) { setStatus(null); setLink(''); return; }
@@ -80,6 +84,21 @@ export default function CardOnFilePanel({ customerId, customerEmail, customerNam
     finally{setChargeBusy(false);}
   }
 
+  async function enterNewCard(){
+    const amountCents=Math.round(Number(manualAmount)*100);
+    if(!manualAuthorized){setError('Confirm customer authorization for this payment');return;}
+    if(!Number.isSafeInteger(amountCents)||amountCents<50||amountCents>Math.round(Number(balanceDue)*100)){setError('Enter an amount between $0.50 and the unpaid balance');return;}
+    const requestId=manualRequestId||crypto.randomUUID();setManualRequestId(requestId);
+    setManualBusy(true);setError('');
+    try{
+      const r=await base44.functions.invoke('startAdminManualCardPayment',{document_type:documentType,document_id:documentId,amount_cents:amountCents,customer_authorized:true,request_id:requestId});
+      const result=r.data||r;
+      if(result.error)throw new Error(result.error);
+      if(!result.checkout_url)throw new Error('Stripe did not return a secure payment page');
+      window.location.assign(result.checkout_url);
+    }catch(e){setError(errMessage(e));setManualBusy(false);}
+  }
+
   async function copyLink() {
     try { await navigator.clipboard.writeText(link); toast.success('Link copied'); }
     catch { setError('Select and copy the link below.'); }
@@ -111,6 +130,15 @@ export default function CardOnFilePanel({ customerId, customerEmail, customerNam
             <Input type="number" min="0.50" max={Number(balanceDue)} step="0.01" placeholder="Amount to charge ($)" value={chargeAmount} disabled={chargeBusy} onChange={e=>{setChargeAmount(e.target.value);setChargeRequestId(null)}}/>
             <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" className="mt-0.5" checked={chargeAuthorized} disabled={chargeBusy} onChange={e=>setChargeAuthorized(e.target.checked)}/>I confirm the customer authorized this specific charge for the amount shown.</label>
             <Button className="bg-emerald-700 hover:bg-emerald-800" disabled={chargeBusy||!chargeAuthorized||!chargeCardId||!chargeAmount} onClick={chargeCard}>{chargeBusy?'Processing charge…':'Charge saved card'}</Button>
+          </div>
+        )}
+        {documentId && ['invoice','estimate'].includes(documentType) && Number(balanceDue)>0 && (
+          <div className="rounded-lg border border-slate-200 p-3 space-y-3">
+            <p className="font-semibold text-sm">Enter New Card — One-Time Payment</p>
+            <p className="text-xs text-slate-600">Type the customer's card details on Stripe's secure page. No card is saved on file. You can enter the card yourself while on the phone or at the shop.</p>
+            <Input type="number" min="0.50" max={Number(balanceDue)} step="0.01" placeholder="Amount to charge ($)" value={manualAmount} disabled={manualBusy} onChange={e=>{setManualAmount(e.target.value);setManualRequestId(null)}} />
+            <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" className="mt-0.5" checked={manualAuthorized} disabled={manualBusy} onChange={e=>setManualAuthorized(e.target.checked)}/>I confirm the customer authorized this one-time charge.</label>
+            <Button variant="outline" disabled={manualBusy||!manualAmount||!manualAuthorized} onClick={enterNewCard}>{manualBusy?'Opening secure entry…':'Enter New Card & Charge'}</Button>
           </div>
         )}
         {status?.auto_authorized && (
