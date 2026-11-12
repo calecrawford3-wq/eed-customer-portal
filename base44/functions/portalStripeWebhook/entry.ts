@@ -27,11 +27,14 @@ export default async function (req) {
       // A revoked consent must never be re-enabled by a delayed webhook.
       if(customer.card_auto_collect_revoked_at && new Date(customer.card_auto_collect_revoked_at).getTime()*1 > Number(session.created)*1000)
         return Response.json({received:true,revoked:true});
-      await base44.asServiceRole.entities.Customer.update(customer.id,{
-        card_auto_collect_authorized:meta.auto_collect_consent==='true',
-        card_auto_collect_consent_at:new Date(Number(session.created)*1000).toISOString(),
-        card_auto_collect_consent_version:meta.consent_version||'2026-10-20',
-      });
+      // A staff-created setup link saves the card only; consent is never recorded for the customer.
+      if(meta.initiated_by!=='staff') {
+        await base44.asServiceRole.entities.Customer.update(customer.id,{
+          card_auto_collect_authorized:meta.auto_collect_consent==='true',
+          card_auto_collect_consent_at:new Date(Number(session.created)*1000).toISOString(),
+          card_auto_collect_consent_version:meta.consent_version||'2026-10-20',
+        });
+      }
       return Response.json({received:true,card_saved:true,automatic_charging_active:false});
     } catch(e) {return Response.json({error:'Card setup needs verification/retry'},{status:503});}
   }

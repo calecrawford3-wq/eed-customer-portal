@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import GuestPaymentShare from "@/components/portal/GuestPaymentShare";
+import CardOnFilePanel from "@/components/customers/CardOnFilePanel";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -1526,6 +1527,16 @@ export default function InvoiceDetail() {
       </div>
 
       {id && form.customer_id && ["sent","partial","overdue"].includes(form.status) && <div id="invoice-guest-payment-share" className="mb-5"><GuestPaymentShare type="invoice" id={id} /></div>}
+
+      {form.customer_id && (
+        <div className="mb-5">
+          <CardOnFilePanel
+            customerId={form.customer_id}
+            customerEmail={customer?.email}
+            customerName={`${customer?.first_name || ""} ${customer?.last_name || ""}`.trim()}
+          />
+        </div>
+      )}
 
       {/* Payment History */}
       {(form.payments || []).length > 0 && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import GuestPaymentShare from "@/components/portal/GuestPaymentShare";
+import CardOnFilePanel from "@/components/customers/CardOnFilePanel";
 import InitialFindingsEditor from '@/components/estimates/InitialFindingsEditor';
 import { base44 } from "@/api/base44Client";
 import { syncCustomerEngineStage } from "@/lib/syncCustomerEngineStage";
@@ -1814,6 +1815,16 @@ export default function EstimateDetail() {
       />
 
       {id && form.customer_id && ["sent","approved","partial"].includes(form.status) && <div className="mb-4"><GuestPaymentShare type="estimate" id={id} /></div>}
+
+      {form.customer_id && (
+        <div className="mb-4">
+          <CardOnFilePanel
+            customerId={form.customer_id}
+            customerEmail={customer?.email}
+            customerName={`${customer?.first_name || ""} ${customer?.last_name || ""}`.trim()}
+          />
+        </div>
+      )}
 
       {/* Next Step guidance banner */}
       {id && form.status === "draft" && (
