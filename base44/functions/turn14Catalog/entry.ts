@@ -8,12 +8,7 @@ export default async function(req){
  const body=await req.json();const action=body.action;
  if(action==='test'){const data=await turn14Request('/v1/brands');return Response.json({connected:true,brands:itemArray(data).length});}
  if(action==='brands'){const data=await turn14Request('/v1/brands');return Response.json({brands:itemArray(data).map(x=>({id:String(x.id),name:x.attributes?.name,dropship:!!x.attributes?.dropship}))});}
- if(action==='items'){
- const brand=String(body.brand_id||'');const page=Number(body.page||1);
- if(!/^\d+$/.test(brand)||!Number.isInteger(page)||page<1||page>10000)return Response.json({error:'Select a brand and valid page'},{status:400});
- const data=await turn14Request(`/v1/items/brand/${brand}?page=${page}`);
- return Response.json({items:itemArray(data).map(x=>({id:String(x.id),...x.attributes})),pages:Number(data.meta?.total_pages||1)});
- }
+ if(action==='items')return Response.json({error:'Brand item browsing is paused until paginated feed validation is complete. Use the read-only feed diagnostics.'},{status:409});
  // Individual-item preview/import calls are intentionally blocked until the
  // paginated items/pricing/inventory feeds and durable item-ID mapping exist.
  // Turn 14 requires approval of the data integration before ordering work.
