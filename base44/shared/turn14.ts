@@ -1,4 +1,5 @@
-const ROOT='https://api.turn14.com';
+// Turn 14 account currently has TEST-only permission. Do not use production until approved.
+const ROOT='https://apitest.turn14.com';
 export async function turn14Request(path:string){
  const client_id=Deno.env.get('TURN14_CLIENT_ID');const client_secret=Deno.env.get('TURN14_CLIENT_SECRET');
  if(!client_id||!client_secret)throw new Error('Turn 14 credentials are not configured');
