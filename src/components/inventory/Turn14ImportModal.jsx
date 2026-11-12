@@ -6,7 +6,7 @@ import {Input} from '@/components/ui/input';
 import {toast} from 'sonner';
 export default function Turn14ImportModal({open,onClose,onImported}){
  const [brands,setBrands]=useState([]),[brand,setBrand]=useState(''),[items,setItems]=useState([]),[page,setPage]=useState(1),[pages,setPages]=useState(1),[busy,setBusy]=useState(false),[error,setError]=useState(''),[selected,setSelected]=useState(null),[markup,setMarkup]=useState('50');
- async function call(action,extra={}){const r=await base44.functions.invoke('turn14Catalog',{action,...extra});const data=r.data||r;if(data.error)throw Error(data.error);return data;}
+ async function call(action,extra={}){try{const r=await base44.functions.invoke('turn14Catalog',{action,...extra});const data=r.data||r;if(data.error)throw Error(data.error);return data;}catch(e){throw Error(e.response?.data?.error||e.message||'Turn 14 connection failed');}}
  async function loadBrands(){setBusy(true);setError('');try{const r=await call('brands');setBrands(r.brands||[]);}catch(e){setError(e.message)}finally{setBusy(false)}}
  async function loadItems(id,p=1){setBusy(true);setError('');setSelected(null);try{const r=await call('items',{brand_id:id,page:p});setItems(r.items||[]);setPages(r.pages||1);setPage(p);setBrand(id);}catch(e){setError(e.message)}finally{setBusy(false)}}
  async function preview(id){setBusy(true);setError('');try{const r=await call('preview',{item_id:id});setSelected(r.item)}catch(e){setError(e.message)}finally{setBusy(false)}}
