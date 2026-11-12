@@ -475,6 +475,27 @@
     "company_logo_dark_url": {
       "type": "string",
       "description": "Uploaded company logo intended for dark/black backgrounds."
+    },
+    "turn14_auto_import": {
+      "type": "boolean",
+      "default": false
+    },
+    "turn14_inventory_sync": {
+      "type": "boolean",
+      "default": true
+    },
+    "turn14_dealer_cost_map_sync": {
+      "type": "boolean",
+      "default": true
+    },
+    "turn14_auto_paid_order_fulfillment": {
+      "type": "boolean",
+      "default": true,
+      "description": "Requested behavior; actual submission remains gated on verified API integration and order validation."
+    },
+    "turn14_hide_supplier_identity": {
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

@@ -28,6 +28,11 @@ import Addons from './Addons';
 
 const defaultSettings = {
   key: "global",
+  turn14_auto_import: false,
+  turn14_inventory_sync: true,
+  turn14_dealer_cost_map_sync: true,
+  turn14_auto_paid_order_fulfillment: true,
+  turn14_hide_supplier_identity: true,
   company_name: "Elite Engine Development",
   company_address: "",
   company_city: "",
@@ -280,6 +285,18 @@ export default function Settings() {
         </TabsContent>
         <TabsContent value="inventory" className="space-y-4">
           <SettingsLinks title="Inventory administration" links={[{label:'Inventory',to:'/Inventory',detail:'Manage stock and reorder levels'},{label:'Suppliers',to:'/Suppliers'},{label:'Purchase Orders',to:'/PurchaseOrders'}]}/>
+          <section className="rounded-lg border bg-white p-4 space-y-3">
+            <h3 className="font-semibold">Turn 14 Distribution — Integration Preferences</h3>
+            <p className="text-sm text-slate-600">These are your saved preferences. Supplier catalog, pricing, stock synchronization, and dropship order submission will become operational only after Turn 14 API credentials and endpoint verification are completed.</p>
+            {[
+              ['turn14_auto_import','Automatically import catalog products'],
+              ['turn14_inventory_sync','Sync supplier inventory availability'],
+              ['turn14_dealer_cost_map_sync','Sync dealer costs and MAP pricing'],
+              ['turn14_auto_paid_order_fulfillment','Automatically submit eligible paid dropship orders'],
+              ['turn14_hide_supplier_identity','Hide Turn 14 identity on customer-facing pages'],
+            ].map(([key,label])=><label key={key} className="flex items-center gap-3 text-sm"><input type="checkbox" checked={!!form[key]} onChange={e=>set(key,e.target.checked)} />{label}</label>)}
+            <p className="text-xs text-amber-700">Not connected yet — no automatic orders will be submitted until supplier integration is tested and activated.</p>
+          </section>
           <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Storage locations</h3><StorageLocationsPanel/></section>
         </TabsContent>
         <TabsContent value="portal" className="space-y-4">
