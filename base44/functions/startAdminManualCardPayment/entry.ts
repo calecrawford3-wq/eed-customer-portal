@@ -31,7 +31,6 @@ export default async function(req){
   const session=await stripe.checkout.sessions.create({
    mode:'payment',payment_method_types:['card'],
    line_items:[{price_data:{currency:'usd',product_data:{name:`${type==='invoice'?'Invoice':'Estimate'} ${doc.invoice_number||doc.estimate_number||doc.id} · One-time card payment`},unit_amount:amount},quantity:1}],
-   payment_intent_data:{setup_future_usage:undefined},
    success_url:`${origin.origin}/${type==='invoice'?'InvoiceDetail':'EstimateDetail'}?id=${encodeURIComponent(doc.id)}&payment=success&session_id={CHECKOUT_SESSION_ID}`,
    cancel_url:`${origin.origin}/${type==='invoice'?'InvoiceDetail':'EstimateDetail'}?id=${encodeURIComponent(doc.id)}&payment=canceled`,
    metadata:{source:PORTAL_STRIPE_SOURCE,base44_app_id:appId,document_type:type,document_id:doc.id,principal_cents:String(amount),fee_cents:'0',payment_method:'card',payment_option:'admin_one_time'},
