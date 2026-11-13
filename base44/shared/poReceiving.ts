@@ -139,7 +139,7 @@ async function receivePOItems(base44, poId, receivedItems, operationId, receiptI
           throw new Error("Inventory movement outcome unknown; reconcile this receipt before retrying");
         }
         const applied = movement.updated === 1;
-        if (applied && Object.keys(priceUpdates).length) priceChanges.push({part_id:line.part_id,part_number:part.part_number||'',old_cost:Number(part.unit_cost)||0,new_cost:updateCost?unitCost:Number(part.unit_cost)||0,old_sell_price:Number(part.sell_price)||0,new_sell_price:priceUpdates.sell_price??Number(part.sell_price)||0,receipt_id:receiptId});
+        if (applied && Object.keys(priceUpdates).length) priceChanges.push({part_id:line.part_id,part_number:part.part_number||'',old_cost:Number(part.unit_cost)||0,new_cost:updateCost?unitCost:Number(part.unit_cost)||0,old_sell_price:Number(part.sell_price)||0,new_sell_price:priceUpdates.sell_price??(Number(part.sell_price)||0),receipt_id:receiptId});
         // The final on-hand count is fetched in one concurrent pass after
         // all writes, instead of an extra read after every receipt line.
         inventoryUpdates.push({ part_id: line.part_id, added: applied ? qty : 0, new_on_hand: null, already_applied: !applied });
