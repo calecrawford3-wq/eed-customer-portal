@@ -13,6 +13,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import JobBoardCard from "@/components/jobs/JobBoardCard";
 import IntakeLinkDialog from "@/components/jobs/IntakeLinkDialog";
 import IntakeEngineDialog from "@/components/jobs/IntakeEngineDialog";
+import MachiningItemsIntakeDialog from "@/components/jobs/MachiningItemsIntakeDialog";
 import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDialog";
 import { moveJobStage, getIntakeAction } from "@/lib/jobMoveHelpers";
 import LocationBoard from "@/components/jobs/LocationBoard";
@@ -121,7 +122,8 @@ export default function Jobs() {
   const [showArchive, setShowArchive] = useState(searchParams.get("arch") === "1");
   const [movingId, setMovingId] = useState(null);
   const [intakeDialog, setIntakeDialog] = useState(null); // { type: "estimate"|"engine", job, customer }
-  const [pickupDialog, setPickupDialog] = useState(null); // job
+  const [pickupDialog, setPickupDialog] = useState(null);
+  const [machiningIntake, setMachiningIntake] = useState(null); // job
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(searchParams.get("new") === "1");
   const newJobCustomerId = searchParams.get("customer_id") || "";
@@ -276,6 +278,7 @@ export default function Jobs() {
 
     if (!targetStage) return;
 
+    if (job.job_type === "machining" && targetStage === "machining" && job.stage !== "machining") {setMachiningIntake(job);return;}
     // Check for intake requirements before entering active stages
     const intakeAction = getIntakeAction(job, targetStage);
     if (intakeAction?.dialog === "intake_estimate") {
@@ -310,6 +313,7 @@ export default function Jobs() {
 
   // Move dropdown (mobile/keyboard equivalent of drag-and-drop)
   const handleMoveFromDropdown = useCallback(async (job, newStage) => {
+    if (job.job_type === "machining" && newStage === "machining" && job.stage !== "machining") {setMachiningIntake(job);return;}
     const intakeAction = getIntakeAction(job, newStage);
     if (intakeAction?.dialog === "intake_estimate") {
       setIntakeDialog({ type: "estimate", job, customer: customerObj(job.customer_id) });
@@ -520,6 +524,7 @@ export default function Jobs() {
         </div>
       )}
 
+      {machiningIntake&&<MachiningItemsIntakeDialog job={machiningIntake} open={true} onClose={()=>setMachiningIntake(null)} onConfirmed={async()=>{const job=machiningIntake;setMachiningIntake(null);await moveJobStage(job,"machining",buildObj(job.build_id));await invalidateAll();}}/>}
       {/* Intake dialogs */}
       {intakeDialog?.type === "estimate" && (
         <IntakeLinkDialog
