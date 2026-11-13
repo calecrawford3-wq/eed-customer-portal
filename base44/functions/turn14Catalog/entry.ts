@@ -8,7 +8,15 @@ export default async function(req){
  const body=await req.json();const action=body.action;
  if(action==='test'){const data=await turn14Request('/v1/brands');return Response.json({connected:true,brands:itemArray(data).length});}
  if(action==='brands'){const data=await turn14Request('/v1/brands');return Response.json({brands:itemArray(data).map(x=>({id:String(x.id),name:x.attributes?.name,dropship:!!x.attributes?.dropship}))});}
- if(action==='items')return Response.json({error:'Brand item browsing is paused until paginated feed validation is complete. Use the read-only feed diagnostics.'},{status:409});
+ if(action==='items'){
+  const page=Number(body.page||1);
+  const brandId=String(body.brand_id||'');
+  if(!Number.isInteger(page)||page<1||page>100000||!/^[0-9]*$/.test(brandId))return Response.json({error:'Invalid page or brand'},{status:400});
+  const data=await turn14Request('/v1/items?page='+page);
+  const all=itemArray(data);
+  const filtered=brandId?all.filter(x=>String(x.attributes?.brand_id||'')===brandId):all;
+  return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:true});
+ }
  // Individual-item preview/import calls are intentionally blocked until the
  // paginated items/pricing/inventory feeds and durable item-ID mapping exist.
  // Turn 14 requires approval of the data integration before ordering work.
