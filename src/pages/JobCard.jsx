@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import JobHeader from "@/components/jobs/JobHeader";
 import JobOverviewTab from "@/components/jobs/JobOverviewTab";
+import JobReturnShipping from "@/components/jobs/JobReturnShipping";
 import JobFindingsTab from "@/components/jobs/JobFindingsTab";
 import JobPartsTab from "@/components/jobs/JobPartsTab";
 import JobWorkTab from "@/components/jobs/JobWorkTab";
@@ -262,6 +263,7 @@ export default function JobCard() {
 
           <TabsContent value="overview" className="mt-4">
             <JobOverviewTab job={job} customer={customer} engine={engine} platform={platform} estimate={estimate} build={build} invoices={invoiceList} />
+            <JobReturnShipping job={job} customer={customer} />
             <div className="mt-6"><JobProfitabilityTab job={job} /></div>
           </TabsContent>
           <TabsContent value="work" className="mt-4">
