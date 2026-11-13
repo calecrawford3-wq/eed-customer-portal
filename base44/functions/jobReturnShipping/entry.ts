@@ -41,8 +41,36 @@ export default async function(req:Request){
   const data=await response.json().catch(()=>({}));
   if(!response.ok){await svc.entities.JobReturnShipment.update(quote.id,{status:'purchase_review',error:'Purchase response '+response.status});return fail('Label purchase not confirmed. Check EasyPost before retrying; no automatic retry.',502)}
   const label=data.postage_label?.label_url||data.postage_label?.label_pdf_url||'';
-  await svc.entities.JobReturnShipment.update(quote.id,{status:'purchased',carrier:data.selected_rate?.carrier||'',service:data.selected_rate?.service||'',rate_amount:Number(data.selected_rate?.rate||0),tracking_code:data.tracking_code||'',label_url:label,purchased_at:new Date().toISOString()});
-  return Response.json({success:true,label_url:label,tracking_code:data.tracking_code||''});
+  const shippingAmount=Number(data.selected_rate?.rate||0);
+  await svc.entities.JobReturnShipment.update(quote.id,{status:'purchased',carrier:data.selected_rate?.carrier||'',service:data.selected_rate?.service||'',rate_amount:shippingAmount,tracking_code:data.tracking_code||'',label_url:label,purchased_at:new Date().toISOString()});
+  // A purchased label is the source of truth. Add its actual cost to the linked
+  // estimate's shipping line exactly once, without resetting existing shipping.
+  let estimateUpdated=false,estimateWarning='';
+  if(job.estimate_id){
+   try{
+    const estimate=rows(await svc.entities.Estimate.filter({id:job.estimate_id}))[0];
+    if(estimate){
+     const marker='[EasyPost return label '+quote.id+']';
+     if(!String(estimate.internal_notes||'').includes(marker)){
+      const existingShipping=Number(estimate.shipping_cost)||0;
+      const nextShipping=Math.round((existingShipping+shippingAmount)*100)/100;
+      const existingTotal=Number(estimate.total);
+      const nextTotal=Number.isFinite(existingTotal)?Math.round((existingTotal+shippingAmount)*100)/100:null;
+      const tracking=data.tracking_code||'Pending';
+      const note=marker+' '+(data.selected_rate?.carrier||'')+' '+(data.selected_rate?.service||'')+' | Tracking: '+tracking+' | Shipping: $'+shippingAmount.toFixed(2);
+      const patch:any={shipping_cost:nextShipping,internal_notes:[estimate.internal_notes,note].filter(Boolean).join('\n')};
+      if(nextTotal!==null){
+       patch.total=nextTotal;
+       const paid=Number(estimate.amount_paid)||0;
+       patch.amount_due=Math.max(0,Math.round((nextTotal-paid)*100)/100);
+      }
+      await svc.entities.Estimate.update(estimate.id,patch);
+     }
+     estimateUpdated=true;
+    }else estimateWarning='Linked estimate not found';
+   }catch(error){console.error('[jobReturnShipping] Estimate shipping sync failed',error);estimateWarning='Shipping label purchased, but estimate shipping could not be updated';}
+  }else estimateWarning='Job has no linked estimate';
+  return Response.json({success:true,label_url:label,tracking_code:data.tracking_code||'',estimate_updated:estimateUpdated,estimate_warning:estimateWarning});
  }
  return fail('Invalid action');
  }catch(e){console.error('[jobReturnShipping]',String(e?.message||e));return fail('Shipping request failed; check shipping history before retrying',503)}
