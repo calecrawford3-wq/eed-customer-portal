@@ -115,6 +115,7 @@ export default function Jobs() {
     setSearchParams(next, { replace: true });
   };
   const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [queueType, setQueueType] = useState(searchParams.get("queue") === "machining" ? "machining" : "engine");
   const [view, setView] = useState(searchParams.get("v") || "board");
   const [activeView, setActiveView] = useState(searchParams.get("tab") || "active");
   const [showArchive, setShowArchive] = useState(searchParams.get("arch") === "1");
@@ -219,6 +220,7 @@ export default function Jobs() {
 
   const filtered = useMemo(() => {
     return jobs
+      .filter(j => queueType === "machining" ? j.job_type === "machining" : j.job_type !== "machining")
       .filter(j => !(j.estimate_id && inactiveEstimateIds.has(j.estimate_id)))
       .map(j => ({ ...j, _estimate_status: j.estimate_id ? (estimateById.get(j.estimate_id)?.status || "") : "" }))
       .filter(j => {
@@ -229,7 +231,7 @@ export default function Jobs() {
         const assignmentText = [assignment?.carLabel, assignment?.driverName].filter(Boolean).join(" ").toLowerCase();
         return (j.job_number || "").toLowerCase().includes(q) || cn.includes(q) || (j.storage_location || "").toLowerCase().includes(q) || assignmentText.includes(q);
       });
-  }, [jobs, search, customers, inactiveEstimateIds, estimateById, portalCars, portalDrivers]);
+  }, [jobs, queueType, search, customers, inactiveEstimateIds, estimateById, portalCars, portalDrivers]);
 
   const viewConfig = VIEWS[activeView];
   const columns = useMemo(() => {
@@ -363,7 +365,7 @@ export default function Jobs() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Jobs</h1>
-          <p className="text-slate-500 text-sm mt-1">Unified workspace — intake through pickup</p>
+          <p className="text-slate-500 text-sm mt-1">Separate engine and standalone machining work queues</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
@@ -396,6 +398,9 @@ export default function Jobs() {
         </div>
       </div>
 
+      <div className="flex gap-2 mb-4 border-b pb-3" role="group" aria-label="Job queue type">
+        {[{key:"engine",label:"Engine Jobs"},{key:"machining",label:"Machining Jobs"}].map(q=><Button key={q.key} size="sm" variant={queueType===q.key?"default":"outline"} className={queueType===q.key?"bg-[#e20404] hover:bg-[#c00303]":""} onClick={()=>{setQueueType(q.key);updateParam("queue",q.key)}}>{q.label} <span className="ml-2 opacity-75">{jobs.filter(j=>!j.archived&&(q.key==="machining"?j.job_type==="machining":j.job_type!=="machining")).length}</span></Button>)}
+      </div>
       {/* View selector tabs */}
       <div className="flex gap-1 mb-4 border-b border-slate-200 overflow-x-auto scrollbar-hide">
         {Object.entries(VIEWS).map(([key, v]) => (
