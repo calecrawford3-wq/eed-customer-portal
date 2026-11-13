@@ -73,6 +73,7 @@ export default function EstimateDetail() {
   const prefillBuildId = params.get("build_id");
   const prefillEngineId = params.get("customer_engine_id");
   const prefillJobId = params.get("job_id");
+  const prefillMachiningJob = params.get("job_type") === "machining";
   const isStandaloneEstimate = params.get("standalone") === "1";
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -89,7 +90,7 @@ export default function EstimateDetail() {
     deposit_percent: 0,
     deposit_amount: 0,
     deposit_paid: false,
-    is_engine_build: prefillJobId ? true : !isStandaloneEstimate,
+    is_engine_build: prefillJobId ? !prefillMachiningJob : !isStandaloneEstimate,
     contains_illegal_parts: false,
     payments: [],
     line_items: [{ ...emptyPart }],
@@ -340,13 +341,13 @@ export default function EstimateDetail() {
 
   const saveMutation = useMutation({
     mutationFn: /** @param {Record<string, any>} data */ async (data) => {
-      const payload = prefillJobId ? { ...data, is_engine_build: true } : data;
+      const payload = prefillJobId ? { ...data, is_engine_build: !prefillMachiningJob } : data;
       const result = id
         ? await base44.entities.Estimate.update(id, payload)
         : await base44.entities.Estimate.create(payload);
       const estimateId = id || result.id;
       if (isNew && prefillJobId && estimateId) {
-        await base44.entities.Job.update(prefillJobId, { estimate_id: estimateId, is_engine_build: true });
+        await base44.entities.Job.update(prefillJobId, { estimate_id: estimateId, is_engine_build: !prefillMachiningJob });
       }
       // Standalone quotes stay off the job board: only engine-build estimates
       // (or one saved into an existing job) get a Job reconciled on save.
@@ -1933,10 +1934,10 @@ export default function EstimateDetail() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-700">Engine Build</p>
-                  <p className="text-xs text-slate-400">{prefillJobId ? "This estimate belongs to the Job and will follow the engine-build workflow" : "Enable only if this standalone quote should become an engine-build job"}</p>
+                  <p className="text-xs text-slate-400">{prefillJobId ? "This estimate follows the selected Job type" : "Enable only if this standalone quote should become an engine-build job"}</p>
                 </div>
                 <Switch
-                  checked={prefillJobId ? true : !!form.is_engine_build}
+                  checked={prefillJobId ? !prefillMachiningJob : !!form.is_engine_build}
                   disabled={!!prefillJobId}
                   onCheckedChange={v => setForm({...form, is_engine_build: v})}
                 />

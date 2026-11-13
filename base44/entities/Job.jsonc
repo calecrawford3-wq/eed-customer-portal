@@ -198,6 +198,20 @@
     "profitability_snapshot": {
       "type": "string",
       "description": "JSON snapshot of the full quoted-vs-actual profitability breakdown captured at build completion, so later catalog price changes do not rewrite historical profitability. Includes revenue, parts cost, labor hours/cost, machining, discounts, warranty costs, margins, and missing-cost flags."
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "engine_build",
+        "machining",
+        "service"
+      ],
+      "default": "engine_build",
+      "description": "Job classification; machining does not create an engine build"
+    },
+    "received_component": {
+      "type": "string",
+      "description": "Customer-owned component received for standalone machining"
     }
   },
   "required": [

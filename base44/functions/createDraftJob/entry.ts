@@ -21,6 +21,8 @@ Deno.serve(async req => {
     const body = await req.json();
     const customerId = String(body.customer_id || "");
     const engineId = String(body.customer_engine_id || "");
+    const jobType = body.job_type === "machining" ? "machining" : "engine_build";
+    if(jobType === "machining" && engineId)return Response.json({error:"Machining-only jobs do not require a complete engine"},{status:400});
     if (!customerId) return Response.json({error:"Customer is required"},{status:400});
 
     const customers = await base44.asServiceRole.entities.Customer.filter({id:customerId});
@@ -45,7 +47,8 @@ Deno.serve(async req => {
       build_id: "",
       invoice_ids: [],
       platform_id: engine?.platform_id || "",
-      is_engine_build: true,
+      is_engine_build: jobType === "engine_build",
+      job_type: jobType,
       stage: "needs_estimate",
       blocking_condition: "none",
       is_active: false,
