@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import PickupShippingCheckDialog from "@/components/jobs/PickupShippingCheckDialog";
+import MachiningItemsIntakeDialog from "@/components/jobs/MachiningItemsIntakeDialog";
 import { useCustomerNotification } from "@/hooks/useCustomerNotification";
 
 const MEANINGFUL_STAGES = ["machining", "assembly", "testing"];
@@ -41,6 +42,7 @@ export default function JobStageMover({ job, build }) {
   const navigate = useNavigate();
   const [moving, setMoving] = useState(false);
   const [showPickupDialog, setShowPickupDialog] = useState(false);
+  const [showMachiningIntake, setShowMachiningIntake] = useState(false);
   const { triggerNotify, notifyDialog } = useCustomerNotification();
 
   const invalidateAll = async () => {
@@ -57,8 +59,9 @@ export default function JobStageMover({ job, build }) {
     } catch { /* best-effort */ }
   };
 
-  const handleMove = async (newStage) => {
+  const handleMove = async (newStage, intakeConfirmed = false) => {
     if (newStage === job.stage || moving) return;
+    if(job.job_type === "machining" && newStage === "machining" && !intakeConfirmed){setShowMachiningIntake(true);return;}
 
     // "picked_up" — check prerequisites; finalize directly or show dialog
     if (newStage === "picked_up") {
@@ -284,6 +287,7 @@ export default function JobStageMover({ job, build }) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <MachiningItemsIntakeDialog job={job} open={showMachiningIntake} onClose={()=>setShowMachiningIntake(false)} onConfirmed={async()=>{setShowMachiningIntake(false);await handleMove("machining",true);}}/>
       <PickupShippingCheckDialog
         job={job}
         open={showPickupDialog}

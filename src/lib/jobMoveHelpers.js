@@ -147,6 +147,13 @@ export function getIntakeAction(job, targetStage) {
   const isActiveTarget = ACTIVE_STAGES.includes(targetStage) && targetStage !== "picked_up";
   if (!isActiveTarget) return null;
 
+  // Standalone machining jobs receive components, not complete engines.
+  if (job.job_type === "machining") {
+    if (!job.estimate_id) return {dialog:"intake_estimate",message:"Create an estimate for this machining job first."};
+    const check = canEnterActiveStage(job);
+    return !check.ok ? {dialog:null,message:check.message,blocked:true} : null;
+  }
+
   // Checked-in engine without an estimate
   if (job.customer_engine_id && !job.estimate_id) {
     return { dialog: "intake_estimate", message: "This checked-in engine has no estimate. Create or link one to start work." };
