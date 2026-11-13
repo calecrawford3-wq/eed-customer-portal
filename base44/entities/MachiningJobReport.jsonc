@@ -1,0 +1,1 @@
+{"name":"MachiningJobReport","type":"object","properties":{"job_id":{"type":"string"},"customer_id":{"type":"string"},"components":{"type":"array","items":{"type":"object"}},"operations":{"type":"array","items":{"type":"object"}},"general_notes":{"type":"string"},"inspected_by":{"type":"string"},"inspection_date":{"type":"string"},"updated_at":{"type":"string"}}}
