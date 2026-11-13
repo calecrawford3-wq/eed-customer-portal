@@ -12,8 +12,10 @@ export default async function(req:Request){
  if(!job||job.job_type!=='machining'||job.is_engine_build)return fail('Machining-only job required',409);
  const existing=rows(await svc.entities.JobReturnShipment.filter({job_id:job.id}));
  const purchased=existing.find(x=>x.status==='purchased');
- if(b.action==='status')return Response.json({purchased:purchased||null,quotes:existing.filter(x=>x.status==='quoted').slice(-5)});
+ const unresolved=existing.find(x=>['purchase_pending','purchase_review'].includes(x.status));
+ if(b.action==='status')return Response.json({purchased:purchased||null,unresolved:unresolved||null,quotes:existing.filter(x=>x.status==='quoted').slice(-5)});
  if(purchased)return fail('A return label has already been purchased for this job. Use the existing label.',409);
+ if(unresolved)return fail('A previous label purchase is pending or needs review. Check EasyPost before creating another label.',409);
  const key=Deno.env.get('EASYPOST_API_KEY');if(!key)return fail('EasyPost API key not configured',503);
  const headers={Authorization:'Basic '+btoa(key+':'),'Content-Type':'application/json'};
  if(b.action==='quote'){
