@@ -14,6 +14,7 @@ import ApplicationDocuments from "@/components/assistance/ApplicationDocuments";
 import OfferPanel from "@/components/assistance/OfferPanel";
 import BuildJobPanel from "@/components/assistance/BuildJobPanel";
 import FinancingPanel from "@/components/assistance/FinancingPanel";
+import InternalLoanPanel from "@/components/assistance/InternalLoanPanel";
 import LedgerTable from "@/components/assistance/LedgerTable";
 
 export default function EngineAssistanceDetail() {
@@ -27,25 +28,29 @@ export default function EngineAssistanceDetail() {
       const found = await base44.entities.EngineAssistanceApplication.filter({ id });
       const application = (Array.isArray(found) ? found : found?.items || [])[0];
       if (!application) return { application: null };
-      const [offers, attempts, ledger, build, job, platforms] = await Promise.all([
+      const [offers, attempts, ledger, build, job, platforms, loans] = await Promise.all([
         base44.entities.EngineAssistanceOffer.filter({ application_id: id }),
         base44.entities.EngineAssistanceFinancingAttempt.filter({ application_id: id }),
         base44.entities.EngineAssistanceLedgerEntry.filter({ application_id: id }),
         application.build_id ? base44.entities.EngineBuild.filter({ id: application.build_id }) : Promise.resolve([]),
         application.job_id ? base44.entities.Job.filter({ id: application.job_id }) : Promise.resolve([]),
         base44.entities.EnginePlatform.list("name", 200),
+        base44.entities.EngineAssistanceInternalLoan.filter({ application_id: id }),
       ]);
       const toList = (result) => (Array.isArray(result) ? result : result?.items || []);
       const offerList = toList(offers);
       const sorted = offerList.slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
+      const selectedOffer = sorted[0] || null;
+      const loanList = toList(loans).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       return {
         application,
-        offer: sorted[0] || null,
+        offer: selectedOffer,
         attempts: toList(attempts),
         ledger: toList(ledger),
         build: toList(build)[0] || null,
         job: toList(job)[0] || null,
         platforms: toList(platforms),
+        loan: loanList.find((item) => !selectedOffer || item.offer_id === selectedOffer.id) || loanList[0] || null,
       };
     },
   });
@@ -72,8 +77,11 @@ export default function EngineAssistanceDetail() {
                     : action === "record_manual_payment" ? "Payment recorded"
                       : action === "create_job" ? "Shop job opened"
                         : action === "financing_review" ? "Financing review saved"
-                          : action === "check_financing" ? "Lender status refreshed"
-                            : "Saved"
+                        : action === "approve_internal_loan" ? "In-house terms approved"
+                          : action === "decline_internal_loan" ? "In-house request declined"
+                            : action === "record_loan_payment" ? "Installment recorded"
+                              : action === "check_financing" ? "Lender status refreshed"
+                                : "Saved"
       );
       refresh();
     } catch (error) {
@@ -102,7 +110,7 @@ export default function EngineAssistanceDetail() {
     );
   }
 
-  const { application, offer, attempts, ledger, build, job, platforms } = data;
+  const { application, offer, attempts, ledger, build, job, platforms, loan } = data;
   const name = `${application.first_name || ""} ${application.last_name || ""}`.trim() || "Applicant";
 
   return (
@@ -127,7 +135,8 @@ export default function EngineAssistanceDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           <ApplicationSummary application={application} />
-          <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} />
+          <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} />
+          <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} />
           <BuildJobPanel application={application} build={build} job={job} platforms={platforms} offer={offer} onAction={run} busy={!!busy} />
           <FinancingPanel attempts={attempts} onReview={(payload) => run("financing_review", payload)} busy={!!busy} />
           <Card>

@@ -2,12 +2,21 @@ import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
   ASSISTANCE_STRIPE_SOURCE, rows, cents, round2, computeOfferTotals, offerExpired,
-  ensureSettings, financingForAmount, appendAudit, readFinancingAvailability, newToken,
+  ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability,
 } from '../../shared/engineAssistance.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
 // Public, token-authorized checkout start for an assistance offer.
 // The amount is always taken from the stored offer — never from the browser.
+// Four mutually exclusive pathways are supported and each charges exactly one
+// obligation: the full remaining balance, or only the required deposit.
+
+const PATHWAYS: Record<string, { option: string; kind: 'full' | 'deposit'; lender: boolean }> = {
+  pay_in_full: { option: 'pay_in_full', kind: 'full', lender: false },
+  finance_full: { option: 'installment', kind: 'full', lender: true },
+  deposit_card: { option: 'deposit', kind: 'deposit', lender: false },
+  deposit_lender: { option: 'deposit_lender', kind: 'deposit', lender: true },
+};
 
 function appOrigin(req: Request) {
   const header = req.headers.get('x-base44-app-url') || '';
@@ -26,6 +35,10 @@ export default async function (req) {
     const token = body.token;
     if (!publicCapability(token)) return Response.json({ error: 'A valid offer link is required' }, { status: 400 });
 
+    const pathwayKey = String(body.pathway || (body.amountOption === 'installment' ? 'finance_full' : 'pay_in_full'));
+    const pathway = PATHWAYS[pathwayKey];
+    if (!pathway) return Response.json({ error: 'Choose a payment option' }, { status: 400 });
+
     const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
     const secret = Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET');
     if (!key || !secret) return Response.json({ error: 'Online payment is not configured yet. Contact Elite Engine Development to arrange payment.' }, { status: 503 });
@@ -36,19 +49,36 @@ export default async function (req) {
     if (offer.status === 'void' || offer.status === 'declined') return Response.json({ error: 'This offer is no longer payable.' }, { status: 409 });
     if (offerExpired(offer)) return Response.json({ error: 'This offer has expired. Contact Elite Engine Development for an updated offer.' }, { status: 409 });
 
-    const totals = computeOfferTotals(offer);
-    if (cents(totals.balance_due) <= 0) return Response.json({ error: 'Nothing is due on this offer.' }, { status: 409 });
-
-    const amountOption = body.amountOption === 'installment' ? 'installment' : 'pay_in_full';
     const settings = await ensureSettings(base44);
-    const financing = financingForAmount(settings, totals.balance_due);
+    const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
+    const plan = offerPaymentPlan(offer, settings, loan);
+    const options = plan.pathways;
 
-    if (amountOption === 'installment') {
-      if (!financing.eligible) {
-        return Response.json({ error: 'Financing is not currently available for this balance. You can still pay in full, or contact Elite Engine Development to arrange a plan.' }, { status: 409 });
-      }
-      if (body.consent !== true) return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
+    if (pathway.lender && body.consent !== true) {
+      return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
     }
+
+    // Each pathway is re-checked on the server. A disabled pathway never charges.
+    if (pathwayKey === 'pay_in_full' && !options.pay_in_full.enabled) {
+      return Response.json({ error: options.pay_in_full.reason || 'Paying in full is not available on this offer.' }, { status: 409 });
+    }
+    if (pathwayKey === 'finance_full' && !options.finance_full.enabled) {
+      return Response.json({ error: options.finance_full.reason || 'Lender financing is not available for this balance.' }, { status: 409 });
+    }
+    if (pathwayKey === 'deposit_card' && !options.deposit_internal.enabled) {
+      return Response.json({ error: options.deposit_internal.payment_reason || 'The deposit option is not available yet.' }, { status: 409 });
+    }
+    if (pathwayKey === 'deposit_lender' && !options.deposit_internal.finance_deposit_enabled) {
+      return Response.json({ error: options.deposit_internal.finance_deposit_reason || 'No lender is available for the deposit amount.' }, { status: 409 });
+    }
+    if (options.deposit_internal.loan_active && pathway.kind === 'deposit') {
+      return Response.json({ error: 'Your deposit is already verified and your in-house agreement is active.' }, { status: 409 });
+    }
+
+    const amountCents = pathway.kind === 'deposit'
+      ? cents(options.deposit_internal.deposit_outstanding)
+      : cents(computeOfferTotals(offer).balance_due);
+    if (amountCents <= 0) return Response.json({ error: 'Nothing is due on this offer.' }, { status: 409 });
 
     const appId = Deno.env.get('BASE44_APP_ID');
     if (!appId) return Response.json({ error: 'App configuration is missing' }, { status: 503 });
@@ -56,31 +86,37 @@ export default async function (req) {
     const stripe = new Stripe(key);
     const live = key.startsWith('sk_live_');
     const availability = await readFinancingAvailability(stripe);
-    const enabled = availability.methods.filter((m: any) => m.available);
-    const financingTypes = enabled.filter((m: any) => m.type !== 'us_bank_account').map((m: any) => m.type);
-    const bankEnabled = enabled.some((m: any) => m.type === 'us_bank_account');
+    const liveEnabled = availability.methods.filter((m: any) => m.available).map((m: any) => m.type);
+    const bankEnabled = liveEnabled.includes('us_bank_account');
 
-    const methods = amountOption === 'installment'
-      ? financingTypes
-      : ['card', ...(bankEnabled ? ['us_bank_account'] : [])];
-    if (amountOption === 'installment' && !methods.length) {
-      return Response.json({ error: 'No lender is currently enabled for online financing. Pay in full or contact Elite Engine Development.' }, { status: 409 });
+    let methods: string[];
+    if (pathway.lender) {
+      // Only lenders that are configured in Stripe and cover this exact amount.
+      const candidates = (pathway.kind === 'deposit'
+        ? options.deposit_internal.deposit_lenders.eligible
+        : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => liveEnabled.includes(t));
+      if (!candidates.length) {
+        return Response.json({ error: 'No lender is currently enabled for this amount. You can pay by card instead, or contact Elite Engine Development.' }, { status: 409 });
+      }
+      methods = candidates;
+    } else {
+      methods = ['card', ...(bankEnabled ? ['us_bank_account'] : [])];
     }
 
     const origin = appOrigin(req);
     const returnPath = `/engine-assistance/offer/${token}`;
-    const amountCents = cents(totals.balance_due);
-    const revision = `${offer.id}:${amountCents}:${amountOption}:${offer.updated_date || ''}`;
+    const revision = `${offer.id}:${amountCents}:${pathwayKey}:${offer.updated_date || ''}`;
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(revision));
     const idempotencyKey = 'eed-eaf-' + [...new Uint8Array(digest)].map(v => v.toString(16).padStart(2, '0')).join('');
 
+    const descriptor = pathway.kind === 'deposit' ? 'Assistance offer deposit' : 'Engine assistance offer';
     const baseOptions: any = {
       mode: 'payment',
       payment_method_types: methods,
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: `${amountOption === 'installment' ? 'Financed engine assistance offer' : 'Engine assistance offer'} ${offer.offer_number}` },
+          product_data: { name: `${descriptor} ${offer.offer_number}` },
           unit_amount: amountCents,
         },
         quantity: 1,
@@ -92,24 +128,22 @@ export default async function (req) {
         base44_app_id: appId,
         offer_id: offer.id,
         application_id: offer.application_id || '',
-        amount_option: amountOption,
+        amount_option: pathway.option,
+        payment_pathway: pathwayKey,
         expected_cents: String(amountCents),
-        financing_type: amountOption === 'installment' ? 'lender_selected_at_checkout' : 'none',
+        financing_type: pathway.lender ? 'lender_selected_at_checkout' : 'none',
+        internal_loan_id: pathway.kind === 'deposit' ? (loan?.id || '') : '',
       },
     };
-    if (amountOption === 'installment') {
-      // Lenders decide approval and terms. Nothing is submitted by Elite.
-      baseOptions.payment_method_options = {};
-    }
 
     let session: any = null;
     let offeredMethods = methods;
     let note = '';
-    if (amountOption === 'installment') {
+    if (pathway.lender) {
       // Some lender combinations are rejected together. Offer exactly the set
       // Stripe accepts for this amount rather than promising unavailable ones.
-      const candidates = [methods, ...methods.map((m: string) => [m])];
-      for (const candidate of candidates) {
+      const attemptsQueue = [methods, ...methods.map((m: string) => [m])];
+      for (const candidate of attemptsQueue) {
         try {
           session = await stripe.checkout.sessions.create(
             { ...baseOptions, payment_method_types: candidate },
@@ -122,7 +156,7 @@ export default async function (req) {
         }
       }
       if (!session?.url || session.status === 'expired') {
-        return Response.json({ error: 'Financing checkout could not be started with the current lender configuration. Pay in full or contact Elite Engine Development.' }, { status: 409 });
+        return Response.json({ error: 'Financing checkout could not be started with the current lender configuration. Pay by card instead or contact Elite Engine Development.' }, { status: 409 });
       }
     } else {
       try {
@@ -140,38 +174,41 @@ export default async function (req) {
     }
 
     const now = new Date().toISOString();
-    await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.create({
-      offer_id: offer.id,
-      application_id: offer.application_id || '',
-      customer_id: offer.customer_id || '',
-      amount: round2(amountCents / 100),
-      provider: 'stripe',
-      offered_methods: offeredMethods,
-      status: 'initiated',
-      provider_decision: 'not_reported',
-      provider_decision_source: 'not_reported',
-      stripe_session_id: session.id,
-      source: 'customer_checkout',
-      customer_consent_at: amountOption === 'installment' ? now : '',
-      customer_consent_text: amountOption === 'installment'
-        ? 'Customer agreed to be directed to a third-party lender at Stripe Checkout. Elite does not submit a credit application and does not decide approval or terms.'
-        : '',
-      audit_trail: [{ at: now, by: 'Customer', action: 'checkout_started', note: `${amountOption} checkout for ${amountCents / 100}` }],
-    });
+    if (pathway.lender) {
+      await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.create({
+        offer_id: offer.id,
+        application_id: offer.application_id || '',
+        customer_id: offer.customer_id || '',
+        amount: round2(amountCents / 100),
+        provider: 'stripe',
+        offered_methods: offeredMethods,
+        status: 'initiated',
+        provider_decision: 'not_reported',
+        provider_decision_source: 'not_reported',
+        stripe_session_id: session.id,
+        source: 'customer_checkout',
+        customer_consent_at: now,
+        customer_consent_text: pathway.kind === 'deposit'
+          ? 'Customer agreed to be directed to a third-party lender for the required deposit only. The remaining balance is financed by Elite under a separate signed, approved agreement.'
+          : 'Customer agreed to be directed to a third-party lender at Stripe Checkout. Elite does not submit a credit application and does not decide approval or terms.',
+        audit_trail: [{ at: now, by: 'Customer', action: 'checkout_started', note: `${pathwayKey} checkout for ${amountCents / 100}` }],
+      });
+    }
 
     await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, {
       financing_availability: availability.methods,
       financing_checked_at: availability.checked_at,
       financing_note: note || availability.note,
-      audit_trail: appendAudit(offer, 'Customer', 'checkout_started', `${amountOption} checkout ${session.id}`),
+      audit_trail: appendAudit(offer, 'Customer', 'checkout_started', `${pathwayKey} checkout ${session.id}`),
     });
 
     return Response.json({
       checkout_url: session.url,
       session_id: session.id,
       amount: round2(amountCents / 100),
+      pathway: pathwayKey,
       offered_methods: offeredMethods,
-      financing_offered: amountOption === 'installment' ? financingTypes : [],
+      financing_offered: pathway.lender ? offeredMethods : [],
     }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error: any) {
     console.error('[startEngineAssistanceCheckout]', error?.message);

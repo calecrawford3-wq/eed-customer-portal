@@ -28,7 +28,7 @@
     "min_financing_amount": {
       "type": "number",
       "default": 3000,
-      "description": "Amount at or above which financing is prioritized. Not a guarantee of approval."
+      "description": "Amount at or above which financing is prioritized. A label only: it never blocks financing of a smaller balance."
     },
     "financing_methods": {
       "type": "array",
@@ -72,6 +72,30 @@
     "payments_disabled_reason": {
       "type": "string",
       "description": "Plain setup instruction shown to staff when online payment is not configured"
+    },
+    "default_deposit_percent": {
+      "type": "number",
+      "default": 50,
+      "description": "Default upfront deposit percentage for the deposit + in-house financing pathway (10-90)"
+    },
+    "internal_financing_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "When off, the deposit + Elite in-house financing pathways are disabled and shown as unavailable"
+    },
+    "internal_financing_apr": {
+      "type": "number",
+      "default": 0,
+      "description": "Default fixed APR for Elite in-house financing. 0 means no finance charge. Staff set the final APR on each agreement."
+    },
+    "internal_financing_term_months": {
+      "type": "number",
+      "default": 12,
+      "description": "Default repayment term in months for Elite in-house financing"
+    },
+    "internal_financing_disclosure_text": {
+      "type": "string",
+      "description": "Disclosure language the customer signs before an in-house agreement becomes live"
     },
     "offer_terms_text": {
       "type": "string",

@@ -1,0 +1,229 @@
+{
+  "name": "EngineAssistanceInternalLoan",
+  "type": "object",
+  "properties": {
+    "offer_id": {
+      "type": "string",
+      "description": "Assistance offer this in-house agreement belongs to. One agreement per offer."
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_approval",
+        "approved",
+        "declined",
+        "active",
+        "completed",
+        "canceled"
+      ],
+      "default": "pending_approval",
+      "enumColors": [
+        "yellow",
+        "blue",
+        "red",
+        "green",
+        "green",
+        "gray"
+      ],
+      "description": "pending_approval = customer asked, Elite has not decided; approved = Elite set fixed APR/term and is waiting for the customer signature; declined = Elite did not approve; active = deposit collected and agreement signed; completed = fully repaid; canceled = withdrawn before activation."
+    },
+    "principal": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount Elite finances after the verified deposit. Recalculated at activation so the deposit plus this principal never exceed the offer total."
+    },
+    "apr": {
+      "type": "number",
+      "default": 0,
+      "description": "Fixed annual percentage rate set by Elite. 0 means no finance charge."
+    },
+    "term_months": {
+      "type": "number",
+      "default": 12
+    },
+    "monthly_payment": {
+      "type": "number",
+      "default": 0
+    },
+    "total_repayable": {
+      "type": "number",
+      "default": 0,
+      "description": "Principal plus finance charge across the whole schedule"
+    },
+    "finance_charge": {
+      "type": "number",
+      "default": 0
+    },
+    "first_payment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "schedule": {
+      "type": "array",
+      "description": "Accurate installment schedule generated from principal, APR and term",
+      "items": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "number"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "principal": {
+            "type": "number"
+          },
+          "interest": {
+            "type": "number"
+          },
+          "balance_after": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "payments": {
+      "type": "array",
+      "description": "Collected installments recorded by staff. Each entry is also written to the fund ledger.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "check",
+              "card",
+              "ach",
+              "other"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          },
+          "recorded_by": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "paid_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "outstanding_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "disclosures_version": {
+      "type": "string",
+      "description": "Version label of the disclosures the customer agreed to"
+    },
+    "disclosures_text": {
+      "type": "string",
+      "description": "Snapshot of the exact disclosures shown at signature time"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signed_name": {
+      "type": "string",
+      "description": "Typed full name of the customer accepting the agreement"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decline_reason": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the deposit was verified and the agreement became live"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "offer_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

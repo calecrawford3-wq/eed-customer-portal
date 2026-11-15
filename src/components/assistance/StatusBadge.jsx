@@ -18,6 +18,10 @@ const TONES = {
   paid: "bg-emerald-600 text-white",
   void: "bg-slate-200 text-slate-500",
   completed: "bg-emerald-100 text-emerald-700",
+  pending_approval: "bg-amber-100 text-amber-800",
+  active: "bg-emerald-100 text-emerald-700",
+  partial: "bg-amber-100 text-amber-800",
+  scheduled: "bg-slate-100 text-slate-600",
   pending: "bg-amber-100 text-amber-800",
   initiated: "bg-blue-100 text-blue-700",
   canceled: "bg-slate-100 text-slate-600",
@@ -34,6 +38,7 @@ const LABELS = {
   partially_paid: "Partially paid",
   not_reported: "Not reported",
   needs_review: "Needs review",
+  pending_approval: "Awaiting approval",
   us_bank_account: "ACH bank",
   afterpay_clearpay: "Afterpay",
 };

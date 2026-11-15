@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, RefreshCw, Loader2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -24,6 +25,11 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
       default_offer_expiry_days: settings?.default_offer_expiry_days || 21,
       min_financing_amount: settings?.min_financing_amount || 3000,
       offer_terms_text: settings?.offer_terms_text || "",
+      default_deposit_percent: settings?.default_deposit_percent ?? 50,
+      internal_financing_enabled: settings?.internal_financing_enabled !== false,
+      internal_financing_apr: settings?.internal_financing_apr ?? 0,
+      internal_financing_term_months: settings?.internal_financing_term_months ?? 12,
+      internal_financing_disclosure_text: settings?.internal_financing_disclosure_text || "",
     });
   }, [settings, bootstrap]);
 
@@ -111,6 +117,45 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
               <Input type="number" min="0" step="100" className="mt-1" value={form.min_financing_amount || 3000} onChange={(e) => setForm({ ...form, min_financing_amount: e.target.value })} />
             </div>
           </div>
+          <div className="rounded-xl border border-slate-200 p-3 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Deposit + Elite in-house financing</p>
+              <p className="text-[11px] text-slate-500">The customer can pay a deposit and finance the rest with Elite. Terms are approved per agreement.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-xs">Offered to customers</Label>
+                <Select
+                  value={form.internal_financing_enabled === false ? "no" : "yes"}
+                  onValueChange={(value) => setForm({ ...form, internal_financing_enabled: value === "yes" })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No — hidden</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Default deposit %</Label>
+                <Input type="number" min="10" max="90" step="5" className="mt-1" value={form.default_deposit_percent ?? 50} onChange={(e) => setForm({ ...form, default_deposit_percent: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Default APR %</Label>
+                <Input type="number" min="0" max="36" step="0.5" className="mt-1" value={form.internal_financing_apr ?? 0} onChange={(e) => setForm({ ...form, internal_financing_apr: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Default term (months)</Label>
+                <Input type="number" min="1" max="84" step="1" className="mt-1" value={form.internal_financing_term_months ?? 12} onChange={(e) => setForm({ ...form, internal_financing_term_months: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Disclosures the customer signs</Label>
+              <Textarea className="mt-1 min-h-24" value={form.internal_financing_disclosure_text || ""} onChange={(e) => setForm({ ...form, internal_financing_disclosure_text: e.target.value })} />
+            </div>
+            <p className="text-[11px] text-slate-500">The APR and term are finalized and approved on each agreement before the customer signs. A 0% APR means no finance charge.</p>
+          </div>
+
           <div>
             <Label className="text-xs">Public description</Label>
             <Textarea className="mt-1 min-h-20" value={form.fund_public_intro || ""} onChange={(e) => setForm({ ...form, fund_public_intro: e.target.value })} />

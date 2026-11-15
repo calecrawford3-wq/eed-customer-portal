@@ -10,6 +10,22 @@ export const FINANCING_METHODS = [
   { type: 'us_bank_account', label: 'ACH bank transfer' },
 ];
 
+// Lender amount windows (USD). These mirror how each lender prices a purchase;
+// the provider still has the final say at checkout, and a rejection is reported
+// honestly rather than promised in advance.
+export const LENDER_LIMITS: Record<string, { min: number; max: number }> = {
+  affirm: { min: 50, max: 17500 },
+  klarna: { min: 1, max: 10000 },
+  afterpay_clearpay: { min: 1, max: 2000 },
+};
+
+export const DEFAULT_DEPOSIT_PERCENT = 50;
+export const DISCLOSURE_VERSION = '2026-11-15';
+export const INTERNAL_FINANCING_DISCLOSURE = 'Elite Engine Development in-house financing is a payment plan offered directly by Elite, not by a bank or third-party lender, and it requires Elite\'s written approval before any money is due. '
+  + 'If approved, the exact amount financed, the fixed APR and the number of monthly payments are shown on this offer before you sign. An APR of 0% means there is no finance charge. '
+  + 'Your deposit and the financed amount are two separate obligations: the deposit is paid now, and the financed amount is repaid on the schedule shown. '
+  + 'Signing is voluntary, and choosing any other payment option on this offer closes this request without any obligation.';
+
 export const rows = (result: any): any[] => (Array.isArray(result) ? result : result?.items || []);
 export const cents = (value: any) => Math.round((Number(value) || 0) * 100);
 export const round2 = (value: any) => Math.round((Number(value) || 0) * 100) / 100;
@@ -64,6 +80,11 @@ export async function ensureSettings(base44: any) {
     default_offer_expiry_days: 21,
     min_financing_amount: 3000,
     financing_methods: FINANCING_METHODS.map(m => ({ type: m.type, label: m.label, available: false, note: 'Not checked yet' })),
+    default_deposit_percent: DEFAULT_DEPOSIT_PERCENT,
+    internal_financing_enabled: true,
+    internal_financing_apr: 0,
+    internal_financing_term_months: 12,
+    internal_financing_disclosure_text: INTERNAL_FINANCING_DISCLOSURE,
     offer_terms_text: DEFAULT_OFFER_TERMS,
   });
 }
@@ -227,18 +248,360 @@ export async function readFinancingAvailability(stripe: any) {
   }
 }
 
-export function financingForAmount(settings: any, amount: number) {
-  const methods = (settings?.financing_methods || []).filter((m: any) => m.available && m.type !== 'us_bank_account' && m.type !== 'card');
-  const min = Number(settings?.min_financing_amount) || 3000;
-  return { methods, eligible: methods.length > 0 && Number(amount) >= min, min };
+// Lenders are offered for whatever amount they actually cover. The priority
+// amount is a label on the page, never a gate on smaller balances.
+export function lendersForAmount(settings: any, amount: number) {
+  const value = round2(amount);
+  const available = (settings?.financing_methods || []).filter((m: any) => m.available === true && LENDER_LIMITS[m.type]);
+  const eligible = available.filter((m: any) => value >= LENDER_LIMITS[m.type].min && value <= LENDER_LIMITS[m.type].max);
+  const blocked = available.filter((m: any) => !eligible.includes(m)).map((m: any) => ({
+    type: m.type,
+    label: m.label,
+    reason: value < LENDER_LIMITS[m.type].min
+      ? `${m.label} needs at least $${LENDER_LIMITS[m.type].min.toLocaleString('en-US')}`
+      : `${m.label} tops out at $${LENDER_LIMITS[m.type].max.toLocaleString('en-US')}`,
+  }));
+  return {
+    available,
+    eligible: eligible.slice().sort((a: any, b: any) => LENDER_LIMITS[b.type].max - LENDER_LIMITS[a.type].max),
+    blocked,
+    prioritized: value >= (Number(settings?.min_financing_amount) || 3000),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Deposit + in-house financing (all amounts calculated here, never in browser)
+// ---------------------------------------------------------------------------
+export function depositPercentFor(offer: any, settings: any) {
+  const raw = Number(offer?.deposit_percent);
+  const fallback = Number(settings?.default_deposit_percent) || DEFAULT_DEPOSIT_PERCENT;
+  const pct = Number.isFinite(raw) && raw > 0 ? raw : fallback;
+  return Math.min(90, Math.max(10, Math.round(pct * 10) / 10));
+}
+
+export function shiftMonths(dateStr: string, months: number) {
+  const base = dateStr ? new Date(`${String(dateStr).slice(0, 10)}T12:00:00`) : new Date();
+  base.setMonth(base.getMonth() + months);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(base);
+}
+
+export function buildLoanSchedule(principal: any, apr: any, termMonths: any, firstDueDate: any) {
+  const amount = Math.max(0, round2(principal));
+  const months = Math.min(84, Math.max(1, Math.round(Number(termMonths)) || 12));
+  const aprValue = Math.min(36, Math.max(0, Number(apr) || 0));
+  const monthlyRate = (aprValue / 100) / 12;
+  const monthly = amount <= 0 ? 0 : monthlyRate === 0
+    ? round2(amount / months)
+    : round2((amount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1));
+  const first = firstDueDate || shiftMonths(today(), 1);
+  const schedule: any[] = [];
+  let balance = amount;
+  for (let index = 1; index <= months; index += 1) {
+    const interest = round2(balance * monthlyRate);
+    const payment = index === months ? round2(balance + interest) : monthly;
+    const principalPart = round2(Math.max(0, payment - interest));
+    balance = round2(Math.max(0, balance - principalPart));
+    schedule.push({
+      number: index,
+      due_date: shiftMonths(first, index - 1),
+      amount: payment,
+      principal: principalPart,
+      interest,
+      balance_after: balance,
+    });
+  }
+  const totalRepayable = round2(schedule.reduce((sum: number, row: any) => sum + cents(row.amount), 0) / 100);
+  return {
+    apr: round2(aprValue),
+    term_months: months,
+    monthly_payment: round2(schedule[0]?.amount || 0),
+    total_repayable: totalRepayable,
+    finance_charge: round2(totalRepayable - amount),
+    schedule,
+  };
+}
+
+export function loanOutstanding(loan: any) {
+  const principal = round2(loan?.principal);
+  const payments = Array.isArray(loan?.payments) ? loan.payments : [];
+  const paid = round2(payments.reduce((sum: number, p: any) => sum + cents(p?.amount), 0) / 100);
+  const totalRepayable = round2(loan?.total_repayable || principal);
+  return {
+    principal,
+    paid_amount: paid,
+    total_repayable: totalRepayable,
+    finance_charge: round2(totalRepayable - principal),
+    outstanding: round2(Math.max(0, totalRepayable - paid)),
+  };
+}
+
+export function loanScheduleWithStatus(loan: any) {
+  const schedule = Array.isArray(loan?.schedule) ? loan.schedule : [];
+  let remaining = cents(loanOutstanding(loan).paid_amount);
+  return schedule.map((row: any) => {
+    const due = cents(row.amount);
+    const applied = Math.min(due, remaining);
+    remaining -= applied;
+    return {
+      ...row,
+      amount_paid: round2(applied / 100),
+      status: applied >= due && due > 0 ? 'paid' : applied > 0 ? 'partial' : 'scheduled',
+    };
+  });
+}
+
+// The customer chooses between four mutually exclusive pathways. Every amount,
+// eligibility flag and reason is calculated here so the browser cannot invent a
+// price, an approval, or a lender that is not configured.
+export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
+  const totals = computeOfferTotals(offer);
+  const pct = depositPercentFor(offer, settings);
+  const depositTarget = round2(totals.total * (pct / 100));
+  const depositPaid = round2(Math.min(totals.paid_amount, depositTarget));
+  const depositOutstanding = round2(Math.max(0, depositTarget - totals.paid_amount));
+  const depositVerified = depositTarget > 0 && depositOutstanding <= 0.005;
+  const loanStatus = String(loan?.status || '');
+  const loanActive = loanStatus === 'active' || loanStatus === 'completed';
+  const loanApproved = ['approved', 'active', 'completed'].includes(loanStatus);
+  const loanSigned = !!loan?.signed_at;
+  const loanReady = loanApproved && loanSigned;
+  const internalAmount = loan
+    ? round2(Math.max(0, Number(loan.principal) || 0))
+    : round2(Math.max(0, totals.total - Math.max(totals.paid_amount, depositTarget)));
+  const expired = offerExpired(offer);
+  const fullyPaid = cents(totals.balance_due) <= 0;
+  const paymentsEnabled = settings?.payments_enabled === true;
+  const internalEnabled = settings?.internal_financing_enabled !== false;
+  const statusOpen = !['void', 'declined', 'draft', 'expired', 'paid'].includes(String(offer?.status || ''));
+  const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !loanActive;
+
+  const fullLenders = lendersForAmount(settings, totals.balance_due);
+  const depositLenders = lendersForAmount(settings, depositOutstanding);
+  const depositPossible = cents(depositTarget) > 0 && cents(depositTarget) < cents(totals.total);
+
+  const payInFull = {
+    enabled: gatewayOpen && Number(offer?.pay_in_full_enabled) !== false,
+    amount: totals.balance_due,
+    reason: !paymentsEnabled
+      ? 'Online payment is not available yet.'
+      : expired
+        ? 'This offer has expired.'
+        : fullyPaid
+          ? 'This offer is already paid.'
+          : loanActive
+            ? 'Your remaining balance is already financed under your in-house agreement.'
+            : !statusOpen
+              ? 'This offer is no longer payable.'
+              : '',
+  };
+
+  const financeFullReason = !payInFull.enabled
+    ? payInFull.reason
+    : fullLenders.eligible.length > 0
+      ? ''
+      : (fullLenders.blocked[0]?.reason
+        ? `${fullLenders.blocked[0].reason}, so no enabled lender covers this balance.`
+        : 'No third-party lender is enabled right now. Paying in full by card still works.');
+  const financeFull = {
+    enabled: payInFull.enabled && Number(offer?.installments_enabled) !== false && fullLenders.eligible.length > 0,
+    amount: totals.balance_due,
+    lenders: fullLenders.eligible,
+    blocked: fullLenders.blocked,
+    prioritized: fullLenders.prioritized,
+    priority_amount: Number(settings?.min_financing_amount) || 3000,
+    reason: financeFullReason,
+  };
+
+  const blockedReason = !internalEnabled
+    ? 'Elite in-house financing is not enabled for the fund right now.'
+    : fullyPaid
+      ? 'This offer is already paid.'
+      : !depositPossible
+        ? 'This balance is too small to split into a deposit and a financed remainder.'
+        : !paymentsEnabled
+          ? 'Online payment is not available yet.'
+          : expired
+            ? 'This offer has expired.'
+            : !statusOpen
+              ? 'This offer is no longer payable.'
+              : '';
+  const depositPath = {
+    deposit_percent: pct,
+    deposit_amount: depositTarget,
+    deposit_paid: depositPaid,
+    deposit_outstanding: depositOutstanding,
+    deposit_verified: depositVerified,
+    deposit_verified_at: offer?.deposit_verified_at || '',
+    deposit_method: offer?.deposit_method || '',
+    deposit_lender: offer?.deposit_lender || '',
+    internal_amount: internalAmount,
+    loan_status: loanStatus,
+    loan_signed: loanSigned,
+    loan_ready: loanReady,
+    loan_active: loanActive,
+    available: !blockedReason,
+    reason: blockedReason,
+    can_request: !blockedReason && !depositVerified && !['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus),
+    awaiting_approval: loanStatus === 'pending_approval',
+    can_sign: !blockedReason && loanApproved && !loanSigned && !depositVerified,
+    declined: loanStatus === 'declined',
+    canceled: loanStatus === 'canceled',
+    enabled: !blockedReason && !depositVerified && !loanActive && loanReady,
+    payment_reason: blockedReason
+      || (depositVerified || loanActive
+        ? ''
+        : loanStatus === 'pending_approval'
+          ? 'Elite is reviewing your in-house financing request.'
+          : loanStatus === 'declined'
+            ? 'Your in-house financing request was not approved.'
+            : !loanApproved
+              ? 'Request Elite in-house financing to see your terms.'
+              : !loanSigned
+                ? 'Sign the in-house financing disclosures to continue.'
+                : ''),
+    deposit_lenders: depositLenders,
+    finance_deposit_enabled: !blockedReason && !depositVerified && !loanActive && loanReady && depositLenders.eligible.length > 0,
+    finance_deposit_reason: depositLenders.eligible.length
+      ? ''
+      : (depositLenders.blocked[0]?.reason
+        ? `${depositLenders.blocked[0].reason}, so no enabled lender covers the deposit.`
+        : 'No third-party lender is enabled right now.'),
+  };
+
+  const paymentPlan = loanActive || ['pending_approval', 'approved'].includes(loanStatus)
+    ? 'deposit_internal'
+    : fullyPaid ? 'full' : 'none';
+
+  return {
+    totals,
+    deposit_percent: pct,
+    deposit_amount: depositTarget,
+    deposit_paid: depositPaid,
+    deposit_outstanding: depositOutstanding,
+    deposit_verified: depositVerified,
+    internal_amount: internalAmount,
+    loan_status: loanStatus,
+    loan_active: loanActive,
+    loan_ready: loanReady,
+    payment_plan: paymentPlan,
+    pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath },
+  };
+}
+
+// Customer-facing loan payload. Never includes internal notes or approvals.
+export function publicLoan(loan: any) {
+  if (!loan) return null;
+  const money = loanOutstanding(loan);
+  const schedule = loanScheduleWithStatus(loan);
+  return {
+    status: loan.status,
+    apr: round2(loan.apr),
+    term_months: Number(loan.term_months) || 0,
+    principal: money.principal,
+    monthly_payment: round2(loan.monthly_payment),
+    total_repayable: money.total_repayable,
+    finance_charge: money.finance_charge,
+    paid_amount: money.paid_amount,
+    outstanding: money.outstanding,
+    first_payment_date: loan.first_payment_date || '',
+    requested_at: loan.requested_at || '',
+    approved_at: loan.approved_at || '',
+    signed_at: loan.signed_at || '',
+    signed_name: loan.signed_name || '',
+    started_at: loan.started_at || '',
+    completed_at: loan.completed_at || '',
+    disclosures_version: loan.disclosures_version || '',
+    disclosures_text: loan.disclosures_text || '',
+    can_sign: loan.status === 'approved' && !loan.signed_at,
+    can_cancel: ['pending_approval', 'approved'].includes(String(loan.status || '')),
+    decline_reason: loan.status === 'declined' ? loan.decline_reason || '' : '',
+    schedule: schedule.map((row: any) => ({
+      number: row.number,
+      due_date: row.due_date,
+      amount: row.amount,
+      amount_paid: row.amount_paid,
+      status: row.status,
+    })),
+  };
+}
+
+// A deposit makes the agreement live only when the terms were approved by staff
+// and the customer signed the disclosures. The principal is the exact remainder
+// after every collected payment, so nothing is ever financed twice.
+export async function activateInternalLoan(base44: any, offer: any, loan: any, actor = 'Automatic') {
+  if (!loan) return null;
+  if (['active', 'completed'].includes(loan.status)) return loan;
+  if (loan.status !== 'approved' || !loan.signed_at) return loan;
+  const totals = computeOfferTotals(offer);
+  const principal = round2(Math.max(0, totals.total - totals.paid_amount));
+  const entity = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
+  if (principal <= 0) {
+    return await entity.update(loan.id, {
+      status: 'canceled',
+      principal: 0,
+      paid_amount: 0,
+      outstanding_balance: 0,
+      audit_trail: appendAudit(loan, actor, 'loan_canceled', 'The balance was collected directly, so nothing needed financing'),
+    });
+  }
+  const terms = buildLoanSchedule(principal, loan.apr, loan.term_months, loan.first_payment_date || shiftMonths(today(), 1));
+  const updated = await entity.update(loan.id, {
+    status: 'active',
+    principal,
+    apr: terms.apr,
+    term_months: terms.term_months,
+    monthly_payment: terms.monthly_payment,
+    total_repayable: terms.total_repayable,
+    finance_charge: terms.finance_charge,
+    first_payment_date: terms.schedule[0]?.due_date || '',
+    schedule: terms.schedule,
+    paid_amount: 0,
+    outstanding_balance: terms.total_repayable,
+    started_at: new Date().toISOString(),
+    audit_trail: appendAudit(loan, actor, 'loan_activated', `In-house financing of $${principal.toFixed(2)} activated at ${terms.apr}% APR over ${terms.term_months} months after the deposit was verified`),
+  });
+  await ensureAssistanceJob(base44, { ...offer, internal_loan_id: loan.id }, actor);
+  return updated;
+}
+
+// Re-derives deposit fields from what was actually collected and activates the
+// in-house agreement when the deposit is covered. Called after every payment.
+export async function syncDepositState(base44: any, offerId: string, actor = 'Automatic') {
+  const offers = base44.asServiceRole.entities.EngineAssistanceOffer;
+  const offer = rows(await offers.filter({ id: offerId }))[0];
+  if (!offer) return null;
+  const settings = await ensureSettings(base44);
+  const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
+  const plan = offerPaymentPlan(offer, settings, loan);
+  const patch: any = {
+    deposit_percent: plan.deposit_percent,
+    deposit_amount: plan.deposit_amount,
+    deposit_paid: plan.deposit_paid,
+    deposit_verified: plan.deposit_verified,
+    internal_financed_amount: plan.internal_amount,
+    payment_plan: plan.payment_plan,
+  };
+  if (plan.deposit_verified && !offer.deposit_verified) {
+    const method = (offer.payments || []).slice(-1)[0];
+    patch.deposit_verified_at = new Date().toISOString();
+    patch.deposit_method = method?.method || '';
+    patch.deposit_lender = method?.financed ? method.method : '';
+    patch.audit_trail = appendAudit(offer, actor, 'deposit_verified', `Required deposit of $${plan.deposit_amount.toFixed(2)} verified`);
+  }
+  if (loan?.id && offer.internal_loan_id !== loan.id) patch.internal_loan_id = loan.id;
+  await offers.update(offer.id, patch);
+  let activeLoan = loan;
+  if (loan && plan.deposit_verified) activeLoan = await activateInternalLoan(base44, { ...offer, ...patch }, loan, actor);
+  return { offer: rows(await offers.filter({ id: offer.id }))[0], loan: activeLoan, plan };
 }
 
 // ---------------------------------------------------------------------------
 // Public payloads — allowlisted, no internal notes, no customer ids
 // ---------------------------------------------------------------------------
-export function publicOffer(offer: any, application: any, settings: any) {
+export function publicOffer(offer: any, application: any, settings: any, loan: any = null) {
   const totals = computeOfferTotals(offer);
-  const financing = financingForAmount(settings, totals.balance_due);
+  const plan = offerPaymentPlan(offer, settings, loan);
+  const priorityAmount = Number(settings?.min_financing_amount) || 3000;
   return {
     offer_number: offer.offer_number,
     status: offer.status,
@@ -258,13 +621,34 @@ export function publicOffer(offer: any, application: any, settings: any) {
     amount_due: totals.amount_due,
     paid_amount: totals.paid_amount,
     balance_due: totals.balance_due,
-    paid: offer.status === 'paid',
-    payments: (offer.payments || []).map((p: any) => ({ amount: p.amount, method: p.method, financed: !!p.financed, date: p.date })),
-    pay_in_full_enabled: offer.pay_in_full_enabled !== false && (settings?.payments_enabled === true) && !offerExpired(offer),
-    installments_enabled: offer.installments_enabled !== false && financing.eligible && settings?.payments_enabled === true && !offerExpired(offer),
-    financing_methods: (settings?.financing_methods || []).filter((m: any) => m.type !== 'us_bank_account').map((m: any) => ({ type: m.type, label: m.label, available: !!m.available })),
-    financing_note: settings?.financing_note || (financing.eligible ? 'Choose your lender at checkout. Approval and terms come from the lender.' : `Financing is prioritized for balances of $${financing.min.toLocaleString('en-US')} and up and is not currently available for this balance.`),
+    paid: offer.status === 'paid' || cents(totals.balance_due) <= 0,
+    payments: (offer.payments || []).map((p: any) => ({
+      amount: p.amount,
+      method: p.method,
+      financed: !!p.financed,
+      amount_option: p.amount_option || '',
+      financed_amount: p.financed_amount || 0,
+      date: p.date,
+    })),
+    pay_in_full_enabled: plan.pathways.pay_in_full.enabled,
+    installments_enabled: plan.pathways.finance_full.enabled,
+    financing_methods: (settings?.financing_methods || []).filter((m: any) => LENDER_LIMITS[m.type]).map((m: any) => ({ type: m.type, label: m.label, available: !!m.available })),
+    financing_note: plan.pathways.finance_full.enabled
+      ? `Choose your lender at checkout. Approval, amount and terms are decided by the lender${plan.pathways.finance_full.prioritized ? `; financing is prioritized for balances of $${priorityAmount.toLocaleString('en-US')} and up` : ''}.`
+      : (plan.pathways.finance_full.reason || 'Lender financing is not available for this balance right now.'),
     payments_disabled_reason: settings?.payments_enabled === true ? '' : (settings?.payments_disabled_reason || 'Online payment is not configured yet. Contact Elite Engine Development to arrange payment.'),
+    // Deposit + in-house financing, and the four mutually exclusive pathways.
+    payment_plan_mode: plan.payment_plan,
+    deposit_percent: plan.deposit_percent,
+    deposit_amount: plan.deposit_amount,
+    deposit_paid: plan.deposit_paid,
+    deposit_outstanding: plan.deposit_outstanding,
+    deposit_verified: plan.deposit_verified,
+    deposit_verified_at: offer.deposit_verified_at || '',
+    deposit_method: offer.deposit_method || '',
+    internal_amount: plan.internal_amount,
+    internal_loan: publicLoan(loan),
+    pathways: plan.pathways,
   };
 }
 
@@ -411,16 +795,27 @@ export async function recordAssistancePayment(base44: any, facts: any) {
     });
   }
 
-  const fullyPaid = cents(computeOfferTotals(offer).balance_due) === 0;
-  const application = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ id: offer.application_id }))[0];
+  // Deposit fields are re-derived from what was actually collected. When a card
+  // or lender payment covers the required deposit and the in-house agreement is
+  // approved and signed, the agreement goes live and the job opens.
+  const synced = await syncDepositState(base44, offer.id, 'Stripe');
+  const currentOffer = synced?.offer || offer;
+  const fullyPaid = cents(computeOfferTotals(currentOffer).balance_due) === 0;
+  const application = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ id: currentOffer.application_id }))[0];
   if (application && fullyPaid && application.status !== 'funded') {
     await base44.asServiceRole.entities.EngineAssistanceApplication.update(application.id, {
       status: 'funded',
-      audit_trail: appendAudit(application, 'Stripe', 'funded', `Assistance offer ${offer.offer_number} paid in full through the provider`),
+      audit_trail: appendAudit(application, 'Stripe', 'funded', `Assistance offer ${currentOffer.offer_number} paid in full through the provider`),
     });
   }
-  if (fullyPaid) await ensureAssistanceJob(base44, offer, 'Stripe');
-  return { duplicate: false, offer_id: offer.id, paid: fullyPaid };
+  if (fullyPaid) await ensureAssistanceJob(base44, currentOffer, 'Stripe');
+  return {
+    duplicate: false,
+    offer_id: currentOffer.id,
+    paid: fullyPaid,
+    deposit_verified: !!synced?.plan?.deposit_verified,
+    internal_loan_status: synced?.loan?.status || '',
+  };
 }
 
 export async function ensureAssistanceJob(base44: any, offer: any, actor = 'Automatic') {

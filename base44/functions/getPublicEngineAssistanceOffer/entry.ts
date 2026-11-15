@@ -20,6 +20,7 @@ export default async function (req) {
     const application = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ id: offer.application_id }))[0];
     if (!application) return Response.json({ error: 'This offer is no longer available.' }, { status: 404 });
     const settings = await ensureSettings(base44);
+    const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
 
     const now = new Date().toISOString();
     const expired = offerExpired(offer);
@@ -42,7 +43,7 @@ export default async function (req) {
     };
 
     return Response.json({
-      offer: publicOffer(current, application, liveSettings),
+      offer: publicOffer(current, application, liveSettings, loan),
     }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error: any) {
     console.error('[getPublicEngineAssistanceOffer]', error?.message);

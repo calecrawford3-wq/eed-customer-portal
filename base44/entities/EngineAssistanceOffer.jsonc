@@ -20,7 +20,7 @@
     },
     "job_id": {
       "type": "string",
-      "description": "Normal shop job, created only once the offer is paid or authorized"
+      "description": "Normal shop job, created only once the offer is paid in full, or the deposit is verified with a signed approved in-house agreement"
     },
     "status": {
       "type": "string",
@@ -169,10 +169,64 @@
       "type": "boolean",
       "default": true
     },
+    "payment_plan": {
+      "type": "string",
+      "enum": [
+        "none",
+        "full",
+        "deposit_internal"
+      ],
+      "default": "none",
+      "enumColors": [
+        "gray",
+        "green",
+        "purple"
+      ],
+      "description": "How this offer is being paid: full amount, or a deposit plus Elite in-house financing of the remainder"
+    },
+    "deposit_percent": {
+      "type": "number",
+      "default": 50,
+      "description": "Required upfront deposit as a percentage of the net balance after assistance (10-90)"
+    },
+    "deposit_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Required upfront deposit in dollars"
+    },
+    "deposit_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "deposit_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only once verified or staff-recorded payments cover the required deposit"
+    },
+    "deposit_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deposit_method": {
+      "type": "string",
+      "description": "Payment method that satisfied the deposit (card, us_bank_account, affirm, ...)"
+    },
+    "deposit_lender": {
+      "type": "string",
+      "description": "Third-party lender that financed the deposit, when one was used"
+    },
+    "internal_financed_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount Elite finances in-house after the deposit. Never collected a second time through the offer checkout."
+    },
+    "internal_loan_id": {
+      "type": "string"
+    },
     "installments_enabled": {
       "type": "boolean",
       "default": true,
-      "description": "Shows the installment option when a lender is actually enabled for this amount"
+      "description": "Shows lender financing for any balance a lender actually covers; the priority amount is a label only"
     },
     "expires_on": {
       "type": "string",
@@ -244,7 +298,8 @@
             "default": 0
           },
           "amount_option": {
-            "type": "string"
+            "type": "string",
+            "description": "pay_in_full, installment, deposit, deposit_lender or manual"
           },
           "stripe_session_id": {
             "type": "string"

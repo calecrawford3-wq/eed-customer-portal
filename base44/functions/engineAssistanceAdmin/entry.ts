@@ -3,7 +3,8 @@ import Stripe from 'npm:stripe@13.11.0';
 import {
   rows, cents, round2, computeOfferTotals, ensureSettings, ensureGenericTemplate,
   nextOfferNumber, addDays, newToken, appendAudit, readFinancingAvailability,
-  financingForAmount, ensureAssistanceJob,
+  ensureAssistanceJob, offerPaymentPlan, publicLoan, buildLoanSchedule, loanOutstanding,
+  depositPercentFor, shiftMonths, today, syncDepositState, DEFAULT_DEPOSIT_PERCENT,
 } from '../../shared/engineAssistance.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
@@ -138,6 +139,11 @@ export default async function (req) {
       if (data.fund_public_intro !== undefined) patch.fund_public_intro = str(data.fund_public_intro, 1200);
       if (data.default_offer_expiry_days !== undefined) patch.default_offer_expiry_days = Math.min(180, Math.max(1, num(data.default_offer_expiry_days) || 21));
       if (data.min_financing_amount !== undefined) patch.min_financing_amount = Math.max(0, num(data.min_financing_amount));
+      if (data.default_deposit_percent !== undefined) patch.default_deposit_percent = Math.min(90, Math.max(10, num(data.default_deposit_percent) || DEFAULT_DEPOSIT_PERCENT));
+      if (data.internal_financing_enabled !== undefined) patch.internal_financing_enabled = data.internal_financing_enabled !== false;
+      if (data.internal_financing_apr !== undefined) patch.internal_financing_apr = Math.min(36, Math.max(0, num(data.internal_financing_apr)));
+      if (data.internal_financing_term_months !== undefined) patch.internal_financing_term_months = Math.min(84, Math.max(1, Math.round(num(data.internal_financing_term_months) || 12)));
+      if (data.internal_financing_disclosure_text !== undefined) patch.internal_financing_disclosure_text = str(data.internal_financing_disclosure_text, 4000);
       if (data.offer_terms_text !== undefined) patch.offer_terms_text = str(data.offer_terms_text, 3000);
       if (data.internal_notes !== undefined) patch.internal_notes = str(data.internal_notes, 2000);
       const updated = await base44.asServiceRole.entities.EngineAssistanceSettings.update(settings.id, patch);
@@ -370,6 +376,10 @@ export default async function (req) {
         requested_assistance_amount: Math.max(0, num(data.requested_assistance_amount)),
       };
       const totals = computeOfferTotals(candidate);
+      const pct = data.deposit_percent !== undefined
+        ? Math.min(90, Math.max(10, num(data.deposit_percent) || DEFAULT_DEPOSIT_PERCENT))
+        : depositPercentFor(offer, null);
+      const depositAmount = round2(totals.total * (pct / 100));
       const patch: any = {
         line_items: totals.line_items,
         labor_items: totals.labor_items,
@@ -382,6 +392,11 @@ export default async function (req) {
         total: totals.total,
         amount_due: totals.amount_due,
         balance_due: totals.balance_due,
+        deposit_percent: pct,
+        deposit_amount: depositAmount,
+        deposit_paid: 0,
+        deposit_verified: false,
+        internal_financed_amount: round2(Math.max(0, totals.total - depositAmount)),
         expires_on: str(data.expires_on, 10) || offer.expires_on,
         terms_text: data.terms_text !== undefined ? str(data.terms_text, 3000) : offer.terms_text,
         pay_in_full_enabled: data.pay_in_full_enabled !== false,
@@ -400,12 +415,20 @@ export default async function (req) {
       if (offer.status !== 'draft') return Response.json({ error: 'Only a draft offer can be sent' }, { status: 400 });
       const totals = computeOfferTotals(offer);
       if (totals.subtotal <= 0) return Response.json({ error: 'Add at least one line item before sending the offer' }, { status: 400 });
+      const settings = await ensureSettings(base44);
+      const pct = depositPercentFor(offer, settings);
+      const depositAmount = round2(totals.total * (pct / 100));
       const now = new Date().toISOString();
       const shareToken = offer.share_token || newToken();
       const updated = await offers.update(offer.id, {
         status: 'sent',
         share_token: shareToken,
         sent_at: now,
+        deposit_percent: pct,
+        deposit_amount: depositAmount,
+        deposit_paid: 0,
+        deposit_verified: false,
+        internal_financed_amount: round2(Math.max(0, totals.total - depositAmount)),
         expires_on: offer.expires_on && String(offer.expires_on).slice(0, 10) >= new Date().toISOString().slice(0, 10) ? offer.expires_on : addDays(21),
         audit_trail: appendAudit(offer, user, 'offer_sent', `Offer sent for $${totals.amount_due.toFixed(2)} after $${totals.assistance_amount.toFixed(2)} assistance`),
       });
@@ -450,9 +473,15 @@ export default async function (req) {
     if (action === 'create_job') {
       const offer = await loadOffer(str(data.offer_id, 60));
       if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
-      const totals = computeOfferTotals(offer);
-      if (!(offer.status === 'paid' || cents(totals.paid_amount) > 0 || data.authorized === true)) {
-        return Response.json({ error: 'A job can only be opened once the offer is paid or an admin explicitly authorizes it' }, { status: 400 });
+      const settings = await ensureSettings(base44);
+      const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
+      const plan = offerPaymentPlan(offer, settings, loan);
+      const fullyFunded = cents(plan.totals.balance_due) <= 0;
+      // A split agreement opens the job only after the deposit is verified AND
+      // the customer signed an agreement Elite approved.
+      const depositFunded = plan.deposit_verified && !!loan && ['approved', 'active', 'completed'].includes(loan.status) && !!loan.signed_at;
+      if (!fullyFunded && !depositFunded && data.authorized !== true) {
+        return Response.json({ error: 'A job can only be opened once the offer is paid in full, or the required deposit is verified with a signed in-house agreement Elite approved. An admin can still explicitly authorize it.' }, { status: 400 });
       }
       if (!offer.build_id || !offer.customer_engine_id) return Response.json({ error: 'Create the engine build first' }, { status: 400 });
       const jobId = await ensureAssistanceJob(base44, offer, user.email || 'Admin');
@@ -475,7 +504,7 @@ export default async function (req) {
         provider: 'manual',
         financed: false,
         financed_amount: 0,
-        amount_option: 'manual',
+        amount_option: data.apply_to_deposit === true ? 'deposit' : 'manual',
         date: str(data.date, 10) || now.slice(0, 10),
         note: str(data.note, 500) || `Recorded by ${user.email || 'admin'}`,
         recorded_by: user.email || 'Admin',
@@ -502,7 +531,11 @@ export default async function (req) {
         recorded_by: user.email || 'Admin',
         occurred_at: now,
       });
-      if (balanceCents === 0) {
+      // Re-derive the deposit from what was collected; a verified deposit with a
+      // signed approved agreement activates the in-house plan and opens the job.
+      const synced = await syncDepositState(base44, offer.id, user.email || 'Admin');
+      const currentTotals = computeOfferTotals(synced?.offer || updated);
+      if (cents(currentTotals.balance_due) === 0) {
         const application = await loadApp(offer.application_id);
         if (application && application.status !== 'funded') {
           await apps.update(application.id, {
@@ -510,9 +543,106 @@ export default async function (req) {
             audit_trail: appendAudit(application, user, 'funded', `Offer ${offer.offer_number} paid in full`),
           });
         }
-        await ensureAssistanceJob(base44, updated, user.email || 'Admin');
+        await ensureAssistanceJob(base44, synced?.offer || updated, user.email || 'Admin');
       }
-      return Response.json({ offer: await loadOffer(offer.id) });
+      return Response.json({ offer: await loadOffer(offer.id), loan: synced?.loan ? publicLoan(synced.loan) : null });
+    }
+
+    if (action === 'approve_internal_loan') {
+      const loans = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
+      const loan = rows(await loans.filter({ id: str(data.loan_id, 60) }))[0];
+      if (!loan) return Response.json({ error: 'In-house agreement not found' }, { status: 404 });
+      if (['active', 'completed', 'canceled'].includes(loan.status)) {
+        return Response.json({ error: 'This agreement can no longer be approved.' }, { status: 400 });
+      }
+      const apr = Math.min(36, Math.max(0, num(data.apr)));
+      const termMonths = Math.min(84, Math.max(1, Math.round(num(data.term_months) || 12)));
+      const firstDate = str(data.first_payment_date, 10) || shiftMonths(today(), 1);
+      const terms = buildLoanSchedule(loan.principal, apr, termMonths, firstDate);
+      const now = new Date().toISOString();
+      const updated = await loans.update(loan.id, {
+        status: 'approved',
+        apr: terms.apr,
+        term_months: terms.term_months,
+        monthly_payment: terms.monthly_payment,
+        total_repayable: terms.total_repayable,
+        finance_charge: terms.finance_charge,
+        first_payment_date: firstDate,
+        schedule: terms.schedule,
+        approved_by: user.email || 'Admin',
+        approved_at: now,
+        decline_reason: '',
+        internal_notes: data.note !== undefined ? str(data.note, 2000) : loan.internal_notes,
+        audit_trail: appendAudit(loan, user, 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}`),
+      });
+      const synced = await syncDepositState(base44, loan.offer_id, user.email || 'Admin');
+      return Response.json({ loan: updated, offer: synced?.offer || null });
+    }
+
+    if (action === 'decline_internal_loan') {
+      const loans = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
+      const loan = rows(await loans.filter({ id: str(data.loan_id, 60) }))[0];
+      if (!loan) return Response.json({ error: 'In-house agreement not found' }, { status: 404 });
+      if (['active', 'completed'].includes(loan.status)) {
+        return Response.json({ error: 'An active agreement cannot be declined.' }, { status: 400 });
+      }
+      const reason = str(data.reason, 500);
+      if (!reason) return Response.json({ error: 'Add a short reason for the customer' }, { status: 400 });
+      const updated = await loans.update(loan.id, {
+        status: 'declined',
+        decline_reason: reason,
+        audit_trail: appendAudit(loan, user, 'loan_declined', reason),
+      });
+      return Response.json({ loan: updated });
+    }
+
+    if (action === 'record_loan_payment') {
+      const loans = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
+      const loan = rows(await loans.filter({ id: str(data.loan_id, 60) }))[0];
+      if (!loan) return Response.json({ error: 'In-house agreement not found' }, { status: 404 });
+      if (loan.status !== 'active') {
+        return Response.json({ error: 'Installments can only be recorded once the deposit is verified and the agreement is active.' }, { status: 400 });
+      }
+      const amount = round2(num(data.amount));
+      if (amount <= 0) return Response.json({ error: 'Enter the payment amount' }, { status: 400 });
+      const money = loanOutstanding(loan);
+      if (amount > money.outstanding + 0.005) {
+        return Response.json({ error: `The outstanding balance is $${money.outstanding.toFixed(2)}` }, { status: 400 });
+      }
+      const method = ['cash', 'check', 'card', 'ach', 'other'].includes(data.method) ? data.method : 'other';
+      const now = new Date().toISOString();
+      const payments = [...(loan.payments || []), {
+        amount,
+        method,
+        date: str(data.date, 10) || now.slice(0, 10),
+        note: str(data.note, 500) || `Recorded by ${user.email || 'admin'}`,
+        recorded_by: user.email || 'Admin',
+        recorded_at: now,
+      }];
+      const paidCents = cents(money.paid_amount) + cents(amount);
+      const outstandingCents = Math.max(0, cents(money.total_repayable) - paidCents);
+      const updated = await loans.update(loan.id, {
+        payments,
+        paid_amount: round2(paidCents / 100),
+        outstanding_balance: round2(outstandingCents / 100),
+        status: outstandingCents === 0 ? 'completed' : 'active',
+        completed_at: outstandingCents === 0 ? now : loan.completed_at || '',
+        audit_trail: appendAudit(loan, user, 'installment_recorded', `${method} payment of $${amount.toFixed(2)}; $${round2(outstandingCents / 100).toFixed(2)} outstanding`),
+      });
+      await ledger.create({
+        entry_type: 'payment',
+        direction: 'credit',
+        amount,
+        application_id: loan.application_id || '',
+        offer_id: loan.offer_id || '',
+        customer_id: loan.customer_id || '',
+        loan_id: loan.id,
+        source: 'manual_payment',
+        note: `Elite in-house installment (${method})`,
+        recorded_by: user.email || 'Admin',
+        occurred_at: now,
+      });
+      return Response.json({ loan: updated });
     }
 
     if (action === 'financing_review') {

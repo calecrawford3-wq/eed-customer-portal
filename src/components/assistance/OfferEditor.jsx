@@ -77,6 +77,7 @@ export default function OfferEditor({ offer, onSave, busy }) {
   const [fixedAmount, setFixedAmount] = useState(0);
   const [expiresOn, setExpiresOn] = useState("");
   const [terms, setTerms] = useState("");
+  const [depositPercent, setDepositPercent] = useState(50);
 
   useEffect(() => {
     setLineItems(offer.line_items || []);
@@ -87,6 +88,7 @@ export default function OfferEditor({ offer, onSave, busy }) {
     setFixedAmount(Number(offer.requested_assistance_amount) || 0);
     setExpiresOn(offer.expires_on || "");
     setTerms(offer.terms_text || "");
+    setDepositPercent(Number(offer.deposit_percent) || 50);
   }, [offer]);
 
   const parts = lineItems.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0);
@@ -140,6 +142,16 @@ export default function OfferEditor({ offer, onSave, busy }) {
       </div>
 
       <div>
+        <Label className="text-xs font-medium text-slate-600">Required deposit if the customer splits the balance</Label>
+        <div className="mt-1 flex items-center gap-2">
+          <Input type="number" min="10" max="90" step="5" className="w-28" disabled={locked} value={depositPercent} onChange={(e) => setDepositPercent(e.target.value)} />
+          <span className="text-xs text-slate-500">
+            % · {formatMoney(total * (Math.min(90, Math.max(10, Number(depositPercent) || 50)) / 100))} deposit, {formatMoney(Math.max(0, total - total * (Math.min(90, Math.max(10, Number(depositPercent) || 50)) / 100)))} financed by Elite
+          </span>
+        </div>
+      </div>
+
+      <div>
         <Label className="text-xs font-medium text-slate-600">Offer terms</Label>
         <Textarea className="mt-1 min-h-24" disabled={locked} value={terms} onChange={(e) => setTerms(e.target.value)} />
       </div>
@@ -165,6 +177,7 @@ export default function OfferEditor({ offer, onSave, busy }) {
             requested_assistance_amount: fixedAmount,
             expires_on: expiresOn,
             terms_text: terms,
+            deposit_percent: depositPercent,
           })}
         >
           <Save className="h-4 w-4" /> {busy ? "Saving…" : "Save offer"}

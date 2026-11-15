@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FileSignature, Copy, ExternalLink, Send, Ban, DollarSign, Loader2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -14,11 +15,12 @@ import StatusBadge from "./StatusBadge";
 import OfferBreakdown from "./OfferBreakdown";
 import OfferEditor from "./OfferEditor";
 
-export default function OfferPanel({ application, offer, onAction, busy }) {
+export default function OfferPanel({ application, offer, onAction, busy, loan }) {
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("check");
   const [payNote, setPayNote] = useState("");
+  const [applyDeposit, setApplyDeposit] = useState(false);
 
   const shareUrl = offer?.share_token ? `${window.location.origin}/engine-assistance/offer/${offer.share_token}` : "";
   const canApprove = ["approved", "funded"].includes(application.status);
@@ -29,10 +31,13 @@ export default function OfferPanel({ application, offer, onAction, busy }) {
     catch { toast.error("Copy failed — select the link manually"); }
   };
 
+  const depositOutstanding = Math.max(0, Number(offer?.deposit_amount || 0) - Number(offer?.deposit_paid || 0));
+
   const openPayment = () => {
     setPayAmount(balance ? String(balance) : "");
     setPayMethod("check");
     setPayNote("");
+    setApplyDeposit(depositOutstanding > 0);
     setPayOpen(true);
   };
 
@@ -74,6 +79,42 @@ export default function OfferPanel({ application, offer, onAction, busy }) {
               <OfferEditor offer={offer} busy={busy} onSave={(data) => onAction("update_offer", data)} />
             ) : (
               <OfferBreakdown offer={offer} />
+            )}
+
+            {offer.status !== "draft" && Number(offer.deposit_amount) > 0 && (
+              <div className="rounded-xl border border-slate-200 p-3 space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Payment plan</p>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Upfront deposit ({Number(offer.deposit_percent) || 50}%)</span>
+                  <span className="tabular-nums text-slate-900">{formatMoney(offer.deposit_amount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Deposit received</span>
+                  <span className="tabular-nums text-slate-900">{formatMoney(offer.deposit_paid)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Deposit verified</span>
+                  {offer.deposit_verified
+                    ? <StatusBadge status="approved" />
+                    : <span className="text-slate-500">Not yet</span>}
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Elite in-house financing</span>
+                  <span className="tabular-nums text-slate-900">{formatMoney(offer.internal_financed_amount ?? offer.internal_amount ?? 0)}</span>
+                </div>
+                {loan && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600">In-house agreement</span>
+                    <StatusBadge status={loan.status} />
+                  </div>
+                )}
+                {loan?.signed_at && (
+                  <p className="text-[11px] text-slate-500">
+                    Signed by {loan.signed_name} on {format(new Date(loan.signed_at), "MMM d, yyyy")}
+                  </p>
+                )}
+                <p className="text-[11px] text-slate-500">Only {formatMoney(depositOutstanding)} of the deposit is still collectible through the offer link; the financed portion is repaid on the agreement schedule.</p>
+              </div>
             )}
 
             {offer.status === "draft" && (
@@ -134,7 +175,11 @@ export default function OfferPanel({ application, offer, onAction, busy }) {
                   {offer.payments.map((payment, index) => (
                     <div key={index} className="flex items-center justify-between gap-2 py-1.5">
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-800 capitalize">{String(payment.method || "").replace(/_/g, " ")}{payment.financed ? " · financed" : ""}</p>
+                        <p className="text-sm text-slate-800 capitalize">
+                          {String(payment.method || "").replace(/_/g, " ")}
+                          {payment.financed ? " · financed" : ""}
+                          {["deposit", "deposit_lender"].includes(payment.amount_option) ? " · deposit" : ""}
+                        </p>
                         <p className="text-[11px] text-slate-500">
                           {payment.date} · {payment.provider || "manual"}
                           {payment.financed ? ` · financed ${formatMoney(payment.financed_amount)}` : ""}
@@ -176,13 +221,19 @@ export default function OfferPanel({ application, offer, onAction, busy }) {
               <Label className="text-xs">Note</Label>
               <Input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Check number, authorization reference…" className="mt-1" />
             </div>
+            {depositOutstanding > 0 && (
+              <label className="flex items-start gap-2 text-xs text-slate-600">
+                <Checkbox checked={applyDeposit} onCheckedChange={(value) => setApplyDeposit(value === true)} className="mt-0.5" />
+                <span>Apply this payment toward the required deposit ({formatMoney(depositOutstanding)} still due)</span>
+              </label>
+            )}
             <p className="text-[11px] text-slate-500">Offline payments are marked as staff-recorded in the ledger. Only Stripe-verified payments show as provider-verified.</p>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancel</Button>
             <Button
               disabled={busy || !(Number(payAmount) > 0)}
-              onClick={() => { onAction("record_manual_payment", { offer_id: offer.id, amount: Number(payAmount), method: payMethod, note: payNote }); setPayOpen(false); }}
+              onClick={() => { onAction("record_manual_payment", { offer_id: offer.id, amount: Number(payAmount), method: payMethod, note: payNote, apply_to_deposit: applyDeposit }); setPayOpen(false); }}
             >Record payment</Button>
           </DialogFooter>
         </DialogContent>

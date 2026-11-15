@@ -44,6 +44,10 @@
     "customer_id": {
       "type": "string"
     },
+    "loan_id": {
+      "type": "string",
+      "description": "EngineAssistanceInternalLoan this entry belongs to, for in-house installment repayment ledgers"
+    },
     "source": {
       "type": "string",
       "description": "Origin of the entry: stripe_webhook, manual_payment, award_decision, staff_adjustment"

@@ -1,6 +1,12 @@
 import React from "react";
 import { formatMoney } from "@/lib/money";
 
+const PLAN_LABELS = {
+  none: "Not chosen",
+  full: "Paying in full",
+  deposit_internal: "Deposit + in-house financing",
+};
+
 function Row({ label, value, muted = false, strong = false }) {
   return (
     <div className={`flex items-baseline justify-between gap-3 py-1.5 ${strong ? "border-t border-slate-200 pt-2.5 mt-1.5" : ""}`}>
@@ -82,6 +88,14 @@ export default function OfferBreakdown({ offer, showPayments = true }) {
           />
         )}
         <Row label="Engine package total" value={formatMoney(offer.total)} strong />
+        {Number(offer.deposit_amount) > 0 && (
+          <>
+            <Row label={`Upfront deposit (${Number(offer.deposit_percent) || 50}%)`} value={formatMoney(offer.deposit_amount)} muted />
+            <Row label="Elite in-house financing" value={formatMoney(offer.internal_amount ?? offer.internal_financed_amount ?? 0)} muted />
+            <Row label="Deposit verified" value={offer.deposit_verified ? "Yes" : "Not yet"} muted />
+            <Row label="Payment plan" value={PLAN_LABELS[offer.payment_plan_mode || offer.payment_plan] || PLAN_LABELS.none} muted />
+          </>
+        )}
         {showPayments && Number(offer.paid_amount) > 0 && <Row label="Paid" value={formatMoney(offer.paid_amount)} muted />}
         {showPayments && (
           <div className="flex items-baseline justify-between gap-3 border-t border-slate-300 mt-2 pt-2">
