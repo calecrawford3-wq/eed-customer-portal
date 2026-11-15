@@ -665,6 +665,7 @@ export function publicOffer(offer: any, application: any, settings: any, loan: a
   const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
   const priorityAmount = Number(settings?.min_financing_amount) || 3000;
   return {
+    id: offer.id,
     offer_number: offer.offer_number,
     status: offer.status,
     expires_on: offer.expires_on || '',

@@ -14,6 +14,7 @@ import PaymentsHistory from "@/components/assistance/PaymentsHistory";
 import StatusBadge from "@/components/assistance/StatusBadge";
 import PaymentWizard from "@/components/assistance/payment/PaymentWizard";
 import LoanScheduleCard from "@/components/assistance/LoanScheduleCard";
+import TestWalkthroughStart from "@/components/assistance/demo/TestWalkthroughStart";
 
 export default function EngineAssistanceOffer() {
   const { token } = useParams();
@@ -165,6 +166,8 @@ export default function EngineAssistanceOffer() {
           </div>
           <PlanSummary offer={offer} />
         </CardContent></Card>
+
+        {!loanActive && !paid && !offer.expired && <TestWalkthroughStart offer={offer} />}
 
         {loanActive ? (
           <Card><CardContent className="p-4 sm:p-6 space-y-3">

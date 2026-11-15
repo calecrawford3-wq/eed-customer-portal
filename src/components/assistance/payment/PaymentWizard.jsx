@@ -64,6 +64,7 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
             token={token}
             identity={offer?.identity}
             onIdentityChanged={onIdentityChanged}
+            offer={offer}
           />
         )}
       </CardContent>
