@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import { parseOfferDate } from "@/lib/offerDate";
 import { formatMoney } from "@/lib/money";
 import PublicAssistanceShell from "@/components/assistance/PublicAssistanceShell";
-import OfferBreakdown from "@/components/assistance/OfferBreakdown";
+import PlanSummary from "@/components/assistance/PlanSummary";
+import PaymentsHistory from "@/components/assistance/PaymentsHistory";
 import StatusBadge from "@/components/assistance/StatusBadge";
-import PaymentPathways from "@/components/assistance/PaymentPathways";
+import PaymentWizard from "@/components/assistance/payment/PaymentWizard";
 import LoanScheduleCard from "@/components/assistance/LoanScheduleCard";
 
 export default function EngineAssistanceOffer() {
@@ -131,7 +132,7 @@ export default function EngineAssistanceOffer() {
             )}
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
           </div>
-          <OfferBreakdown offer={offer} />
+          <PlanSummary offer={offer} />
         </CardContent></Card>
 
         {loanActive ? (
@@ -169,7 +170,7 @@ export default function EngineAssistanceOffer() {
             </div>
           </CardContent></Card>
         ) : (
-          <PaymentPathways
+          <PaymentWizard
             offer={offer}
             paying={paying}
             actionBusy={actionBusy}
@@ -180,23 +181,7 @@ export default function EngineAssistanceOffer() {
           />
         )}
 
-        {!!(offer.payments || []).length && (
-          <Card><CardContent className="p-4 sm:p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Payments received</p>
-            <div className="divide-y divide-slate-100">
-              {offer.payments.map((payment, index) => (
-                <div key={index} className="flex items-center justify-between gap-2 py-1.5">
-                  <span className="text-sm text-slate-600">
-                    {String(payment.method || "").replace(/_/g, " ")}
-                    {payment.amount_option === "deposit" || payment.amount_option === "deposit_lender" ? " · deposit" : ""}
-                    {payment.financed ? " · lender financed" : ""} · {payment.date}
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums text-slate-900">{formatMoney(payment.amount)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent></Card>
-        )}
+        <PaymentsHistory payments={offer.payments || []} />
 
         {offer.financing_note && (
           <p className="flex items-start gap-1.5 text-[11px] text-slate-500">
