@@ -10,6 +10,10 @@ import {
   AGREEMENT_TEMPLATE_KEY, AGREEMENT_TEMPLATE_VERSION, agreementTemplateHash, issueAgreement,
   latestAgreement, lendingGate,
 } from '../../shared/installmentAgreement.ts';
+import {
+  applyIdentitySession, checkIdentityAvailability, ensureIdentitySettings, ensureVerificationRecord,
+  identityAdminSummary, identityGate, loadVerificationForLoan, readIdentitySession,
+} from '../../shared/identityVerification.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
 // role. Applicant data, documents and financial records never leave through a
@@ -139,6 +143,7 @@ export default async function (req) {
       return Response.json({
         settings: { ...settings, ...patch },
         template,
+        identity_settings: await ensureIdentitySettings(base44),
         apply_url: `/engine-assistance/apply/${template.apply_token}`,
       });
     }
@@ -195,6 +200,116 @@ export default async function (req) {
         payments_disabled_reason: '',
       });
       return Response.json({ settings: updated, note: availability.note });
+    }
+
+    if (action === 'identity_settings') {
+      const identity = await ensureIdentitySettings(base44);
+      const patch: any = {};
+      if (data.enabled !== undefined) patch.enabled = data.enabled !== false;
+      if (data.required !== undefined) patch.required = data.required !== false;
+      if (data.store_last4 !== undefined) patch.store_last4 = data.store_last4 === true;
+      if (data.internal_notes !== undefined) patch.internal_notes = str(data.internal_notes, 2000);
+      const updated = await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.update(identity.id, patch);
+      return Response.json({ identity_settings: updated });
+    }
+
+    if (action === 'identity_check') {
+      const identity = await ensureIdentitySettings(base44);
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if (!key) {
+        const updated = await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.update(identity.id, {
+          available: false,
+          checked_at: new Date().toISOString(),
+          error: 'The portal Stripe key is not configured.',
+        });
+        return Response.json({ identity_settings: updated, note: 'Add the portal Stripe keys before identity verification can run.' });
+      }
+      const result = await checkIdentityAvailability(new Stripe(key));
+      const priorAvailable = identity.available === true;
+      const accepted = result.available === true && priorAvailable;
+      const error = result.available
+        ? (accepted ? '' : (identity.error || 'Stripe Identity has not accepted a verification session yet. Complete Identity setup in Stripe, then start one verification to confirm.'))
+        : result.error;
+      const updated = await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.update(identity.id, {
+        available: accepted,
+        checked_at: result.checked_at,
+        error,
+        livemode: result.livemode,
+      });
+      return Response.json({
+        identity_settings: updated,
+        note: accepted
+          ? 'Stripe Identity accepted a verification session on the connected account.'
+          : 'Identity verification is not fully set up yet. Stripe Identity must be enabled before in-house financing can be approved or activated.',
+      });
+    }
+
+    if (action === 'identity_refresh') {
+      const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ id: str(data.loan_id, 60) }))[0];
+      if (!loan) return Response.json({ error: 'In-house agreement not found' }, { status: 404 });
+      const identitySettings = await ensureIdentitySettings(base44);
+      let verification = await loadVerificationForLoan(base44, loan.id);
+      if (!verification?.provider_session_id) {
+        return Response.json({ error: 'This customer has not started a provider verification yet.' }, { status: 400 });
+      }
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if (!key) return Response.json({ error: 'Identity verification is not configured.' }, { status: 503 });
+      const session = await readIdentitySession(new Stripe(key), verification.provider_session_id);
+      if (!session) return Response.json({ error: 'The provider could not find this verification session.' }, { status: 404 });
+      verification = await applyIdentitySession(base44, {
+        verification, session, loan, storeLast4: identitySettings?.store_last4 === true, actor: user.email || 'Admin',
+      });
+      const synced = loan.offer_id ? await syncDepositState(base44, loan.offer_id, user.email || 'Admin') : null;
+      return Response.json({
+        verification,
+        identity: identityAdminSummary(verification, identitySettings),
+        loan: synced?.loan || loan,
+      });
+    }
+
+    if (action === 'identity_exception') {
+      const loans = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
+      const loan = rows(await loans.filter({ id: str(data.loan_id, 60) }))[0];
+      if (!loan) return Response.json({ error: 'In-house agreement not found' }, { status: 404 });
+      if (!['pending_approval', 'approved'].includes(loan.status)) {
+        return Response.json({ error: 'An owner exception can only be recorded before the agreement goes live.' }, { status: 409 });
+      }
+      const reason = str(data.reason, 1000);
+      const alternateMethod = str(data.alternate_method, 300);
+      if (reason.length < 20) return Response.json({ error: 'Describe the completed alternate verification and why the provider check could not be used (at least 20 characters).' }, { status: 400 });
+      if (alternateMethod.length < 5) return Response.json({ error: 'Name the alternate verification method that was completed.' }, { status: 400 });
+      if (data.acknowledged !== true) return Response.json({ error: 'Confirm the exception acknowledgement before recording it.' }, { status: 400 });
+      const identitySettings = await ensureIdentitySettings(base44);
+      const verification = await loadVerificationForLoan(base44, loan.id)
+        || await ensureVerificationRecord(base44, { offer: await loadOffer(loan.offer_id), loan });
+      if (verification.status === 'verified') {
+        return Response.json({ error: 'This borrower is already verified by the provider; an exception is not needed.' }, { status: 409 });
+      }
+      if (verification.status === 'exception') {
+        return Response.json({ error: 'An owner exception is already recorded for this agreement.' }, { status: 409 });
+      }
+      const now = new Date().toISOString();
+      const updated = await base44.asServiceRole.entities.EngineAssistanceIdentityVerification.update(verification.id, {
+        status: 'exception',
+        verified_at: now,
+        last_checked_at: now,
+        exception: {
+          at: now,
+          by: user.email || 'Admin',
+          reason,
+          alternate_method: alternateMethod,
+          acknowledged: true,
+        },
+        audit_trail: appendAudit(verification, user, 'owner_exception_recorded', `${alternateMethod}: ${reason}`),
+      });
+      await loans.update(loan.id, {
+        audit_trail: appendAudit(loan, user, 'identity_exception_recorded', `Alternate verification recorded: ${alternateMethod}. ${reason}`),
+      });
+      return Response.json({
+        verification: updated,
+        identity: identityAdminSummary(updated, identitySettings),
+        note: 'Owner exception recorded. It is logged with your name, the method, the reason and the time.',
+      });
     }
 
     if (action === 'update_application') {
@@ -585,6 +700,14 @@ export default async function (req) {
       const gate = lendingGate(approvalSettings);
       if (!gate.allowed) {
         return Response.json({ error: `In-house lending cannot open yet. ${gate.reason}` }, { status: 409 });
+      }
+      // Terms cannot be approved for a borrower whose identity has not been
+      // verified by the provider or covered by a documented owner exception.
+      const identitySettings = await ensureIdentitySettings(base44);
+      const identity = await loadVerificationForLoan(base44, loan.id);
+      const identityStatus = identityGate(identitySettings, identity);
+      if (!identityStatus.ok) {
+        return Response.json({ error: identityStatus.reason }, { status: 409 });
       }
       const apr = Math.min(36, Math.max(0, num(data.apr)));
       const termMonths = Math.min(84, Math.max(1, Math.round(num(data.term_months) || 12)));

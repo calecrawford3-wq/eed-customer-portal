@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { rows, publicOffer, offerExpired, ensureSettings } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
+import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
 // Public offer viewer. The long random share token is the only credential and
@@ -23,6 +24,8 @@ export default async function (req) {
     const settings = await ensureSettings(base44);
     const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
     const agreement = await latestAgreement(base44, offer.id);
+    const identitySettings = await ensureIdentitySettings(base44);
+    const identity = loan ? await loadVerificationForLoan(base44, loan.id) : null;
 
     const now = new Date().toISOString();
     const expired = offerExpired(offer);
@@ -45,7 +48,7 @@ export default async function (req) {
     };
 
     return Response.json({
-      offer: publicOffer(current, application, liveSettings, loan, agreement),
+      offer: publicOffer(current, application, liveSettings, loan, agreement, identity, identitySettings),
     }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error: any) {
     console.error('[getPublicEngineAssistanceOffer]', error?.message);

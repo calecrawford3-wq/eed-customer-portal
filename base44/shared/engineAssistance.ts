@@ -3,6 +3,7 @@
 // price, an assistance amount, a payment status, or an applicant identifier.
 
 import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
+import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
@@ -362,7 +363,7 @@ export function loanScheduleWithStatus(loan: any) {
 // The customer chooses between four mutually exclusive pathways. Every amount,
 // eligibility flag and reason is calculated here so the browser cannot invent a
 // price, an approval, or a lender that is not configured.
-export function offerPaymentPlan(offer: any, settings: any, loan: any = null, agreement: any = null) {
+export function offerPaymentPlan(offer: any, settings: any, loan: any = null, agreement: any = null, identity: any = null, identitySettings: any = null) {
   const totals = computeOfferTotals(offer);
   const pct = depositPercentFor(offer, settings);
   const depositTarget = round2(totals.total * (pct / 100));
@@ -381,6 +382,10 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
   const fullyPaid = cents(totals.balance_due) <= 0;
   const paymentsEnabled = settings?.payments_enabled === true;
   const lending = lendingGate(settings);
+  // A provider-verified identity (or a documented owner exception) is required
+  // before in-house terms can be approved or the plan activated. The browser
+  // never supplies this flag.
+  const identityStatus = identityGate(identitySettings, identity);
   // An accepted agreement is the only proof the customer read these exact terms.
   const agreementAccepted = !!agreement
     && agreement.status === 'accepted'
@@ -452,6 +457,20 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     loan_signed: loanSigned,
     loan_ready: loanReady,
     loan_active: loanActive,
+    identity_status: identityStatus.status,
+    identity_verified: identityStatus.verified,
+    identity_exception: identityStatus.exception,
+    identity_required: identityStatus.required,
+    identity_ok: identityStatus.ok,
+    identity_reason: identityStatus.reason,
+    identity_setup_required: !identityStatus.verified && !identityStatus.exception && identitySettings?.available === false,
+    identity_can_start: identityStatus.enabled
+      && !identityStatus.verified
+      && !identityStatus.exception
+      && !['processing'].includes(identityStatus.status)
+      && ['pending_approval', 'approved'].includes(loanStatus)
+      && identitySettings?.available !== false,
+    loan_identity_status: identityStatus.status,
     available: !blockedReason,
     reason: blockedReason,
     lending_allowed: lending.allowed,
@@ -465,7 +484,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     can_accept_agreement: !blockedReason && loanApproved && !agreementAccepted && !depositVerified,
     declined: loanStatus === 'declined',
     canceled: loanStatus === 'canceled',
-    enabled: !blockedReason && !depositVerified && !loanActive && loanReady && agreementAccepted,
+    enabled: !blockedReason && !depositVerified && !loanActive && loanReady && agreementAccepted && identityStatus.ok,
     payment_reason: blockedReason
       || (depositVerified || loanActive
         ? ''
@@ -474,9 +493,11 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
           : loanStatus === 'declined'
             ? 'Your in-house financing request was not approved.'
             : !loanApproved
-              ? 'Request Elite in-house financing to see your terms.'
-              : !agreementAccepted
-                ? 'Read and accept your Retail Installment Agreement to continue.'
+            ? 'Request Elite in-house financing to see your terms.'
+            : !agreementAccepted
+              ? 'Read and accept your Retail Installment Agreement to continue.'
+              : !identityStatus.ok
+                ? identityStatus.reason
                 : ''),
     deposit_lenders: depositLenders,
     finance_deposit_enabled: !blockedReason && !depositVerified && !loanActive && loanReady && depositLenders.eligible.length > 0,
@@ -505,6 +526,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     agreement_accepted: agreementAccepted,
     lending_allowed: lending.allowed,
     payment_plan: paymentPlan,
+    identity: { ...identityStatus, settings_available: identitySettings?.available === true },
     pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath },
   };
 }
@@ -557,6 +579,11 @@ export async function activateInternalLoan(base44: any, offer: any, loan: any, a
   // deposit alone never activates financing.
   const settings = await ensureSettings(base44);
   if (!lendingGate(settings).allowed) return loan;
+  // Provider-verified identity (or a documented owner exception) is required in
+  // addition to the approved terms, the signed agreement and the deposit.
+  const identitySettings = await ensureIdentitySettings(base44);
+  const identity = await loadVerificationForLoan(base44, loan.id);
+  if (!identityGate(identitySettings, identity).ok) return loan;
   const agreement = await latestAgreement(base44, offer.id);
   if (!agreement || agreement.status !== 'accepted' || agreement.loan_id !== loan.id) return loan;
   const totals = computeOfferTotals(offer);
@@ -604,7 +631,9 @@ export async function syncDepositState(base44: any, offerId: string, actor = 'Au
   const settings = await ensureSettings(base44);
   const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
   const agreement = await latestAgreement(base44, offer.id);
-  const plan = offerPaymentPlan(offer, settings, loan, agreement);
+  const identitySettings = await ensureIdentitySettings(base44);
+  const identity = loan ? await loadVerificationForLoan(base44, loan.id) : null;
+  const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
   const patch: any = {
     deposit_percent: plan.deposit_percent,
     deposit_amount: plan.deposit_amount,
@@ -630,9 +659,9 @@ export async function syncDepositState(base44: any, offerId: string, actor = 'Au
 // ---------------------------------------------------------------------------
 // Public payloads — allowlisted, no internal notes, no customer ids
 // ---------------------------------------------------------------------------
-export function publicOffer(offer: any, application: any, settings: any, loan: any = null, agreement: any = null) {
+export function publicOffer(offer: any, application: any, settings: any, loan: any = null, agreement: any = null, identity: any = null, identitySettings: any = null) {
   const totals = computeOfferTotals(offer);
-  const plan = offerPaymentPlan(offer, settings, loan, agreement);
+  const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
   const priorityAmount = Number(settings?.min_financing_amount) || 3000;
   return {
     offer_number: offer.offer_number,
@@ -685,6 +714,8 @@ export function publicOffer(offer: any, application: any, settings: any, loan: a
     lending_allowed: plan.lending_allowed,
     lending_reason: plan.pathways.deposit_internal.lending_reason,
     autopay_enabled: settings?.autopay_enabled === true,
+    identity: publicIdentity(identity, identitySettings),
+    identity_settings_available: identitySettings?.available === true,
     pathways: plan.pathways,
   };
 }

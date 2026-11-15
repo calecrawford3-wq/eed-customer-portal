@@ -14,7 +14,7 @@ import LoanScheduleCard from "./LoanScheduleCard";
 
 // Staff side of the in-house agreement. Elite sets and approves the fixed APR
 // and term here, and records each installment that is actually collected.
-export default function InternalLoanPanel({ offer, loan, onAction, busy }) {
+export default function InternalLoanPanel({ offer, loan, onAction, busy, identity = null }) {
   const [apr, setApr] = useState("0");
   const [term, setTerm] = useState("12");
   const [firstDate, setFirstDate] = useState("");
@@ -84,6 +84,11 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy }) {
             </p>
             {loan.started_at && <p className="text-[11px] text-emerald-700">Active since {format(new Date(loan.started_at), "MMM d, yyyy")} · first payment {loan.first_payment_date || "—"}</p>}
             {loan.decline_reason && <p className="text-[11px] text-red-700">Declined: {loan.decline_reason}</p>}
+            {!["verified", "exception"].includes(String(identity?.status || "not_started")) && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+                Identity verification is required before these terms can be approved or the plan activated. Use the identity panel below: a provider check, or a documented owner exception.
+              </p>
+            )}
 
             {editable && (
               <div className="rounded-xl border border-slate-200 p-3 space-y-2">

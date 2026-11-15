@@ -7,11 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, RefreshCw, ShieldAlert, FileText, Send, PhoneCall, PackageCheck } from "lucide-react";
+import { Loader2, RefreshCw, ShieldAlert, FileText, Send, PhoneCall, PackageCheck, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/money";
 import StatusBadge from "./StatusBadge";
+import CaseFileSummary from "./collections/CaseFileSummary";
+import CaseDisputesRecoveries from "./collections/CaseDisputesRecoveries";
+import CaseDocuments from "./collections/CaseDocuments";
+import CasePacketDialog from "./collections/CasePacketDialog";
 
 const NOTICE_LABELS = {
   reminder: "Payment reminder",
@@ -24,8 +28,9 @@ const when = (value) => (value ? format(new Date(value), "MMM d, yyyy h:mm a") :
 // Delinquency review queue for one in-house agreement. Every step is recorded
 // by hand: no automatic notice, no automatic referral, no credit bureau
 // submission.
-export default function CollectionsPanel({ loan, caseDoc, onChanged }) {
+export default function CollectionsPanel({ loan, caseDoc, onChanged, application = null, agreement = null }) {
   const [busy, setBusy] = useState("");
+  const [packetOpen, setPacketOpen] = useState(false);
   const [noticeType, setNoticeType] = useState("past_due");
   const [noticeBody, setNoticeBody] = useState("");
   const [contactNote, setContactNote] = useState("");
@@ -85,6 +90,7 @@ export default function CollectionsPanel({ loan, caseDoc, onChanged }) {
 
             {caseDoc && (
               <>
+                <CaseFileSummary caseDoc={caseDoc} loan={loan} />
                 <div className="rounded-xl border border-slate-200 p-3 space-y-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><FileText className="h-3.5 w-3.5" /> Notices</p>
                   {!notices.length ? (
@@ -172,6 +178,9 @@ export default function CollectionsPanel({ loan, caseDoc, onChanged }) {
                   </Button>
                 </div>
 
+                <CaseDisputesRecoveries caseDoc={caseDoc} onChanged={onChanged} />
+                <CaseDocuments caseDoc={caseDoc} onChanged={onChanged} />
+
                 <div className="rounded-xl border border-slate-200 p-3 space-y-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><PackageCheck className="h-3.5 w-3.5" /> Collection-agency referral package</p>
                   {caseDoc.referral?.prepared_at ? (
@@ -205,6 +214,9 @@ export default function CollectionsPanel({ loan, caseDoc, onChanged }) {
                       </Button>
                     </>
                   )}
+                  <Button size="sm" className="w-full sm:w-auto" variant="outline" onClick={() => setPacketOpen(true)}>
+                    <Printer className="h-4 w-4" /> Print / download redacted packet
+                  </Button>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 p-3 space-y-2">
@@ -220,6 +232,15 @@ export default function CollectionsPanel({ loan, caseDoc, onChanged }) {
           </>
         )}
       </CardContent>
+
+      <CasePacketDialog
+        caseDoc={caseDoc}
+        loan={loan}
+        application={application}
+        agreement={agreement}
+        open={packetOpen}
+        onOpenChange={setPacketOpen}
+      />
     </Card>
   );
 }

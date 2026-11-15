@@ -5,11 +5,12 @@ import { Landmark, Loader2, Lock, Wallet } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import ChoiceTile from "./ChoiceTile";
 import DepositFinancingStatus from "../DepositFinancingStatus";
+import IdentityVerificationCard from "../identity/IdentityVerificationCard";
 
 // Step 2 for the deposit plan. The deposit is the only amount this page can
 // ever charge; the remainder belongs to the in-house agreement, which must be
 // approved and signed before the deposit payment opens.
-export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false }) {
+export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false, token = "", identity = null, onIdentityChanged = null }) {
   const [method, setMethod] = useState("");
   const [consent, setConsent] = useState(false);
 
@@ -45,6 +46,13 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
           Next: Elite approves your in-house plan, you sign the disclosures, then your deposit is due.
         </p>
       )}
+
+      <IdentityVerificationCard
+        token={token}
+        identity={identity}
+        loanStatus={loan?.status}
+        onChanged={onIdentityChanged}
+      />
 
       <DepositFinancingStatus
         deposit={deposit}

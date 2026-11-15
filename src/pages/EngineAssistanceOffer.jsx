@@ -37,6 +37,25 @@ export default function EngineAssistanceOffer() {
     if (params.get("payment") === "canceled") setBanner("canceled");
   }, [params]);
 
+  // Returning from the provider's hosted page is not proof of anything: the
+  // server re-reads the session, then the offer is reloaded.
+  const refreshIdentity = async () => {
+    try {
+      await base44.functions.invoke("engineAssistanceIdentity", { token, action: "status" });
+    } catch {
+      /* the stored status still renders */
+    }
+    await refetch();
+  };
+
+  useEffect(() => {
+    if (params.get("identity") !== "done") return undefined;
+    setBanner("identity");
+    refreshIdentity();
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, token]);
+
   // A success redirect is not proof of payment. Re-read the offer for a short
   // while so the page shows only what the provider actually confirmed.
   useEffect(() => {
@@ -115,6 +134,18 @@ export default function EngineAssistanceOffer() {
             <p>Thank you. The payment processor is confirming your payment — this page updates as soon as it is verified. You will also receive a confirmation from Elite.</p>
           </div>
         )}
+        {banner === "identity" && !offer.identity?.verified && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 flex items-start gap-2">
+            <Clock className="h-4 w-4 mt-0.5 flex-none" />
+            <p>Thanks — the identity provider is confirming your check. This page updates when the result is verified. Nothing is owed in the meantime.</p>
+          </div>
+        )}
+        {offer.identity?.verified && !loanActive && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 flex-none" />
+            <p>Your identity is verified. Continue with your agreement and deposit below.</p>
+          </div>
+        )}
         {banner === "canceled" && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 flex items-start gap-2">
             <Info className="h-4 w-4 mt-0.5 flex-none" />
@@ -183,6 +214,8 @@ export default function EngineAssistanceOffer() {
               autopay_authorized: payload?.autopay_authorized === true,
             }, "Agreement signed")}
             onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}
+            token={token}
+            onIdentityChanged={refreshIdentity}
           />
         )}
 

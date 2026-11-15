@@ -29,6 +29,7 @@
       "enum": [
         "current",
         "delinquent",
+        "disputed",
         "notices_approved",
         "referral_prepared",
         "referred",
@@ -38,12 +39,13 @@
       "enumColors": [
         "green",
         "yellow",
+        "purple",
         "blue",
         "purple",
         "red",
         "gray"
       ],
-      "description": "Workflow state of the review queue. Nothing here triggers an automatic collection action or a credit bureau submission."
+      "description": "Workflow state of the review queue. Nothing here triggers an automatic collection action, a credit bureau submission or an automatic payment."
     },
     "days_past_due": {
       "type": "number",
@@ -73,6 +75,164 @@
     "paid_to_date": {
       "type": "number",
       "default": 0
+    },
+    "borrower_identity": {
+      "type": "object",
+      "description": "Collections-ready borrower identity snapshot. Contact and address come from Elite's own customer record. No Social Security number, identity document image or ID number is ever stored."
+    },
+    "deposit_proof": {
+      "type": "object",
+      "description": "Verified deposit facts for the instance the plan went live"
+    },
+    "outstanding": {
+      "type": "object",
+      "description": "Itemized outstanding principal, finance charge (interest) and fees recomputed from the signed schedule"
+    },
+    "ledger_snapshot": {
+      "type": "array",
+      "description": "Snapshot of every fund ledger entry for this offer and loan",
+      "items": {
+        "type": "object"
+      }
+    },
+    "fees": {
+      "type": "array",
+      "description": "Manually recorded fees that may be owed. Nothing is added automatically.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "disputes": {
+      "type": "array",
+      "description": "Billing disputes and correction requests raised by the borrower, with staff resolution",
+      "items": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "investigating",
+              "resolved",
+              "withdrawn"
+            ]
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "opened_by": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved_by": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recoveries": {
+      "type": "array",
+      "description": "Money recovered after a referral, recorded by hand. Never collected automatically.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "borrower",
+              "collection_agency",
+              "other"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "description": "Secure case attachments stored in private storage. Only an admin-only function issues signed links.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_uri": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploaded_by": {
+            "type": "string"
+          },
+          "review_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "reviewed"
+            ]
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewed_by": {
+            "type": "string"
+          },
+          "review_note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "case_file_updated_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "last_reviewed_at": {
       "type": "string",

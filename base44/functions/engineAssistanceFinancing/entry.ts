@@ -8,6 +8,7 @@ import {
   acceptAgreementRecord, lendingGate, latestAgreement, issueAgreement, publicAgreement,
 } from '../../shared/installmentAgreement.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
+import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 
 // Public, token-authorized actions for the customer's in-house financing
 // request. Nothing here charges money or approves credit: the customer asks for
@@ -37,7 +38,9 @@ export default async function (req) {
     const settings = await ensureSettings(base44);
     const existing = rows(await loans.filter({ offer_id: offer.id }))[0] || null;
     const currentAgreement = await latestAgreement(base44, offer.id);
-    const plan = offerPaymentPlan(offer, settings, existing, currentAgreement);
+    const identitySettings = await ensureIdentitySettings(base44);
+    const identity = existing ? await loadVerificationForLoan(base44, existing.id) : null;
+    const plan = offerPaymentPlan(offer, settings, existing, currentAgreement, identity, identitySettings);
 
     if (action === 'request_internal') {
       const gate = lendingGate(settings);

@@ -17,6 +17,7 @@ import FinancingPanel from "@/components/assistance/FinancingPanel";
 import InternalLoanPanel from "@/components/assistance/InternalLoanPanel";
 import AgreementPanel from "@/components/assistance/AgreementPanel";
 import CollectionsPanel from "@/components/assistance/CollectionsPanel";
+import IdentityVerificationPanel from "@/components/assistance/IdentityVerificationPanel";
 import LedgerTable from "@/components/assistance/LedgerTable";
 
 export default function EngineAssistanceDetail() {
@@ -45,10 +46,12 @@ export default function EngineAssistanceDetail() {
       const selectedOffer = sorted[0] || null;
       const loanList = toList(loans).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       const selectedLoan = loanList.find((item) => !selectedOffer || item.offer_id === selectedOffer.id) || loanList[0] || null;
-      const [agreements, cases, settingsList] = await Promise.all([
+      const [agreements, cases, settingsList, verifications, identitySettingsList] = await Promise.all([
         selectedOffer ? base44.entities.EngineAssistanceAgreement.filter({ offer_id: selectedOffer.id }) : Promise.resolve([]),
         selectedLoan ? base44.entities.EngineAssistanceCollectionsCase.filter({ loan_id: selectedLoan.id }) : Promise.resolve([]),
         base44.entities.EngineAssistanceSettings.filter({ key: "global" }),
+        selectedLoan ? base44.entities.EngineAssistanceIdentityVerification.filter({ loan_id: selectedLoan.id }) : Promise.resolve([]),
+        base44.entities.EngineAssistanceIdentitySettings.filter({ key: "global" }),
       ]);
       const agreementList = toList(agreements).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       return {
@@ -62,6 +65,8 @@ export default function EngineAssistanceDetail() {
         loan: selectedLoan,
         agreement: agreementList[0] || null,
         caseDoc: toList(cases)[0] || null,
+        verification: toList(verifications)[0] || null,
+        identitySettings: toList(identitySettingsList)[0] || null,
         settings: toList(settingsList)[0] || null,
       };
     },
@@ -122,7 +127,7 @@ export default function EngineAssistanceDetail() {
     );
   }
 
-  const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings } = data;
+  const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings, verification, identitySettings } = data;
   const name = `${application.first_name || ""} ${application.last_name || ""}`.trim() || "Applicant";
 
   return (
@@ -148,7 +153,13 @@ export default function EngineAssistanceDetail() {
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           <ApplicationSummary application={application} />
           <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} />
-          <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} />
+          <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} />
+          <IdentityVerificationPanel
+            loan={loan}
+            verification={verification}
+            identitySettings={identitySettings}
+            onChanged={refresh}
+          />
           <AgreementPanel
             offer={offer}
             loan={loan}
@@ -156,7 +167,13 @@ export default function EngineAssistanceDetail() {
             templateStatus={settings?.agreement_template_status || "draft"}
             onChanged={refresh}
           />
-          <CollectionsPanel loan={loan} caseDoc={caseDoc} onChanged={refresh} />
+          <CollectionsPanel
+            loan={loan}
+            caseDoc={caseDoc}
+            application={application}
+            agreement={agreement}
+            onChanged={refresh}
+          />
           <BuildJobPanel application={application} build={build} job={job} platforms={platforms} offer={offer} onAction={run} busy={!!busy} />
           <FinancingPanel attempts={attempts} onReview={(payload) => run("financing_review", payload)} busy={!!busy} />
           <Card>

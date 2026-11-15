@@ -1,7 +1,8 @@
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { PORTAL_STRIPE_SOURCE, verifiedPaymentFacts, recordPortalStripePayment } from '../../shared/stripePayments.ts';
-import { ASSISTANCE_STRIPE_SOURCE, verifiedAssistanceFacts, recordAssistancePayment } from '../../shared/engineAssistance.ts';
+import { ASSISTANCE_STRIPE_SOURCE, verifiedAssistanceFacts, recordAssistancePayment, syncDepositState } from '../../shared/engineAssistance.ts';
+import { applyIdentitySession } from '../../shared/identityVerification.ts';
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -38,6 +39,37 @@ export default async function (req) {
       }
       return Response.json({received:true,card_saved:true,automatic_charging_active:false});
     } catch(e) {return Response.json({error:'Card setup needs verification/retry'},{status:503});}
+  }
+  // --- Affordable Engine Fund identity verification ----------------------
+  // Only a session fetched from Stripe is applied. The event body never decides
+  // that a borrower is verified.
+  if (String(event.type || '').startsWith('identity.verification_session.')) {
+    try {
+      const base44 = createClientFromRequest(req);
+      const sessionId = event.data?.object?.id;
+      if (!sessionId) return Response.json({ received: true, ignored: true });
+      const session = await stripe.identity.verificationSessions.retrieve(sessionId);
+      const verificationResult = await base44.asServiceRole.entities.EngineAssistanceIdentityVerification.filter({ provider_session_id: sessionId });
+      const list = verificationResult?.items || verificationResult || [];
+      if (!list.length) return Response.json({ received: true, ignored: true });
+      const settingsResult = await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.filter({ key: 'global' });
+      const identitySettings = (settingsResult?.items || settingsResult || [])[0] || null;
+      for (const verification of list) {
+        const loanResult = await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ id: verification.loan_id });
+        const loan = (loanResult?.items || loanResult || [])[0] || null;
+        const updated = await applyIdentitySession(base44, {
+          verification, session, loan, storeLast4: identitySettings?.store_last4 === true, actor: 'Stripe',
+        });
+        // A verification that completes after the deposit was paid activates the plan.
+        if (updated?.status === 'verified' && loan?.offer_id) {
+          await syncDepositState(base44, loan.offer_id, 'Stripe');
+        }
+      }
+      return Response.json({ received: true, identity: true });
+    } catch (error) {
+      console.error('[portalStripeWebhook] identity status requires retry', event.id);
+      return Response.json({ error: 'Identity status requires retry' }, { status: 503 });
+    }
   }
   // --- Affordable Engine Fund assistance offers -------------------------
   // Verified outcomes only. An abandoned or expired checkout is never a

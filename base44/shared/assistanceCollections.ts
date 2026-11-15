@@ -99,8 +99,99 @@ export function noticeBody({ type, snapshot, delinquency, settings }: any) {
   return `${purchaser}, this is a final notice before possible collection referral. ${header} ${balance} The cure period stated in your previous notice has passed. ${contact} If you believe this balance is wrong, contact ${contacts.dispute_email || contacts.servicing_email || 'Elite'} in writing and we will investigate before any referral is made.`;
 }
 
+// ---------------------------------------------------------------------------
+// Itemized balance, borrower identity and deposit proof
+// ---------------------------------------------------------------------------
+// Principal and finance charge (interest) are split from the signed schedule so
+// the outstanding balance is itemized honestly instead of being one lump sum.
+export function itemizeOutstanding(loan: any, fees: any[] = []) {
+  const delinquency = computeDelinquency(loan);
+  let principalCents = 0;
+  let interestCents = 0;
+  for (const row of delinquency.schedule) {
+    const unpaid = cents(row.unpaid);
+    if (unpaid <= 0) continue;
+    const amount = cents(row.amount);
+    const principalShare = amount > 0 ? Math.round(unpaid * (cents(row.principal) / amount)) : unpaid;
+    principalCents += Math.min(unpaid, principalShare);
+    interestCents += unpaid - Math.min(unpaid, principalShare);
+  }
+  const feeCents = (Array.isArray(fees) ? fees : []).reduce((sum: number, fee: any) => sum + cents(fee?.amount), 0);
+  return {
+    principal: round2(principalCents / 100),
+    interest: round2(interestCents / 100),
+    fees: round2(feeCents / 100),
+    total: round2((principalCents + interestCents + feeCents) / 100),
+    scheduled_balance: delinquency.verified_balance,
+    paid_to_date: delinquency.paid_to_date,
+    overdue_amount: delinquency.overdue_amount,
+    missed_installments: delinquency.missed_installments,
+    days_past_due: delinquency.days_past_due,
+  };
+}
+
+// Borrower facts for a collections file. The identity-verification block reports
+// only what the provider concluded; no SSN, document image or ID number is ever
+// part of it.
+export function borrowerIdentity({ verification, customer, application }: any) {
+  const name = `${application?.first_name || customer?.first_name || ''} ${application?.last_name || customer?.last_name || ''}`.trim();
+  const address = customer
+    ? [customer.address_line1, customer.address_line2, customer.city, customer.state, customer.zip].filter(Boolean).join(', ')
+    : [application?.city, application?.state].filter(Boolean).join(', ');
+  return {
+    legal_name: name,
+    email: application?.email || customer?.email || '',
+    phone: application?.phone || customer?.phone || '',
+    current_address: address,
+    address_source: customer ? 'Elite customer record on file' : 'Application on file',
+    identity_verification: {
+      provider: verification?.provider || 'stripe_identity',
+      status: verification?.status || 'not_started',
+      reference: verification?.provider_session_id || '',
+      verified_at: verification?.verified_at || '',
+      match: verification?.match || {},
+      exception: verification?.exception || null,
+    },
+    ssn_on_file: false,
+    id_document_on_file: false,
+    id_last4: verification?.match?.id_last4 || '',
+    note: 'Elite does not store a Social Security number, identity document image, date of birth or ID number. Verification is performed by a provider on its own hosted page.',
+  };
+}
+
+export function depositProof(offer: any) {
+  const payments = Array.isArray(offer?.payments) ? offer.payments : [];
+  return {
+    required: round2(offer?.deposit_amount),
+    paid: round2(offer?.deposit_paid),
+    verified: offer?.deposit_verified === true,
+    verified_at: offer?.deposit_verified_at || '',
+    method: offer?.deposit_method || '',
+    lender: offer?.deposit_lender || '',
+    payments: payments.map((payment: any) => ({
+      amount: round2(payment.amount),
+      method: payment.method || '',
+      provider: payment.provider || '',
+      option: payment.amount_option || '',
+      date: payment.date || '',
+      reference: payment.stripe_session_id || '',
+    })),
+  };
+}
+
+export function ledgerSnapshot(entries: any[]) {
+  return rows(entries).map((entry: any) => ({
+    entry_type: entry.entry_type,
+    direction: entry.direction,
+    amount: round2(entry.amount),
+    source: entry.source || '',
+    note: entry.note || '',
+    occurred_at: entry.occurred_at || entry.created_date || '',
+  }));
+}
+
 // Everything the shop or an agency would need, in one documented package.
-export function buildReferralPackage({ caseDoc, loan, agreement, offer, customer, ledger, agencyName, preparedBy }: any) {
+export function buildReferralPackage({ caseDoc, loan, agreement, offer, customer, ledger, agencyName, preparedBy, identity = null, outstanding = null }: any) {
   const delinquency = computeDelinquency(loan);
   const now = new Date().toISOString();
   return {
@@ -172,5 +263,18 @@ export function buildReferralPackage({ caseDoc, loan, agreement, offer, customer
       body: notice.body,
     })),
     contact_log: Array.isArray(caseDoc?.contact_log) ? caseDoc.contact_log : [],
+    borrower_identity: identity || caseDoc?.borrower_identity || null,
+    outstanding: outstanding || caseDoc?.outstanding || null,
+    deposit_proof: caseDoc?.deposit_proof || null,
+    disputes: Array.isArray(caseDoc?.disputes) ? caseDoc.disputes : [],
+    recoveries: Array.isArray(caseDoc?.recoveries) ? caseDoc.recoveries : [],
+    documents: (Array.isArray(caseDoc?.documents) ? caseDoc.documents : []).map((doc: any) => ({
+      filename: doc.filename,
+      kind: doc.kind,
+      uploaded_at: doc.uploaded_at,
+      review_status: doc.review_status,
+    })),
+    agency_reference: String(caseDoc?.referral?.agency_reference || ''),
+    redaction_note: 'No Social Security number, identity document image, date of birth, ID number or bank credential is included in this packet, because Elite does not store them. Identity verification was performed by a provider on its own hosted page.',
   };
 }

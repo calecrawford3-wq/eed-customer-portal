@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Copy, RefreshCw, Loader2, CreditCard, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { IDENTITY_SETUP_GUIDANCE } from "@/lib/identityCopy";
 
 export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onChanged }) {
   const settings = bootstrap?.settings;
@@ -43,6 +44,9 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
       agreement_counsel_approved_by: settings?.agreement_counsel_approved_by || "",
       agreement_counsel_approved_at: settings?.agreement_counsel_approved_at || "",
       agreement_counsel_reference: settings?.agreement_counsel_reference || "",
+      identity_enabled: bootstrap?.identity_settings?.enabled !== false,
+      identity_required: bootstrap?.identity_settings?.required !== false,
+      identity_store_last4: bootstrap?.identity_settings?.store_last4 === true,
       in_house_lending_live: settings?.in_house_lending_live === true,
     });
   }, [settings, bootstrap]);
@@ -51,6 +55,32 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
     const res = await base44.functions.invoke("engineAssistanceAdmin", { action, data });
     if (res.data?.error) throw new Error(res.data.error);
     return res.data;
+  };
+
+  const saveIdentity = async () => {
+    setBusy("identity");
+    try {
+      await invoke("identity_settings", {
+        enabled: form.identity_enabled === true,
+        required: form.identity_required === true,
+        store_last4: form.identity_store_last4 === true,
+      });
+      toast.success("Identity verification settings saved");
+      onChanged?.();
+    } catch (error) {
+      toast.error(error.message);
+    } finally { setBusy(""); }
+  };
+
+  const checkIdentity = async () => {
+    setBusy("identity-check");
+    try {
+      const result = await invoke("identity_check", {});
+      toast.success(result.note || "Identity availability checked");
+      onChanged?.();
+    } catch (error) {
+      toast.error(error.message);
+    } finally { setBusy(""); }
   };
 
   const save = async () => {
@@ -239,6 +269,66 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
               </Button>
             </div>
             <p className="text-[11px] text-slate-500">Nothing here is legal advice or an approval by Base44. Record only a real review by qualified Oklahoma counsel.</p>
+          </div>
+
+          <div className={`rounded-xl border p-3 space-y-3 ${bootstrap?.identity_settings?.available ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40"}`}>
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-slate-600" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">Identity verification (Stripe Identity)</p>
+                <p className="text-[11px] text-slate-600">
+                  {bootstrap?.identity_settings?.available
+                    ? "Stripe Identity is available on the connected account. A provider-hosted document and selfie check is required before in-house terms are approved or the plan activates."
+                    : "Verification unavailable — setup required. In-house approval and activation stay blocked until the provider check works or a documented owner exception is recorded."}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">{IDENTITY_SETUP_GUIDANCE}</p>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Last checked {bootstrap?.identity_settings?.checked_at ? format(new Date(bootstrap.identity_settings.checked_at), "MMM d, yyyy h:mm a") : "never"}
+                  {bootstrap?.identity_settings?.error ? ` · ${bootstrap.identity_settings.error}` : ""}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Verification offered</Label>
+                <Select value={form.identity_enabled === false ? "no" : "yes"} onValueChange={(value) => setForm({ ...form, identity_enabled: value === "yes" })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No — blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Required to approve / activate</Label>
+                <Select value={form.identity_required === false ? "no" : "yes"} onValueChange={(value) => setForm({ ...form, identity_required: value === "yes" })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No — exception only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Store ID last four</Label>
+                <Select value={form.identity_store_last4 ? "yes" : "no"} onValueChange={(value) => setForm({ ...form, identity_store_last4: value === "yes" })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No — status only</SelectItem>
+                    <SelectItem value="yes">Yes (last four only)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={saveIdentity} disabled={busy === "identity"}>
+                {busy === "identity" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Save identity settings
+              </Button>
+              <Button size="sm" variant="outline" onClick={checkIdentity} disabled={busy === "identity-check"}>
+                {busy === "identity-check" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Check availability
+              </Button>
+            </div>
+            <p className="text-[10px] text-slate-500">No Social Security number, document image, date of birth or ID number is stored in any Elite record. A document + selfie check is not an SSN check and not a credit decision.</p>
           </div>
 
           <div className="rounded-xl border border-slate-200 p-3 space-y-3">

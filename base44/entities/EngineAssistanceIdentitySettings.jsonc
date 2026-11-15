@@ -1,0 +1,77 @@
+{
+  "name": "EngineAssistanceIdentitySettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Always 'global'"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "When off, the customer cannot start a provider verification. In-house financing still cannot activate without a verification or a logged owner exception."
+    },
+    "required": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, in-house loan approval and activation require a provider-verified identity or a documented owner exception."
+    },
+    "store_last4": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the last four characters of the ID document number reported by the provider are stored on the verification record. Full numbers are never stored."
+    },
+    "provider": {
+      "type": "string",
+      "default": "stripe_identity"
+    },
+    "available": {
+      "type": "boolean",
+      "default": false,
+      "description": "Last provider reading. False means Stripe Identity is not enabled for the connected account, so verification cannot be started."
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "livemode": {
+      "type": "boolean",
+      "default": false
+    },
+    "error": {
+      "type": "string",
+      "description": "Safe setup message when the provider check failed"
+    },
+    "consent_version": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

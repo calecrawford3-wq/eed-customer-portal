@@ -3,7 +3,9 @@ import { rows, ensureSettings, appendAudit } from '../../shared/engineAssistance
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import {
   buildReferralPackage, computeDelinquency, nextCaseNumber, noticeBody, suggestedStatus, round2,
+  itemizeOutstanding, borrowerIdentity, depositProof, ledgerSnapshot,
 } from '../../shared/assistanceCollections.ts';
+import { loadVerificationForLoan } from '../../shared/identityVerification.ts';
 
 // Admin-only delinquency and collections review for Elite in-house financing.
 //
@@ -80,12 +82,30 @@ export default async function (req) {
       const delinquency = computeDelinquency(loan);
       const existing = rows(await cases.filter({ loan_id: loan.id }))[0] || null;
       const nextStatus = suggestedStatus(delinquency, existing);
+      const verification = await loadVerificationForLoan(base44, loan.id);
+      const customer = loan.customer_id
+        ? rows(await base44.asServiceRole.entities.Customer.filter({ id: loan.customer_id }))[0] || null
+        : null;
+      const application = loan.application_id
+        ? rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ id: loan.application_id }))[0] || null
+        : null;
+      const fees = Array.isArray(existing?.fees) ? existing.fees : [];
+      const outstanding = itemizeOutstanding(loan, fees);
+      const offerLedger = offer ? rows(await base44.asServiceRole.entities.EngineAssistanceLedgerEntry.filter({ offer_id: offer.id })) : [];
+      const loanLedgerRows = rows(await base44.asServiceRole.entities.EngineAssistanceLedgerEntry.filter({ loan_id: loan.id }));
+      const seen: Record<string, boolean> = {};
+      const ledgerEntries = [...offerLedger, ...loanLedgerRows].filter((entry: any) => {
+        if (!entry?.id || seen[entry.id]) return false;
+        seen[entry.id] = true;
+        return true;
+      });
       const patch: any = {
         loan_id: loan.id,
         offer_id: loan.offer_id || '',
         agreement_id: agreement?.id || existing?.agreement_id || '',
         application_id: loan.application_id || '',
         customer_id: loan.customer_id || '',
+        customer_name: `${application?.first_name || customer?.first_name || ''} ${application?.last_name || customer?.last_name || ''}`.trim(),
         status: nextStatus,
         days_past_due: delinquency.days_past_due,
         missed_installments: delinquency.missed_installments,
@@ -94,6 +114,11 @@ export default async function (req) {
         overdue_amount: delinquency.overdue_amount,
         verified_balance: delinquency.verified_balance,
         paid_to_date: delinquency.paid_to_date,
+        borrower_identity: borrowerIdentity({ verification, customer, application }),
+        deposit_proof: depositProof(offer || {}),
+        outstanding,
+        ledger_snapshot: ledgerSnapshot(ledgerEntries),
+        case_file_updated_at: new Date().toISOString(),
         last_reviewed_at: new Date().toISOString(),
         reviewed_by: user.email || 'Admin',
       };
@@ -228,9 +253,11 @@ export default async function (req) {
         ledger: [...ledger, ...loanLedger],
         agencyName: agency,
         preparedBy: user.email || 'Admin',
+        identity: item.borrower_identity || null,
+        outstanding: item.outstanding || null,
       });
       const updated = await cases.update(item.id, {
-        referral,
+        referral: { ...referral, agency_reference: str(data.agency_reference, 200) },
         status: 'referral_prepared',
         verified_balance: referral.verified_balance,
         audit_trail: appendAudit(item, user, 'referral_prepared', `Package prepared for ${agency}; nothing transmitted`),
@@ -277,6 +304,134 @@ export default async function (req) {
       const updated = await cases.update(item.id, {
         internal_notes: str(data.internal_notes, 3000),
         audit_trail: appendAudit(item, user, 'notes_updated', 'Internal notes updated'),
+      });
+      return Response.json({ case: updated });
+    }
+
+    if (action === 'dispute_open') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const summary = str(data.summary, 1500);
+      if (!summary) return Response.json({ error: 'Describe the dispute or correction request' }, { status: 400 });
+      const disputes = [...(Array.isArray(item.disputes) ? item.disputes : []), {
+        summary,
+        status: 'open',
+        opened_at: new Date().toISOString(),
+        opened_by: user.email || 'Admin',
+      }];
+      const updated = await cases.update(item.id, {
+        disputes,
+        status: item.status === 'delinquent' ? 'disputed' : item.status,
+        audit_trail: appendAudit(item, user, 'dispute_opened', summary),
+      });
+      return Response.json({ case: updated });
+    }
+
+    if (action === 'dispute_resolve') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const index = Number(data.index);
+      const disputes = Array.isArray(item.disputes) ? item.disputes.map((entry: any) => ({ ...entry })) : [];
+      if (!disputes[index]) return Response.json({ error: 'Dispute not found' }, { status: 400 });
+      const outcome = ['investigating', 'resolved', 'withdrawn'].includes(data.outcome) ? data.outcome : '';
+      if (!outcome) return Response.json({ error: 'Choose an outcome' }, { status: 400 });
+      const resolution = str(data.resolution, 1500);
+      if (outcome !== 'investigating' && !resolution) {
+        return Response.json({ error: 'Record the resolution before closing the dispute' }, { status: 400 });
+      }
+      disputes[index].status = outcome;
+      disputes[index].resolution = resolution;
+      if (outcome !== 'investigating') {
+        disputes[index].resolved_at = new Date().toISOString();
+        disputes[index].resolved_by = user.email || 'Admin';
+      }
+      const updated = await cases.update(item.id, {
+        disputes,
+        audit_trail: appendAudit(item, user, 'dispute_updated', `${outcome}: ${resolution}`.trim()),
+      });
+      return Response.json({ case: updated });
+    }
+
+    if (action === 'recovery_record') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const amount = round2(data.amount);
+      if (!(amount > 0)) return Response.json({ error: 'Enter the recovered amount' }, { status: 400 });
+      const source = ['borrower', 'collection_agency', 'other'].includes(data.source) ? data.source : 'other';
+      const recoveries = [...(Array.isArray(item.recoveries) ? item.recoveries : []), {
+        amount,
+        source,
+        at: new Date().toISOString(),
+        by: user.email || 'Admin',
+        note: str(data.note, 500),
+      }];
+      const updated = await cases.update(item.id, {
+        recoveries,
+        audit_trail: appendAudit(item, user, 'recovery_recorded', `$${amount.toFixed(2)} recovered (${source})`),
+      });
+      return Response.json({ case: updated, note: 'Recovery recorded on the case. Installments themselves are still recorded on the agreement.' });
+    }
+
+    if (action === 'case_document_add') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const fileUri = str(data.file_uri, 1000);
+      if (!fileUri) return Response.json({ error: 'A file is required' }, { status: 400 });
+      const documents = Array.isArray(item.documents) ? item.documents : [];
+      if (documents.length >= 20) return Response.json({ error: 'This case already has 20 attachments' }, { status: 400 });
+      if (documents.some((doc: any) => doc.file_uri === fileUri)) return Response.json({ case: item, documents });
+      const next = [...documents, {
+        file_uri: fileUri,
+        filename: str(data.filename, 200) || 'Attachment',
+        kind: str(data.kind, 60) || 'other',
+        uploaded_at: new Date().toISOString(),
+        uploaded_by: user.email || 'Admin',
+        review_status: 'pending',
+      }];
+      const updated = await cases.update(item.id, {
+        documents: next,
+        audit_trail: appendAudit(item, user, 'case_document_added', str(data.filename, 200)),
+      });
+      return Response.json({ case: updated });
+    }
+
+    if (action === 'case_document_review') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const fileUri = str(data.file_uri, 1000);
+      const note = str(data.note, 1000);
+      if (!note) return Response.json({ error: 'Record what the review confirmed' }, { status: 400 });
+      const documents = (Array.isArray(item.documents) ? item.documents : []).map((doc: any) => (
+        doc.file_uri === fileUri
+          ? { ...doc, review_status: 'reviewed', reviewed_at: new Date().toISOString(), reviewed_by: user.email || 'Admin', review_note: note }
+          : doc
+      ));
+      const updated = await cases.update(item.id, {
+        documents,
+        audit_trail: appendAudit(item, user, 'case_document_reviewed', note),
+      });
+      return Response.json({ case: updated });
+    }
+
+    if (action === 'case_document_url') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const fileUri = str(data.file_uri, 1000);
+      const allowed = (Array.isArray(item.documents) ? item.documents : []).some((doc: any) => doc.file_uri === fileUri);
+      if (!allowed) return Response.json({ error: 'That file is not part of this case' }, { status: 404 });
+      const signed = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri: fileUri, expires_in: 600 });
+      if (!signed?.signed_url) return Response.json({ error: 'The secure link could not be created' }, { status: 502 });
+      return Response.json({ signed_url: signed.signed_url, expires_in: 600 });
+    }
+
+    if (action === 'case_document_remove') {
+      const item = await loadCase(str(data.case_id, 60));
+      if (!item) return Response.json({ error: 'Case not found' }, { status: 404 });
+      const fileUri = str(data.file_uri, 1000);
+      const documents = (Array.isArray(item.documents) ? item.documents : []).filter((doc: any) => doc.file_uri !== fileUri);
+      const updated = await cases.update(item.id, {
+        documents,
+        audit_trail: appendAudit(item, user, 'case_document_removed', fileUri.slice(0, 80)),
       });
       return Response.json({ case: updated });
     }

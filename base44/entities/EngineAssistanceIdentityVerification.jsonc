@@ -1,0 +1,192 @@
+{
+  "name": "EngineAssistanceIdentityVerification",
+  "type": "object",
+  "properties": {
+    "loan_id": {
+      "type": "string",
+      "description": "In-house loan this verification belongs to"
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "default": "stripe_identity",
+      "description": "Verification provider. Only a provider-hosted session can ever produce a verified status."
+    },
+    "provider_session_id": {
+      "type": "string",
+      "description": "Provider VerificationSession reference (vs_...). Never a document image, ID number or SSN."
+    },
+    "provider_status": {
+      "type": "string",
+      "description": "Raw status returned by the provider: requires_input, processing, verified, canceled"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "awaiting_customer",
+        "processing",
+        "verified",
+        "failed",
+        "expired",
+        "exception",
+        "unavailable"
+      ],
+      "default": "not_started",
+      "enumColors": [
+        "gray",
+        "yellow",
+        "blue",
+        "green",
+        "red",
+        "gray",
+        "purple",
+        "red"
+      ],
+      "description": "verified = the provider completed a document + selfie check. exception = a documented owner-approved alternate process. Nothing here is ever set from a browser claim."
+    },
+    "livemode": {
+      "type": "boolean",
+      "default": false
+    },
+    "consent": {
+      "type": "object",
+      "description": "Customer consent captured before the hosted session was created. No SSN, no document image.",
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "version": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "typed_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "description": "What the provider reported about the identity document. Booleans and statuses only; the name, date of birth, address and ID number themselves are never stored here.",
+      "properties": {
+        "name_reported": {
+          "type": "boolean"
+        },
+        "dob_reported": {
+          "type": "boolean"
+        },
+        "address_reported": {
+          "type": "boolean"
+        },
+        "id_number_reported": {
+          "type": "boolean"
+        },
+        "selfie_matched": {
+          "type": "boolean"
+        },
+        "id_last4": {
+          "type": "string",
+          "description": "Last four characters of the ID document number, only when Elite enabled storing it"
+        }
+      }
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Safe provider error code/message. Never contains document contents or identifiers."
+    },
+    "exception": {
+      "type": "object",
+      "description": "Documented owner exception recorded when an alternate lawful process was completed outside the provider. Never a substitute for a fake verification.",
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "by": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "alternate_method": {
+          "type": "string"
+        },
+        "acknowledged": {
+          "type": "boolean"
+        }
+      }
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "loan_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
