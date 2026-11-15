@@ -14,6 +14,7 @@ import {
   applyIdentitySession, checkIdentityAvailability, ensureIdentitySettings, ensureVerificationRecord,
   identityAdminSummary, identityGate, loadVerificationForLoan, readIdentitySession,
 } from '../../shared/identityVerification.ts';
+import { deliverAssistanceEmail, retryAssistanceEmail } from '../../shared/assistanceEmail.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
 // role. Applicant data, documents and financial records never leave through a
@@ -382,6 +383,17 @@ export default async function (req) {
         patch.assistance_amount = amount;
       }
       const updated = await apps.update(app.id, patch);
+      if (decision === 'approved') {
+        // Automatic approval email. Server-side only, recorded like every other
+        // customer email; a provider failure is reported, never assumed sent.
+        const email = await deliverAssistanceEmail(base44, {
+          kind: 'application_approval',
+          application: updated,
+          variant: updated.decision_at || new Date().toISOString(),
+          actor: user.email || 'Admin',
+        });
+        return Response.json({ application: updated, email: { status: email.status, error: email.error, sent_at: email.delivery?.sent_at || '', duplicate: !!email.duplicate, delivery_id: email.delivery?.id || '' } });
+      }
       return Response.json({ application: updated });
     }
 
@@ -595,7 +607,47 @@ export default async function (req) {
           audit_trail: appendAudit(application, user, 'offer_sent', `Offer ${offer.offer_number} sent to the applicant`),
         });
       }
-      return Response.json({ offer: updated, share_url: `/engine-assistance/offer/${shareToken}` });
+      // The offer is prepared first; the customer email is a separate, recorded
+      // delivery so a mail failure never silently looks like a successful send.
+      const email = await deliverAssistanceEmail(base44, {
+        kind: 'offer',
+        offer: updated,
+        application: application || await loadApp(offer.application_id),
+        variant: `${updated.offer_number}:${round2(totals.total)}`,
+        actor: user.email || 'Admin',
+      });
+      return Response.json({
+        offer: updated,
+        share_url: `/engine-assistance/offer/${shareToken}`,
+        email: { status: email.status, error: email.error, sent_at: email.delivery?.sent_at || '', duplicate: !!email.duplicate, delivery_id: email.delivery?.id || '' },
+      });
+    }
+
+    if (action === 'retry_email') {
+      const deliveryId = str(data.delivery_id, 80);
+      if (!deliveryId) return Response.json({ error: 'Choose the email to retry' }, { status: 400 });
+      try {
+        const email = await retryAssistanceEmail(base44, deliveryId, user.email || 'Admin');
+        return Response.json({ email: { status: email.status, error: email.error, sent_at: email.delivery?.sent_at || '', duplicate: !!email.duplicate, delivery_id: email.delivery?.id || '' } });
+      } catch (error: any) {
+        return Response.json({ error: str(error?.message || 'The email could not be retried', 200) }, { status: 400 });
+      }
+    }
+
+    if (action === 'resend_offer_email') {
+      const offer = await loadOffer(str(data.offer_id, 60));
+      if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
+      if (!offer.share_token) return Response.json({ error: 'Send the offer once before resending its email' }, { status: 400 });
+      const application = await loadApp(offer.application_id);
+      const email = await deliverAssistanceEmail(base44, {
+        kind: 'offer',
+        offer,
+        application,
+        variant: `${offer.offer_number}:${round2(offer.total)}`,
+        force: true,
+        actor: user.email || 'Admin',
+      });
+      return Response.json({ email: { status: email.status, error: email.error, sent_at: email.delivery?.sent_at || '', duplicate: !!email.duplicate, delivery_id: email.delivery?.id || '' } });
     }
 
     if (action === 'revoke_offer') {
@@ -684,7 +736,27 @@ export default async function (req) {
         }
         await ensureAssistanceJob(base44, synced?.offer || updated, user.email || 'Admin');
       }
-      return Response.json({ offer: await loadOffer(offer.id), loan: synced?.loan ? publicLoan(synced.loan) : null });
+      // Verified (staff-recorded) payment confirmation, sent automatically and
+      // recorded. A failure is reported to the admin, never assumed delivered.
+      const confirmedOffer = await loadOffer(offer.id);
+      const paymentApplication = confirmedOffer ? await loadApp(confirmedOffer.application_id) : null;
+      const email = confirmedOffer
+        ? await deliverAssistanceEmail(base44, {
+          kind: 'payment_confirmation',
+          offer: confirmedOffer,
+          application: paymentApplication,
+          variant: `manual-${payments.length}-${amount}`,
+          amountPaid: amount,
+          method,
+          fullyPaid: cents(computeOfferTotals(confirmedOffer).balance_due) === 0,
+          actor: user.email || 'Admin',
+        })
+        : null;
+      return Response.json({
+        offer: confirmedOffer,
+        loan: synced?.loan ? publicLoan(synced.loan) : null,
+        email: email ? { status: email.status, error: email.error, sent_at: email.delivery?.sent_at || '', duplicate: !!email.duplicate, delivery_id: email.delivery?.id || '' } : null,
+      });
     }
 
     if (action === 'approve_internal_loan') {

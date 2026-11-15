@@ -5,6 +5,7 @@ import {
   ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability,
 } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
+import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
 // Public, token-authorized checkout start for an assistance offer.
@@ -53,7 +54,11 @@ export default async function (req) {
     const settings = await ensureSettings(base44);
     const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
     const agreement = await latestAgreement(base44, offer.id);
-    const plan = offerPaymentPlan(offer, settings, loan, agreement);
+    // The deposit pathway re-checks the same identity gate the plan shows, so a
+    // verified borrower is never blocked and an unverified one never pays.
+    const identitySettings = await ensureIdentitySettings(base44);
+    const identity = loan ? await loadVerificationForLoan(base44, loan.id) : null;
+    const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
     const options = plan.pathways;
 
     if (pathway.lender && body.consent !== true) {

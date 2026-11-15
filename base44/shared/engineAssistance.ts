@@ -4,6 +4,7 @@
 
 import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
+import { deliverAssistanceEmail } from './assistanceEmail.ts';
 
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
@@ -877,6 +878,23 @@ export async function recordAssistancePayment(base44: any, facts: any) {
     });
   }
   if (fullyPaid) await ensureAssistanceJob(base44, currentOffer, 'Stripe');
+  // Payment confirmation for a provider-verified payment. The Stripe session id
+  // is the idempotency key, so a webhook retry never emails twice. A mail
+  // failure must never fail the payment that the provider already confirmed.
+  try {
+    await deliverAssistanceEmail(base44, {
+      kind: 'payment_confirmation',
+      offer: currentOffer,
+      application: application || null,
+      variant: facts.session_id,
+      amountPaid: payment.amount,
+      method: payment.method,
+      fullyPaid,
+      actor: 'Stripe',
+    });
+  } catch (error: any) {
+    console.error('[assistanceEmail] payment confirmation failed', String(error?.message || error));
+  }
   return {
     duplicate: false,
     offer_id: currentOffer.id,

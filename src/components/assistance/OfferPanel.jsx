@@ -14,8 +14,9 @@ import { formatMoney } from "@/lib/money";
 import StatusBadge from "./StatusBadge";
 import OfferBreakdown from "./OfferBreakdown";
 import OfferEditor from "./OfferEditor";
+import EmailDeliveryList from "./EmailDeliveryList";
 
-export default function OfferPanel({ application, offer, onAction, busy, loan }) {
+export default function OfferPanel({ application, offer, onAction, busy, loan, deliveries = [] }) {
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("check");
@@ -131,6 +132,11 @@ export default function OfferPanel({ application, offer, onAction, busy, loan })
                   <Button size="sm" variant="outline" onClick={copy}><Copy className="h-4 w-4" /> Copy</Button>
                   <Button size="sm" variant="outline" asChild><a href={shareUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> Open</a></Button>
                   {["sent", "viewed", "partially_paid"].includes(offer.status) && (
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => onAction("resend_offer_email", { offer_id: offer.id })}>
+                      {busy === "resend_offer_email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Resend email
+                    </Button>
+                  )}
+                  {["sent", "viewed", "partially_paid"].includes(offer.status) && (
                     <Button size="sm" variant="ghost" disabled={busy} onClick={() => onAction("revoke_offer", { offer_id: offer.id })}>
                       <Ban className="h-4 w-4" /> Revoke link
                     </Button>
@@ -139,6 +145,8 @@ export default function OfferPanel({ application, offer, onAction, busy, loan })
                 <p className="text-[11px] text-slate-500">The link contains only a random token. The applicant can pay by card, and by lender when Stripe reports one enabled.</p>
               </div>
             )}
+
+            <EmailDeliveryList deliveries={deliveries} busy={busy} onAction={onAction} />
 
             {offer.status !== "draft" && (
               <div className="flex flex-wrap gap-2">

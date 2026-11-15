@@ -1,0 +1,149 @@
+{
+  "name": "EngineAssistanceEmailDelivery",
+  "type": "object",
+  "properties": {
+    "idempotency_key": {
+      "type": "string",
+      "description": "Stable key (kind:offer_id:variant) that prevents a duplicate send for the same email. Resending reuses the same key and increments attempts."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "offer",
+        "application_approval",
+        "payment_confirmation"
+      ],
+      "enumColors": [
+        "blue",
+        "purple",
+        "green"
+      ],
+      "description": "Which customer email this record tracks"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sending",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "enumColors": [
+        "yellow",
+        "green",
+        "red",
+        "gray"
+      ],
+      "description": "sent ONLY when the mail provider accepted the message. failed = provider rejected or no address on file; skipped = channel not applicable."
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "loan_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "to_email": {
+      "type": "string",
+      "description": "Recipient address the attempt was made to"
+    },
+    "recipient_name": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body_preview": {
+      "type": "string",
+      "description": "Short plain-text preview of what was sent, for the audit trail"
+    },
+    "provider": {
+      "type": "string",
+      "description": "Mail provider used (zoho_mail)"
+    },
+    "provider_response": {
+      "type": "object",
+      "description": "Raw, non-sensitive provider acknowledgement for the last attempt"
+    },
+    "error": {
+      "type": "string",
+      "description": "Safe, actionable failure message shown to staff"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set only when the provider accepted the message"
+    },
+    "last_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_attempt_by": {
+      "type": "string"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "kind",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

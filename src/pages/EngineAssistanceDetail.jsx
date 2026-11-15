@@ -46,12 +46,13 @@ export default function EngineAssistanceDetail() {
       const selectedOffer = sorted[0] || null;
       const loanList = toList(loans).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       const selectedLoan = loanList.find((item) => !selectedOffer || item.offer_id === selectedOffer.id) || loanList[0] || null;
-      const [agreements, cases, settingsList, verifications, identitySettingsList] = await Promise.all([
+      const [agreements, cases, settingsList, verifications, identitySettingsList, emailDeliveries] = await Promise.all([
         selectedOffer ? base44.entities.EngineAssistanceAgreement.filter({ offer_id: selectedOffer.id }) : Promise.resolve([]),
         selectedLoan ? base44.entities.EngineAssistanceCollectionsCase.filter({ loan_id: selectedLoan.id }) : Promise.resolve([]),
         base44.entities.EngineAssistanceSettings.filter({ key: "global" }),
         selectedLoan ? base44.entities.EngineAssistanceIdentityVerification.filter({ loan_id: selectedLoan.id }) : Promise.resolve([]),
         base44.entities.EngineAssistanceIdentitySettings.filter({ key: "global" }),
+        base44.entities.EngineAssistanceEmailDelivery.filter({ application_id: id }),
       ]);
       const agreementList = toList(agreements).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       return {
@@ -68,6 +69,7 @@ export default function EngineAssistanceDetail() {
         verification: toList(verifications)[0] || null,
         identitySettings: toList(identitySettingsList)[0] || null,
         settings: toList(settingsList)[0] || null,
+        deliveries: toList(emailDeliveries),
       };
     },
   });
@@ -79,11 +81,34 @@ export default function EngineAssistanceDetail() {
     qc.invalidateQueries({ queryKey: ["engine-assistance-ledger"] });
   };
 
+  const describeEmail = (email) => {
+    if (!email) return "";
+    if (email.duplicate) return "This email was already delivered — no duplicate was sent";
+    if (email.status === "sent") return "Email delivered to the customer";
+    return `Email not delivered: ${email.error || "the mail provider did not confirm it"}. The secure link is still valid — copy it, or retry below.`;
+  };
+
   const run = async (action, payload = {}) => {
     setBusy(action);
     try {
       const res = await base44.functions.invoke("engineAssistanceAdmin", { action, data: payload });
       if (res.data?.error) throw new Error(res.data.error);
+      const email = res.data?.email;
+
+      // A send is only reported as successful when the provider accepted it.
+      if (action === "send_offer" || action === "resend_offer_email" || action === "retry_email") {
+        if (email && (email.status === "sent" || email.duplicate)) toast.success(describeEmail(email));
+        else toast.error(`Saved, but the customer email was not delivered: ${email?.error || "the mail provider did not confirm delivery"}. The secure link below is still valid.`);
+        refresh();
+        return;
+      }
+      if (action === "record_manual_payment" || action === "decide") {
+        toast.success(action === "decide" ? "Decision recorded" : "Payment recorded");
+        if (email && email.status !== "sent" && !email.duplicate) toast.error(describeEmail(email));
+        refresh();
+        return;
+      }
+
       toast.success(
         action === "decide" ? "Decision recorded"
           : action === "request_info" ? "Information requested"
@@ -127,7 +152,7 @@ export default function EngineAssistanceDetail() {
     );
   }
 
-  const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings, verification, identitySettings } = data;
+  const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings, verification, identitySettings, deliveries } = data;
   const name = `${application.first_name || ""} ${application.last_name || ""}`.trim() || "Applicant";
 
   return (
@@ -152,7 +177,7 @@ export default function EngineAssistanceDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           <ApplicationSummary application={application} />
-          <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} />
+          <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} deliveries={deliveries} />
           <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} />
           <IdentityVerificationPanel
             loan={loan}
