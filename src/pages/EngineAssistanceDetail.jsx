@@ -19,6 +19,7 @@ import AgreementPanel from "@/components/assistance/AgreementPanel";
 import CollectionsPanel from "@/components/assistance/CollectionsPanel";
 import IdentityVerificationPanel from "@/components/assistance/IdentityVerificationPanel";
 import LedgerTable from "@/components/assistance/LedgerTable";
+import DemoSessionPanel from "@/components/assistance/demo/DemoSessionPanel";
 
 export default function EngineAssistanceDetail() {
   const { id } = useParams();
@@ -178,6 +179,7 @@ export default function EngineAssistanceDetail() {
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           <ApplicationSummary application={application} />
           <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} deliveries={deliveries} />
+          <DemoSessionPanel offer={offer} application={application} />
           <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} />
           <IdentityVerificationPanel
             loan={loan}

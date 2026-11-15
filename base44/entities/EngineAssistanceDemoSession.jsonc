@@ -1,0 +1,210 @@
+{
+  "name": "EngineAssistanceDemoSession",
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "string",
+      "description": "Long random token for the isolated walkthrough link. Created server-side for an authenticated admin only."
+    },
+    "mode": {
+      "type": "string",
+      "default": "isolated_test",
+      "enum": [
+        "isolated_test"
+      ],
+      "enumColors": [
+        "yellow"
+      ],
+      "description": "This record is a test walkthrough. It is never a financing agreement, payment, loan, ledger entry, job or collections case."
+    },
+    "offer_id": {
+      "type": "string",
+      "description": "The real assistance offer used as a read-only reference for the numbers shown in the test."
+    },
+    "offer_number": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "applicant_first_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "default": "in_progress",
+      "enum": [
+        "in_progress",
+        "awaiting_approval",
+        "declined",
+        "completed",
+        "canceled"
+      ],
+      "enumColors": [
+        "blue",
+        "yellow",
+        "red",
+        "green",
+        "gray"
+      ],
+      "description": "Walkthrough progress only. Nothing here changes the real offer, loan or agreement."
+    },
+    "current_step": {
+      "type": "string",
+      "default": "plan"
+    },
+    "completed_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Steps the tester has completed. The server validates the order and never trusts the browser."
+    },
+    "scope": {
+      "type": "object",
+      "description": "Immutable copy of the real offer figures at test creation: package total, deposit and financed principal.",
+      "properties": {
+        "offer_total": {
+          "type": "number"
+        },
+        "subtotal": {
+          "type": "number"
+        },
+        "assistance_amount": {
+          "type": "number"
+        },
+        "deposit_percent": {
+          "type": "number"
+        },
+        "deposit_amount": {
+          "type": "number"
+        },
+        "internal_principal": {
+          "type": "number"
+        },
+        "sample_apr": {
+          "type": "number"
+        },
+        "sample_term_months": {
+          "type": "number"
+        }
+      }
+    },
+    "plan": {
+      "type": "object"
+    },
+    "identity": {
+      "type": "object",
+      "description": "Fictional sample identity supplied by the test (no real ID, DOB, SSN or document). Marked simulated and never written to the production identity entity."
+    },
+    "financing": {
+      "type": "object"
+    },
+    "approval": {
+      "type": "object",
+      "description": "Simulated review by an authenticated admin. Never a real credit decision."
+    },
+    "agreement": {
+      "type": "object",
+      "description": "Preview of the retail installment agreement with a TEST ONLY watermark. Never legally binding and never a production Agreement record."
+    },
+    "autopay": {
+      "type": "object",
+      "description": "Sample autopay preference. No account, routing or card details are collected or stored."
+    },
+    "deposit": {
+      "type": "object",
+      "description": "Simulated deposit receipt. No payment provider is contacted and no money moves."
+    },
+    "terms": {
+      "type": "object",
+      "description": "Sample amortization schedule computed from the test terms, clearly marked simulated."
+    },
+    "loan": {
+      "type": "object",
+      "description": "Sample in-house loan state for the dashboard. Never a real loan record."
+    },
+    "events": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "step": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "restarts": {
+      "type": "number",
+      "default": 0
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_viewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_action_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "token",
+    "offer_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

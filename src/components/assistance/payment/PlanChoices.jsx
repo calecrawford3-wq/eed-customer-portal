@@ -9,8 +9,10 @@ import ChoiceTile from "./ChoiceTile";
 export default function PlanChoices({ full, finance, deposit, onSelect, testOffer = false }) {
   const fullAvailable = !!(full?.enabled || finance?.enabled);
   const fullReason = fullAvailable ? "" : full?.reason || finance?.reason || "Online payment is not available yet.";
-  // Allow owner-only UI walkthroughs using ?assistanceDemo=1; never enable real checkout.
-  const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('assistanceDemo') === '1' || testOffer;
+  // Enabled for the dedicated test offer only. It reveals the tile; every real
+  // action stays gated by the server. The full isolated walkthrough is opened
+  // from an admin-created, token-scoped test session.
+  const demo = testOffer === true;
   const depositAvailable = !!deposit?.available || demo;
   const recommended = fullAvailable && !finance?.enabled;
 

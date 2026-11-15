@@ -98,6 +98,7 @@ import EngineAssistanceApply from './pages/EngineAssistanceApply';
 import EngineAssistanceOffer from './pages/EngineAssistanceOffer';
 import EngineAssistanceStatus from './pages/EngineAssistanceStatus';
 import EngineAssistanceAgreement from './pages/EngineAssistanceAgreement';
+import EngineAssistanceDemo from './pages/EngineAssistanceDemo';
 import EngineAssistanceCollections from './pages/EngineAssistanceCollections';
 import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
@@ -278,6 +279,7 @@ const routes = createRoutesFromElements(
     <Route path="/engine-assistance/offer/:token" element={<EngineAssistanceOffer />} />
     <Route path="/engine-assistance/status/:token" element={<EngineAssistanceStatus />} />
     <Route path="/engine-assistance/agreement/:token" element={<EngineAssistanceAgreement />} />
+    <Route path="/engine-assistance/demo/:token" element={<EngineAssistanceDemo />} />
     <Route path="/" element={<AdminLayout />}>
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
