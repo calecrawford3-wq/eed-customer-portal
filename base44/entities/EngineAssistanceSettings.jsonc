@@ -103,6 +103,92 @@
     },
     "internal_notes": {
       "type": "string"
+    },
+    "agreement_template_key": {
+      "type": "string",
+      "description": "Key of the Oklahoma retail installment agreement template in use"
+    },
+    "agreement_template_version": {
+      "type": "number",
+      "default": 1
+    },
+    "agreement_template_hash": {
+      "type": "string",
+      "description": "SHA-256 of the template wording. Recorded whenever the template status changes."
+    },
+    "agreement_template_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved_counsel"
+      ],
+      "default": "draft",
+      "enumColors": [
+        "red",
+        "green"
+      ],
+      "description": "draft = DRAFT / NOT LEGALLY REVIEWED. Live in-house lending is blocked while the template is a draft."
+    },
+    "agreement_counsel_firm": {
+      "type": "string",
+      "description": "Oklahoma law firm that reviewed the template"
+    },
+    "agreement_counsel_approved_by": {
+      "type": "string",
+      "description": "Qualified Oklahoma attorney who approved the template"
+    },
+    "agreement_counsel_approved_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "agreement_counsel_reference": {
+      "type": "string",
+      "description": "Counsel file or opinion reference recorded for the approval"
+    },
+    "in_house_lending_live": {
+      "type": "boolean",
+      "default": false,
+      "description": "Live in-house lending switch. Honored only while the agreement template status is approved_counsel."
+    },
+    "late_fee_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Off by default. Enable only where the late fee is legally permissible for this contract and amount."
+    },
+    "late_fee_percent": {
+      "type": "number",
+      "default": 5,
+      "description": "Late fee as a percentage of the overdue installment, applied at most once per late payment"
+    },
+    "late_fee_grace_days": {
+      "type": "number",
+      "default": 10,
+      "description": "Days after the due date before a late fee may apply"
+    },
+    "cure_period_days": {
+      "type": "number",
+      "default": 21,
+      "description": "Cure period stated in the notice before any further collection step"
+    },
+    "autopay_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "When off, no autopay authorization is offered and installments are collected manually"
+    },
+    "servicing_phone": {
+      "type": "string",
+      "description": "Number customers call about payments or hardship"
+    },
+    "servicing_email": {
+      "type": "string"
+    },
+    "dispute_email": {
+      "type": "string",
+      "description": "Where a customer sends a billing dispute or correction request"
+    },
+    "notice_address": {
+      "type": "string",
+      "description": "Mailing address for written notices required by the agreement"
     }
   },
   "required": [

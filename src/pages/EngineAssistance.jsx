@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { HeartHandshake, Settings2, Copy, Search, Loader2, AlertTriangle, Wallet, BadgeCheck } from "lucide-react";
+import { HeartHandshake, Settings2, Copy, Search, Loader2, AlertTriangle, Wallet, BadgeCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/money";
 import ApplicationQueueCard from "@/components/assistance/ApplicationQueueCard";
@@ -120,6 +121,9 @@ export default function EngineAssistance() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
             <Settings2 className="h-4 w-4" /> Settings
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/EngineAssistanceCollections"><ShieldAlert className="h-4 w-4" /> Collections</Link>
           </Button>
         </div>
       </div>

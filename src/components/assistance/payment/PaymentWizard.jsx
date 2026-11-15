@@ -59,6 +59,8 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
             onRequest={onRequest}
             onSign={onSign}
             onCancel={onCancel}
+            agreement={offer?.internal_agreement}
+            autopayEnabled={offer?.autopay_enabled === true}
           />
         )}
       </CardContent>

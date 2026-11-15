@@ -2,6 +2,8 @@
 // Every amount is calculated here on the server. The browser never supplies a
 // price, an assistance amount, a payment status, or an applicant identifier.
 
+import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
+
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
   { type: 'affirm', label: 'Affirm' },
@@ -86,6 +88,13 @@ export async function ensureSettings(base44: any) {
     internal_financing_term_months: 12,
     internal_financing_disclosure_text: INTERNAL_FINANCING_DISCLOSURE,
     offer_terms_text: DEFAULT_OFFER_TERMS,
+    agreement_template_status: 'draft',
+    in_house_lending_live: false,
+    late_fee_enabled: false,
+    late_fee_percent: 5,
+    late_fee_grace_days: 10,
+    cure_period_days: 21,
+    autopay_enabled: false,
   });
 }
 
@@ -353,7 +362,7 @@ export function loanScheduleWithStatus(loan: any) {
 // The customer chooses between four mutually exclusive pathways. Every amount,
 // eligibility flag and reason is calculated here so the browser cannot invent a
 // price, an approval, or a lender that is not configured.
-export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
+export function offerPaymentPlan(offer: any, settings: any, loan: any = null, agreement: any = null) {
   const totals = computeOfferTotals(offer);
   const pct = depositPercentFor(offer, settings);
   const depositTarget = round2(totals.total * (pct / 100));
@@ -371,7 +380,11 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
   const expired = offerExpired(offer);
   const fullyPaid = cents(totals.balance_due) <= 0;
   const paymentsEnabled = settings?.payments_enabled === true;
-  const internalEnabled = settings?.internal_financing_enabled !== false;
+  const lending = lendingGate(settings);
+  // An accepted agreement is the only proof the customer read these exact terms.
+  const agreementAccepted = !!agreement
+    && agreement.status === 'accepted'
+    && (!loan?.id || agreement.loan_id === loan.id);
   const statusOpen = !['void', 'declined', 'draft', 'expired', 'paid'].includes(String(offer?.status || ''));
   const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !loanActive;
 
@@ -412,8 +425,8 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
     reason: financeFullReason,
   };
 
-  const blockedReason = !internalEnabled
-    ? 'Elite in-house financing is not enabled for the fund right now.'
+  const blockedReason = !lending.allowed
+    ? lending.reason
     : fullyPaid
       ? 'This offer is already paid.'
       : !depositPossible
@@ -441,12 +454,18 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
     loan_active: loanActive,
     available: !blockedReason,
     reason: blockedReason,
+    lending_allowed: lending.allowed,
+    lending_reason: lending.reason,
+    template_status: settings?.agreement_template_status === 'approved_counsel' ? 'approved_counsel' : 'draft',
+    agreement_status: agreement?.status || '',
+    agreement_accepted: agreementAccepted,
     can_request: !blockedReason && !depositVerified && !['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus),
     awaiting_approval: loanStatus === 'pending_approval',
     can_sign: !blockedReason && loanApproved && !loanSigned && !depositVerified,
+    can_accept_agreement: !blockedReason && loanApproved && !agreementAccepted && !depositVerified,
     declined: loanStatus === 'declined',
     canceled: loanStatus === 'canceled',
-    enabled: !blockedReason && !depositVerified && !loanActive && loanReady,
+    enabled: !blockedReason && !depositVerified && !loanActive && loanReady && agreementAccepted,
     payment_reason: blockedReason
       || (depositVerified || loanActive
         ? ''
@@ -456,8 +475,8 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
             ? 'Your in-house financing request was not approved.'
             : !loanApproved
               ? 'Request Elite in-house financing to see your terms.'
-              : !loanSigned
-                ? 'Sign the in-house financing disclosures to continue.'
+              : !agreementAccepted
+                ? 'Read and accept your Retail Installment Agreement to continue.'
                 : ''),
     deposit_lenders: depositLenders,
     finance_deposit_enabled: !blockedReason && !depositVerified && !loanActive && loanReady && depositLenders.eligible.length > 0,
@@ -483,6 +502,8 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null) {
     loan_status: loanStatus,
     loan_active: loanActive,
     loan_ready: loanReady,
+    agreement_accepted: agreementAccepted,
+    lending_allowed: lending.allowed,
     payment_plan: paymentPlan,
     pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath },
   };
@@ -532,8 +553,18 @@ export async function activateInternalLoan(base44: any, offer: any, loan: any, a
   if (!loan) return null;
   if (['active', 'completed'].includes(loan.status)) return loan;
   if (loan.status !== 'approved' || !loan.signed_at) return loan;
+  // The accepted, hashed agreement is required before the plan can go live. A
+  // deposit alone never activates financing.
+  const settings = await ensureSettings(base44);
+  if (!lendingGate(settings).allowed) return loan;
+  const agreement = await latestAgreement(base44, offer.id);
+  if (!agreement || agreement.status !== 'accepted' || agreement.loan_id !== loan.id) return loan;
   const totals = computeOfferTotals(offer);
   const principal = round2(Math.max(0, totals.total - totals.paid_amount));
+  // The financed amount must match the number the customer signed. If other
+  // payments changed the remainder, staff reissue the agreement first.
+  const signedPrincipal = round2(agreement.snapshot?.figures?.amount_financed);
+  if (Math.abs(cents(signedPrincipal) - cents(principal)) > 1) return loan;
   const entity = base44.asServiceRole.entities.EngineAssistanceInternalLoan;
   if (principal <= 0) {
     return await entity.update(loan.id, {
@@ -572,7 +603,8 @@ export async function syncDepositState(base44: any, offerId: string, actor = 'Au
   if (!offer) return null;
   const settings = await ensureSettings(base44);
   const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
-  const plan = offerPaymentPlan(offer, settings, loan);
+  const agreement = await latestAgreement(base44, offer.id);
+  const plan = offerPaymentPlan(offer, settings, loan, agreement);
   const patch: any = {
     deposit_percent: plan.deposit_percent,
     deposit_amount: plan.deposit_amount,
@@ -598,9 +630,9 @@ export async function syncDepositState(base44: any, offerId: string, actor = 'Au
 // ---------------------------------------------------------------------------
 // Public payloads — allowlisted, no internal notes, no customer ids
 // ---------------------------------------------------------------------------
-export function publicOffer(offer: any, application: any, settings: any, loan: any = null) {
+export function publicOffer(offer: any, application: any, settings: any, loan: any = null, agreement: any = null) {
   const totals = computeOfferTotals(offer);
-  const plan = offerPaymentPlan(offer, settings, loan);
+  const plan = offerPaymentPlan(offer, settings, loan, agreement);
   const priorityAmount = Number(settings?.min_financing_amount) || 3000;
   return {
     offer_number: offer.offer_number,
@@ -648,6 +680,11 @@ export function publicOffer(offer: any, application: any, settings: any, loan: a
     deposit_method: offer.deposit_method || '',
     internal_amount: plan.internal_amount,
     internal_loan: publicLoan(loan),
+    internal_agreement: publicAgreement(agreement),
+    agreement_accepted: plan.agreement_accepted,
+    lending_allowed: plan.lending_allowed,
+    lending_reason: plan.pathways.deposit_internal.lending_reason,
+    autopay_enabled: settings?.autopay_enabled === true,
     pathways: plan.pathways,
   };
 }

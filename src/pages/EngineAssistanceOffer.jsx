@@ -176,7 +176,12 @@ export default function EngineAssistanceOffer() {
             actionBusy={actionBusy}
             onCheckout={checkout}
             onRequest={() => runFinancing("request_internal", {}, "In-house financing requested. Elite will review the terms.")}
-            onSign={(name, consent) => runFinancing("sign_disclosures", { signature_name: name, consent }, "Disclosures signed")}
+            onSign={(payload) => runFinancing("sign_disclosures", {
+              signature_name: payload?.name,
+              esign_consent: payload?.esign_consent === true,
+              accept_terms: payload?.accept_terms === true,
+              autopay_authorized: payload?.autopay_authorized === true,
+            }, "Agreement signed")}
             onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}
           />
         )}

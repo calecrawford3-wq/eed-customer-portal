@@ -1,0 +1,223 @@
+{
+  "name": "EngineAssistanceCollectionsCase",
+  "type": "object",
+  "properties": {
+    "case_number": {
+      "type": "string",
+      "description": "Staff-facing case identifier (EAC-YYYY-####)"
+    },
+    "loan_id": {
+      "type": "string"
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "agreement_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "current",
+        "delinquent",
+        "notices_approved",
+        "referral_prepared",
+        "referred",
+        "closed"
+      ],
+      "default": "current",
+      "enumColors": [
+        "green",
+        "yellow",
+        "blue",
+        "purple",
+        "red",
+        "gray"
+      ],
+      "description": "Workflow state of the review queue. Nothing here triggers an automatic collection action or a credit bureau submission."
+    },
+    "days_past_due": {
+      "type": "number",
+      "default": 0
+    },
+    "missed_installments": {
+      "type": "number",
+      "default": 0
+    },
+    "oldest_due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "next_due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "overdue_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "verified_balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Outstanding repayable balance recomputed from the agreement schedule and recorded installments"
+    },
+    "paid_to_date": {
+      "type": "number",
+      "default": 0
+    },
+    "last_reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "notices": {
+      "type": "array",
+      "description": "Notices drafted and manually approved by staff. Nothing is sent automatically.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "reminder",
+              "past_due",
+              "cure_notice",
+              "final_notice"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "approved",
+              "sent_manually",
+              "canceled"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "balance_snapshot": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivery_note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "contact_log": {
+      "type": "array",
+      "description": "Hardship and servicing contacts. Recorded by hand so a customer can always reach a person.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "referral": {
+      "type": "object",
+      "description": "Prepared collection-agency referral package. Preparing it does not submit anything; submission is a separate manual act."
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "close_reason": {
+      "type": "string"
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "case_number",
+    "loan_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

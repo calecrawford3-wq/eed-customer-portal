@@ -4,6 +4,9 @@ import {
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
+import {
+  acceptAgreementRecord, lendingGate, latestAgreement, issueAgreement, publicAgreement,
+} from '../../shared/installmentAgreement.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
 // Public, token-authorized actions for the customer's in-house financing
@@ -33,11 +36,13 @@ export default async function (req) {
 
     const settings = await ensureSettings(base44);
     const existing = rows(await loans.filter({ offer_id: offer.id }))[0] || null;
-    const plan = offerPaymentPlan(offer, settings, existing);
+    const currentAgreement = await latestAgreement(base44, offer.id);
+    const plan = offerPaymentPlan(offer, settings, existing, currentAgreement);
 
     if (action === 'request_internal') {
-      if (settings.internal_financing_enabled === false) {
-        return Response.json({ error: 'Elite in-house financing is not enabled for the fund right now.' }, { status: 409 });
+      const gate = lendingGate(settings);
+      if (!gate.allowed) {
+        return Response.json({ error: gate.reason || 'Elite in-house financing is not open yet.' }, { status: 409 });
       }
       if (!plan.pathways.deposit_internal.available) {
         return Response.json({ error: plan.pathways.deposit_internal.reason || 'This offer cannot be split into a deposit and financed remainder.' }, { status: 409 });
@@ -120,21 +125,53 @@ export default async function (req) {
       if (existing.status !== 'approved') {
         return Response.json({ error: 'Elite has not approved terms for this request yet. Nothing is signed or owed until then.' }, { status: 409 });
       }
-      if (existing.signed_at) return Response.json({ loan: publicLoan(existing), already_signed: true });
+      if (existing.signed_at) {
+        return Response.json({
+          loan: publicLoan(existing),
+          agreement: publicAgreement(await latestAgreement(base44, offer.id)),
+          already_signed: true,
+        });
+      }
       const name = str(body.signature_name, 120);
-      if (name.length < 2) return Response.json({ error: 'Type your full name to sign the disclosures.' }, { status: 400 });
-      if (body.consent !== true) return Response.json({ error: 'Agree to the disclosures before signing.' }, { status: 400 });
-      const now = new Date().toISOString();
-      const updated = await loans.update(existing.id, {
-        signed_at: now,
-        signed_name: name,
-        disclosures_version: existing.disclosures_version || DISCLOSURE_VERSION,
-        disclosures_text: existing.disclosures_text || settings.internal_financing_disclosure_text || INTERNAL_FINANCING_DISCLOSURE,
-        audit_trail: appendAudit(existing, 'Customer', 'disclosures_signed', `Signed by ${name} (${existing.disclosures_version || DISCLOSURE_VERSION})`),
-      });
+      if (name.length < 2) return Response.json({ error: 'Type your full legal name to sign the agreement.' }, { status: 400 });
+      if (body.esign_consent !== true) {
+        return Response.json({ error: 'You must agree to sign this agreement electronically.' }, { status: 400 });
+      }
+      if (body.accept_terms !== true) {
+        return Response.json({ error: 'You must confirm that you read and accept the Retail Installment Agreement.' }, { status: 400 });
+      }
+      const gate = lendingGate(settings);
+      if (!gate.allowed) return Response.json({ error: gate.reason }, { status: 409 });
+
+      // The agreement is issued by the server on approval. If it is missing or
+      // belongs to an older version of the loan, issue the current one now.
+      let agreement = await latestAgreement(base44, offer.id);
+      if (!agreement || agreement.status !== 'issued' || agreement.loan_id !== existing.id) {
+        agreement = await issueAgreement(base44, {
+          offer, loan: existing, settings, totals: plan.totals, plan, actor: 'Admin',
+          note: 'Issued when the customer accepted the agreement',
+        });
+      }
+      const forwarded = String(req.headers.get('x-forwarded-for') || '').split(',')[0].trim().slice(0, 60);
+      const userAgent = String(req.headers.get('user-agent') || '').slice(0, 300);
+      let accepted: any = null;
+      try {
+        accepted = await acceptAgreementRecord(base44, {
+          agreement, loan: existing, settings, name, ip: forwarded, userAgent,
+          autopayAuthorized: body.autopay_authorized === true,
+        });
+      } catch (error: any) {
+        if (String(error?.message) === 'AGREEMENT_CHANGED') {
+          return Response.json({ error: 'This agreement changed while you were reading it. Reload the page and review the current version.' }, { status: 409 });
+        }
+        return Response.json({ error: String(error?.message || 'This agreement could not be signed.') }, { status: 400 });
+      }
       // A signature can complete an agreement whose deposit was already paid.
       const synced = await syncDepositState(base44, offer.id, 'Customer');
-      return Response.json({ loan: publicLoan(synced?.loan || updated) });
+      return Response.json({
+        loan: publicLoan(synced?.loan || accepted?.loan || existing),
+        agreement: publicAgreement(accepted?.agreement || agreement),
+      });
     }
 
     if (action === 'cancel_request') {

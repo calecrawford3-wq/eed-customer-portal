@@ -1,0 +1,207 @@
+{
+  "name": "EngineAssistanceAgreement",
+  "type": "object",
+  "properties": {
+    "agreement_number": {
+      "type": "string",
+      "description": "Stable agreement identifier (EAFR-YYYY-####)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "issued",
+        "accepted",
+        "void",
+        "superseded"
+      ],
+      "default": "issued",
+      "enumColors": [
+        "blue",
+        "green",
+        "gray",
+        "yellow"
+      ],
+      "description": "issued = sent to the customer for review, accepted = signed with affirmative e-sign consent, void = withdrawn by staff, superseded = replaced by a newer issued version"
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "loan_id": {
+      "type": "string",
+      "description": "EngineAssistanceInternalLoan this agreement documents"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "customer_engine_id": {
+      "type": "string"
+    },
+    "agreement_token": {
+      "type": "string",
+      "description": "Long random token for the customer's printable copy. Rotating it invalidates previously shared links."
+    },
+    "template_key": {
+      "type": "string",
+      "description": "Versioned agreement template key (for example ok-retail-installment-v1)"
+    },
+    "template_version": {
+      "type": "number",
+      "default": 1
+    },
+    "template_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved_counsel"
+      ],
+      "default": "draft",
+      "enumColors": [
+        "red",
+        "green"
+      ],
+      "description": "Status of the template at the moment this agreement was issued. draft means it had not been reviewed by qualified Oklahoma counsel."
+    },
+    "template_hash": {
+      "type": "string",
+      "description": "SHA-256 of the template wording this agreement was generated from"
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "SHA-256 over the template hash and the immutable financial snapshot, re-verified at signing"
+    },
+    "snapshot": {
+      "type": "object",
+      "description": "Immutable server-computed snapshot of the parties, goods, itemization and every dollar figure shown on the agreement. Never edited after issue."
+    },
+    "sections": {
+      "type": "array",
+      "description": "Immutable snapshot of the disclosure sections exactly as presented to the customer",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "issued_by": {
+      "type": "string"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signer_name": {
+      "type": "string",
+      "description": "Typed full name entered by the customer when accepting"
+    },
+    "esign_consent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Affirmative consent to receive and sign this agreement electronically"
+    },
+    "terms_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Affirmative confirmation that the customer read and accepted the agreement"
+    },
+    "affirmative_consent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "accepted_ip": {
+      "type": "string",
+      "description": "IP address recorded at acceptance, when the platform provides one"
+    },
+    "accepted_user_agent": {
+      "type": "string",
+      "description": "Browser user agent recorded at acceptance, when available"
+    },
+    "accepted_content_hash": {
+      "type": "string",
+      "description": "Content hash the customer actually accepted, proving which version was signed"
+    },
+    "autopay": {
+      "type": "object",
+      "description": "Separate optional autopay authorization. Stored separately from the agreement itself; never contains an account number or card number."
+    },
+    "voided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "void_reason": {
+      "type": "string"
+    },
+    "superseded_by": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "agreement_number",
+    "offer_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

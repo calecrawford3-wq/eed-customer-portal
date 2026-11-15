@@ -4,6 +4,7 @@ import {
   ASSISTANCE_STRIPE_SOURCE, rows, cents, round2, computeOfferTotals, offerExpired,
   ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability,
 } from '../../shared/engineAssistance.ts';
+import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
 // Public, token-authorized checkout start for an assistance offer.
@@ -51,7 +52,8 @@ export default async function (req) {
 
     const settings = await ensureSettings(base44);
     const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
-    const plan = offerPaymentPlan(offer, settings, loan);
+    const agreement = await latestAgreement(base44, offer.id);
+    const plan = offerPaymentPlan(offer, settings, loan, agreement);
     const options = plan.pathways;
 
     if (pathway.lender && body.consent !== true) {

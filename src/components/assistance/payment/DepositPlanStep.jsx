@@ -9,7 +9,7 @@ import DepositFinancingStatus from "../DepositFinancingStatus";
 // Step 2 for the deposit plan. The deposit is the only amount this page can
 // ever charge; the remainder belongs to the in-house agreement, which must be
 // approved and signed before the deposit payment opens.
-export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel }) {
+export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false }) {
   const [method, setMethod] = useState("");
   const [consent, setConsent] = useState(false);
 
@@ -55,6 +55,8 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
         onCancel={onCancel}
         hideAmounts
         emphasize
+        agreement={agreement}
+        autopayEnabled={autopayEnabled}
       />
 
       {ready ? (

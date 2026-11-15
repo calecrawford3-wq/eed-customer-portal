@@ -30,6 +30,15 @@ const TONES = {
   needs_review: "bg-amber-100 text-amber-800",
   none: "bg-slate-100 text-slate-500",
   incomplete: "bg-amber-100 text-amber-800",
+  issued: "bg-blue-100 text-blue-700",
+  superseded: "bg-slate-200 text-slate-500",
+  current: "bg-emerald-100 text-emerald-700",
+  delinquent: "bg-amber-100 text-amber-800",
+  notices_approved: "bg-blue-100 text-blue-700",
+  referral_prepared: "bg-purple-100 text-purple-700",
+  referred: "bg-red-100 text-red-700",
+  closed: "bg-slate-100 text-slate-600",
+  sent_manually: "bg-sky-100 text-sky-700",
 };
 
 const LABELS = {
@@ -41,6 +50,9 @@ const LABELS = {
   pending_approval: "Awaiting approval",
   us_bank_account: "ACH bank",
   afterpay_clearpay: "Afterpay",
+  notices_approved: "Notices approved",
+  referral_prepared: "Referral prepared",
+  sent_manually: "Delivered",
 };
 
 export default function StatusBadge({ status, className = "" }) {

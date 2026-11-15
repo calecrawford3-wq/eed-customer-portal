@@ -6,6 +6,10 @@ import {
   ensureAssistanceJob, offerPaymentPlan, publicLoan, buildLoanSchedule, loanOutstanding,
   depositPercentFor, shiftMonths, today, syncDepositState, DEFAULT_DEPOSIT_PERCENT,
 } from '../../shared/engineAssistance.ts';
+import {
+  AGREEMENT_TEMPLATE_KEY, AGREEMENT_TEMPLATE_VERSION, agreementTemplateHash, issueAgreement,
+  latestAgreement, lendingGate,
+} from '../../shared/installmentAgreement.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
 // role. Applicant data, documents and financial records never leave through a
@@ -118,11 +122,18 @@ export default async function (req) {
       const { template } = await ensureGenericTemplate(base44);
       let settings = await ensureSettings(base44);
       const stripeReady = !!Deno.env.get('PORTAL_STRIPE_SECRET_KEY') && !!Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET');
+      const templateHash = await agreementTemplateHash();
       const patch: any = {
         payments_enabled: stripeReady,
         payments_disabled_reason: stripeReady ? '' : 'Online payment is off. Add PORTAL_STRIPE_SECRET_KEY and PORTAL_STRIPE_WEBHOOK_SECRET, then re-check financing.',
+        agreement_template_key: settings.agreement_template_key || AGREEMENT_TEMPLATE_KEY,
+        agreement_template_version: settings.agreement_template_version || AGREEMENT_TEMPLATE_VERSION,
+        agreement_template_status: settings.agreement_template_status === 'approved_counsel' ? 'approved_counsel' : 'draft',
+        agreement_template_hash: templateHash,
       };
-      if (settings.payments_enabled !== stripeReady || settings.payments_disabled_reason !== patch.payments_disabled_reason) {
+      // A draft or unapproved template can never leave live lending switched on.
+      if (patch.agreement_template_status !== 'approved_counsel') patch.in_house_lending_live = false;
+      if (Object.keys(patch).some((key) => settings[key] !== patch[key])) {
         settings = await base44.asServiceRole.entities.EngineAssistanceSettings.update(settings.id, patch);
       }
       return Response.json({
@@ -146,6 +157,19 @@ export default async function (req) {
       if (data.internal_financing_disclosure_text !== undefined) patch.internal_financing_disclosure_text = str(data.internal_financing_disclosure_text, 4000);
       if (data.offer_terms_text !== undefined) patch.offer_terms_text = str(data.offer_terms_text, 3000);
       if (data.internal_notes !== undefined) patch.internal_notes = str(data.internal_notes, 2000);
+      if (data.late_fee_enabled !== undefined) patch.late_fee_enabled = data.late_fee_enabled === true;
+      if (data.late_fee_percent !== undefined) patch.late_fee_percent = Math.min(10, Math.max(0, num(data.late_fee_percent)));
+      if (data.late_fee_grace_days !== undefined) patch.late_fee_grace_days = Math.min(60, Math.max(0, Math.round(num(data.late_fee_grace_days))));
+      if (data.cure_period_days !== undefined) patch.cure_period_days = Math.min(90, Math.max(7, Math.round(num(data.cure_period_days))));
+      if (data.autopay_enabled !== undefined) patch.autopay_enabled = data.autopay_enabled === true;
+      if (data.servicing_phone !== undefined) patch.servicing_phone = str(data.servicing_phone, 40);
+      if (data.servicing_email !== undefined) patch.servicing_email = str(data.servicing_email, 160);
+      if (data.dispute_email !== undefined) patch.dispute_email = str(data.dispute_email, 160);
+      if (data.notice_address !== undefined) patch.notice_address = str(data.notice_address, 400);
+      if (data.agreement_counsel_firm !== undefined) patch.agreement_counsel_firm = str(data.agreement_counsel_firm, 200);
+      if (data.agreement_counsel_approved_by !== undefined) patch.agreement_counsel_approved_by = str(data.agreement_counsel_approved_by, 200);
+      if (data.agreement_counsel_approved_at !== undefined) patch.agreement_counsel_approved_at = str(data.agreement_counsel_approved_at, 10);
+      if (data.agreement_counsel_reference !== undefined) patch.agreement_counsel_reference = str(data.agreement_counsel_reference, 500);
       const updated = await base44.asServiceRole.entities.EngineAssistanceSettings.update(settings.id, patch);
       return Response.json({ settings: updated });
     }
@@ -555,6 +579,13 @@ export default async function (req) {
       if (['active', 'completed', 'canceled'].includes(loan.status)) {
         return Response.json({ error: 'This agreement can no longer be approved.' }, { status: 400 });
       }
+      // Terms cannot be approved while the agreement template is an unreviewed
+      // draft: live in-house lending is blocked until counsel signs off.
+      const approvalSettings = await ensureSettings(base44);
+      const gate = lendingGate(approvalSettings);
+      if (!gate.allowed) {
+        return Response.json({ error: `In-house lending cannot open yet. ${gate.reason}` }, { status: 409 });
+      }
       const apr = Math.min(36, Math.max(0, num(data.apr)));
       const termMonths = Math.min(84, Math.max(1, Math.round(num(data.term_months) || 12)));
       const firstDate = str(data.first_payment_date, 10) || shiftMonths(today(), 1);
@@ -576,7 +607,18 @@ export default async function (req) {
         audit_trail: appendAudit(loan, user, 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}`),
       });
       const synced = await syncDepositState(base44, loan.offer_id, user.email || 'Admin');
-      return Response.json({ loan: updated, offer: synced?.offer || null });
+      // Issuing the exact hashed agreement is what lets the customer read and
+      // accept these numbers. Nothing is owed until they do.
+      let agreement = null;
+      const approvalOffer = await loadOffer(loan.offer_id);
+      if (approvalOffer) {
+        const plan = offerPaymentPlan(approvalOffer, approvalSettings, updated, await latestAgreement(base44, approvalOffer.id));
+        agreement = await issueAgreement(base44, {
+          offer: approvalOffer, loan: updated, settings: approvalSettings, totals: plan.totals, plan,
+          actor: user.email || 'Admin', note: 'Issued when staff approved the fixed APR and term',
+        });
+      }
+      return Response.json({ loan: updated, offer: synced?.offer || null, agreement });
     }
 
     if (action === 'decline_internal_loan') {
@@ -687,6 +729,89 @@ export default async function (req) {
         occurred_at: new Date().toISOString(),
       });
       return Response.json({ entry });
+    }
+
+    if (action === 'update_agreement_status') {
+      const settings = await ensureSettings(base44);
+      const status = data.status === 'approved_counsel' ? 'approved_counsel' : 'draft';
+      const templateHash = await agreementTemplateHash();
+      const patch: any = {
+        agreement_template_key: AGREEMENT_TEMPLATE_KEY,
+        agreement_template_version: AGREEMENT_TEMPLATE_VERSION,
+        agreement_template_hash: templateHash,
+      };
+      if (status === 'approved_counsel') {
+        const firm = str(data.counsel_firm, 200);
+        const attorney = str(data.counsel_approved_by, 200);
+        const approvedAt = str(data.counsel_approved_at, 10);
+        const reference = str(data.counsel_reference, 500);
+        if (!firm || !attorney || !approvedAt || !reference) {
+          return Response.json({ error: 'Record the firm, the approving Oklahoma attorney, the approval date and the counsel reference before marking the template approved.' }, { status: 400 });
+        }
+        Object.assign(patch, {
+          agreement_template_status: 'approved_counsel',
+          agreement_counsel_firm: firm,
+          agreement_counsel_approved_by: attorney,
+          agreement_counsel_approved_at: approvedAt,
+          agreement_counsel_reference: reference,
+          in_house_lending_live: data.live === true,
+        });
+      } else {
+        // Reverting to draft always switches live lending off.
+        Object.assign(patch, {
+          agreement_template_status: 'draft',
+          in_house_lending_live: false,
+        });
+      }
+      const updated = await base44.asServiceRole.entities.EngineAssistanceSettings.update(settings.id, patch);
+      return Response.json({
+        settings: updated,
+        note: status === 'approved_counsel'
+          ? (patch.in_house_lending_live
+            ? 'Template marked approved by counsel and live in-house lending switched on.'
+            : 'Template marked approved by counsel. Live lending is still switched off.')
+          : 'Template set back to DRAFT / NOT LEGALLY REVIEWED. In-house lending is switched off.',
+      });
+    }
+
+    if (action === 'issue_agreement') {
+      const settings = await ensureSettings(base44);
+      const offer = await loadOffer(str(data.offer_id, 60));
+      if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
+      const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0];
+      if (!loan) return Response.json({ error: 'The customer has not requested in-house financing on this offer.' }, { status: 400 });
+      if (!['approved', 'active', 'completed'].includes(loan.status)) {
+        return Response.json({ error: 'Approve the fixed APR and term before issuing the agreement.' }, { status: 400 });
+      }
+      const plan = offerPaymentPlan(offer, settings, loan, await latestAgreement(base44, offer.id));
+      const agreement = await issueAgreement(base44, {
+        offer, loan, settings, totals: plan.totals, plan, actor: user.email || 'Admin',
+        note: str(data.note, 500) || 'Issued by staff',
+      });
+      return Response.json({
+        agreement,
+        note: settings.agreement_template_status === 'approved_counsel'
+          ? 'Agreement issued with a new content hash.'
+          : 'Agreement issued as a DRAFT — NOT LEGALLY REVIEWED copy for internal review only. It cannot be signed while in-house lending is off.',
+      });
+    }
+
+    if (action === 'void_agreement') {
+      const agreements = base44.asServiceRole.entities.EngineAssistanceAgreement;
+      const agreement = rows(await agreements.filter({ id: str(data.agreement_id, 60) }))[0];
+      if (!agreement) return Response.json({ error: 'Agreement not found' }, { status: 404 });
+      if (agreement.status === 'accepted') {
+        return Response.json({ error: 'A signed agreement is evidence and cannot be voided. Issue a corrected agreement instead.' }, { status: 409 });
+      }
+      const reason = str(data.reason, 500);
+      if (!reason) return Response.json({ error: 'Add a short reason for voiding the agreement' }, { status: 400 });
+      const updated = await agreements.update(agreement.id, {
+        status: 'void',
+        voided_at: new Date().toISOString(),
+        void_reason: reason,
+        audit_trail: appendAudit(agreement, user, 'agreement_voided', reason),
+      });
+      return Response.json({ agreement: updated });
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });

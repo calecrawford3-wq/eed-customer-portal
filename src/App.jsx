@@ -97,6 +97,8 @@ import EngineAssistanceDetail from './pages/EngineAssistanceDetail';
 import EngineAssistanceApply from './pages/EngineAssistanceApply';
 import EngineAssistanceOffer from './pages/EngineAssistanceOffer';
 import EngineAssistanceStatus from './pages/EngineAssistanceStatus';
+import EngineAssistanceAgreement from './pages/EngineAssistanceAgreement';
+import EngineAssistanceCollections from './pages/EngineAssistanceCollections';
 import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
 import PublicLegalViewer from './pages/PublicLegalViewer';
@@ -275,12 +277,14 @@ const routes = createRoutesFromElements(
     <Route path="/engine-assistance/apply/:token" element={<EngineAssistanceApply />} />
     <Route path="/engine-assistance/offer/:token" element={<EngineAssistanceOffer />} />
     <Route path="/engine-assistance/status/:token" element={<EngineAssistanceStatus />} />
+    <Route path="/engine-assistance/agreement/:token" element={<EngineAssistanceAgreement />} />
     <Route path="/" element={<AdminLayout />}>
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
       <Route path="Credits" element={<Credits />} />
       <Route path="EngineAssistance" element={<EngineAssistance />} />
       <Route path="EngineAssistance/:id" element={<EngineAssistanceDetail />} />
+      <Route path="EngineAssistanceCollections" element={<EngineAssistanceCollections />} />
       <Route path="WebsiteEnginePricing" element={<WebsiteEnginePricing />} />
       <Route path="WebsiteAnalytics" element={<WebsiteAnalytics />} />
       <Route path="WebsiteSEOManager" element={<WebsiteSEOManager />} />

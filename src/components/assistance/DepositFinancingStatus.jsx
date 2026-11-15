@@ -1,18 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { CheckCircle2, Clock, FileSignature, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, FileSignature, Loader2, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { parseOfferDate } from "@/lib/offerDate";
 import { formatMoney } from "@/lib/money";
+import AgreementSignatureForm from "./agreement/AgreementSignatureForm";
 
 // The in-house financing half of the split plan. It shows only what Elite has
 // actually approved: nothing here promises a live loan before the terms are
 // approved and the disclosures are signed.
-export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, hideAmounts = false, emphasize = false }) {
-  const [name, setName] = useState("");
-  const [agree, setAgree] = useState(false);
+export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, hideAmounts = false, emphasize = false, agreement = null, autopayEnabled = false }) {
   const status = String(deposit?.loan_status || "");
   const active = ['active', 'completed'].includes(status);
   const approved = ['approved', 'active', 'completed'].includes(status);
@@ -86,21 +83,33 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-slate-600 space-y-0.5">
             <p>Amount financed: <span className="font-semibold text-slate-900">{formatMoney(terms.principal)}</span></p>
             <p>Fixed APR: <span className="font-semibold text-slate-900">{terms.apr}%</span> · Term: <span className="font-semibold text-slate-900">{terms.term_months} months</span></p>
-            <p>Monthly payment: <span className="font-semibold text-slate-900">{formatMoney(terms.monthly_payment)}</span> · Total repayable: <span className="font-semibold text-slate-900">{formatMoney(terms.total_repayable)}</span></p>
+            <p>Monthly payment: <span className="font-semibold text-slate-900">{formatMoney(terms.monthly_payment)}</span> · Total of payments: <span className="font-semibold text-slate-900">{formatMoney(terms.total_repayable)}</span></p>
             {terms.finance_charge > 0 && <p>Finance charge: <span className="font-semibold text-slate-900">{formatMoney(terms.finance_charge)}</span></p>}
             <p>First payment: <span className="font-semibold text-slate-900">{terms.first_payment_date}</span></p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-slate-600 whitespace-pre-wrap max-h-40 overflow-y-auto">
-            {terms.disclosures_text}
+          <div className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1.5">
+            <p className="text-[11px] font-semibold text-slate-800">Retail Installment Agreement</p>
+            {agreement?.token ? (
+              <a
+                href={`/engine-assistance/agreement/${agreement.token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e20404] underline"
+              >
+                Read the full agreement and disclosures <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <p className="text-[11px] text-slate-500">Your agreement is being prepared and will appear here.</p>
+            )}
+            <p className="break-all text-[10px] text-slate-400">
+              {agreement?.agreement_number || "Version pending"} · hash {(agreement?.content_hash || "").slice(0, 20) || "—"}
+            </p>
           </div>
-          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Type your full name to sign" />
-          <label className="flex items-start gap-2 text-[11px] text-slate-600">
-            <Checkbox checked={agree} onCheckedChange={(value) => setAgree(value === true)} className="mt-0.5" />
-            <span>I read and agree to the disclosures above. I understand the deposit and the financed amount are two separate obligations.</span>
-          </label>
-          <Button size={emphasize ? "default" : "sm"} className={emphasize ? "w-full" : undefined} disabled={!!actionBusy || name.trim().length < 2 || !agree} onClick={() => onSign(name.trim(), true)}>
-            {actionBusy === "sign" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Sign and accept
-          </Button>
+          <AgreementSignatureForm
+            busy={actionBusy === "sign"}
+            autopayEnabled={!!autopayEnabled}
+            onSubmit={(payload) => onSign(payload)}
+          />
         </div>
       ) : signed && !deposit?.deposit_verified ? (
         <div className="flex items-start gap-2 text-xs text-slate-700">

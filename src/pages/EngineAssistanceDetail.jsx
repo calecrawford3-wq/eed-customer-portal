@@ -15,6 +15,8 @@ import OfferPanel from "@/components/assistance/OfferPanel";
 import BuildJobPanel from "@/components/assistance/BuildJobPanel";
 import FinancingPanel from "@/components/assistance/FinancingPanel";
 import InternalLoanPanel from "@/components/assistance/InternalLoanPanel";
+import AgreementPanel from "@/components/assistance/AgreementPanel";
+import CollectionsPanel from "@/components/assistance/CollectionsPanel";
 import LedgerTable from "@/components/assistance/LedgerTable";
 
 export default function EngineAssistanceDetail() {
@@ -42,6 +44,13 @@ export default function EngineAssistanceDetail() {
       const sorted = offerList.slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       const selectedOffer = sorted[0] || null;
       const loanList = toList(loans).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
+      const selectedLoan = loanList.find((item) => !selectedOffer || item.offer_id === selectedOffer.id) || loanList[0] || null;
+      const [agreements, cases, settingsList] = await Promise.all([
+        selectedOffer ? base44.entities.EngineAssistanceAgreement.filter({ offer_id: selectedOffer.id }) : Promise.resolve([]),
+        selectedLoan ? base44.entities.EngineAssistanceCollectionsCase.filter({ loan_id: selectedLoan.id }) : Promise.resolve([]),
+        base44.entities.EngineAssistanceSettings.filter({ key: "global" }),
+      ]);
+      const agreementList = toList(agreements).slice().sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || "")));
       return {
         application,
         offer: selectedOffer,
@@ -50,7 +59,10 @@ export default function EngineAssistanceDetail() {
         build: toList(build)[0] || null,
         job: toList(job)[0] || null,
         platforms: toList(platforms),
-        loan: loanList.find((item) => !selectedOffer || item.offer_id === selectedOffer.id) || loanList[0] || null,
+        loan: selectedLoan,
+        agreement: agreementList[0] || null,
+        caseDoc: toList(cases)[0] || null,
+        settings: toList(settingsList)[0] || null,
       };
     },
   });
@@ -110,7 +122,7 @@ export default function EngineAssistanceDetail() {
     );
   }
 
-  const { application, offer, attempts, ledger, build, job, platforms, loan } = data;
+  const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings } = data;
   const name = `${application.first_name || ""} ${application.last_name || ""}`.trim() || "Applicant";
 
   return (
@@ -137,6 +149,14 @@ export default function EngineAssistanceDetail() {
           <ApplicationSummary application={application} />
           <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} />
           <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} />
+          <AgreementPanel
+            offer={offer}
+            loan={loan}
+            agreement={agreement}
+            templateStatus={settings?.agreement_template_status || "draft"}
+            onChanged={refresh}
+          />
+          <CollectionsPanel loan={loan} caseDoc={caseDoc} onChanged={refresh} />
           <BuildJobPanel application={application} build={build} job={job} platforms={platforms} offer={offer} onAction={run} busy={!!busy} />
           <FinancingPanel attempts={attempts} onReview={(payload) => run("financing_review", payload)} busy={!!busy} />
           <Card>
