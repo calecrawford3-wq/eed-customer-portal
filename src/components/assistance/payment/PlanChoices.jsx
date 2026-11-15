@@ -6,11 +6,11 @@ import ChoiceTile from "./ChoiceTile";
 // Step 1: two plain-English plans. "Recommended" appears only when lender
 // financing cannot complete the balance, so paying in full is the sole path
 // that finishes the purchase today.
-export default function PlanChoices({ full, finance, deposit, onSelect }) {
+export default function PlanChoices({ full, finance, deposit, onSelect, testOffer = false }) {
   const fullAvailable = !!(full?.enabled || finance?.enabled);
   const fullReason = fullAvailable ? "" : full?.reason || finance?.reason || "Online payment is not available yet.";
   // Allow owner-only UI walkthroughs using ?assistanceDemo=1; never enable real checkout.
-  const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('assistanceDemo') === '1';
+  const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('assistanceDemo') === '1' || testOffer;
   const depositAvailable = !!deposit?.available || demo;
   const recommended = fullAvailable && !finance?.enabled;
 
