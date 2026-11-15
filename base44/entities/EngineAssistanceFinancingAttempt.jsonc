@@ -1,0 +1,198 @@
+{
+  "name": "EngineAssistanceFinancingAttempt",
+  "type": "object",
+  "properties": {
+    "offer_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount the customer asked to finance"
+    },
+    "provider": {
+      "type": "string",
+      "default": "stripe",
+      "description": "Payment provider handling the attempt"
+    },
+    "offered_methods": {
+      "type": "array",
+      "description": "Lender options Stripe actually offered on this checkout",
+      "items": {
+        "type": "string"
+      }
+    },
+    "selected_method": {
+      "type": "string",
+      "description": "Lender reported by the provider for the completed payment, when supplied"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "initiated",
+        "pending",
+        "completed",
+        "failed",
+        "expired",
+        "canceled"
+      ],
+      "default": "initiated",
+      "enumColors": [
+        "blue",
+        "yellow",
+        "green",
+        "red",
+        "gray",
+        "gray"
+      ],
+      "description": "Checkout lifecycle status. Expired or canceled is never treated as a denial."
+    },
+    "provider_decision": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "declined",
+        "incomplete",
+        "not_reported"
+      ],
+      "default": "not_reported",
+      "enumColors": [
+        "green",
+        "red",
+        "yellow",
+        "gray"
+      ],
+      "description": "Only set from an explicit provider API or webhook value. Abandonment is never recorded as a decline."
+    },
+    "provider_decision_source": {
+      "type": "string",
+      "description": "Where a decision value came from, e.g. 'stripe_webhook' or 'not_reported'"
+    },
+    "stripe_session_id": {
+      "type": "string"
+    },
+    "stripe_payment_intent": {
+      "type": "string"
+    },
+    "verified_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "customer_checkout",
+        "staff_manual"
+      ],
+      "default": "customer_checkout",
+      "enumColors": [
+        "blue",
+        "gray"
+      ]
+    },
+    "customer_consent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer agreed to be directed to a lender at checkout. Elite never submits a credit application itself."
+    },
+    "customer_consent_text": {
+      "type": "string"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Safe, non-sensitive failure reason"
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "needs_review",
+        "approved",
+        "denied"
+      ],
+      "default": "none",
+      "enumColors": [
+        "gray",
+        "yellow",
+        "green",
+        "red"
+      ],
+      "description": "Manual staff review of a financing attempt. Never auto-approved."
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "review_evidence": {
+      "type": "string",
+      "description": "Verified denial evidence reference or description supplied by staff"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "override_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Manually authorized amount after a documented review. Recorded for the audit trail."
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "offer_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

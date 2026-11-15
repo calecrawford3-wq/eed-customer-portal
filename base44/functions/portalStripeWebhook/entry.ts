@@ -1,6 +1,7 @@
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { PORTAL_STRIPE_SOURCE, verifiedPaymentFacts, recordPortalStripePayment } from '../../shared/stripePayments.ts';
+import { ASSISTANCE_STRIPE_SOURCE, verifiedAssistanceFacts, recordAssistancePayment } from '../../shared/engineAssistance.ts';
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -37,6 +38,47 @@ export default async function (req) {
       }
       return Response.json({received:true,card_saved:true,automatic_charging_active:false});
     } catch(e) {return Response.json({error:'Card setup needs verification/retry'},{status:503});}
+  }
+  // --- Affordable Engine Fund assistance offers -------------------------
+  // Verified outcomes only. An abandoned or expired checkout is never a
+  // lender decline, and no lender approval is inferred from a paid session.
+  if (event.data.object.metadata?.source === ASSISTANCE_STRIPE_SOURCE) {
+    const base44 = createClientFromRequest(req);
+    const sessionId = event.data.object.id;
+    const isExpired = event.type === 'checkout.session.expired';
+    const isFailed = event.type === 'checkout.session.async_payment_failed';
+    if (!isExpired && !isFailed && !['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)) {
+      return Response.json({ received: true, ignored: true });
+    }
+    if (isExpired || isFailed) {
+      try {
+        const attempts = await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({ stripe_session_id: sessionId });
+        const list = attempts?.items || attempts || [];
+        for (const attempt of list) {
+          if (['completed', 'failed', 'expired', 'canceled'].includes(attempt.status)) continue;
+          await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.update(attempt.id, {
+            status: isExpired ? 'expired' : 'failed',
+            provider_decision: 'not_reported',
+            provider_decision_source: 'not_reported',
+            error_message: isExpired ? 'Checkout expired before payment. This is not a credit decision.' : 'The provider reported the payment did not complete. This is not a lender decision.',
+          });
+        }
+        return Response.json({ received: true, [isExpired ? 'expired' : 'failed']: true });
+      } catch (e) {
+        console.error('[portalStripeWebhook] assistance attempt update failed', sessionId);
+        return Response.json({ error: 'Assistance attempt update requires retry' }, { status: 503 });
+      }
+    }
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent.latest_charge'] });
+      const facts = verifiedAssistanceFacts(session, Deno.env.get('BASE44_APP_ID'), key.startsWith('sk_live_'));
+      if (!facts) return Response.json({ received: true, pending: true });
+      const result = await recordAssistancePayment(base44, facts);
+      return Response.json({ received: true, ...result });
+    } catch (error) {
+      console.error('[portalStripeWebhook] assistance payment requires retry/review', event.id);
+      return Response.json({ error: 'Assistance payment recording requires retry or staff review' }, { status: 500 });
+    }
   }
   if (!['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)) return Response.json({ received: true, ignored: true });
   if (event.data.object.metadata?.source !== PORTAL_STRIPE_SOURCE) return Response.json({ received: true, ignored: true });

@@ -1,10 +1,11 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
-import {Briefcase,Users,Package,ShoppingCart,Receipt,MessageSquare,Calendar,ChartNoAxesCombined,FlaskConical,ShieldCheck,ChevronRight,ClipboardList,Globe} from 'lucide-react';
+import {Briefcase,Users,Package,ShoppingCart,Receipt,MessageSquare,Calendar,ChartNoAxesCombined,FlaskConical,ShieldCheck,ChevronRight,ClipboardList,Globe,HeartHandshake} from 'lucide-react';
 
 export const APP_AREAS=[
  {name:'Jobs',icon:Briefcase,tone:'bg-red-50 text-red-700',description:'Every engine visit and its progress',pages:[['Jobs','All Jobs'],['Builds','Build History']]},
  {name:'Customers',icon:Users,tone:'bg-blue-50 text-blue-700',description:'Customer records and requests',pages:[['Customers','Customers'],['CustomerSuccess','Follow-ups'],['RefreshRequests','Refresh Requests']]},
+ {name:'Engine Assistance',icon:HeartHandshake,tone:'bg-rose-50 text-rose-700',description:'Affordable Engine Fund applications',pages:[['EngineAssistance','Applications']]},
  {name:'Estimates',icon:ClipboardList,tone:'bg-fuchsia-50 text-fuchsia-700',description:'Standalone quotes only',pages:[['Estimates','Standalone Estimates']]},
  {name:'Billing',icon:Receipt,tone:'bg-emerald-50 text-emerald-700',description:'Invoices, payments, credits and expenses',pages:[['Invoices','Invoices'],['Payments','Payments'],['Credits','Credits'],['Expenses','Expenses'],['CheckPrinting','Check Printing']]},
  {name:'Inventory',icon:Package,tone:'bg-amber-50 text-amber-700',description:'Parts and stock levels',pages:[['Inventory','Parts Inventory']]},

@@ -1,0 +1,92 @@
+{
+  "name": "EngineAssistanceLedgerEntry",
+  "type": "object",
+  "properties": {
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "award",
+        "payment",
+        "refund",
+        "adjustment"
+      ],
+      "enumColors": [
+        "purple",
+        "green",
+        "red",
+        "gray"
+      ],
+      "description": "award = assistance granted, payment = money received, refund = money returned, adjustment = manual correction"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "credit",
+        "debit"
+      ],
+      "default": "credit",
+      "enumColors": [
+        "green",
+        "red"
+      ],
+      "description": "credit increases funded value, debit reduces it"
+    },
+    "amount": {
+      "type": "number",
+      "default": 0
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "description": "Origin of the entry: stripe_webhook, manual_payment, award_decision, staff_adjustment"
+    },
+    "stripe_session_id": {
+      "type": "string",
+      "description": "Provider reference used for idempotent ledger writes"
+    },
+    "note": {
+      "type": "string"
+    },
+    "recorded_by": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "entry_type",
+    "amount"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

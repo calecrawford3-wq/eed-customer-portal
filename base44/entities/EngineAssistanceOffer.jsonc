@@ -1,0 +1,349 @@
+{
+  "name": "EngineAssistanceOffer",
+  "type": "object",
+  "properties": {
+    "offer_number": {
+      "type": "string",
+      "description": "Staff-facing offer identifier (EAO-YYYY-####)"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_engine_id": {
+      "type": "string"
+    },
+    "build_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Normal shop job, created only once the offer is paid or authorized"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "viewed",
+        "accepted",
+        "declined",
+        "expired",
+        "partially_paid",
+        "paid",
+        "void"
+      ],
+      "default": "draft",
+      "enumColors": [
+        "gray",
+        "blue",
+        "blue",
+        "green",
+        "red",
+        "yellow",
+        "yellow",
+        "green",
+        "gray"
+      ]
+    },
+    "line_items": {
+      "type": "array",
+      "description": "Parts and kit lines on the assisted build",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          },
+          "unit_price": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "labor_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "machining_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "default": 0
+          },
+          "quantity": {
+            "type": "number",
+            "default": 1
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "assistance_type": {
+      "type": "string",
+      "enum": [
+        "percent",
+        "fixed"
+      ],
+      "default": "percent",
+      "enumColors": [
+        "blue",
+        "purple"
+      ]
+    },
+    "assistance_percent": {
+      "type": "number",
+      "default": 0
+    },
+    "requested_assistance_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Fixed assistance dollar amount entered by staff before the fund cap is applied"
+    },
+    "assistance_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Assistance applied to this offer after the fund cap"
+    },
+    "total": {
+      "type": "number",
+      "default": 0,
+      "description": "Subtotal minus assistance; the engine package price after the award"
+    },
+    "amount_due": {
+      "type": "number",
+      "default": 0
+    },
+    "paid_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "number",
+      "default": 0
+    },
+    "pay_in_full_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "installments_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Shows the installment option when a lender is actually enabled for this amount"
+    },
+    "expires_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "terms_text": {
+      "type": "string"
+    },
+    "share_token": {
+      "type": "string",
+      "description": "Long random token for the customer's private offer page. Never contains PII. Rotatable."
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "first_viewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_viewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "declined_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payments": {
+      "type": "array",
+      "description": "Verified payments only. Provider receipts are written by the webhook, never by the browser.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "card",
+              "us_bank_account",
+              "affirm",
+              "klarna",
+              "afterpay_clearpay",
+              "financing",
+              "manual",
+              "other"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "description": "Payment provider that verified the payment (stripe) or 'manual' for staff-recorded payments"
+          },
+          "financed": {
+            "type": "boolean",
+            "default": false
+          },
+          "financed_amount": {
+            "type": "number",
+            "default": 0
+          },
+          "amount_option": {
+            "type": "string"
+          },
+          "stripe_session_id": {
+            "type": "string"
+          },
+          "stripe_payment_intent": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          },
+          "recorded_by": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "financing_availability": {
+      "type": "array",
+      "description": "Financing methods Stripe reported as available when this offer was last prepared",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "financing_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "financing_note": {
+      "type": "string",
+      "description": "Honest statement about what is available. Never an approval or a promised payment term."
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "offer_number",
+    "application_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

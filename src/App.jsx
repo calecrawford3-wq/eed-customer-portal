@@ -92,6 +92,11 @@ import ExceptionDashboard from './pages/ExceptionDashboard';
 import MachiningStation from './pages/MachiningStation';
 import AdditionalWorkViewer from './pages/AdditionalWorkViewer';
 import EstimateViewer from './pages/EstimateViewer';
+import EngineAssistance from './pages/EngineAssistance';
+import EngineAssistanceDetail from './pages/EngineAssistanceDetail';
+import EngineAssistanceApply from './pages/EngineAssistanceApply';
+import EngineAssistanceOffer from './pages/EngineAssistanceOffer';
+import EngineAssistanceStatus from './pages/EngineAssistanceStatus';
 import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
 import PublicLegalViewer from './pages/PublicLegalViewer';
@@ -267,10 +272,15 @@ const routes = createRoutesFromElements(
     <Route path="/invoice/:token" element={<InvoiceViewer />} />
     <Route path="/comparison/:token" element={<PublicStageComparison />} />
     <Route path="/legal/:token" element={<PublicLegalViewer />} />
+    <Route path="/engine-assistance/apply/:token" element={<EngineAssistanceApply />} />
+    <Route path="/engine-assistance/offer/:token" element={<EngineAssistanceOffer />} />
+    <Route path="/engine-assistance/status/:token" element={<EngineAssistanceStatus />} />
     <Route path="/" element={<AdminLayout />}>
       {mainPageKey && MainPage && <Route index element={<MainPage />} />}
       {configPageRoutes}
       <Route path="Credits" element={<Credits />} />
+      <Route path="EngineAssistance" element={<EngineAssistance />} />
+      <Route path="EngineAssistance/:id" element={<EngineAssistanceDetail />} />
       <Route path="WebsiteEnginePricing" element={<WebsiteEnginePricing />} />
       <Route path="WebsiteAnalytics" element={<WebsiteAnalytics />} />
       <Route path="WebsiteSEOManager" element={<WebsiteSEOManager />} />

@@ -1,0 +1,140 @@
+{
+  "name": "EngineAssistanceTemplate",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Stable template key used by links and applications (e.g. 'generic-v1')."
+    },
+    "name": {
+      "type": "string",
+      "description": "Admin-facing template name"
+    },
+    "version_number": {
+      "type": "number",
+      "default": 1,
+      "description": "Increments when the question set is revised. Applications keep the version they were submitted against."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "retired"
+      ],
+      "default": "active",
+      "enumColors": [
+        "green",
+        "gray"
+      ],
+      "description": "Only one template is active at a time. Retiring keeps historical wording for past applications."
+    },
+    "is_generic_placeholder": {
+      "type": "boolean",
+      "default": true,
+      "description": "True while this is the replaceable generic starter template. Set false when Elite's final application is installed."
+    },
+    "intro_text": {
+      "type": "string",
+      "description": "Shown at the top of the public application form"
+    },
+    "consent_text": {
+      "type": "string",
+      "description": "Acknowledgement language the applicant agrees to before submitting"
+    },
+    "sections": {
+      "type": "array",
+      "description": "Ordered question groups. Each field has key, label, type, required, options and help. Keys map to stored application fields where they match a canonical key; every answer is also stored verbatim in the application answers array.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "textarea",
+                    "email",
+                    "phone",
+                    "number",
+                    "date",
+                    "select",
+                    "checkbox",
+                    "file"
+                  ]
+                },
+                "required": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "help": {
+                  "type": "string"
+                },
+                "max_length": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "apply_token": {
+      "type": "string",
+      "description": "Long random token for the public application link. Rotating it invalidates previously shared links."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
