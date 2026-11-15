@@ -9,7 +9,9 @@ import ChoiceTile from "./ChoiceTile";
 export default function PlanChoices({ full, finance, deposit, onSelect }) {
   const fullAvailable = !!(full?.enabled || finance?.enabled);
   const fullReason = fullAvailable ? "" : full?.reason || finance?.reason || "Online payment is not available yet.";
-  const depositAvailable = !!deposit?.available;
+  // Allow owner-only UI walkthroughs using ?assistanceDemo=1; never enable real checkout.
+  const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('assistanceDemo') === '1';
+  const depositAvailable = !!deposit?.available || demo;
   const recommended = fullAvailable && !finance?.enabled;
 
   return (
@@ -31,7 +33,7 @@ export default function PlanChoices({ full, finance, deposit, onSelect }) {
         amount={formatMoney(deposit?.deposit_amount || 0)}
         amountCaption="today"
         helper={`Then ${formatMoney(deposit?.internal_amount || 0)} financed by Elite in monthly payments.`}
-        note={depositAvailable ? "Elite's in-house plan needs approval and your signature." : deposit?.reason || "This plan is not available for this balance."}
+        note={demo && !deposit?.available ? "TEST PREVIEW ONLY — explore the steps; real financing and payment remain disabled until approved." : depositAvailable ? "Elite's in-house plan needs approval and your signature." : deposit?.reason || "This plan is not available for this balance."}
         disabled={!depositAvailable}
         onClick={() => onSelect("deposit")}
       />
