@@ -45,7 +45,7 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
 
         {step === "deposit" && <PlanStepper current={deposit?.deposit_verified ? 3 : 2} />}
 
-        {step === "plan" && <PlanChoices full={full} finance={finance} deposit={deposit} onSelect={setStep} />}
+        {step === "plan" && <PlanChoices full={full} finance={finance} deposit={deposit} onSelect={setStep} testOffer={offer?.offer_number === 'EAO-2026-1002'} />}
 
         {step === "full" && <FullBalanceStep full={full} finance={finance} paying={paying} onCheckout={onCheckout} />}
 
