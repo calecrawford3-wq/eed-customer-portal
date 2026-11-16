@@ -226,11 +226,10 @@ export default async function (req) {
         return Response.json({ identity_settings: updated, note: 'Add the portal Stripe keys before identity verification can run.' });
       }
       const result = await checkIdentityAvailability(new Stripe(key));
-      const priorAvailable = identity.available === true;
-      const accepted = result.available === true && priorAvailable;
-      const error = result.available
-        ? (accepted ? '' : (identity.error || 'Stripe Identity has not accepted a verification session yet. Complete Identity setup in Stripe, then start one verification to confirm.'))
-        : result.error;
+      // Availability must reflect the CURRENT Stripe API result, not the previous cached flag.
+      // Otherwise an initially unavailable account can never become available after activation.
+      const accepted = result.available === true;
+      const error = accepted ? '' : result.error;
       const updated = await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.update(identity.id, {
         available: accepted,
         checked_at: result.checked_at,
@@ -240,7 +239,7 @@ export default async function (req) {
       return Response.json({
         identity_settings: updated,
         note: accepted
-          ? 'Stripe Identity accepted a verification session on the connected account.'
+          ? 'Stripe Identity API access confirmed on the connected account. Start customer verification to confirm session creation.'
           : 'Identity verification is not fully set up yet. Stripe Identity must be enabled before in-house financing can be approved or activated.',
       });
     }
