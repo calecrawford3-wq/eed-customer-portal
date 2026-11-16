@@ -70,6 +70,14 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
           <DialogTitle>Edit Part</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="col-span-2 border rounded-lg p-3 bg-slate-50 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div><strong className="text-sm">Turn 14 Dropshipping</strong><p className="text-xs text-slate-600">Direct-to-customer fulfillment requests require a verified Turn 14 item link.</p></div>
+              <Switch aria-label="Enable Turn 14 dropshipping" disabled={!form.turn14_item_id} checked={!!form.turn14_item_id&&!!form.turn14_dropship_enabled} onCheckedChange={v=>setForm(f=>({...f,turn14_dropship_enabled:v}))}/>
+            </div>
+            {form.turn14_item_id?<p className="text-xs text-green-700">Linked to Turn 14 item {form.turn14_item_id}. Enable and save to allow paid website orders into the supplier review queue.</p>:<p className="text-xs text-amber-700">Not linked to a Turn 14 item. Use Import Turn 14 to locate this product and confirm Link to Existing Part. The supplier part number alone is not sufficient.</p>}
+            <p className="text-xs text-slate-500">Supplier order submission and supplier-backed website stock are not active yet.</p>
+          </div>
           <div><Label>Elite Part Number *</Label><Input value={form.part_number ?? ""} onChange={e => setForm({ ...form, part_number: e.target.value })} /></div>
           <div><Label>Elite Product Name *</Label><Input value={form.name ?? ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
           <div>
@@ -215,7 +223,7 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
               <div className="sm:col-span-2"><Label>SEO Description</Label><Textarea rows={2} value={form.website_seo_description??""} onChange={e=>setForm(f=>({...f,website_seo_description:e.target.value}))}/></div>
             </div>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={!!form.website_show_stock_quantity} onCheckedChange={v=>setForm(f=>({...f,website_show_stock_quantity:!!v}))}/> Show exact shop stock quantity on website</label>
-            {form.turn14_item_id&&<label className="flex items-center gap-2 text-sm"><Switch checked={!!form.turn14_dropship_enabled} onCheckedChange={v=>setForm(f=>({...f,turn14_dropship_enabled:v}))}/> Allow Turn 14 dropship fulfillment requests for paid website orders</label>}
+
             {form.turn14_item_id&&<div className="rounded border bg-slate-50 p-3 text-sm"><strong>Turn 14 supplier stock:</strong> {Number(form.turn14_available_quantity)||0} available · <strong>Elite shop stock:</strong> {Number(form.quantity_on_hand)||0}<p className="text-xs text-slate-500 mt-1">Supplier stock is informational and does not increase tracked shop inventory. Select made-to-order only when fulfillment arrangements are ready.</p>{Number(form.turn14_map_price)>0&&<p className="text-xs mt-1">MAP minimum: ${Number(form.turn14_map_price).toFixed(2)}</p>}</div>}
             {form.website_published&&(!Number(form.sell_price)||Number(form.sell_price)<Number(form.turn14_map_price||0))&&<p className="text-sm text-red-700">Set a valid selling price at or above MAP before publishing.</p>}
           </div>
