@@ -1,3 +1,4 @@
+import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
@@ -17,6 +18,7 @@ const PATHWAYS: Record<string, { option: string; kind: 'full' | 'deposit'; lende
   pay_in_full: { option: 'pay_in_full', kind: 'full', lender: false },
   finance_full: { option: 'installment', kind: 'full', lender: true },
   deposit_card: { option: 'deposit', kind: 'deposit', lender: false },
+  remainder_affirm: { option: 'remainder_affirm', kind: 'full', lender: true },
   deposit_lender: { option: 'deposit_lender', kind: 'deposit', lender: true },
 };
 
@@ -51,6 +53,7 @@ export default async function (req) {
     if (offer.status === 'void' || offer.status === 'declined') return Response.json({ error: 'This offer is no longer payable.' }, { status: 409 });
     if (offerExpired(offer)) return Response.json({ error: 'This offer has expired. Contact Elite Engine Development for an updated offer.' }, { status: 409 });
 
+    if (offer.status === 'draft') return Response.json({ error: 'This offer has not been issued.' }, { status: 409 });
     const settings = await ensureSettings(base44);
     const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
     const agreement = await latestAgreement(base44, offer.id);
@@ -60,6 +63,9 @@ export default async function (req) {
     const identity = loan ? await loadVerificationForLoan(base44, loan.id) : null;
     const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
     const options = plan.pathways;
+    if (loan && ['pending_approval', 'approved', 'active', 'completed'].includes(loan.status)) return Response.json({ error: 'Withdraw the in-house request before paying this balance through Stripe.' }, { status: 409 });
+    if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Affirm is not available for the remainder yet.' }, { status: 409 });
+
 
     if (pathway.lender && body.consent !== true) {
       return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
@@ -101,7 +107,7 @@ export default async function (req) {
       // Only lenders that are configured in Stripe and cover this exact amount.
       const candidates = (pathway.kind === 'deposit'
         ? options.deposit_internal.deposit_lenders.eligible
-        : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => liveEnabled.includes(t));
+        : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => t === 'affirm' && liveEnabled.includes(t));
       if (!candidates.length) {
         return Response.json({ error: 'No lender is currently enabled for this amount. You can pay by card instead, or contact Elite Engine Development.' }, { status: 409 });
       }
@@ -112,9 +118,22 @@ export default async function (req) {
 
     const origin = appOrigin(req);
     const returnPath = `/engine-assistance/offer/${token}`;
-    const revision = `${offer.id}:${amountCents}:${pathwayKey}:${offer.updated_date || ''}`;
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(revision));
-    const idempotencyKey = 'eed-eaf-' + [...new Uint8Array(digest)].map(v => v.toString(16).padStart(2, '0')).join('');
+    let held;
+    try { held = await reserveRoute(base44, offer, pathwayKey); }
+    catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+    if (held.payment_route_session) {
+      const prior = await stripe.checkout.sessions.retrieve(held.payment_route_session);
+      if (prior.status === 'open' && prior.url) return Response.json({ checkout_url: prior.url, session_id: prior.id });
+      if (prior.status === 'expired' || (offer.payments || []).some(p => p.stripe_session_id === prior.id)) {
+        await releaseRoute(base44, held);
+        return Response.json({ error: 'Checkout is closed. Reload your offer before trying again.' }, { status: 409 });
+      }
+      return Response.json({ error: 'Your payment is being confirmed. Please wait.' }, { status: 409 });
+    }
+    if (Date.now() - new Date(held.payment_route_started_at).getTime() > 23 * 3600000) return Response.json({ error: 'This checkout needs staff verification before retrying.' }, { status: 409 });
+    try { await retireOfferSessions(base44, stripe, held); }
+    catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+    const idempotencyKey = 'eed-eaf-' + held.payment_route_claim;
 
     const descriptor = pathway.kind === 'deposit' ? 'Assistance offer deposit' : 'Engine assistance offer';
     const baseOptions: any = {
@@ -133,6 +152,7 @@ export default async function (req) {
       metadata: {
         source: ASSISTANCE_STRIPE_SOURCE,
         base44_app_id: appId,
+        payment_pathway: pathwayKey,
         offer_id: offer.id,
         application_id: offer.application_id || '',
         amount_option: pathway.option,
@@ -143,46 +163,22 @@ export default async function (req) {
       },
     };
 
-    let session: any = null;
-    let offeredMethods = methods;
-    let note = '';
-    if (pathway.lender) {
-      // Some lender combinations are rejected together. Offer exactly the set
-      // Stripe accepts for this amount rather than promising unavailable ones.
-      const attemptsQueue = [methods, ...methods.map((m: string) => [m])];
-      for (const candidate of attemptsQueue) {
-        try {
-          session = await stripe.checkout.sessions.create(
-            { ...baseOptions, payment_method_types: candidate },
-            { idempotencyKey: `${idempotencyKey}-${candidate.join('_')}` },
-          );
-          offeredMethods = candidate;
-          break;
-        } catch (error: any) {
-          note = String(error?.message || 'Financing checkout could not be started').slice(0, 200);
-        }
-      }
-      if (!session?.url || session.status === 'expired') {
-        return Response.json({ error: 'Financing checkout could not be started with the current lender configuration. Pay by card instead or contact Elite Engine Development.' }, { status: 409 });
-      }
-    } else {
-      try {
-        session = await stripe.checkout.sessions.create(baseOptions, { idempotencyKey });
-      } catch {
-        // A method enabled for the account may still be rejected for this
-        // amount. Fall back to card only and say so plainly.
-        session = await stripe.checkout.sessions.create({ ...baseOptions, payment_method_types: ['card'] }, { idempotencyKey: idempotencyKey + '-card' });
-        offeredMethods = ['card'];
-        note = 'Bank transfer was not available for this amount; card payment was offered.';
-      }
-      if (!session?.url || session.status === 'expired') {
-        return Response.json({ error: 'Checkout could not be started. Please try again.' }, { status: 409 });
-      }
-    }
+    // Persist the exact request before the provider call. A timeout retries
+    // the same request/key; it never falls back to a second chargeable session.
+    const requestOptions = held.payment_route_options ? JSON.parse(held.payment_route_options) : baseOptions;
+    if (!held.payment_route_options) await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, { payment_route_options: JSON.stringify(requestOptions) });
+    let session;
+    try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
+    catch { return Response.json({ error: 'Checkout could not be confirmed. Retry this same option or contact Elite; no alternative payment was started.' }, { status: 409 }); }
+    await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, { payment_route_session: session.id });
+    if (!session?.url || session.status === 'expired') return Response.json({ error: 'Checkout has closed. Reload your offer.' }, { status: 409 });
+    const offeredMethods = requestOptions.payment_method_types;
+    const note = '';
 
     const now = new Date().toISOString();
     if (pathway.lender) {
       await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.create({
+        payment_pathway: pathwayKey,
         offer_id: offer.id,
         application_id: offer.application_id || '',
         customer_id: offer.customer_id || '',
@@ -196,7 +192,7 @@ export default async function (req) {
         source: 'customer_checkout',
         customer_consent_at: now,
         customer_consent_text: pathway.kind === 'deposit'
-          ? 'Customer agreed to be directed to a third-party lender for the required deposit only. The remaining balance is financed by Elite under a separate signed, approved agreement.'
+          ? 'Customer agreed to be directed to a third-party lender for the required deposit only. The remainder is separate and may be paid with Stripe/Affirm or requested from Elite subject to approval and a signed agreement.'
           : 'Customer agreed to be directed to a third-party lender at Stripe Checkout. Elite does not submit a credit application and does not decide approval or terms.',
         audit_trail: [{ at: now, by: 'Customer', action: 'checkout_started', note: `${pathwayKey} checkout for ${amountCents / 100}` }],
       });

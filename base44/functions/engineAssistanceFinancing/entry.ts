@@ -1,3 +1,4 @@
+import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
@@ -55,7 +56,25 @@ export default async function (req) {
     const identity = existing ? await loadVerificationForLoan(base44, existing.id) : null;
     const plan = offerPaymentPlan(offer, settings, existing, currentAgreement, identity, identitySettings);
 
+    if (action === 'close_checkout') {
+      if (!offer.payment_route_claim) return Response.json({ closed: true });
+      if (offer.payment_route === 'internal') return Response.json({ error: 'Withdraw your in-house request first.' }, { status: 409 });
+      if (!offer.payment_route_session) return Response.json({ error: 'Retry the existing checkout option first so its status can be verified.' }, { status: 409 });
+      await offers.updateMany({ id: offer.id, payment_route_claim: offer.payment_route_claim, payment_route: offer.payment_route }, { $set: { payment_route: 'closing' } });
+      const closing = rows(await offers.filter({ id: offer.id }))[0];
+      if (closing.payment_route !== 'closing') return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
+      try {
+        const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+        if (!key) throw new Error('Stripe verification is unavailable.');
+        await retireOfferSessions(base44, new Stripe(key), closing);
+        await releaseRoute(base44, closing);
+        return Response.json({ closed: true });
+      } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+    }
+
     if (action === 'request_internal') {
+      if (!plan.deposit_verified) return Response.json({ error: 'Pay the 50% deposit and wait for provider confirmation before requesting financing for the remainder.' }, { status: 409 });
+
       const gate = lendingGate(settings);
       if (!gate.allowed) {
         return Response.json({ error: gate.reason || 'Elite in-house financing is not open yet.' }, { status: 409 });
@@ -144,6 +163,13 @@ export default async function (req) {
         borrower_application: applied.application,
       };
       const note = `Financing application submitted by ${applied.application.legal_name}; requested $${principal.toFixed(2)} after a $${plan.deposit_amount.toFixed(2)} deposit, choosing ${termMonths} monthly payments of $${option.monthly_payment.toFixed(2)} at ${apr}% APR`;
+      let held;
+      try {
+        held = await reserveRoute(base44, offer, 'internal');
+        const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+        if (!key) throw new Error('Stripe verification is unavailable.');
+        await retireOfferSessions(base44, new Stripe(key), held);
+      } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
       const loan = existing
         ? await loans.update(existing.id, {
           ...payload,
@@ -188,9 +214,7 @@ export default async function (req) {
       if (!existing.borrower_application) {
         return Response.json({ error: 'Your financing application is not on file. Contact Elite Engine Development.' }, { status: 409 });
       }
-      if (plan.deposit_verified) {
-        return Response.json({ error: 'Your deposit is already verified and the plan cannot be reshaped here. Contact Elite Engine Development.' }, { status: 409 });
-      }
+
       const principal = round2(Number(existing.principal) || plan.internal_amount);
       const approvedApr = round2(existing.apr !== undefined && existing.apr !== null ? existing.apr : settings.internal_financing_apr);
       // Priced with the APR Elite already approved; the browser sends only a term.
@@ -343,6 +367,7 @@ export default async function (req) {
         internal_financed_amount: 0,
         audit_trail: appendAudit(offer, 'Customer', 'internal_financing_canceled', 'Customer withdrew the in-house financing request'),
       });
+      if (offer.payment_route === 'internal') await releaseRoute(base44, offer);
       return Response.json({ loan: publicLoan(updated) });
     }
 
