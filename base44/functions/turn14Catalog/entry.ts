@@ -18,6 +18,13 @@ export default async function(req){
   const filtered=all;
   return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:false});
  }
+ if(action==='verify_item_data'){
+  const itemId=String(body.item_id||'');
+  if(!/^[a-zA-Z0-9_-]{1,64}$/.test(itemId))return Response.json({error:'Invalid item ID'},{status:400});
+  const [pricing,inventory]=await Promise.allSettled([turn14Request('/v1/pricing/'+itemId),turn14Request('/v1/inventory/'+itemId)]);
+  const normalize=(result)=>result.status==='fulfilled'?{ok:true,records:itemArray(result.value).map(x=>({id:String(x.id||''),attributes:x.attributes||{}}))}:{ok:false,error:String(result.reason?.message||'Lookup failed')};
+  return Response.json({item_id:itemId,pricing:normalize(pricing),inventory:normalize(inventory),read_only:true});
+ }
  if(action==='preview'){
   const itemId=String(body.item_id||'');
   if(!/^[a-zA-Z0-9_-]{1,64}$/.test(itemId))return Response.json({error:'Invalid item ID'},{status:400});
