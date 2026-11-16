@@ -937,6 +937,31 @@ export default async function (req) {
       return Response.json({ loan: updated });
     }
 
+    if (action === 'refresh_financing_attempt') {
+      const attempt = rows(await attempts.filter({ id: str(data.attempt_id, 60) }))[0];
+      if (!attempt?.stripe_session_id) return Response.json({ error: 'No Stripe checkout session is recorded for this financing attempt.' }, { status: 404 });
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if (!key) return Response.json({ error: 'Stripe is not configured.' }, { status: 503 });
+      const stripe = new Stripe(key);
+      const session = await stripe.checkout.sessions.retrieve(attempt.stripe_session_id, { expand: ['payment_intent'] });
+      const intent = session.payment_intent && typeof session.payment_intent !== 'string' ? session.payment_intent : null;
+      const selectedMethod = intent?.payment_method_types?.length === 1 ? intent.payment_method_types[0] : '';
+      const paymentVerified = session.payment_status === 'paid' && session.status === 'complete';
+      // Do not claim an Affirm approval or denial from checkout cancellation,
+      // expiration, or a card payment. Only the actual paid method proves financing.
+      const affirmPaid = paymentVerified && (intent?.payment_method_types || []).includes('affirm') && selectedMethod === 'affirm';
+      const updated = await attempts.update(attempt.id, {
+        status: paymentVerified ? 'completed' : session.status === 'expired' ? 'expired' : attempt.status,
+        provider_decision: affirmPaid ? 'approved' : 'not_reported',
+        provider_decision_source: affirmPaid ? 'stripe_verified_payment' : 'not_reported',
+        verified_amount: paymentVerified ? Number(session.amount_total || 0) / 100 : 0,
+        selected_method: selectedMethod || attempt.selected_method || '',
+        reviewed_at: new Date().toISOString(),
+        audit_trail: appendAudit(attempt, user, 'stripe_status_checked', 'Stripe checkout: ' + session.status + ', payment: ' + session.payment_status),
+      });
+      return Response.json({ attempt: updated, stripe_checkout_status: session.status, stripe_payment_status: session.payment_status, affirm_approval_proven: affirmPaid });
+    }
+
     if (action === 'financing_review') {
       const attempt = rows(await attempts.filter({ id: str(data.attempt_id, 60) }))[0];
       if (!attempt) return Response.json({ error: 'Financing attempt not found' }, { status: 404 });
