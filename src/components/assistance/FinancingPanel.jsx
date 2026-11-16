@@ -13,7 +13,7 @@ import StatusBadge from "./StatusBadge";
 // Financing is never approved, declined or inferred by Elite. This panel shows
 // only what the payment provider actually reported, plus a manual review path
 // that requires verified evidence.
-export default function FinancingPanel({ attempts = [], onReview, busy }) {
+export default function FinancingPanel({ attempts = [], onReview, onRefresh, busy }) {
   const [activeId, setActiveId] = useState("");
   const [reviewStatus, setReviewStatus] = useState("needs_review");
   const [notes, setNotes] = useState("");
@@ -64,7 +64,9 @@ export default function FinancingPanel({ attempts = [], onReview, busy }) {
             {!!(attempt.offered_methods || []).length && (
               <p className="text-[11px] text-slate-500">Offered: {attempt.offered_methods.join(", ")}</p>
             )}
-            {attempt.selected_method && <p className="text-[11px] text-slate-600">Lender reported: {attempt.selected_method}</p>}
+            {attempt.selected_method && <p className="text-[11px] text-slate-600">Stripe payment method: {attempt.selected_method}</p>}
+            {attempt.stripe_session_id && <p className="text-[11px] text-slate-500 break-all">Stripe session: {attempt.stripe_session_id}</p>}
+            {attempt.provider_decision_source === "stripe_verified_payment" && <p className="text-[11px] font-medium text-emerald-700">Affirm payment verified by Stripe</p>}
             {Number(attempt.verified_amount) > 0 && <p className="text-[11px] text-emerald-700">Verified {formatMoney(attempt.verified_amount)}</p>}
             {attempt.error_message && <p className="text-[11px] text-amber-700">{attempt.error_message}</p>}
             {attempt.review_evidence && <p className="text-[11px] text-slate-600">Evidence: {attempt.review_evidence}</p>}
@@ -99,7 +101,7 @@ export default function FinancingPanel({ attempts = [], onReview, busy }) {
                 </div>
               </div>
             ) : (
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => startReview(attempt)}>Review</Button>
+              <div className="flex flex-wrap gap-2 mt-2"><Button size="sm" variant="outline" onClick={() => startReview(attempt)}>Review</Button>{attempt.stripe_session_id && <Button size="sm" variant="outline" disabled={busy} onClick={() => onRefresh?.(attempt.id)}>Check Stripe status</Button>}</div>
             )}
           </div>
         ))}
