@@ -259,6 +259,7 @@ export default function EngineAssistanceOffer() {
               onRequest={(payload) => runFinancing("request_internal", payload || {}, "Financing application submitted. Elite will review it by hand.")}
               onSign={(payload) => runFinancing("sign_disclosures", {
                 signature_name: payload?.name,
+                signature_paths: payload?.signature_paths,
                 esign_consent: payload?.esign_consent === true,
                 accept_terms: payload?.accept_terms === true,
                 terms_change_accepted: payload?.terms_change_accepted === true,
