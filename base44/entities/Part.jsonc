@@ -31,6 +31,18 @@
     "supplier_id": {
       "type": "string"
     },
+    "supplier_product_name": {
+      "type": "string",
+      "description": "Original supplier catalog product name, used only for supplier purchasing"
+    },
+    "manufacturer_part_number": {
+      "type": "string",
+      "description": "Manufacturer part number, without Turn 14 supplier prefix"
+    },
+    "turn14_supplier_sku": {
+      "type": "string",
+      "description": "Exact Turn 14 catalog SKU, including supplier prefix"
+    },
     "supplier_part_number": {
       "type": "string"
     },
