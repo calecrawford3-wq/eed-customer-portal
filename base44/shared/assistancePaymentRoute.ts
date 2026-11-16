@@ -6,7 +6,7 @@ export async function reserveRoute(b: any, offer: any, route: string) {
   const current = rows(await entity(b).filter({ id: offer.id }))[0];
   if (!current) throw new Error('Offer unavailable');
   if (current.payment_route_claim) {
-    if (current.payment_route !== route) throw new Error('Finish or close the existing checkout before changing payment options.');
+    if (route === 'internal' || current.payment_route !== route) throw new Error('Finish or close the existing checkout before changing payment options.');
     return current;
   }
   const claim = crypto.randomUUID();
@@ -32,6 +32,7 @@ export async function retireOfferSessions(b: any, stripe: any, offer: any) {
     const batch = await stripe.checkout.sessions.list({ limit: 100, created: { gte: since }, ...(cursor ? { starting_after: cursor } : {}) });
     for (const item of batch.data) {
       if (item.metadata?.source !== 'eed_engine_assistance_v1' || item.metadata?.offer_id !== offer.id) continue;
+      if (offer.payment_route !== 'internal' && offer.payment_route !== 'closing' && item.metadata?.payment_route_claim === offer.payment_route_claim) continue;
       let session = await stripe.checkout.sessions.retrieve(item.id, { expand: ['payment_intent.latest_charge'] });
       if ((offer.payments || []).some((p: any) => p.stripe_session_id === session.id)) continue;
       if (session.status === 'open') {

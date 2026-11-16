@@ -150,6 +150,7 @@ export default async function (req) {
       success_url: `${origin}${returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}${returnPath}?payment=canceled`,
       metadata: {
+        payment_route_claim: held.payment_route_claim,
         source: ASSISTANCE_STRIPE_SOURCE,
         base44_app_id: appId,
         payment_pathway: pathwayKey,
@@ -165,8 +166,10 @@ export default async function (req) {
 
     // Persist the exact request before the provider call. A timeout retries
     // the same request/key; it never falls back to a second chargeable session.
-    const requestOptions = held.payment_route_options ? JSON.parse(held.payment_route_options) : baseOptions;
-    if (!held.payment_route_options) await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, { payment_route_options: JSON.stringify(requestOptions) });
+    if (!held.payment_route_options) await base44.asServiceRole.entities.EngineAssistanceOffer.updateMany({ id: offer.id, payment_route_claim: held.payment_route_claim, payment_route_options: '' }, { $set: { payment_route_options: JSON.stringify(baseOptions) } });
+    const persisted = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({ id: offer.id }))[0];
+    if (persisted.payment_route_claim !== held.payment_route_claim || persisted.payment_route !== pathwayKey) return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
+    const requestOptions = JSON.parse(persisted.payment_route_options);
     let session;
     try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
     catch { return Response.json({ error: 'Checkout could not be confirmed. Retry this same option or contact Elite; no alternative payment was started.' }, { status: 409 }); }

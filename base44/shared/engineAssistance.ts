@@ -2,7 +2,7 @@
 // Every amount is calculated here on the server. The browser never supplies a
 // price, an assistance amount, a payment status, or an applicant identifier.
 
-import { reserveRoute, retireOfferSessions } from './assistancePaymentRoute.ts';
+import { reserveRoute, releaseRoute, retireOfferSessions } from './assistancePaymentRoute.ts';
 import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 import { deliverAssistanceEmail } from './assistanceEmail.ts';
@@ -910,6 +910,8 @@ export async function recordAssistancePayment(base44: any, facts: any) {
   // Deposit fields are re-derived from what was actually collected. When a card
   // or lender payment covers the required deposit and the in-house agreement is
   // approved and signed, the agreement goes live and the job opens.
+  const routed = rows(await offerEntity.filter({ id: offer.id }))[0];
+  if (routed?.payment_route_claim && routed.payment_route !== 'internal' && routed.payment_route_session === facts.session_id) await releaseRoute(base44, routed);
   const synced = await syncDepositState(base44, offer.id, 'Stripe');
   const currentOffer = synced?.offer || offer;
   const fullyPaid = cents(computeOfferTotals(currentOffer).balance_due) === 0;
