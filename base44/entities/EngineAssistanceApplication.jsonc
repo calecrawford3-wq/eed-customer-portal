@@ -9,6 +9,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "pending_payment",
         "submitted",
         "under_review",
         "info_requested",
@@ -278,6 +279,54 @@
     "status_token": {
       "type": "string",
       "description": "Long random token for the applicant's private status page. Not a record id and contains no PII."
+    },
+    "submission_fee_cents": {
+      "type": "number",
+      "default": 0
+    },
+    "submission_fee_status": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "pending",
+        "paid",
+        "refunded",
+        "credited"
+      ],
+      "default": "not_required"
+    },
+    "submission_fee_session_id": {
+      "type": "string"
+    },
+    "submission_fee_payment_intent": {
+      "type": "string"
+    },
+    "submission_fee_paid_at": {
+      "type": "string"
+    },
+    "submission_fee_policy_version": {
+      "type": "string"
+    },
+    "submission_fee_credit_cents": {
+      "type": "number",
+      "default": 0
+    },
+    "income_verification_status": {
+      "type": "string",
+      "enum": [
+        "not_requested",
+        "requested",
+        "connected",
+        "reviewed",
+        "failed"
+      ],
+      "default": "not_requested"
+    },
+    "income_verification_provider": {
+      "type": "string"
+    },
+    "income_verification_session_id": {
+      "type": "string"
     },
     "submitted_at": {
       "type": "string",
