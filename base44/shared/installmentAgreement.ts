@@ -13,8 +13,8 @@
 
 import { financingTermLimits } from './financingTerms.ts';
 
-export const AGREEMENT_TEMPLATE_KEY = 'ok-retail-installment-v1';
-export const AGREEMENT_TEMPLATE_VERSION = 1;
+export const AGREEMENT_TEMPLATE_KEY = 'ok-retail-installment-v2';
+export const AGREEMENT_TEMPLATE_VERSION = 2;
 export const AUTOPAY_TERMS_VERSION = 'autopay-v1';
 
 export const SELLER = {
@@ -185,12 +185,12 @@ const SECTION_TEMPLATES = [
   {
     key: 'schedule',
     title: '6. Payment schedule',
-    body: 'First payment due {{first_payment_date}}. Final payment due {{last_payment_date}}. {{payment_count}} payments of {{monthly_payment}} are due on the dates listed in the payment schedule below. Payments are applied first to accrued finance charge and then to the unpaid amount financed. The schedule below is part of this agreement.',
+    body: 'Your first scheduled payment is due {{first_payment_date}} and the last is due {{last_payment_date}}. The attached payment schedule states the amount and due date of each installment and controls if the final installment differs due to rounding. You must pay each installment when due, using a payment method made available by Seller. Payments are credited to your account when actually received and processed, subject to applicable law. No payment is deemed made merely because an autopay method is saved. Payments will be allocated as permitted by applicable law and the disclosed amortization schedule. Contact Seller promptly if a payment is missing from your ledger.',
   },
   {
     key: 'prepayment',
     title: '7. Prepayment',
-    body: 'You may prepay all or part of the amount financed at any time without penalty. If you prepay in full, you pay the unpaid amount financed plus finance charge accrued to the payoff date; finance charge that has not accrued is not charged. Prepaying reduces the finance charge you would otherwise pay.',
+    body: 'You may pay all or part of the unpaid balance before its due date without a prepayment penalty. Any finance charge or refund upon early payoff will be calculated using the method stated in the final approved disclosures and as required by applicable law. You may request a written payoff statement and itemized calculation from Seller before paying the account in full.',
   },
   {
     key: 'security',
@@ -210,7 +210,7 @@ const SECTION_TEMPLATES = [
   {
     key: 'collections',
     title: '11. Collection referral and credit reporting',
-    body: 'If an account remains past due after the cure period, Elite may refer it to a third-party collection agency. Elite does not furnish account information to consumer credit bureaus itself. A collection agency that receives a referred account may report it, and Elite cannot control or guarantee what an agency reports, when it reports, or how a bureau reflects it. No referral or reporting happens automatically: each referral is a documented step approved by Elite staff.',
+    body: 'If a payment default remains uncured after all notices and waiting periods required by this agreement and applicable law, Seller may seek payment of amounts legally due, including through a third-party collection agency or court action where permitted. Seller will provide a collection agency only information reasonably necessary to establish, service, or collect the account, subject to applicable privacy and consumer-protection laws. Any credit reporting must be accurate, properly authorized where required, and subject to applicable dispute rights. This agreement does not authorize collection fees, attorney fees, acceleration, repossession, or other charges or remedies unless expressly disclosed in an enforceable provision and permitted by law. No referral is automatic.',
   },
   {
     key: 'hardship',
@@ -225,12 +225,12 @@ const SECTION_TEMPLATES = [
   {
     key: 'privacy',
     title: '14. Privacy and identity information',
-    body: 'Elite collects only what is needed to service this agreement: your name, contact details, the goods financed, and payment records. Elite does not collect or store your Social Security number in this system. If identity verification is ever required, it is performed through a secure provider-hosted process, never by typing a Social Security number into an Elite web form. Card and bank details are handled by the payment processor and are not stored by Elite.',
+    body: 'Seller uses identifying, contact, transaction, verification-status and payment information to evaluate, document, administer and collect this account, as described in its applicable privacy notices. Government identification and any requested Social Security number are entered only into the authorized identity provider’s hosted verification process, not into Seller’s application form. Seller does not store full SSNs or identity-document images in this financing system. Verification by a provider does not itself constitute a credit decision. Payment-card information is handled by the payment processor. Seller may disclose necessary account information to authorized service providers and collection agencies as permitted by law.',
   },
   {
     key: 'esign',
     title: '15. Electronic signature',
-    body: 'You agree to receive and sign this agreement electronically. Your typed name, the date and time, the version hash of the exact document you accepted, and the IP address and browser reported at signing are recorded as your signature. You may ask Elite for a paper copy of the signed agreement at any time.',
+    body: 'By separately checking the electronic-records consent and agreement-acceptance boxes and drawing your signature, you intend to sign this agreement electronically. Seller records your drawn signature, typed legal name, acceptance date and time, the cryptographic hash of the accepted agreement, and available browser and network information as evidence of assent. You may request a copy of the signed agreement in a printable format. Any required electronic-records consent disclosures and applicable right to withdraw consent must be furnished before relying on electronic delivery.',
   },
   {
     key: 'autopay',
@@ -238,9 +238,14 @@ const SECTION_TEMPLATES = [
     body: '{{autopay_body}}',
   },
   {
+    key: 'delivery',
+    title: '17. Delivery, acceptance and seller obligations',
+    body: 'Seller will supply the engine, parts, machining and services identified in the attached itemization, subject to the written order specifications and any separately agreed completion or delivery schedule. Customer acceptance of goods or completion of services must be documented in the associated job and delivery record. This installment agreement does not itself certify that goods have been delivered, installed, or accepted, and does not eliminate applicable warranty, cancellation, dispute or other statutory rights.',
+  },
+  {
     key: 'general',
-    title: '17. General',
-    body: 'Oklahoma law governs this agreement. If any provision is unenforceable, the rest remains in effect. Elite does not waive any right by delaying action. You may not be required to waive any right or defense as a condition of this agreement. This agreement and its itemization, payment schedule and any signed security agreement are the entire agreement about this financing. This document is a contract template used by Elite; it is not legal advice to either party.',
+    title: '18. General',
+    body: 'Subject to mandatory federal law and applicable consumer protections, Oklahoma law governs this agreement. If a provision is held unenforceable, remaining provisions continue only to the extent they can operate lawfully. Failure to exercise a right does not waive it. Any amendment affecting the amount financed, APR, payment obligations, or other material terms must be documented in a writing accepted by both parties; no unilateral oral change is effective. Notices must be delivered using a method permitted by law and the applicable notice provisions. The agreement, the itemization, the payment schedule, and any separately executed addenda comprise the entire agreement concerning this installment sale. Nothing in this agreement waives nonwaivable statutory rights or defenses.',
   },
 ];
 
