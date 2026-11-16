@@ -412,7 +412,18 @@ function appendTrail(record: any, by: string, action: string, note: string) {
 // Records an acceptance against the exact stored agreement, re-verifying the
 // hash first so the customer can only sign the version they were shown. Called
 // from the offer flow and from the standalone agreement page.
-export async function acceptAgreementRecord(base44: any, { agreement, loan, settings, name, ip, userAgent, autopayAuthorized }: any) {
+export async function acceptAgreementRecord(base44: any, { agreement, loan, settings, name, signaturePaths, ip, userAgent, autopayAuthorized }: any) {
+  // Persist the exact vector strokes the customer drew, not a generated font.
+  // Only numeric coordinates and SVG move/line commands are accepted.
+  if (!Array.isArray(signaturePaths) || signaturePaths.length < 1 || signaturePaths.length > 30) {
+    throw new Error('Draw your signature before accepting the agreement.');
+  }
+  const paths = signaturePaths.map((p: any) => String(p || ''));
+  if (paths.some((p: string) => p.length > 6000 || !/^M\s+\d{1,4}\s+\d{1,4}(?:\s+L\s+\d{1,4}\s+\d{1,4})+$/.test(p))
+      || paths.join('').length > 30000 || paths.join('').length < 20) {
+    throw new Error('The drawn signature is invalid. Clear the pad and sign again.');
+  }
+  const signatureHash = await sha256Hex(JSON.stringify({ paths, agreement_hash: agreement?.content_hash, name }));
   if (!agreement) throw new Error('An issued agreement is required before signing.');
   if (agreement.status === 'accepted') return { agreement, loan, already_signed: true };
   if (agreement.status !== 'issued') throw new Error('This agreement is no longer open for signature.');
@@ -433,6 +444,9 @@ export async function acceptAgreementRecord(base44: any, { agreement, loan, sett
     status: 'accepted',
     accepted_at: now,
     signer_name: name,
+    signature_paths: paths,
+    signature_hash: signatureHash,
+    signature_method: 'handwritten_vector',
     esign_consent: true,
     terms_accepted: true,
     affirmative_consent_at: now,
