@@ -6,7 +6,7 @@ import { publicAgreement, lendingGate, latestAgreement } from './installmentAgre
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 import { deliverAssistanceEmail } from './assistanceEmail.ts';
 import { publicApplicationSummary } from './financingApplication.ts';
-import { financingOptions, loanTerms } from './financingTerms.ts';
+import { financingOptions, financingTermLimits, loanTerms } from './financingTerms.ts';
 
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
@@ -429,6 +429,14 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
             : !statusOpen
               ? 'This offer is no longer payable.'
               : '';
+  // An approved but unsigned plan can still be changed by the customer before
+  // signing: priced at the approved APR, never at a rate the browser supplies.
+  const limits = financingTermLimits(settings);
+  const changeablePlan = loanApproved && !loanSigned && !depositVerified;
+  const approvedMonthly = round2(loan?.monthly_payment);
+  const belowMinimum = loanApproved && !loanSigned
+    && cents(approvedMonthly) > 0
+    && cents(approvedMonthly) < cents(limits.minMonthly);
   const depositPath = {
     deposit_percent: pct,
     deposit_amount: depositTarget,
@@ -442,6 +450,15 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     // Every term Elite can offer on this exact balance, with the payment, total
     // of payments and finance charge for each. Calculated here, never in the browser.
     financing: financingOptions(internalAmount, settings),
+    // Plans the customer may pick from before signing an approved but unsigned
+    // agreement, priced with the APR Elite already approved.
+    revision_financing: changeablePlan
+      ? financingOptions(internalAmount, { ...settings, internal_financing_apr: round2(loan?.apr ?? settings?.internal_financing_apr) })
+      : null,
+    can_change_plan: changeablePlan && !blockedReason,
+    min_monthly_payment: limits.minMonthly,
+    monthly_below_minimum: belowMinimum,
+    revision_requested: loan?.revision_requested === true,
     loan_status: loanStatus,
     loan_signed: loanSigned,
     loan_ready: loanReady,
@@ -544,6 +561,10 @@ export function publicLoan(loan: any) {
     requested_total_repayable: round2(loan.requested_pricing?.total_repayable),
     terms_changed: loan.terms_changed === true,
     terms_change_consented: !!loan.terms_change_consent_at,
+    // The customer asked for a different payment plan before signing; Elite must
+    // re-approve and reissue the agreement.
+    revision_requested: loan.revision_requested === true,
+    revision_requested_at: loan.revision_requested_at || '',
     requested_at: loan.requested_at || '',
     approved_at: loan.approved_at || '',
     signed_at: loan.signed_at || '',

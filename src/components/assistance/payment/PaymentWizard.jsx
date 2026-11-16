@@ -16,7 +16,7 @@ const HEADINGS = {
 // Mobile-first two-step wizard. Step 1 picks the plan, step 2 picks how that
 // one plan is funded. The underlying pathway values are unchanged:
 // pay_in_full, finance_full, deposit_card, deposit_lender.
-export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, token = "", onIdentityChanged = null }) {
+export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, onChangePlan, token = "", onIdentityChanged = null }) {
   const pathways = offer?.pathways || {};
   const full = pathways.pay_in_full || {};
   const finance = pathways.finance_full || {};
@@ -59,6 +59,7 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
             onRequest={onRequest}
             onSign={onSign}
             onCancel={onCancel}
+            onChangePlan={onChangePlan}
             agreement={offer?.internal_agreement}
             autopayEnabled={offer?.autopay_enabled === true}
             token={token}

@@ -11,7 +11,7 @@ import {
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { validateFinancingApplication } from '../../shared/financingApplication.ts';
-import { financingQuote } from '../../shared/financingTerms.ts';
+import { financingQuote, meetsMinimumInstallment } from '../../shared/financingTerms.ts';
 
 // Public, token-authorized actions for the customer's in-house financing
 // request. Nothing here charges money or approves credit: the customer asks for
@@ -174,10 +174,94 @@ export default async function (req) {
       });
     }
 
+    // The customer chooses a different number of monthly payments before signing
+    // an approved plan. Approved terms are never overwritten silently: the loan
+    // goes back to Elite for review and the outstanding agreement is voided.
+    if (action === 'change_plan') {
+      if (!existing) return Response.json({ error: 'There is no in-house financing request on this offer.' }, { status: 404 });
+      if (existing.signed_at) {
+        return Response.json({ error: 'This agreement is already signed. Contact Elite Engine Development to change a signed plan.' }, { status: 409 });
+      }
+      if (existing.status !== 'approved') {
+        return Response.json({ error: 'A new payment plan can be chosen once Elite has approved terms and before you sign.' }, { status: 409 });
+      }
+      if (!existing.borrower_application) {
+        return Response.json({ error: 'Your financing application is not on file. Contact Elite Engine Development.' }, { status: 409 });
+      }
+      if (plan.deposit_verified) {
+        return Response.json({ error: 'Your deposit is already verified and the plan cannot be reshaped here. Contact Elite Engine Development.' }, { status: 409 });
+      }
+      const principal = round2(Number(existing.principal) || plan.internal_amount);
+      const approvedApr = round2(existing.apr !== undefined && existing.apr !== null ? existing.apr : settings.internal_financing_apr);
+      // Priced with the APR Elite already approved; the browser sends only a term.
+      const { plan: pricing, option } = financingQuote(principal, { ...settings, internal_financing_apr: approvedApr }, body.requested_term_months);
+      if (!pricing.can_finance) return Response.json({ error: pricing.note }, { status: 409 });
+      if (!option) {
+        return Response.json({
+          error: `Choose one of the available plans: ${pricing.eligible_terms[0]} to ${pricing.max_eligible_term} monthly payments, each at or above $${pricing.min_monthly_payment.toFixed(2)}.`,
+        }, { status: 400 });
+      }
+      const now = new Date().toISOString();
+      const requestedPricing = {
+        principal,
+        apr: approvedApr,
+        term_months: option.term_months,
+        monthly_payment: option.monthly_payment,
+        total_repayable: option.total_repayable,
+        finance_charge: option.finance_charge,
+        min_term_months: pricing.min_term_months,
+        max_term_months: pricing.max_term_months,
+        min_monthly_payment: pricing.min_monthly_payment,
+        eligible_terms: pricing.eligible_terms,
+        snapshot_at: now,
+      };
+      // The old approval is withdrawn from the customer's view until Elite
+      // approves the new plan and a fresh agreement is issued.
+      const updated = await loans.update(existing.id, {
+        status: 'pending_approval',
+        requested_apr: approvedApr,
+        requested_term_months: option.term_months,
+        requested_monthly_payment: option.monthly_payment,
+        requested_pricing: requestedPricing,
+        revision_requested: true,
+        revision_requested_at: now,
+        terms_changed: false,
+        terms_change_consent_at: '',
+        terms_change_consent_name: '',
+        approved_at: '',
+        approved_by: '',
+        audit_trail: appendAudit(existing, 'Customer', 'payment_plan_change_requested',
+          `Customer asked for ${option.term_months} monthly payments of $${option.monthly_payment.toFixed(2)} at ${approvedApr}% APR on $${principal.toFixed(2)}; previous approval withdrawn pending re-approval`),
+      });
+      // The unsigned agreement for the withdrawn terms can no longer be signed.
+      let voided: any = null;
+      if (currentAgreement && currentAgreement.status === 'issued') {
+        voided = await base44.asServiceRole.entities.EngineAssistanceAgreement.update(currentAgreement.id, {
+          status: 'void',
+          voided_at: now,
+          void_reason: 'Customer requested a different payment plan before signing',
+          audit_trail: appendAudit(currentAgreement, 'Customer', 'agreement_voided', `Withdrawn after a plan change request: ${option.term_months} payments of $${option.monthly_payment.toFixed(2)}`),
+        });
+      }
+      return Response.json({
+        loan: publicLoan(updated),
+        agreement: publicAgreement(voided || currentAgreement),
+        revision_requested: true,
+      });
+    }
+
     if (action === 'sign_disclosures') {
       if (!existing) return Response.json({ error: 'There is no in-house financing request on this offer.' }, { status: 404 });
       if (existing.status !== 'approved') {
         return Response.json({ error: 'Elite has not approved terms for this request yet. Nothing is signed or owed until then.' }, { status: 409 });
+      }
+      // Terms whose regular installment is under the configured minimum can never
+      // be signed. The customer chooses a shorter plan here instead.
+      const installment = meetsMinimumInstallment(existing.monthly_payment, settings);
+      if (!installment.ok) {
+        return Response.json({
+          error: `These ${Number(existing.term_months) || 0}-month terms pay $${round2(existing.monthly_payment).toFixed(2)} per month, below Elite's $${installment.minimum.toFixed(2)} minimum installment. Choose a shorter payment plan before signing.`,
+        }, { status: 409 });
       }
       if (existing.signed_at) {
         return Response.json({

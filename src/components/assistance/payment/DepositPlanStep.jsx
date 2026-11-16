@@ -12,7 +12,7 @@ import AutopaySetupCard from "../autopay/AutopaySetupCard";
 // ever charge; the remainder belongs to the in-house agreement, which must be
 // approved and signed before the deposit payment opens.
 export default function DepositPlanStep({
-  deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel,
+  deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, onChangePlan,
   agreement = null, token = "", identity = null, onIdentityChanged = null, autopayEnabled = false, paymentsTestMode = false,
 }) {
   const [method, setMethod] = useState("");
@@ -71,6 +71,7 @@ export default function DepositPlanStep({
         onRequest={onRequest}
         onSign={onSign}
         onCancel={onCancel}
+        onChangePlan={onChangePlan}
         hideAmounts
         agreement={agreement}
       />

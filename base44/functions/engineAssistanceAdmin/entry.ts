@@ -830,11 +830,14 @@ export default async function (req) {
         terms_changed: termsChanged,
         terms_change_consent_at: '',
         terms_change_consent_name: '',
+        // A customer-requested plan change is answered by this approval; the
+        // request flag is cleared only once the new terms are approved.
+        revision_requested: false,
         approved_by: user.email || 'Admin',
         approved_at: now,
         decline_reason: '',
         internal_notes: data.note !== undefined ? str(data.note, 2000) : loan.internal_notes,
-        audit_trail: appendAudit(loan, user, 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months at $${round2(terms.monthly_payment).toFixed(2)}/month on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}. ${customerAsked}${termsChanged ? ' — approved terms differ, so the customer must accept the change before signing' : ''}`),
+        audit_trail: appendAudit(loan, user, loan.revision_requested ? 'loan_reapproved_change_request' : 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months at $${round2(terms.monthly_payment).toFixed(2)}/month on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}. ${customerAsked}${termsChanged ? ' — approved terms differ, so the customer must accept the change before signing' : ''}${loan.revision_requested ? ' — re-approved after the customer asked to change their plan; a new agreement was issued and the old one voided' : ''}`),
       });
       const synced = await syncDepositState(base44, loan.offer_id, user.email || 'Admin');
       // Issuing the exact hashed agreement is what lets the customer read and
@@ -1014,10 +1017,16 @@ export default async function (req) {
         return Response.json({ error: 'Approve the fixed APR and term before issuing the agreement.' }, { status: 400 });
       }
       const plan = offerPaymentPlan(offer, settings, loan, await latestAgreement(base44, offer.id));
-      const agreement = await issueAgreement(base44, {
-        offer, loan, settings, totals: plan.totals, plan, actor: user.email || 'Admin',
-        note: str(data.note, 500) || 'Issued by staff',
-      });
+      let agreement: any = null;
+      try {
+        agreement = await issueAgreement(base44, {
+          offer, loan, settings, totals: plan.totals, plan, actor: user.email || 'Admin',
+          note: str(data.note, 500) || 'Issued by staff',
+        });
+      } catch (error: any) {
+        // Issuance refuses terms under the minimum installment; say so plainly.
+        return Response.json({ error: String(error?.message || 'The agreement could not be issued.') }, { status: 400 });
+      }
       return Response.json({
         agreement,
         note: settings.agreement_template_status === 'approved_counsel'

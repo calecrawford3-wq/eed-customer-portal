@@ -112,6 +112,13 @@ export function financingOptions(principal: any, settings: any) {
   };
 }
 
+// True when a regular scheduled installment meets the configured minimum. The
+// final installment may be smaller; only the regular payment is tested here.
+export function meetsMinimumInstallment(monthly: any, settings: any) {
+  const limits = financingTermLimits(settings);
+  return { ok: cents(monthly) >= cents(limits.minMonthly), minimum: limits.minMonthly };
+}
+
 // Server-side quote for one requested term. Returns null when that term is not
 // offered for this balance, so a caller can never invent one.
 export function financingQuote(principal: any, settings: any, termMonths: any) {

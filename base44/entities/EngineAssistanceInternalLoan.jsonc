@@ -31,7 +31,7 @@
         "green",
         "gray"
       ],
-      "description": "pending_approval = customer asked, Elite has not decided; approved = Elite set fixed APR/term and is waiting for the customer signature; declined = Elite did not approve; active = deposit collected and agreement signed; completed = fully repaid; canceled = withdrawn before activation."
+      "description": "pending_approval = customer asked (or asked to change) and Elite has not decided; approved = Elite set fixed APR/term and is waiting for the customer signature; declined = Elite did not approve; active = deposit collected and agreement signed; completed = fully repaid; canceled = withdrawn before activation."
     },
     "principal": {
       "type": "number",
@@ -68,7 +68,7 @@
     "requested_term_months": {
       "type": "number",
       "default": 0,
-      "description": "Number of monthly payments the customer chose on their application."
+      "description": "Number of monthly payments the customer chose on their application or on a plan change request."
     },
     "requested_monthly_payment": {
       "type": "number",
@@ -129,6 +129,16 @@
     },
     "terms_change_consent_name": {
       "type": "string"
+    },
+    "revision_requested": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the customer asked for a different payment plan before signing an approved agreement. The previous approval is withdrawn, the unsigned agreement is voided, and Elite must re-approve and reissue."
+    },
+    "revision_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer asked for the plan change"
     },
     "first_payment_date": {
       "type": "string",

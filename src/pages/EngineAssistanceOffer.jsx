@@ -109,7 +109,12 @@ export default function EngineAssistanceOffer() {
   };
 
   const runFinancing = async (action, payload = {}, successMessage) => {
-    setActionBusy(action === "request_internal" ? "request" : action === "sign_disclosures" ? "sign" : "cancel");
+    setActionBusy(
+      action === "request_internal" ? "request"
+        : action === "sign_disclosures" ? "sign"
+          : action === "change_plan" ? "change"
+            : "cancel",
+    );
     try {
       const res = await base44.functions.invoke("engineAssistanceFinancing", { token, action, ...payload });
       if (res.data?.error) throw new Error(res.data.error);
@@ -253,6 +258,7 @@ export default function EngineAssistanceOffer() {
               terms_change_accepted: payload?.terms_change_accepted === true,
               autopay_authorized: payload?.autopay_authorized === true,
             }, "Agreement signed")}
+            onChangePlan={(payload) => runFinancing("change_plan", payload || {}, "Payment plan change sent to Elite for review.")}
             onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}
             token={token}
             onIdentityChanged={refreshIdentity}

@@ -1,21 +1,26 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle2, Clock, ExternalLink, FileSignature, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, ExternalLink, FileSignature, Loader2, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { parseOfferDate } from "@/lib/offerDate";
 import { formatMoney } from "@/lib/money";
 import AgreementSignatureForm from "./agreement/AgreementSignatureForm";
 import FinancingApplicationForm from "./financing/FinancingApplicationForm";
+import ChangePaymentPlan from "./financing/ChangePaymentPlan";
 
 // The in-house financing half of the split plan. It shows only what Elite has
 // actually approved: nothing here promises a live loan before the terms are
 // approved and the disclosures are signed.
-export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, hideAmounts = false, agreement = null }) {
+export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, onChangePlan, hideAmounts = false, agreement = null }) {
   const status = String(deposit?.loan_status || "");
   const active = ['active', 'completed'].includes(status);
   const approved = ['approved', 'active', 'completed'].includes(status);
   const signed = !!deposit?.loan_signed;
+  // An approved, unsigned plan whose regular installment is under the configured
+  // minimum can never be signed. The customer has to choose a shorter plan.
+  const belowMinimum = approved && !signed && deposit?.monthly_below_minimum === true;
+  const minimum = Number(deposit?.min_monthly_payment) || 100;
   const verifiedAt = parseOfferDate(deposit?.deposit_verified_at);
   const terms = loan && approved ? loan : null;
   // When Elite approves something other than what the customer chose, the change
@@ -63,8 +68,12 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
         <div className="flex items-start gap-2 text-xs text-amber-800">
           <Clock className="h-4 w-4 mt-0.5 flex-none text-amber-600" />
           <div className="flex-1">
-            <p className="font-semibold">Awaiting Elite approval</p>
-            <p className="text-amber-700">Elite reviews the terms by hand. Nothing is owed under this plan until it is approved, signed and the deposit is paid.</p>
+            <p className="font-semibold">{loan?.revision_requested ? "Your new payment plan is with Elite" : "Awaiting Elite approval"}</p>
+            <p className="text-amber-700">
+              {loan?.revision_requested
+                ? "You asked for a different number of monthly payments. Elite reviews the new plan by hand and reissues your agreement; the previous approval is withdrawn and nothing is owed until the new terms are approved and signed."
+                : "Elite reviews the terms by hand. Nothing is owed under this plan until it is approved, signed and the deposit is paid."}
+            </p>
             {loan?.application?.legal_name && (
               <p className="text-amber-700">
                 Application on file for {loan.application.legal_name}
@@ -97,6 +106,29 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
         </div>
       ) : approved && terms && !signed ? (
         <div className="space-y-2">
+          {belowMinimum && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900">
+              <p className="flex items-start gap-1.5 font-semibold">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-amber-600" />
+                Current {terms.term_months}-month terms do not meet the {formatMoney(minimum)} minimum — choose a shorter plan before signing
+              </p>
+              <p className="mt-1">
+                {formatMoney(terms.monthly_payment)} per month is below Elite&apos;s {formatMoney(minimum)} minimum regular installment, so this
+                plan cannot be signed as it stands. Pick a shorter plan and Elite will review it and issue a new agreement.
+              </p>
+            </div>
+          )}
+          {onChangePlan && (
+            <ChangePaymentPlan
+              financing={deposit?.revision_financing || null}
+              currentTerm={terms.term_months}
+              currentMonthly={terms.monthly_payment}
+              minimum={minimum}
+              belowMinimum={belowMinimum}
+              busy={actionBusy === "change"}
+              onSubmit={onChangePlan}
+            />
+          )}
           <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5"><FileSignature className="h-4 w-4" /> Elite approved these terms</p>
           <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-slate-600 space-y-0.5">
             <p>Amount financed: <span className="font-semibold text-slate-900">{formatMoney(terms.principal)}</span></p>
@@ -137,11 +169,13 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
               {agreement?.agreement_number || "Version pending"} · hash {(agreement?.content_hash || "").slice(0, 20) || "—"}
             </p>
           </div>
-          <AgreementSignatureForm
-            busy={actionBusy === "sign"}
-            disabledReason={termsChanged && !changedAccepted ? "Confirm that you accept the changed terms above before signing." : ""}
-            onSubmit={(payload) => onSign({ ...payload, terms_change_accepted: changedAccepted === true })}
-          />
+          {!belowMinimum && (
+            <AgreementSignatureForm
+              busy={actionBusy === "sign"}
+              disabledReason={termsChanged && !changedAccepted ? "Confirm that you accept the changed terms above before signing." : ""}
+              onSubmit={(payload) => onSign({ ...payload, terms_change_accepted: changedAccepted === true })}
+            />
+          )}
         </div>
       ) : signed && !deposit?.deposit_verified ? (
         <div className="flex items-start gap-2 text-xs text-slate-700">

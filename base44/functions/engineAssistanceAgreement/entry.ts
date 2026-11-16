@@ -6,6 +6,7 @@ import {
   acceptAgreementRecord, lendingGate, publicAgreement,
 } from '../../shared/installmentAgreement.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
+import { financingTermLimits } from '../../shared/financingTerms.ts';
 
 // Public, token-authorized access to one customer's retail installment
 // agreement. The long random agreement token is the only credential, and the
@@ -41,11 +42,15 @@ export default async function (req) {
       ? rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ id: agreement.loan_id }))[0]
       : null;
     const gate = lendingGate(settings);
+    const installment = financingTermLimits(settings);
+    const installmentOk = !!loan
+      && Math.round((Number(loan.monthly_payment) || 0) * 100) >= Math.round(installment.minMonthly * 100);
     const canAccept = gate.allowed
       && !!loan
       && loan.status === 'approved'
       && agreement.status === 'issued'
-      && !loan.signed_at;
+      && !loan.signed_at
+      && installmentOk;
 
     if (action === 'get') {
       return Response.json({
@@ -67,7 +72,9 @@ export default async function (req) {
             ? gate.reason
             : agreement.status === 'accepted'
               ? 'This agreement is already signed.'
-              : 'Elite must approve your final terms before this agreement can be signed.',
+              : loan && !installmentOk
+                ? `These ${Number(loan.term_months) || 0} month terms pay $${(Number(loan.monthly_payment) || 0).toFixed(2)} per month, below the $${installment.minMonthly.toFixed(2)} minimum. Choose a shorter payment plan on your offer page.`
+                : 'Elite must approve your final terms before this agreement can be signed.',
         autopay_enabled: settings?.autopay_enabled === true,
       }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
     }
@@ -79,7 +86,9 @@ export default async function (req) {
             ? gate.reason
             : agreement.status === 'accepted'
               ? 'This agreement is already signed.'
-              : 'Elite must approve your final terms before this agreement can be signed.',
+              : loan && !installmentOk
+                ? `These ${Number(loan.term_months) || 0} month terms pay $${(Number(loan.monthly_payment) || 0).toFixed(2)} per month, below the $${installment.minMonthly.toFixed(2)} minimum. Choose a shorter payment plan on your offer page.`
+                : 'Elite must approve your final terms before this agreement can be signed.',
         }, { status: 409 });
       }
       const name = String(body.signature_name ?? '').trim().slice(0, 120);

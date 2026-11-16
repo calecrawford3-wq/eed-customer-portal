@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileSignature, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, FileSignature, Loader2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { formatMoney } from "@/lib/money";
 import StatusBadge from "./StatusBadge";
@@ -100,6 +100,35 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
               </p>
             )}
 
+            {loan.revision_requested === true && loan.status === "pending_approval" && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-1.5">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-900">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" /> Customer asked to change their payment plan
+                </p>
+                <p className="text-[11px] leading-relaxed text-amber-800">
+                  They want {Number(loan.requested_term_months) || 0} monthly payments of {formatMoney(loan.requested_monthly_payment)} at{" "}
+                  {Number(loan.requested_apr) || 0}% APR on {formatMoney(loan.requested_pricing?.principal ?? loan.principal)}. The previous approval
+                  was withdrawn and its unsigned agreement voided, so nothing is signable until you approve the new terms.
+                </p>
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => { setApr(String(loan.requested_apr ?? 0)); setTerm(String(loan.requested_term_months)); }}
+                >
+                  Use the customer&apos;s plan
+                </Button>
+              </div>
+            )}
+
+            {loan.status === "approved" && !signed && Number(loan.monthly_payment) > 0
+              && Math.round(Number(loan.monthly_payment) * 100) < Math.round(Number(minMonthly) * 100) && (
+              <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-[11px] leading-relaxed text-red-900">
+                The approved terms pay {formatMoney(loan.monthly_payment)} per month, below the {formatMoney(minMonthly)} minimum installment, so
+                they cannot be signed or issued. Set a shorter term above and approve to reissue the agreement, or ask the customer to choose a
+                new plan from their offer page.
+              </p>
+            )}
+
             {Number(loan.requested_term_months) > 0 && (
               <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Customer&apos;s chosen plan</p>
@@ -110,16 +139,6 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
                   {loan.requested_apr}% indicative APR on {formatMoney(loan.requested_pricing?.principal ?? loan.principal)}. If you approve different
                   terms, the customer must accept the change in writing before signing.
                 </p>
-                {loan.status === "pending_approval" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => { setApr(String(loan.requested_apr ?? 0)); setTerm(String(loan.requested_term_months)); }}
-                  >
-                    Use the customer&apos;s plan
-                  </Button>
-                )}
               </div>
             )}
 

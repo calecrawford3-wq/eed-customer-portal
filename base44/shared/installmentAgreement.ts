@@ -11,6 +11,8 @@
 // explicit in_house_lending_live switch recorded by staff after Oklahoma counsel
 // approved the wording.
 
+import { financingTermLimits } from './financingTerms.ts';
+
 export const AGREEMENT_TEMPLATE_KEY = 'ok-retail-installment-v1';
 export const AGREEMENT_TEMPLATE_VERSION = 1;
 export const AUTOPAY_TERMS_VERSION = 'autopay-v1';
@@ -338,6 +340,14 @@ export async function issueAgreement(base44: any, { offer, loan, settings, appli
   if (!['approved', 'active', 'completed'].includes(loan.status)) {
     throw new Error('Approve the fixed APR and term before issuing the agreement.');
   }
+  // No agreement carrying a regular installment below the configured minimum may
+  // ever be issued. An already-signed copy is evidence and is never re-tested.
+  if (!loan.signed_at) {
+    const check = financingTermLimits(settings);
+    if (Math.round((Number(loan.monthly_payment) || 0) * 100) < Math.round(check.minMonthly * 100)) {
+      throw new Error(`These ${Number(loan.term_months) || 0} month terms pay $${(Number(loan.monthly_payment) || 0).toFixed(2)} per month, below the $${check.minMonthly.toFixed(2)} minimum installment. Choose a shorter payment plan before an agreement is issued.`);
+    }
+  }
   const company = rows(await base44.asServiceRole.entities.AppSettings.filter({ key: 'global' }))[0] || null;
   const isRecordId = (value: any) => typeof value === 'string' && /^[a-f0-9]{24}$/i.test(value);
   const applicationRow = application || (isRecordId(offer.application_id)
@@ -408,6 +418,14 @@ export async function acceptAgreementRecord(base44: any, { agreement, loan, sett
   if (agreement.status !== 'issued') throw new Error('This agreement is no longer open for signature.');
   const expected = await sha256Hex(JSON.stringify({ template_hash: agreement.template_hash, snapshot: agreement.snapshot }));
   if (expected !== agreement.content_hash) throw new Error('AGREEMENT_CHANGED');
+  // No agreement whose regular installment is under the minimum may be signed,
+  // whichever page the signature came from.
+  if (loan && !loan.signed_at) {
+    const check = financingTermLimits(settings);
+    if (Math.round((Number(loan.monthly_payment) || 0) * 100) < Math.round(check.minMonthly * 100)) {
+      throw new Error(`These ${Number(loan.term_months) || 0} month terms pay $${(Number(loan.monthly_payment) || 0).toFixed(2)} per month, below the $${check.minMonthly.toFixed(2)} minimum installment. Choose a shorter payment plan before signing.`);
+    }
+  }
   const now = new Date().toISOString();
   const autopayAllowed = settings?.autopay_enabled === true;
   const autopayChosen = autopayAllowed && autopayAuthorized === true;
