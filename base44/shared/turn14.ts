@@ -33,7 +33,9 @@ export async function turn14Request(path:string){
  const token=await auth.json();if(!token.access_token)throw new Error('Turn 14 did not return an access token');
  cachedToken=token.access_token;tokenExpires=Date.now()+Math.max(60,Number(token.expires_in||3600)-120)*1000;
  }
- if(!/^\/v1\/[a-z0-9/?=&,]+$/i.test(path))throw new Error('Invalid Turn 14 path');
+ // Turn 14 manufacturer SKUs can include hyphens, underscores and dots.
+// Still reject traversal, fragments, encoded separators and external URLs.
+ if(!/^\/v1\/[a-z0-9/_?=&,.-]+$/i.test(path)||path.includes('..')||path.includes('//'))throw new Error('Invalid Turn 14 path');
  const response=await fetch(`${ROOT}${path}`,{headers:{Authorization:`Bearer ${cachedToken}`,Accept:'application/json'}});
  if(!response.ok){if(response.status===401){cachedToken='';tokenExpires=0;}throw new Error(`Turn 14 request failed (${response.status}); synchronization stopped`);}
  return response.json();
