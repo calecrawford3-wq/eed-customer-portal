@@ -14,7 +14,7 @@ import {
   applyIdentitySession, checkIdentityAvailability, ensureIdentitySettings, ensureVerificationRecord,
   identityAdminSummary, identityGate, loadVerificationForLoan, readIdentitySession,
 } from '../../shared/identityVerification.ts';
-import { deliverAssistanceEmail, retryAssistanceEmail } from '../../shared/assistanceEmail.ts';
+import { deliverAssistanceEmail, retryAssistanceEmail, sendAssistanceEmail } from '../../shared/assistanceEmail.ts';
 import { financingOptions, financingTermLimits } from '../../shared/financingTerms.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
@@ -182,6 +182,23 @@ export default async function (req) {
       if (data.agreement_counsel_reference !== undefined) patch.agreement_counsel_reference = str(data.agreement_counsel_reference, 500);
       const updated = await base44.asServiceRole.entities.EngineAssistanceSettings.update(settings.id, patch);
       return Response.json({ settings: updated });
+    }
+
+    if (action === 'email_application_link') {
+      const to = str(data.email, 320).toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return Response.json({ error: 'Enter a valid recipient email address.' }, { status: 400 });
+      const { template, settings } = await ensureGenericTemplate(base44);
+      if (!template?.apply_token) return Response.json({ error: 'Application link is not configured.' }, { status: 409 });
+      const url = 'https://portal.eedpower.com/engine-assistance/apply/' + encodeURIComponent(template.apply_token);
+      const fundName = str(settings?.fund_name || 'Affordable Engine Fund', 120);
+      const recipientName = str(data.name, 80).replace(/[<>&"']/g, '');
+      const greeting = recipientName ? 'Hello ' + recipientName + ',' : 'Hello,';
+      const subject = 'Apply for ' + fundName + ' — Elite Engine Development';
+      const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Elite Engine Development</h2><h3>' + fundName.replace(/[<>&"']/g, '') + '</h3><p>' + greeting + '</p><p>You are invited to complete an Engine Assistance application. Tell us about your racing program and the engine support you need.</p><p><a href="' + url + '" style="display:inline-block;background:#c91620;color:white;padding:14px 22px;text-decoration:none;border-radius:6px">Start your application</a></p><p>You can save a draft on your device and return before submitting.</p><p>Applying does not guarantee assistance or financing, and no payment is required to apply.</p><p style="font-size:12px;color:#64748b">If you did not request this invitation, you can disregard this message.</p></div>';
+      const delivery = await sendAssistanceEmail(base44, { to, subject, html });
+      if (!delivery.ok) return Response.json({ sent: false, error: delivery.error || 'Email was not accepted by the provider.' }, { status: 502 });
+      console.log('[engineAssistanceAdmin] Application invitation accepted by provider for', to);
+      return Response.json({ sent: true, recipient: to, provider: delivery.provider, message: 'Email accepted by the mail provider.' });
     }
 
     if (action === 'rotate_apply_token') {
