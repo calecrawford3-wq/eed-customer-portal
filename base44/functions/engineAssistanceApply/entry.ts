@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import Stripe from 'npm:stripe@13.11.0';
 import { rows, ensureGenericTemplate, nextApplicationNumber, newToken, publicApplicationStatus, appendAudit } from '../../shared/engineAssistance.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 
@@ -32,6 +33,50 @@ export default async function (req) {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || 'template');
     const token = body.token;
+
+    // Stripe-hosted submission deposit. Server verifies the exact Checkout session;
+    // returning from Checkout never counts as proof of payment.
+    if (action === 'confirm_fee' || action === 'pay_fee') {
+      const statusToken = body.status_token;
+      if (!publicCapability(statusToken)) return Response.json({ error: 'A valid application status token is required.' }, { status: 400 });
+      const found = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: statusToken }))[0];
+      if (!found) return Response.json({ error: 'Application not found.' }, { status: 404 });
+      if (found.submission_fee_status === 'paid') return Response.json({ paid: true, application_number: found.application_number, status_token: statusToken });
+      if (found.status !== 'pending_payment') return Response.json({ error: 'Application is not awaiting a submission deposit.' }, { status: 409 });
+      const secret = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
+      if (!/^sk_(test|live)_/.test(secret)) return Response.json({ error: 'Secure checkout is not available yet.' }, { status: 503 });
+      const stripe = new Stripe(secret);
+      if (action === 'confirm_fee') {
+        const sessionId = clamps(body.session_id, 150);
+        if (!sessionId || sessionId !== found.submission_fee_session_id) return Response.json({ error: 'Checkout session does not match this application.' }, { status: 403 });
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.metadata?.source !== 'eed_aef_submission_fee' || session.metadata?.application_id !== found.id || session.amount_total !== found.submission_fee_cents || session.currency !== 'usd') return Response.json({ error: 'Checkout could not be verified.' }, { status: 409 });
+        if (session.payment_status !== 'paid') return Response.json({ paid: false, pending: true });
+        const now = new Date().toISOString();
+        await base44.asServiceRole.entities.EngineAssistanceApplication.update(found.id, {
+          status: 'submitted', submission_fee_status: 'paid', submission_fee_paid_at: now,
+          submission_fee_payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || '',
+          submitted_at: now, audit_trail: [...(found.audit_trail || []), { at: now, by: 'Stripe', action: 'submission_deposit_verified', note: 'Submission deposit payment verified through Stripe Checkout.' }],
+        });
+        return Response.json({ paid: true, application_number: found.application_number, status_token: statusToken });
+      }
+      if (found.submission_fee_session_id) {
+        const previous = await stripe.checkout.sessions.retrieve(found.submission_fee_session_id).catch(() => null);
+        if (previous?.status === 'open' && previous.url) return Response.json({ checkout_url: previous.url, status_token: statusToken });
+      }
+      const origin = 'https://portal.eedpower.com';
+      const { template } = await ensureGenericTemplate(base44);
+      const path = origin + '/engine-assistance/apply/' + encodeURIComponent(template.apply_token);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment', customer_email: found.email,
+        line_items: [{ price_data: { currency: 'usd', unit_amount: found.submission_fee_cents, product_data: { name: 'Affordable Engine Fund application submission deposit' } }, quantity: 1 }],
+        success_url: path + '?fee_session={CHECKOUT_SESSION_ID}&application_status_token=' + encodeURIComponent(statusToken),
+        cancel_url: path + '?application_status_token=' + encodeURIComponent(statusToken) + '&fee_cancelled=1',
+        metadata: { source: 'eed_aef_submission_fee', application_id: found.id, policy_version: found.submission_fee_policy_version || 'aef-deposit-v1' },
+      }, { idempotencyKey: 'aef-fee-' + found.id + '-v1' });
+      await base44.asServiceRole.entities.EngineAssistanceApplication.update(found.id, { submission_fee_session_id: session.id });
+      return Response.json({ checkout_url: session.url, status_token: statusToken });
+    }
 
     // The applicant's private status page carries only its own long random
     // token. It never needs (and never sees) the shared application link token.
@@ -106,7 +151,11 @@ export default async function (req) {
 
     const created = await base44.asServiceRole.entities.EngineAssistanceApplication.create({
       application_number: await nextApplicationNumber(base44),
-      status: 'submitted',
+      status: 'pending_payment',
+      submission_fee_cents: 2000,
+      submission_fee_status: 'pending',
+      submission_fee_policy_version: 'aef-deposit-v1',
+      income_verification_status: 'not_requested',
       template_key: template.key,
       template_version: template.version_number,
       source: 'public_form',
@@ -137,11 +186,10 @@ export default async function (req) {
       consent_version: `${template.key}-v${template.version_number}`,
       documents: safeDocs,
       status_token: statusToken,
-      submitted_at: now,
-      audit_trail: [{ at: now, by: 'Applicant', action: 'submitted', note: 'Public application submitted' }],
+      audit_trail: [{ at: now, by: 'Applicant', action: 'application_prepared', note: 'Application prepared, awaiting verified submission deposit.' }],
     });
 
-    return Response.json({ ok: true, application_number: created.application_number, status_token: statusToken, status_url: `/engine-assistance/status/${statusToken}` });
+    return Response.json({ ok: true, pending_payment: true, application_number: created.application_number, status_token: statusToken, status_url: `/engine-assistance/status/${statusToken}` });
   } catch (error: any) {
     console.error('[engineAssistanceApply]', error?.message);
     return Response.json({ error: 'The application could not be submitted. Please try again.' }, { status: 500 });
