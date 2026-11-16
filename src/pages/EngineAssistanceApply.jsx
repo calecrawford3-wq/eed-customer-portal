@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +20,16 @@ export default function EngineAssistanceApply() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
+  const [step, setStep] = useState(0);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftKey = `elite-assistance-draft:${token}`;
+  useEffect(() => {
+    try { const saved = JSON.parse(localStorage.getItem(draftKey) || "null"); if (saved) { setAnswers(saved.answers || {}); setDocuments(saved.documents || []); setStep(Math.max(0, Number(saved.step) || 0)); setDraftSaved(true); } } catch { /* unavailable storage */ }
+  }, [draftKey]);
+  const saveDraft = (nextStep = step) => {
+    try { localStorage.setItem(draftKey, JSON.stringify({ answers, documents, step: nextStep, saved_at: new Date().toISOString() })); setDraftSaved(true); return true; }
+    catch { toast.error("Could not save on this device. Check browser storage settings."); return false; }
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["engine-assistance-template", token],
@@ -31,7 +41,17 @@ export default function EngineAssistanceApply() {
     retry: false,
   });
 
-  const fields = useMemo(() => (data?.template?.sections || []).flatMap((s) => s.fields || []), [data]);
+  const sections = data?.template?.sections || [];
+  const fields = useMemo(() => sections.flatMap((s) => s.fields || []), [data]);
+  const totalSteps = sections.length + 2;
+  const currentStep = Math.min(step, totalSteps - 1);
+  const nextStep = () => {
+    const missing = {};
+    if (currentStep < sections.length) (sections[currentStep].fields || []).forEach(f => { if (f.required && !String(answers[f.key] ?? "").trim()) missing[f.key] = "Required"; });
+    setErrors(missing);
+    if (Object.keys(missing).length) { toast.error("Complete the required fields before continuing"); return; }
+    saveDraft(currentStep + 1); setStep(currentStep + 1); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const statusUrl = result ? `${window.location.origin}/engine-assistance/status/${result.status_token}` : "";
 
   const upload = async (event) => {
@@ -76,6 +96,7 @@ export default function EngineAssistanceApply() {
       });
       if (res.data?.error) throw new Error(res.data.error);
       setResult(res.data);
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       toast.error(error?.message || "The application could not be submitted");
@@ -132,11 +153,15 @@ export default function EngineAssistanceApply() {
       subtitle={data?.template?.intro_text || data?.fund?.intro || ""}
     >
       <div className="space-y-5">
-        <Card><CardContent className="p-4 sm:p-6">
-          <ApplicationFormFields sections={data?.template?.sections || []} answers={answers} setAnswers={setAnswers} errors={errors} disabled={submitting} />
-        </CardContent></Card>
+        <div className="rounded-xl bg-white border border-slate-200 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3"><p className="text-sm font-bold text-slate-900">Step {currentStep + 1} of {totalSteps}: {sections[currentStep]?.title || (currentStep === sections.length ? "Supporting documents" : "Review & submit")}</p><span className="text-xs text-slate-600">{Math.round((currentStep + 1) / totalSteps * 100)}%</span></div>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={0} aria-valuemax={totalSteps}><div className="h-full bg-red-600 transition-all" style={{ width: `${(currentStep + 1) / totalSteps * 100}%` }} /></div>
+          <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={() => saveDraft()}>Save draft on this device</Button>{draftSaved && <span className="text-xs text-emerald-700">Draft saved on this browser</span>}</div>
+          <p className="text-xs text-slate-500">You can return using this browser to continue. Drafts are stored on this device, not submitted to Elite. Avoid shared computers.</p>
+        </div>
+        {currentStep < sections.length && <Card><CardContent className="p-4 sm:p-6"><ApplicationFormFields sections={[sections[currentStep]]} answers={answers} setAnswers={setAnswers} errors={errors} disabled={submitting} /></CardContent></Card>}
 
-        <Card><CardContent className="p-4 sm:p-6 space-y-3">
+        {currentStep === sections.length && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <div>
             <h3 className="text-base font-bold text-slate-900">Supporting documents (optional)</h3>
             <p className="text-sm text-slate-500">Photos of your engine, race results or a note from a track. Up to 5 files, stored privately.</p>
@@ -151,10 +176,12 @@ export default function EngineAssistanceApply() {
             <Input type="file" disabled={uploading || documents.length >= 5} onChange={upload} className="max-w-sm" />
             {uploading && <p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</p>}
           </div>
-        </CardContent></Card>
+        </CardContent></Card>}
 
-        <Card><CardContent className="p-4 sm:p-6 space-y-3">
-          <h3 className="text-base font-bold text-slate-900">Acknowledgements</h3>
+        {currentStep === totalSteps - 1 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
+          <h3 className="text-base font-bold text-slate-900">Review and acknowledgements</h3>
+          <p className="text-sm text-slate-600">Review your answers before submitting. Use Back to make changes.</p>
+          <div className="max-h-64 overflow-auto rounded-lg border p-3 space-y-2">{fields.filter(f => String(answers[f.key] ?? "").trim()).map(f => <div key={f.key} className="border-b pb-1 text-xs"><strong className="block text-slate-700">{f.label}</strong><span className="whitespace-pre-wrap break-words text-slate-600">{String(answers[f.key])}</span></div>)}</div>
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.template?.consent_text}</p>
           <div className="space-y-2.5">
             <label className="flex items-start gap-2.5 text-sm text-slate-700">
@@ -170,11 +197,11 @@ export default function EngineAssistanceApply() {
               <span>You may contact me by email or text about future fund opportunities.</span>
             </label>
           </div>
-        </CardContent></Card>
+        </CardContent></Card>}
 
-        <Button size="lg" className="w-full sm:w-auto" disabled={submitting} onClick={submit}>
+        <div className="flex flex-wrap gap-3 justify-between"><Button type="button" variant="outline" disabled={currentStep === 0 || submitting} onClick={() => { saveDraft(currentStep - 1); setStep(currentStep - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back</Button>{currentStep < totalSteps - 1 ? <Button type="button" disabled={submitting} onClick={nextStep}>Next step</Button> : <Button size="lg" disabled={submitting} onClick={submit}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {submitting ? "Submitting…" : "Submit application"}
-        </Button>
+        </Button>}</div>
       </div>
     </PublicAssistanceShell>
   );
