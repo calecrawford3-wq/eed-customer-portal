@@ -9,7 +9,9 @@ import ChoiceTile from "./ChoiceTile";
 export default function PlanChoices({ full, finance, deposit, onSelect }) {
   const fullAvailable = !!(full?.enabled || finance?.enabled);
   const fullReason = fullAvailable ? "" : full?.reason || finance?.reason || "Online payment is not available yet.";
-  const depositAvailable = !!deposit?.available;
+  // Customers may explore and apply for an Elite plan before it is ready for funding.
+  // Server-side approval, signature and checkout restrictions remain enforced.
+  const depositAvailable = Number(deposit?.deposit_amount || 0) > 0 && Number(deposit?.internal_amount || 0) > 0;
   const recommended = fullAvailable && !finance?.enabled;
 
   return (
@@ -31,7 +33,7 @@ export default function PlanChoices({ full, finance, deposit, onSelect }) {
         amount={formatMoney(deposit?.deposit_amount || 0)}
         amountCaption="today"
         helper={`Then ${formatMoney(deposit?.internal_amount || 0)} financed by Elite in monthly payments.`}
-        note={depositAvailable ? "Elite's in-house plan needs approval and your signature." : deposit?.reason || "This plan is not available for this balance."}
+        note={depositAvailable ? "Continue to the financing application and identity verification. Funding requires final approval." : deposit?.reason || "This plan is not available for this balance."}
         disabled={!depositAvailable}
         onClick={() => onSelect("deposit")}
       />
