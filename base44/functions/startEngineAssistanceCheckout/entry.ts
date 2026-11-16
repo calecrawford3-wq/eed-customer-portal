@@ -130,6 +130,7 @@ export default async function (req) {
       }
       return Response.json({ error: 'Your payment is being confirmed. Please wait.' }, { status: 409 });
     }
+    if (cents(computeOfferTotals(held).paid_amount) !== cents(computeOfferTotals(offer).paid_amount) || cents(computeOfferTotals(held).total) !== cents(computeOfferTotals(offer).total)) return Response.json({ error: 'Offer changed. Reload before continuing.' }, { status: 409 });
     if (Date.now() - new Date(held.payment_route_started_at).getTime() > 23 * 3600000) return Response.json({ error: 'This checkout needs staff verification before retrying.' }, { status: 409 });
     try { await retireOfferSessions(base44, stripe, held); }
     catch (error) { return Response.json({ error: error.message }, { status: 409 }); }

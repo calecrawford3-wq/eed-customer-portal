@@ -826,11 +826,12 @@ export async function recordAssistancePayment(base44: any, facts: any) {
   const attemptEntity = base44.asServiceRole.entities.EngineAssistanceFinancingAttempt;
   let offer = rows(await offerEntity.filter({ id: facts.offer_id }))[0];
   if (!offer) throw new Error('Assistance offer not found');
-  if ((offer.payments || []).some((p: any) => p.stripe_session_id === facts.session_id)) {
+  const alreadyCredited = (offer.payments || []).some((p: any) => p.stripe_session_id === facts.session_id || p.stripe_payment_intent === facts.intent);
+  if (alreadyCredited) {
     // Receipt already credited; continue repairing idempotent side effects.
   }
   const totals = computeOfferTotals(offer);
-  if (facts.amount > cents(totals.balance_due)) throw new Error('Payment exceeds the remaining balance and needs staff review');
+  if (!alreadyCredited && facts.amount > cents(totals.balance_due)) throw new Error('Payment exceeds the remaining balance and needs staff review');
 
   const payment = {
     amount: round2(facts.amount / 100),
@@ -849,7 +850,7 @@ export async function recordAssistancePayment(base44: any, facts: any) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const fresh = rows(await offerEntity.filter({ id: offer.id }))[0];
     if (!fresh) throw new Error('Assistance offer not found');
-    if ((fresh.payments || []).some((p: any) => p.stripe_session_id === facts.session_id)) {
+    if ((fresh.payments || []).some((p: any) => (p.stripe_session_id === facts.session_id || p.stripe_payment_intent === facts.intent))) {
       saved = fresh;
       break;
     }
@@ -942,7 +943,7 @@ export async function recordAssistancePayment(base44: any, facts: any) {
     console.error('[assistanceEmail] payment confirmation failed', String(error?.message || error));
   }
   return {
-    duplicate: false,
+    duplicate: alreadyCredited,
     offer_id: currentOffer.id,
     paid: fullyPaid,
     deposit_verified: !!synced?.plan?.deposit_verified,
