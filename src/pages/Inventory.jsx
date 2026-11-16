@@ -415,8 +415,16 @@ export default function Inventory() {
             </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
-            <div><Label>Part Number *</Label><Input value={partForm.part_number} onChange={e => setPartForm({...partForm, part_number: e.target.value})} /></div>
-            <div><Label>Name *</Label><Input value={partForm.name} onChange={e => setPartForm({...partForm, name: e.target.value})} /></div>
+            <div className="col-span-2 border rounded-lg p-3 bg-slate-50 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div><strong className="text-sm">Turn 14 Dropshipping</strong><p className="text-xs text-slate-600">Direct-to-customer fulfillment for eligible paid website orders.</p></div>
+                <Switch aria-label="Enable Turn 14 dropshipping" disabled={!partForm.turn14_item_id} checked={!!partForm.turn14_item_id&&!!partForm.turn14_dropship_enabled} onCheckedChange={v=>setPartForm(f=>({...f,turn14_dropship_enabled:v}))}/>
+              </div>
+              {partForm.turn14_item_id?<p className="text-xs text-green-700">Linked to Turn 14 item {partForm.turn14_item_id}. Enable and save to allow dropship review requests.</p>:<p className="text-xs text-amber-700">Not linked to Turn 14. Import and link this item first. The supplier part number alone is not a verified API link.</p>}
+              <p className="text-xs text-slate-500">Supplier-backed website checkout and supplier order submission are not yet enabled.</p>
+            </div>
+            <div><Label>Elite Part Number *</Label><Input value={partForm.part_number} onChange={e => setPartForm({...partForm, part_number: e.target.value})} /></div>
+            <div><Label>Elite Product Name *</Label><Input value={partForm.name} onChange={e => setPartForm({...partForm, name: e.target.value})} /></div>
             <div>
               <Label>Category</Label>
               <Select value={partForm.category} onValueChange={v => setPartForm({...partForm, category: v})}>
@@ -439,7 +447,9 @@ export default function Inventory() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Supplier Part #</Label><Input value={partForm.supplier_part_number} onChange={e => setPartForm({...partForm, supplier_part_number: e.target.value})} /></div>
+            <div><Label>Supplier Part # (Turn 14 SKU)</Label><Input value={partForm.turn14_item_id?(partForm.turn14_supplier_sku||partForm.supplier_part_number||""):(partForm.supplier_part_number??"")} disabled={!!partForm.turn14_item_id} onChange={e => setPartForm({...partForm, supplier_part_number: e.target.value})} /></div>
+            <div><Label>Supplier Product Name</Label><Input value={partForm.supplier_product_name??""} onChange={e=>setPartForm(f=>({...f,supplier_product_name:e.target.value}))}/></div>
+            <div><Label>Manufacturer Part Number</Label><Input value={partForm.manufacturer_part_number??""} onChange={e=>setPartForm(f=>({...f,manufacturer_part_number:e.target.value}))}/></div>
             <div><Label>Storage Location</Label><Input value={partForm.location} onChange={e => setPartForm({...partForm, location: e.target.value})} placeholder="e.g. Shelf A3" /></div>
             <div>
               <Label>Purchase Cost per Item ($)</Label>
@@ -567,11 +577,25 @@ export default function Inventory() {
               </div>
             </div>
             <div className="col-span-2"><Label>Description</Label><Textarea value={partForm.description} onChange={e => setPartForm({...partForm, description: e.target.value})} rows={2} /></div>
+            <div className="col-span-2 rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between"><div><strong>Website Store</strong><p className="text-xs text-slate-500">Manage this product's customer-facing website listing.</p></div><label className="flex gap-2 items-center text-sm"><Switch checked={!!partForm.website_published} onCheckedChange={v=>setPartForm(f=>({...f,website_published:v}))}/> Publish</label></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><Label>Website Product Name</Label><Input value={partForm.website_store_name??""} placeholder={partForm.name||"Product name"} onChange={e=>setPartForm(f=>({...f,website_store_name:e.target.value}))}/></div>
+                <div><Label>Brand</Label><Input value={partForm.website_brand??""} onChange={e=>setPartForm(f=>({...f,website_brand:e.target.value}))}/></div>
+                <div><Label>Website Selling Price ($)</Label><Input type="number" min="0" step="0.01" value={partForm.sell_price??""} onChange={e=>setPartForm(f=>({...f,sell_price:e.target.value,use_markup:false}))}/></div>
+                <div><Label>Stock Policy</Label><Select value={partForm.website_inventory_policy||"tracked"} onValueChange={v=>setPartForm(f=>({...f,website_inventory_policy:v}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="tracked">Track shop stock</SelectItem><SelectItem value="unlimited">Made to order / unlimited</SelectItem></SelectContent></Select></div>
+                <div className="sm:col-span-2"><Label>Primary Image URL</Label><Input value={partForm.website_image_url??""} onChange={e=>setPartForm(f=>({...f,website_image_url:e.target.value}))}/></div>
+                <div className="sm:col-span-2"><Label>Additional Image URLs (one per line)</Label><Textarea rows={2} value={(partForm.website_images||[]).join("\n")} onChange={e=>setPartForm(f=>({...f,website_images:e.target.value.split("\n").map(s=>s.trim()).filter(Boolean)}))}/></div>
+                <div className="sm:col-span-2"><Label>Website Description</Label><Textarea rows={3} value={partForm.website_description??""} onChange={e=>setPartForm(f=>({...f,website_description:e.target.value}))}/></div>
+              </div>
+              {partForm.turn14_item_id&&<p className="text-xs text-slate-600">Turn 14 supplier stock: {Number(partForm.turn14_available_quantity)||0} · Physical shop stock: {Number(partForm.quantity_on_hand)||0} · MAP: ${Number(partForm.turn14_map_price||0).toFixed(2)}</p>}
+              <p className="text-xs text-slate-500">Supplier stock is not added to physical shop inventory. Made-to-order does not automatically enable Turn 14 checkout fulfillment.</p>
+            </div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={partForm.notes} onChange={e => setPartForm({...partForm, notes: e.target.value})} rows={2} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPartDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => savePartMutation.mutate(partForm)} disabled={savePartMutation.isPending}>
+            <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => savePartMutation.mutate(partForm)} disabled={savePartMutation.isPending||(!!partForm.website_published&&(!Number(partForm.sell_price)||Number(partForm.sell_price)<Number(partForm.turn14_map_price||0)))}>
               {savePartMutation.isPending ? "Saving..." : editingPart ? "Save Changes" : "Create Part"}
             </Button>
           </DialogFooter>
