@@ -60,8 +60,8 @@ export default async function(req){
   const available=Object.values(inventory).reduce((s,v)=>s+(Number.isFinite(Number(v))?Math.max(0,Number(v)):0),0);
   const details={item_id:itemId,sku,elite_part_number:eliteSku,manufacturer_part_number:mfr,name:String(a.product_name||a.part_description||sku),brand:String(a.brand||''),cost,retail,map:hasMap?map:null,sell_price:sell,supplier_available:available,match_count:existing.length,conflict:conflicts.length>0,existing:existing.map(x=>({id:x.id,name:x.name,part_number:x.part_number,turn14_item_id:x.turn14_item_id||''}))};
   const prior=existing.length===1?existing[0]:null;
-  const supplierFields={turn14_item_id:itemId,turn14_supplier_sku:sku,supplier_product_name:details.name,manufacturer_part_number:mfr,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
-  const labels={turn14_item_id:'Turn 14 link',turn14_supplier_sku:'Turn 14 supplier SKU',supplier_product_name:'Supplier product name',manufacturer_part_number:'Manufacturer part number', turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
+  const supplierFields:any={turn14_item_id:itemId,turn14_supplier_sku:sku,supplier_product_name:details.name,manufacturer_part_number:mfr,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
+  const labels:any={turn14_item_id:'Turn 14 link',turn14_supplier_sku:'Turn 14 supplier SKU',supplier_product_name:'Supplier product name',manufacturer_part_number:'Manufacturer part number', turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
   if(prior&&prior.part_number===sku&&eliteSku!==sku&&!existing.some(x=>x.id!==prior.id&&x.part_number===eliteSku)){
    supplierFields.part_number=eliteSku;
   }
