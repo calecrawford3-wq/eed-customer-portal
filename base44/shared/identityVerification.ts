@@ -147,6 +147,9 @@ export async function createIdentitySession(stripe: any, { offer, loan, appId, r
       document: {
         require_matching_selfie: true,
         require_live_capture: true,
+        // Collect and check a government ID number (US SSN for eligible US users)
+        // entirely in Stripe's hosted flow, never in the Elite/Base44 application.
+        require_id_number: true,
         allowed_types: ['driving_license', 'id_card', 'passport'],
       },
     },
