@@ -127,8 +127,10 @@ export default function EngineAssistanceOffer() {
       if (res.data?.error) throw new Error(res.data.error);
       if (successMessage) toast.success(successMessage);
       await refetch();
+      return true;
     } catch (error) {
-      toast.error(error?.message || "This action could not be completed");
+      toast.error(error?.response?.data?.error || error?.message || "This action could not be completed");
+      return false;
     } finally {
       setActionBusy("");
     }
@@ -254,6 +256,7 @@ export default function EngineAssistanceOffer() {
         ) : !["pending_approval", "approved"].includes(loan?.status) && !requestRemainder ? (
           <OfferPaymentStages offer={offer} paying={paying} onCheckout={checkout}
             onRequest={() => setRequestRemainder(true)}
+            onCancel={() => runFinancing("cancel_request", {}, "Request withdrawn")}
             onClose={async () => {
               try {
                 const res = await base44.functions.invoke("engineAssistanceFinancing", { token, action: "close_checkout" });

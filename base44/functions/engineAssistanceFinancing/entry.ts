@@ -358,15 +358,19 @@ export default async function (req) {
       if (!['pending_approval', 'approved', 'declined'].includes(existing.status)) {
         return Response.json({ error: 'This agreement is already in progress and cannot be withdrawn here. Contact Elite Engine Development.' }, { status: 409 });
       }
-      const updated = await loans.update(existing.id, {
+      await loans.updateMany({ id: existing.id, status: existing.status, signed_at: existing.signed_at === undefined ? { $exists: false } : existing.signed_at }, { $set: {
         status: 'canceled',
         audit_trail: appendAudit(existing, 'Customer', 'request_canceled', 'Customer withdrew the in-house financing request'),
-      });
+      } });
+      const updated = rows(await loans.filter({ id: existing.id }))[0];
+      if (updated?.status !== 'canceled') return Response.json({ error: 'The financing status changed. Reload before continuing.' }, { status: 409 });
       await offers.update(offer.id, {
         payment_plan: 'none',
         internal_financed_amount: 0,
         audit_trail: appendAudit(offer, 'Customer', 'internal_financing_canceled', 'Customer withdrew the in-house financing request'),
-      });
+      } });
+      const updated = rows(await loans.filter({ id: existing.id }))[0];
+      if (updated?.status !== 'canceled') return Response.json({ error: 'The financing status changed. Reload before continuing.' }, { status: 409 });
       if (offer.payment_route === 'internal') await releaseRoute(base44, offer);
       return Response.json({ loan: publicLoan(updated) });
     }

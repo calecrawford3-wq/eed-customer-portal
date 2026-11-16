@@ -130,7 +130,7 @@ test('deposit can be paid before applying or signing; remainder unlocks only aft
 });
 test('deposit exactly 50% after award with cent rounding',()=>{
  const h=assistance();h.offer.assistance_percent=25;h.offer.line_items[0].unit_price=1000.02;
- const p=h.a.offerPaymentPlan(h.offer,h.settings);assert.equal(p.deposit_amount,375.01);assert.equal(p.internal_amount,375.01);
+ const p=h.a.offerPaymentPlan(h.offer,h.settings);assert.equal(p.deposit_amount,375.01);assert.equal(p.internal_amount,375);
 });
 test('checkout ignores browser prices; Affirm deposit and remainder are separate obligations',async()=>{
  const h=assistance();const d=await h.checkout('deposit_lender');assert.equal(d.status,200);

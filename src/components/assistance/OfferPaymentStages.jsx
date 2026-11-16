@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
-export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest }) {
+export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel }) {
   const [consent, setConsent] = useState(false);
   const [closing, setClosing] = useState(false);
   const deposit = offer.pathways?.deposit_internal || {};
@@ -22,6 +22,7 @@ export default function OfferPaymentStages({ offer, paying, onCheckout, onClose,
       <Button variant="outline" disabled={busy || !affirm || !consent} onClick={() => onCheckout(remainder ? "remainder_affirm" : "deposit_lender", true)}>Continue to Affirm</Button>
       {offer.checkout_open && <Button variant="outline" disabled={busy} onClick={close}>Close existing checkout / change option</Button>}
     </div>
+    {offer.internal_loan?.status === "declined" && <Button variant="outline" disabled={busy} onClick={onCancel}>Withdraw declined request to choose another payment option</Button>}
     {!affirm && <p className="text-sm text-slate-600">Affirm is not currently available for this amount.</p>}
     {remainder && <div className="border-t pt-3 space-y-2">
       <p className="text-sm">If Affirm is unavailable or you did not complete checkout, you can request Elite in-house financing for the remainder. Any existing checkout must be closed first. Elite approval, identity verification and a signed agreement are required before financing starts.</p>

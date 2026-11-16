@@ -113,10 +113,11 @@ export default function FinancingJourney({
     if (!selected || submitting.current || actionBusy === "request" || submittedOnce) return;
     submitting.current = true;
     try {
-      await onRequest({
+      const succeeded = await onRequest({
         application: { ...form, monthly_income: Number(form.monthly_income), consent: true },
         requested_term_months: selected.term_months,
       });
+      if (succeeded === false) return;
       setSubmittedOnce(true);
       setConsent(false);
       try { localStorage.removeItem(draftKey(token)); } catch { /* nothing to clear */ }

@@ -645,7 +645,7 @@ export async function activateInternalLoan(base44: any, offer: any, loan: any, a
     await retireOfferSessions(base44, new Stripe(key), held);
   }
   const terms = buildLoanSchedule(principal, loan.apr, loan.term_months, loan.first_payment_date || shiftMonths(today(), 1));
-  const updated = await entity.update(loan.id, {
+  await entity.updateMany({ id: loan.id, status: 'approved', signed_at: loan.signed_at }, { $set: {
     status: 'active',
     principal,
     apr: terms.apr,
@@ -659,7 +659,9 @@ export async function activateInternalLoan(base44: any, offer: any, loan: any, a
     outstanding_balance: terms.total_repayable,
     started_at: new Date().toISOString(),
     audit_trail: appendAudit(loan, actor, 'loan_activated', `In-house financing of $${principal.toFixed(2)} activated at ${terms.apr}% APR over ${terms.term_months} months after the deposit was verified`),
-  });
+  } });
+  const updated = rows(await entity.filter({ id: loan.id }))[0];
+  if (updated?.status !== 'active') return updated || loan;
   await ensureAssistanceJob(base44, { ...offer, internal_loan_id: loan.id }, actor);
   return updated;
 }
