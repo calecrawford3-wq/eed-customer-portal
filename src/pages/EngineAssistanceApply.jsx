@@ -20,9 +20,30 @@ export default function EngineAssistanceApply() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
+  const [feeConsent, setFeeConsent] = useState(false);
+  const [pendingFee, setPendingFee] = useState(null);
   const [step, setStep] = useState(0);
   const [draftSaved, setDraftSaved] = useState(false);
   const draftKey = `elite-assistance-draft:${token}`;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const statusToken = params.get("application_status_token");
+    const sessionId = params.get("fee_session");
+    if (!statusToken) return;
+    setPendingFee({ status_token: statusToken });
+    if (!sessionId) return;
+    base44.functions.invoke("engineAssistanceApply", { action: "confirm_fee", status_token: statusToken, session_id: sessionId })
+      .then(({ data }) => { if (data?.paid) { setResult(data); setPendingFee(null); localStorage.removeItem(draftKey); toast.success("Submission deposit verified. Application received."); } else toast.error("Stripe has not confirmed the payment yet."); })
+      .catch(() => toast.error("Payment confirmation is pending. Use Retry payment verification."));
+  }, [draftKey]);
+  const payFee = async (statusToken) => {
+    setSubmitting(true);
+    try { const { data } = await base44.functions.invoke("engineAssistanceApply", { action: "pay_fee", status_token: statusToken });
+      if (!data?.checkout_url) throw new Error(data?.error || "Checkout unavailable");
+      window.location.assign(data.checkout_url);
+    } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Unable to start secure checkout"); }
+    finally { setSubmitting(false); }
+  };
   useEffect(() => {
     try { const saved = JSON.parse(localStorage.getItem(draftKey) || "null"); if (saved) { setAnswers(saved.answers || {}); setDocuments(saved.documents || []); setStep(Math.max(0, Number(saved.step) || 0)); setDraftSaved(true); } } catch { /* unavailable storage */ }
   }, [draftKey]);
@@ -75,8 +96,8 @@ export default function EngineAssistanceApply() {
     fields.forEach((field) => {
       if (field.required && !String(answers[field.key] ?? "").trim()) nextErrors[field.key] = "Required";
     });
-    if (!consents.truthful || !consents.privacy) {
-      toast.error("Please accept both acknowledgements");
+    if (!consents.truthful || !consents.privacy || !feeConsent) {
+      toast.error("Please accept the certification, privacy notice and $20 submission deposit policy");
       setErrors(nextErrors);
       return;
     }
@@ -92,9 +113,11 @@ export default function EngineAssistanceApply() {
         token,
         answers,
         consents,
+        fee_policy_accepted: feeConsent,
         documents,
       });
       if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.pending_payment) { setPendingFee({ status_token: res.data.status_token }); await payFee(res.data.status_token); return; }
       setResult(res.data);
       try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -122,6 +145,8 @@ export default function EngineAssistanceApply() {
       </PublicAssistanceShell>
     );
   }
+
+  if (pendingFee) return <PublicAssistanceShell title="Finish your application" subtitle="Your application is saved, but it is not submitted for review until Stripe confirms the deposit."><Card><CardContent className="p-6 space-y-3"><p className="text-sm text-slate-700">Submission deposit: <strong>$20.00</strong></p><p className="text-sm text-slate-600">If checkout was cancelled or interrupted, you can resume without creating another application.</p><Button disabled={submitting} onClick={() => payFee(pendingFee.status_token)}>{submitting ? "Opening Stripe…" : "Continue to secure payment"}</Button></CardContent></Card></PublicAssistanceShell>;
 
   if (result) {
     return (
@@ -180,6 +205,7 @@ export default function EngineAssistanceApply() {
 
         {currentStep === totalSteps - 1 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <h3 className="text-base font-bold text-slate-900">Review and acknowledgements</h3>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm"><strong>$20 AEF submission deposit</strong><p>Tier 1 (under $35,000): refundable if denied or withdrawn before review; if approved and purchased, credited to your engine deposit. Tier 2 ($35,000–$75,000) and Tier 3 (over $75,000): nonrefundable unless required by law; credited toward your engine purchase if approved and purchased. No charitable tax deduction is represented. Applying does not guarantee assistance or financing.</p><label className="flex items-start gap-2"><Checkbox checked={feeConsent} onCheckedChange={v => setFeeConsent(v === true)} /><span>I understand the $20 submission deposit and the refund/credit terms. I authorize proceeding to Stripe Checkout after submitting.</span></label></div>
           <p className="text-sm text-slate-600">Review your answers before submitting. Use Back to make changes.</p>
           <div className="max-h-64 overflow-auto rounded-lg border p-3 space-y-2">{fields.filter(f => String(answers[f.key] ?? "").trim()).map(f => <div key={f.key} className="border-b pb-1 text-xs"><strong className="block text-slate-700">{f.label}</strong><span className="whitespace-pre-wrap break-words text-slate-600">{String(answers[f.key])}</span></div>)}</div>
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.template?.consent_text}</p>
