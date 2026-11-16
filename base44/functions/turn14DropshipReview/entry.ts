@@ -21,7 +21,7 @@ export default async function(req:Request){
    const supplierStock=Number(part.turn14_available_quantity||0);
    if(supplierStock<qty)problems.push('Insufficient supplier stock: '+line.sku);
    if(!Number.isFinite(Number(part.turn14_purchase_cost)))problems.push('Missing supplier cost: '+line.sku);
-   items.push({part_id:part.id,sku:part.part_number,turn14_item_id:part.turn14_item_id,quantity:qty,supplier_stock:supplierStock,unit_cost:Number(part.turn14_purchase_cost||0)});
+   items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,supplier_stock:supplierStock,unit_cost:Number(part.turn14_purchase_cost||0)});
   }
   if(!items.length)problems.push('No dropship-enabled Turn 14 products in this fulfillment');
   if(order.shipping_method!=='ship')problems.push('Order is not shipping to customer');
@@ -48,7 +48,7 @@ export default async function(req:Request){
    if(!part?.turn14_item_id||!part?.turn14_dropship_enabled)continue;
    const qty=Number(line.quantity||0);
    if(!Number.isInteger(qty)||qty<=0||Number(part.turn14_available_quantity||0)<qty||!Number.isFinite(Number(part.turn14_purchase_cost)))return Response.json({error:'Dropship item not ready: '+line.sku},{status:409});
-   items.push({part_id:part.id,sku:part.part_number,turn14_item_id:part.turn14_item_id,quantity:qty,unit_cost:Number(part.turn14_purchase_cost)});
+   items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,unit_cost:Number(part.turn14_purchase_cost)});
   }
   if(!items.length||!order.shipping_address||!order.recipient_name)return Response.json({error:'No eligible items or customer shipping address'},{status:409});
   await svc.WebsitePartsFulfillment.update(order.id,{turn14_dropship_status:'pending_review',turn14_dropship_lines:items,turn14_dropship_reviewed_at:new Date().toISOString()});
