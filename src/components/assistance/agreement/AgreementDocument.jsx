@@ -165,7 +165,13 @@ export default function AgreementDocument({ agreement }) {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Customer signature</p>
         {agreement.accepted_at ? (
           <div className="mt-1 space-y-0.5 text-xs text-slate-700">
+            {Array.isArray(agreement.signature_paths) && agreement.signature_paths.length > 0 && (
+              <svg viewBox="0 0 600 180" className="h-28 w-full max-w-sm rounded border border-slate-200 bg-white" aria-label="Customer handwritten signature">
+                {agreement.signature_paths.map((path, index) => <path key={index} d={path} fill="none" stroke="#111827" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />)}
+              </svg>
+            )}
             <p className="text-base font-semibold text-slate-900">{agreement.signer_name}</p>
+            {agreement.signature_hash && <p className="break-all text-[10px]">Signature hash: {agreement.signature_hash}</p>
             <p>Signed electronically {dateText(agreement.accepted_at)}.</p>
             <p className="break-all">Document hash: {agreement.content_hash}</p>
             <p>Template: {agreement.template_key} v{agreement.template_version} ({agreement.template_status === "approved_counsel" ? "approved by counsel" : "draft"}).</p>
