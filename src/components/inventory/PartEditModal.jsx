@@ -195,11 +195,31 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
             </div>
           </div>
           <div className="col-span-2"><Label>Description</Label><Textarea value={form.description ?? ""} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} /></div>
+          <div className="col-span-2 border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="font-semibold">Website Store</h3><p className="text-xs text-slate-500">Configure this part for sale on Elite's website.</p></div>
+              <label className="flex items-center gap-2 text-sm"><Switch checked={!!form.website_published} onCheckedChange={v=>setForm(f=>({...f,website_published:v}))}/> Publish</label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><Label>Website Product Name</Label><Input value={form.website_store_name??""} placeholder={form.name||"Product name"} onChange={e=>setForm(f=>({...f,website_store_name:e.target.value}))}/></div>
+              <div><Label>Manufacturer / Brand</Label><Input value={form.website_brand??""} onChange={e=>setForm(f=>({...f,website_brand:e.target.value}))}/></div>
+              <div><Label>Website Selling Price ($)</Label><Input type="number" min="0" step="0.01" value={form.sell_price??""} onChange={e=>setForm(f=>({...f,sell_price:e.target.value,use_markup:false}))}/><p className="text-xs text-slate-500">Uses the part's base selling price. Website price and estimate allowance are separate.</p></div>
+              <div><Label>Stock Policy</Label><Select value={form.website_inventory_policy||"tracked"} onValueChange={v=>setForm(f=>({...f,website_inventory_policy:v}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="tracked">Track shop stock</SelectItem><SelectItem value="unlimited">Made to order / unlimited</SelectItem></SelectContent></Select></div>
+              <div className="sm:col-span-2"><Label>Primary Image URL</Label><Input value={form.website_image_url??""} onChange={e=>setForm(f=>({...f,website_image_url:e.target.value}))}/></div>
+              <div className="sm:col-span-2"><Label>Additional Image URLs (one per line)</Label><Textarea rows={3} value={(form.website_images||[]).join("\n")} onChange={e=>setForm(f=>({...f,website_images:e.target.value.split("\n").map(x=>x.trim()).filter(Boolean)}))}/></div>
+              <div className="sm:col-span-2"><Label>Website Description</Label><Textarea rows={3} value={form.website_description??""} onChange={e=>setForm(f=>({...f,website_description:e.target.value}))}/></div>
+              <div className="sm:col-span-2"><Label>SEO Title</Label><Input value={form.website_seo_title??""} onChange={e=>setForm(f=>({...f,website_seo_title:e.target.value}))}/></div>
+              <div className="sm:col-span-2"><Label>SEO Description</Label><Textarea rows={2} value={form.website_seo_description??""} onChange={e=>setForm(f=>({...f,website_seo_description:e.target.value}))}/></div>
+            </div>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={!!form.website_show_stock_quantity} onCheckedChange={v=>setForm(f=>({...f,website_show_stock_quantity:!!v}))}/> Show exact shop stock quantity on website</label>
+            {form.turn14_item_id&&<div className="rounded border bg-slate-50 p-3 text-sm"><strong>Turn 14 supplier stock:</strong> {Number(form.turn14_available_quantity)||0} available · <strong>Elite shop stock:</strong> {Number(form.quantity_on_hand)||0}<p className="text-xs text-slate-500 mt-1">Supplier stock is informational and does not increase tracked shop inventory. Select made-to-order only when fulfillment arrangements are ready.</p>{Number(form.turn14_map_price)>0&&<p className="text-xs mt-1">MAP minimum: ${Number(form.turn14_map_price).toFixed(2)}</p>}</div>}
+            {form.website_published&&(!Number(form.sell_price)||Number(form.sell_price)<Number(form.turn14_map_price||0))&&<p className="text-sm text-red-700">Set a valid selling price at or above MAP before publishing.</p>}
+          </div>
           <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
+          <Button className="bg-[#e20404] hover:bg-[#c00303] text-white" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending||(!!form.website_published&&(!Number(form.sell_price)||Number(form.sell_price)<Number(form.turn14_map_price||0)))}>
             {saveMutation.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>
