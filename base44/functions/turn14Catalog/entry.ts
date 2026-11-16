@@ -12,10 +12,11 @@ export default async function(req){
   const page=Number(body.page||1);
   const brandId=String(body.brand_id||'');
   if(!Number.isInteger(page)||page<1||page>100000||!/^[0-9]*$/.test(brandId))return Response.json({error:'Invalid page or brand'},{status:400});
-  const data=await turn14Request('/v1/items?page='+page);
+  const endpoint=brandId?'/v1/items/brand/'+brandId+'?page='+page:'/v1/items?page='+page;
+  const data=await turn14Request(endpoint);
   const all=itemArray(data);
-  const filtered=brandId?all.filter(x=>String(x.attributes?.brand_id||'')===brandId):all;
-  return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:true});
+  const filtered=all;
+  return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:false});
  }
  // Individual-item preview/import calls are intentionally blocked until the
  // paginated items/pricing/inventory feeds and durable item-ID mapping exist.
