@@ -189,7 +189,7 @@ export default function AgreementDocument({ agreement }) {
               </svg>
             )}
             <p className="text-base font-semibold text-slate-900">{agreement.signer_name}</p>
-            {agreement.signature_hash && <p className="break-all text-[10px]">Signature hash: {agreement.signature_hash}</p>
+            {agreement.signature_hash && <p className="break-all text-[10px]">Signature hash: {agreement.signature_hash}</p>}
             <p>Signed electronically {dateText(agreement.accepted_at)}.</p>
             <p className="break-all">Document hash: {agreement.content_hash}</p>
             <p>Template: {agreement.template_key} v{agreement.template_version} ({agreement.template_status === "approved_counsel" ? "approved by counsel" : "draft"}).</p>
