@@ -420,7 +420,8 @@ export default function EstimateDetail() {
       newLines = form.line_items.map(l => {
         if (!l.part_id) return l;
         const price = (Number(l.unit_cost) || 0) * (1 + Number(override) / 100);
-        return { ...l, unit_price: price, total: (Number(l.quantity) || 0) * price };
+        const adjusted = Math.round(price*(1+(Number(form.pricing_allowance_rate)||0)/100)*100)/100;
+        return { ...l, unit_price: adjusted, total: (Number(l.quantity)||0)*adjusted, pricing_allowance_embedded: true, allowance_base_price: price };
       });
     }
     const newTaxRate = isTaxExempt ? 0 : form.tax_rate;
@@ -434,6 +435,7 @@ export default function EstimateDetail() {
   const updateLine = (idx, field, value) => {
     const lines = [...form.line_items];
     lines[idx] = { ...lines[idx], [field]: value };
+    if(field === 'unit_price' && lines[idx].pricing_allowance_embedded) lines[idx].allowance_base_price = (Number(value)||0)/(1+(Number(form.pricing_allowance_rate)||0)/100);
     if (field === "quantity" || field === "unit_price") {
       lines[idx].total = (Number(lines[idx].quantity) || 0) * (Number(lines[idx].unit_price) || 0);
     }
