@@ -62,6 +62,10 @@ export default async function(req){
   const prior=existing.length===1?existing[0]:null;
   const supplierFields={turn14_item_id:itemId,turn14_supplier_sku:sku,supplier_product_name:details.name,manufacturer_part_number:mfr,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
   const labels={turn14_item_id:'Turn 14 link',turn14_supplier_sku:'Turn 14 supplier SKU',supplier_product_name:'Supplier product name',manufacturer_part_number:'Manufacturer part number', turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
+  if(prior&&prior.part_number===sku&&eliteSku!==sku&&!existing.some(x=>x.id!==prior.id&&x.part_number===eliteSku)){
+   supplierFields.part_number=eliteSku;
+  }
+  if(prior&&prior.supplier_part_number!==sku&&(!prior.supplier_part_number||prior.supplier_part_number===mfr))supplierFields.supplier_part_number=sku;
   const differences=prior?Object.entries(supplierFields).filter(([key,value])=>String(prior[key]??(typeof value==='number'?0:''))!==String(value)).map(([key,value])=>({field:key,label:labels[key],before:prior[key]??null,after:value})):[];
   details.already_imported=!!prior?.turn14_item_id&&String(prior.turn14_item_id)===itemId;
   details.changes=differences;
