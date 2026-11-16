@@ -29,6 +29,17 @@ export default async function(req:Request){
   if(!order.payment_verified)problems.push('Payment is not verified');
   return Response.json({read_only:true,eligible:problems.length===0,items,problems,order_number:order.order_number,existing_status:order.turn14_dropship_status||'not_requested'});
  }
+ if(body.action==='quote_preview'){
+  if(!order.payment_verified||order.shipping_method!=='ship')return Response.json({error:'Verified payment and shipping required'},{status:409});
+  const lines=order.turn14_dropship_lines||[];
+  if(order.turn14_dropship_status!=='pending_review'||!lines.length)return Response.json({error:'Queue the dropship review before preparing a quote'},{status:409});
+  let address:any={};try{address=typeof order.shipping_address==='string'?JSON.parse(order.shipping_address):order.shipping_address||{};}catch{return Response.json({error:'Shipping address must be structured'},{status:409});}
+  const missing=['line1','city','state','postal_code'].filter(k=>!String(address[k]||'').trim());
+  if(missing.length)return Response.json({error:'Missing customer address: '+missing.join(', ')},{status:409});
+  const grouped=new Map();for(const l of lines){const key=String(l.turn14_item_id);if(!grouped.has(key))grouped.set(key,{item_identifier:key,item_identifier_type:'item_id',quantity:0});grouped.get(key).quantity+=Number(l.quantity);}
+  const quote={data:{environment:'testing',po_number:String(order.order_number).slice(0,50),locations:[{location:'default',combine_in_out_stock:false,items:[...grouped.values()]}],recipient:{name:order.recipient_name,address:address.line1,address_2:address.line2||'',city:address.city,state:address.state,zip:address.postal_code,country:address.country||'US',email_address:order.recipient_email,is_shop_address:false}}};
+  return Response.json({read_only:true,submitted_to_supplier:false,quote_preview:quote,warning:'Quote preview only. Shipping method, quote pricing, recipient phone and any required regulatory acknowledgments must be verified before a Turn 14 request is submitted.'});
+ }
  if(body.action==='queue'){
   if(!order.payment_verified||order.shipping_method!=='ship')return Response.json({error:'Verified payment and shipping are required'},{status:409});
   if(['pending_review','ready_for_submission','submitted','shipped'].includes(order.turn14_dropship_status))return Response.json({error:'Dropship request already exists; no duplicate created'},{status:409});
