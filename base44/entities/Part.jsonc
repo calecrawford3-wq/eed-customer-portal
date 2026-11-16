@@ -228,6 +228,13 @@
     "turn14_item_id": {
       "type": "string"
     },
+    "turn14_purchase_cost": {
+      "type": "number",
+      "description": "Latest Turn 14 supplier purchase cost; does not override Elite custom unit cost"
+    },
+    "turn14_last_synced_at": {
+      "type": "string"
+    },
     "turn14_map_price": {
       "type": "number"
     },
