@@ -8,6 +8,18 @@ const BATCH_SIZE=10;
 const MAX_PRODUCTS_PER_RUN=500;
 const TIME_BUDGET_MS=85000;
 
+async function requestWithRetry(path:string){
+ let last:any;
+ for(let attempt=0;attempt<3;attempt++){
+  try{return await turn14Request(path);}catch(e){
+   last=e;
+   const message=String((e as any)?.message||e);
+   if(!/request failed \((429|500|502|503|504)\)/i.test(message)||attempt===2)throw e;
+   await new Promise(resolve=>setTimeout(resolve,500*Math.pow(2,attempt)));
+  }
+ }
+ throw last;
+}
 function isAuthFailure(message:string){
  return /authentication failed|request failed \(401\)|request failed \(403\)/i.test(message);
 }
@@ -22,6 +34,9 @@ export default async function(req:Request){
  const triggeredBy=String(body.triggered_by||'manual').slice(0,40);
  const svc=sdk.asServiceRole.entities;
  const startedAt=Date.now();
+ const recent=await svc.Turn14FeedRun.list('-created_date',30);
+ const active=(Array.isArray(recent)?recent:recent.items||[]).find((x:any)=>x.mode==='linked_parts_sync'&&x.feed===mode&&x.status==='running'&&Date.now()-Date.parse(x.started_at||'')<120000);
+ if(active)return Response.json({error:'A '+mode+' synchronization is already running',existing_run_id:active.id},{status:409});
  const run=await svc.Turn14FeedRun.create({feed:mode,mode:'linked_parts_sync',status:'running',page:1,started_at:new Date().toISOString(),requested_by:triggeredBy,triggered_by:triggeredBy,test_environment:true});
  let checked=0,updated=0,unchanged=0,failed=0,flagged=0,unavailable=0,batches=0,stoppedEarly=false;
  const changes:any[]=[];const errors:any[]=[];const flaggedProducts:any[]=[];
@@ -41,7 +56,7 @@ export default async function(req:Request){
     if(!/^[a-zA-Z0-9_-]{1,64}$/.test(itemId)){failed++;errors.push({sku:part.part_number,error:'Invalid stored Turn 14 ID'});continue;}
     checked++;
     try{
-     const [priceData,stockData]=await Promise.all([turn14Request('/v1/pricing/'+itemId),turn14Request('/v1/inventory/'+itemId)]);
+     const [priceData,stockData]=await Promise.all([requestWithRetry('/v1/pricing/'+itemId),requestWithRetry('/v1/inventory/'+itemId)]);
      const price=itemArray(priceData).find((x:any)=>String(x.id)===itemId);
      const stock=itemArray(stockData).find((x:any)=>String(x.id)===itemId);
      if(!price||!stock)throw Error('Missing matching pricing or inventory item ID');
@@ -90,10 +105,11 @@ export default async function(req:Request){
    if(stoppedEarly)break;
    const nextCursor=Array.isArray(page)?undefined:page.next_cursor;
    const hasMore=Array.isArray(page)?false:page.has_more;
-   if(!hasMore||!nextCursor)break;
+   if(!hasMore||!nextCursor){if(hasMore&&!nextCursor)stoppedEarly=true;break;}
    cursor=nextCursor;
   }
-  const status=failed?'partial':'success';
+  if(checked>=MAX_PRODUCTS_PER_RUN||Date.now()-startedAt>=TIME_BUDGET_MS)stoppedEarly=true;
+  const status=failed||stoppedEarly?'partial':'success';
   const summary=`${mode==='pricing'?'Pricing':'Inventory'} sync: ${checked} checked, ${updated} updated, ${unchanged} unchanged, ${failed} failed, ${flagged} flagged`;
   await svc.Turn14FeedRun.update(run.id,{
    status,rows_received:checked,total_pages:batches,page:batches,
