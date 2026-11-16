@@ -49,7 +49,7 @@ export default async function(req:Request){
   const items=[];for(const line of order.line_items||[]){
    const part=line.part_id?await svc.Part.get(String(line.part_id)).catch(()=>null):null;
    if(!part?.turn14_item_id)continue;
-   if(!part.turn14_dropship_enabled){problems.push('Enable Turn 14 dropship on the inventory part: '+line.sku);continue;}
+   if(!part.turn14_dropship_enabled)continue;
    const qty=Number(line.quantity||0);
    if(!Number.isInteger(qty)||qty<=0||Number(part.turn14_available_quantity||0)<qty||!Number.isFinite(Number(part.turn14_purchase_cost)))return Response.json({error:'Dropship item not ready: '+line.sku},{status:409});
    items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,unit_cost:Number(part.turn14_purchase_cost)});
