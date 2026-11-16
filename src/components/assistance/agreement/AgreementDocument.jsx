@@ -37,7 +37,8 @@ export default function AgreementDocument({ agreement }) {
     <article className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 print:border-0 print:p-0">
       <header className="border-b-2 border-[#e20404] pb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{seller.dba || "Elite Engine Development"}</p>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">Retail Installment Agreement</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">Retail Installment Sale Agreement</h1>
+        <p className="mt-1 text-[10px] font-medium uppercase tracking-widest text-slate-500">Fixed-rate installment sale · Oklahoma</p>
         <p className="text-xs text-slate-600">
           {agreement.agreement_number} · Issued {dateText(agreement.issued_at || snapshot.issued_date)}
           {agreement.accepted_at ? ` · Signed ${dateText(agreement.accepted_at)}` : " · Not signed"}
@@ -50,6 +51,23 @@ export default function AgreementDocument({ agreement }) {
           <p><strong>DRAFT — NOT LEGALLY REVIEWED.</strong> This template has not been approved by qualified Oklahoma counsel.</p>
         </div>
       )}
+
+      <section className="mt-4 rounded-xl border-2 border-slate-900 p-3 sm:p-4">
+        <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-900">Federal Truth-in-Lending disclosure summary</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-slate-600">The amounts below summarize the approved installment sale. Required statutory disclosures and their precise form must be reviewed before this agreement is used for live financing.</p>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Figure label="Annual percentage rate" value={`${figures.apr ?? 0}%`} strong />
+          <Figure label="Finance charge" value={formatMoney(figures.finance_charge)} strong />
+          <Figure label="Amount financed" value={formatMoney(figures.amount_financed)} strong />
+          <Figure label="Total of payments" value={formatMoney(figures.total_of_payments)} strong />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 sm:grid-cols-4">
+          <Figure label="Total sale price" value={formatMoney(figures.total_sale_price)} />
+          <Figure label="Down payment" value={formatMoney(figures.deposit_amount)} />
+          <Figure label="Number of payments" value={String(figures.payment_count ?? 0)} />
+          <Figure label="First payment due" value={dateText(figures.first_payment_date)} />
+        </div>
+      </section>
 
       <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 p-3">
