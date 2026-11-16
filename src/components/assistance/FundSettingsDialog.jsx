@@ -30,6 +30,9 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
       internal_financing_enabled: settings?.internal_financing_enabled !== false,
       internal_financing_apr: settings?.internal_financing_apr ?? 0,
       internal_financing_term_months: settings?.internal_financing_term_months ?? 12,
+      internal_financing_min_term_months: settings?.internal_financing_min_term_months ?? 3,
+      internal_financing_max_term_months: settings?.internal_financing_max_term_months ?? 24,
+      internal_financing_min_monthly_payment: settings?.internal_financing_min_monthly_payment ?? 100,
       internal_financing_disclosure_text: settings?.internal_financing_disclosure_text || "",
       late_fee_enabled: settings?.late_fee_enabled === true,
       late_fee_percent: settings?.late_fee_percent ?? 5,
@@ -211,6 +214,24 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
                 <Input type="number" min="1" max="84" step="1" className="mt-1" value={form.internal_financing_term_months ?? 12} onChange={(e) => setForm({ ...form, internal_financing_term_months: e.target.value })} />
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Shortest term (months)</Label>
+                <Input type="number" min="1" max="84" step="1" className="mt-1" value={form.internal_financing_min_term_months ?? 3} onChange={(e) => setForm({ ...form, internal_financing_min_term_months: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Longest term (months)</Label>
+                <Input type="number" min="1" max="84" step="1" className="mt-1" value={form.internal_financing_max_term_months ?? 24} onChange={(e) => setForm({ ...form, internal_financing_max_term_months: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Minimum monthly payment ($)</Label>
+                <Input type="number" min="1" max="10000" step="25" className="mt-1" value={form.internal_financing_min_monthly_payment ?? 100} onChange={(e) => setForm({ ...form, internal_financing_min_monthly_payment: e.target.value })} />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              A term is shown to a customer only when its scheduled payment meets the minimum. The longest allowed term is derived from the actual
+              balance: on $1,125 at 0% APR, 11 payments of $102.27 are offered and 12 payments of $93.75 are not.
+            </p>
             <div>
               <Label className="text-xs">Disclosures the customer signs</Label>
               <Textarea className="mt-1 min-h-24" value={form.internal_financing_disclosure_text || ""} onChange={(e) => setForm({ ...form, internal_financing_disclosure_text: e.target.value })} />

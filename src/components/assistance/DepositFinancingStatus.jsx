@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Clock, ExternalLink, FileSignature, Loader2, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { parseOfferDate } from "@/lib/offerDate";
@@ -17,6 +18,10 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
   const signed = !!deposit?.loan_signed;
   const verifiedAt = parseOfferDate(deposit?.deposit_verified_at);
   const terms = loan && approved ? loan : null;
+  // When Elite approves something other than what the customer chose, the change
+  // has to be acknowledged before the agreement can be signed.
+  const termsChanged = approved && !signed && loan?.terms_changed === true;
+  const [changedAccepted, setChangedAccepted] = useState(false);
 
   return (
     <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2">
@@ -66,6 +71,12 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
                 {loan.application.submitted_at ? `, submitted ${format(new Date(loan.application.submitted_at), "MMM d, yyyy")}` : ""}.
               </p>
             )}
+            {Number(loan?.requested_term_months) > 0 && (
+              <p className="text-amber-700">
+                You chose {loan.requested_term_months} monthly payments of {formatMoney(loan.requested_monthly_payment)} at {loan.requested_apr}%
+                indicative APR. Elite will confirm or adjust these terms.
+              </p>
+            )}
             <Button size="sm" variant="ghost" className="px-0 h-auto mt-1 text-amber-800" disabled={!!actionBusy} onClick={onCancel}>
               {actionBusy === "cancel" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Withdraw request
             </Button>
@@ -94,6 +105,20 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
             {terms.finance_charge > 0 && <p>Finance charge: <span className="font-semibold text-slate-900">{formatMoney(terms.finance_charge)}</span></p>}
             <p>First payment: <span className="font-semibold text-slate-900">{terms.first_payment_date}</span></p>
           </div>
+          {termsChanged && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900 space-y-1.5">
+              <p className="font-semibold">Elite approved different terms than you asked for</p>
+              <p>
+                You asked for {loan.requested_term_months || "—"} monthly payments of {formatMoney(loan.requested_monthly_payment)}
+                {Number(loan.requested_apr) >= 0 ? ` at ${loan.requested_apr}% indicative APR` : ""}. Elite approved {terms.term_months} monthly
+                payments of {formatMoney(terms.monthly_payment)} at {terms.apr}% APR. Nothing is owed until you accept the change and sign.
+              </p>
+              <label className="flex items-start gap-2">
+                <Checkbox checked={changedAccepted} onCheckedChange={(value) => setChangedAccepted(value === true)} className="mt-0.5" />
+                <span>I understand these approved terms are different from what I requested, and I accept these terms.</span>
+              </label>
+            </div>
+          )}
           <div className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1.5">
             <p className="text-[11px] font-semibold text-slate-800">Retail Installment Agreement</p>
             {agreement?.token ? (
@@ -114,7 +139,8 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           </div>
           <AgreementSignatureForm
             busy={actionBusy === "sign"}
-            onSubmit={(payload) => onSign(payload)}
+            disabledReason={termsChanged && !changedAccepted ? "Confirm that you accept the changed terms above before signing." : ""}
+            onSubmit={(payload) => onSign({ ...payload, terms_change_accepted: changedAccepted === true })}
           />
         </div>
       ) : signed && !deposit?.deposit_verified ? (
@@ -123,7 +149,12 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           <p>Signed by {loan?.signed_name}. Paying the deposit starts the plan.</p>
         </div>
       ) : deposit?.can_request ? (
-        <FinancingApplicationForm busy={actionBusy === "request"} onSubmit={(payload) => onRequest(payload)} />
+        <FinancingApplicationForm
+          busy={actionBusy === "request"}
+          financing={deposit?.financing || null}
+          depositAmount={Number(deposit?.deposit_amount) || 0}
+          onSubmit={(payload) => onRequest(payload)}
+        />
       ) : deposit?.reason ? (
         <p className="text-xs text-slate-600">{deposit.reason}</p>
       ) : null}

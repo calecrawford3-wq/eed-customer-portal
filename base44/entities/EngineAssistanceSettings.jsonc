@@ -86,12 +86,27 @@
     "internal_financing_apr": {
       "type": "number",
       "default": 0,
-      "description": "Default fixed APR for Elite in-house financing. 0 means no finance charge. Staff set the final APR on each agreement."
+      "description": "Indicative fixed APR shown on customer payment options. 0 means no finance charge. Staff set the final APR on each agreement."
     },
     "internal_financing_term_months": {
       "type": "number",
       "default": 12,
-      "description": "Default repayment term in months for Elite in-house financing"
+      "description": "Preferred repayment term in months. Offered only when its scheduled payment meets the minimum installment."
+    },
+    "internal_financing_min_term_months": {
+      "type": "number",
+      "default": 3,
+      "description": "Shortest repayment term a customer may choose (subject to legal configuration)"
+    },
+    "internal_financing_max_term_months": {
+      "type": "number",
+      "default": 24,
+      "description": "Longest repayment term Elite allows. The term actually offered is also capped so the scheduled payment never falls below the minimum installment."
+    },
+    "internal_financing_min_monthly_payment": {
+      "type": "number",
+      "default": 100,
+      "description": "Hard minimum scheduled monthly installment. No term whose regular payment is below this amount is ever shown, accepted or approved."
     },
     "internal_financing_disclosure_text": {
       "type": "string",

@@ -180,7 +180,7 @@ export default function EngineAssistanceDetail() {
           <ApplicationSummary application={application} />
           <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} deliveries={deliveries} />
           <DemoSessionPanel offer={offer} application={application} />
-          <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} />
+          <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} settings={settings} />
           <IdentityVerificationPanel
             loan={loan}
             verification={verification}

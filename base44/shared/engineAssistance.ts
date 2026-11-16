@@ -6,6 +6,7 @@ import { publicAgreement, lendingGate, latestAgreement } from './installmentAgre
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 import { deliverAssistanceEmail } from './assistanceEmail.ts';
 import { publicApplicationSummary } from './financingApplication.ts';
+import { financingOptions, loanTerms } from './financingTerms.ts';
 
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
@@ -301,34 +302,17 @@ export function buildLoanSchedule(principal: any, apr: any, termMonths: any, fir
   const amount = Math.max(0, round2(principal));
   const months = Math.min(84, Math.max(1, Math.round(Number(termMonths)) || 12));
   const aprValue = Math.min(36, Math.max(0, Number(apr) || 0));
-  const monthlyRate = (aprValue / 100) / 12;
-  const monthly = amount <= 0 ? 0 : monthlyRate === 0
-    ? round2(amount / months)
-    : round2((amount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1));
+  // One amortization implementation is shared with the term options shown to the
+  // customer, so a quoted payment and the signed schedule can never disagree.
+  const terms = loanTerms(amount, aprValue, months);
   const first = firstDueDate || shiftMonths(today(), 1);
-  const schedule: any[] = [];
-  let balance = amount;
-  for (let index = 1; index <= months; index += 1) {
-    const interest = round2(balance * monthlyRate);
-    const payment = index === months ? round2(balance + interest) : monthly;
-    const principalPart = round2(Math.max(0, payment - interest));
-    balance = round2(Math.max(0, balance - principalPart));
-    schedule.push({
-      number: index,
-      due_date: shiftMonths(first, index - 1),
-      amount: payment,
-      principal: principalPart,
-      interest,
-      balance_after: balance,
-    });
-  }
-  const totalRepayable = round2(schedule.reduce((sum: number, row: any) => sum + cents(row.amount), 0) / 100);
+  const schedule = terms.rows.map((row: any) => ({ ...row, due_date: shiftMonths(first, row.number - 1) }));
   return {
     apr: round2(aprValue),
     term_months: months,
-    monthly_payment: round2(schedule[0]?.amount || 0),
-    total_repayable: totalRepayable,
-    finance_charge: round2(totalRepayable - amount),
+    monthly_payment: terms.monthly_payment,
+    total_repayable: terms.total_repayable,
+    finance_charge: terms.finance_charge,
     schedule,
   };
 }
@@ -455,6 +439,9 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     deposit_method: offer?.deposit_method || '',
     deposit_lender: offer?.deposit_lender || '',
     internal_amount: internalAmount,
+    // Every term Elite can offer on this exact balance, with the payment, total
+    // of payments and finance charge for each. Calculated here, never in the browser.
+    financing: financingOptions(internalAmount, settings),
     loan_status: loanStatus,
     loan_signed: loanSigned,
     loan_ready: loanReady,
@@ -549,6 +536,14 @@ export function publicLoan(loan: any) {
     paid_amount: money.paid_amount,
     outstanding: money.outstanding,
     first_payment_date: loan.first_payment_date || '',
+    // The plan the customer chose on their application, so Elite's approved
+    // terms are never presented as if they were the customer's own choice.
+    requested_apr: round2(loan.requested_apr),
+    requested_term_months: Number(loan.requested_term_months) || 0,
+    requested_monthly_payment: round2(loan.requested_monthly_payment),
+    requested_total_repayable: round2(loan.requested_pricing?.total_repayable),
+    terms_changed: loan.terms_changed === true,
+    terms_change_consented: !!loan.terms_change_consent_at,
     requested_at: loan.requested_at || '',
     approved_at: loan.approved_at || '',
     signed_at: loan.signed_at || '',

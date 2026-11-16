@@ -11,6 +11,7 @@ import {
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { validateFinancingApplication } from '../../shared/financingApplication.ts';
+import { financingQuote } from '../../shared/financingTerms.ts';
 
 // Public, token-authorized actions for the customer's in-house financing
 // request. Nothing here charges money or approves credit: the customer asks for
@@ -76,11 +77,36 @@ export default async function (req) {
       if (principal <= 0) {
         return Response.json({ error: 'There is no remaining balance to finance on this offer.' }, { status: 409 });
       }
-      const apr = Math.min(36, Math.max(0, Number(settings.internal_financing_apr) || 0));
-      const termMonths = Math.min(84, Math.max(1, Math.round(Number(settings.internal_financing_term_months) || 12)));
+      // The customer chooses the number of monthly payments. Everything else is
+      // computed here from the exact financed balance and the configured
+      // indicative APR: the browser never supplies a rate, a payment or a total.
+      const { plan: pricing, option } = financingQuote(principal, settings, body.requested_term_months);
+      if (!pricing.can_finance) {
+        return Response.json({ error: pricing.note }, { status: 409 });
+      }
+      if (!option) {
+        return Response.json({
+          error: `Choose one of the available plans: ${pricing.eligible_terms[0]} to ${pricing.max_eligible_term} monthly payments, each at or above $${pricing.min_monthly_payment.toFixed(2)}.`,
+        }, { status: 400 });
+      }
+      const apr = pricing.apr;
+      const termMonths = option.term_months;
       const firstDate = shiftMonths(today(), 1);
       const terms = buildLoanSchedule(principal, apr, termMonths, firstDate);
       const now = new Date().toISOString();
+      const requestedPricing = {
+        principal,
+        apr,
+        term_months: termMonths,
+        monthly_payment: option.monthly_payment,
+        total_repayable: option.total_repayable,
+        finance_charge: option.finance_charge,
+        min_term_months: pricing.min_term_months,
+        max_term_months: pricing.max_term_months,
+        min_monthly_payment: pricing.min_monthly_payment,
+        eligible_terms: pricing.eligible_terms,
+        snapshot_at: now,
+      };
       const payload: any = {
         offer_id: offer.id,
         application_id: offer.application_id || '',
@@ -89,6 +115,14 @@ export default async function (req) {
         principal,
         apr: terms.apr,
         term_months: terms.term_months,
+        // The plan the customer selected, kept separately from the approved terms.
+        requested_apr: apr,
+        requested_term_months: termMonths,
+        requested_monthly_payment: option.monthly_payment,
+        requested_pricing: requestedPricing,
+        terms_changed: false,
+        terms_change_consent_at: '',
+        terms_change_consent_name: '',
         monthly_payment: terms.monthly_payment,
         total_repayable: terms.total_repayable,
         finance_charge: terms.finance_charge,
@@ -109,7 +143,7 @@ export default async function (req) {
         payments: [],
         borrower_application: applied.application,
       };
-      const note = `Financing application submitted by ${applied.application.legal_name}; requested $${principal.toFixed(2)} after a $${plan.deposit_amount.toFixed(2)} deposit`;
+      const note = `Financing application submitted by ${applied.application.legal_name}; requested $${principal.toFixed(2)} after a $${plan.deposit_amount.toFixed(2)} deposit, choosing ${termMonths} monthly payments of $${option.monthly_payment.toFixed(2)} at ${apr}% APR`;
       const loan = existing
         ? await loans.update(existing.id, {
           ...payload,
@@ -160,6 +194,14 @@ export default async function (req) {
       if (body.accept_terms !== true) {
         return Response.json({ error: 'You must confirm that you read and accept the Retail Installment Agreement.' }, { status: 400 });
       }
+      // Elite may approve different terms than the customer requested. Those
+      // changed terms can only be signed after an explicit acknowledgment, so a
+      // customer's own choice is never quietly overwritten.
+      if (existing.terms_changed === true && body.terms_change_accepted !== true) {
+        return Response.json({
+          error: 'Elite approved different terms than you requested. Review the approved plan and confirm that you accept the changed terms before signing.',
+        }, { status: 409 });
+      }
       const gate = lendingGate(settings);
       if (!gate.allowed) return Response.json({ error: gate.reason }, { status: 409 });
 
@@ -186,10 +228,19 @@ export default async function (req) {
         }
         return Response.json({ error: String(error?.message || 'This agreement could not be signed.') }, { status: 400 });
       }
+      let finalLoan: any = accepted?.loan || existing;
+      if (existing.terms_changed === true && !finalLoan.terms_change_consent_at) {
+        finalLoan = await loans.update(existing.id, {
+          terms_change_consent_at: new Date().toISOString(),
+          terms_change_consent_name: name,
+          audit_trail: appendAudit(finalLoan, 'Customer', 'terms_change_accepted',
+            `${name} accepted the changed terms: ${Number(existing.term_months) || 0} monthly payments of $${round2(existing.monthly_payment).toFixed(2)} at ${round2(existing.apr)}% APR`),
+        });
+      }
       // A signature can complete an agreement whose deposit was already paid.
       const synced = await syncDepositState(base44, offer.id, 'Customer');
       return Response.json({
-        loan: publicLoan(synced?.loan || accepted?.loan || existing),
+        loan: publicLoan(synced?.loan || finalLoan || existing),
         agreement: publicAgreement(accepted?.agreement || agreement),
       });
     }

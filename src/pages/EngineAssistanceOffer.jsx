@@ -250,6 +250,7 @@ export default function EngineAssistanceOffer() {
               signature_name: payload?.name,
               esign_consent: payload?.esign_consent === true,
               accept_terms: payload?.accept_terms === true,
+              terms_change_accepted: payload?.terms_change_accepted === true,
               autopay_authorized: payload?.autopay_authorized === true,
             }, "Agreement signed")}
             onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}

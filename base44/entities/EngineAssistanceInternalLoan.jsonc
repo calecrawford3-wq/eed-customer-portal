@@ -41,7 +41,7 @@
     "apr": {
       "type": "number",
       "default": 0,
-      "description": "Fixed annual percentage rate set by Elite. 0 means no finance charge."
+      "description": "Fixed annual percentage rate. While pending_approval this holds the indicative APR quoted to the customer; approval sets the final APR."
     },
     "term_months": {
       "type": "number",
@@ -59,6 +59,76 @@
     "finance_charge": {
       "type": "number",
       "default": 0
+    },
+    "requested_apr": {
+      "type": "number",
+      "default": 0,
+      "description": "Indicative APR the customer saw when they chose a plan. Never a promise of the approved rate."
+    },
+    "requested_term_months": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of monthly payments the customer chose on their application."
+    },
+    "requested_monthly_payment": {
+      "type": "number",
+      "default": 0,
+      "description": "Scheduled payment for the customer's chosen term, computed by the server from the exact financed balance."
+    },
+    "requested_pricing": {
+      "type": "object",
+      "description": "Server-computed snapshot of the plan the customer selected, kept so staff can compare it with what they approve. The browser cannot supply these numbers.",
+      "properties": {
+        "principal": {
+          "type": "number"
+        },
+        "apr": {
+          "type": "number"
+        },
+        "term_months": {
+          "type": "number"
+        },
+        "monthly_payment": {
+          "type": "number"
+        },
+        "total_repayable": {
+          "type": "number"
+        },
+        "finance_charge": {
+          "type": "number"
+        },
+        "min_term_months": {
+          "type": "number"
+        },
+        "max_term_months": {
+          "type": "number"
+        },
+        "min_monthly_payment": {
+          "type": "number"
+        },
+        "eligible_terms": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "snapshot_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "terms_changed": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the approved APR, term or payment differs from what the customer requested. The customer must explicitly accept the changed terms before signing."
+    },
+    "terms_change_consent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "terms_change_consent_name": {
+      "type": "string"
     },
     "first_payment_date": {
       "type": "string",

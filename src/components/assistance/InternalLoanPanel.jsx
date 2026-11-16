@@ -11,10 +11,11 @@ import { format } from "date-fns";
 import { formatMoney } from "@/lib/money";
 import StatusBadge from "./StatusBadge";
 import LoanScheduleCard from "./LoanScheduleCard";
+import { MIN_MONTHLY_PAYMENT, monthlyPaymentFor } from "@/lib/financingMath";
 
 // Staff side of the in-house agreement. Elite sets and approves the fixed APR
 // and term here, and records each installment that is actually collected.
-export default function InternalLoanPanel({ offer, loan, onAction, busy, identity = null }) {
+export default function InternalLoanPanel({ offer, loan, onAction, busy, identity = null, settings = null }) {
   const [apr, setApr] = useState("0");
   const [term, setTerm] = useState("12");
   const [firstDate, setFirstDate] = useState("");
@@ -37,6 +38,15 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
 
   const editable = !!loan && !["active", "completed", "canceled"].includes(loan.status);
   const signed = !!loan?.signed_at;
+  // The same limits the customer page used: the approved plan may not fall below
+  // the minimum installment, and its term must stay inside the legal range.
+  const minTerm = Number(settings?.internal_financing_min_term_months) || 3;
+  const maxTerm = Number(settings?.internal_financing_max_term_months) || 24;
+  const minMonthly = Number(settings?.internal_financing_min_monthly_payment) || MIN_MONTHLY_PAYMENT;
+  const termValue = Number(term) || 0;
+  const previewMonthly = loan ? monthlyPaymentFor(loan.principal, Number(apr) || 0, termValue) : 0;
+  const monthlyTooLow = previewMonthly > 0 && Math.round(previewMonthly * 100) < Math.round(minMonthly * 100);
+  const termOutOfRange = termValue < minTerm || termValue > maxTerm;
 
   return (
     <Card>
@@ -90,6 +100,29 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
               </p>
             )}
 
+            {Number(loan.requested_term_months) > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Customer&apos;s chosen plan</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                  {formatMoney(loan.requested_monthly_payment)} / month · {loan.requested_term_months} payments · {formatMoney(loan.requested_pricing?.total_repayable ?? loan.total_repayable)} total
+                </p>
+                <p className="text-[11px] text-slate-600">
+                  {loan.requested_apr}% indicative APR on {formatMoney(loan.requested_pricing?.principal ?? loan.principal)}. If you approve different
+                  terms, the customer must accept the change in writing before signing.
+                </p>
+                {loan.status === "pending_approval" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => { setApr(String(loan.requested_apr ?? 0)); setTerm(String(loan.requested_term_months)); }}
+                  >
+                    Use the customer&apos;s plan
+                  </Button>
+                )}
+              </div>
+            )}
+
             {editable && (
               <div className="rounded-xl border border-slate-200 p-3 space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Set the fixed terms</p>
@@ -100,19 +133,28 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
                   </div>
                   <div>
                     <Label className="text-xs">Term (months)</Label>
-                    <Input type="number" min="1" max="84" step="1" className="mt-1" value={term} onChange={(event) => setTerm(event.target.value)} />
+                    <Input type="number" min={minTerm} max={maxTerm} step="1" className="mt-1" value={term} onChange={(event) => setTerm(event.target.value)} />
+                    <p className="mt-0.5 text-[10px] text-slate-400">{minTerm}–{maxTerm} months allowed</p>
                   </div>
                   <div>
                     <Label className="text-xs">First payment date</Label>
                     <Input type="date" className="mt-1" value={firstDate} onChange={(event) => setFirstDate(event.target.value)} />
                   </div>
                 </div>
+                <div className={`rounded-lg border px-2.5 py-2 text-[11px] leading-relaxed ${
+                  monthlyTooLow || termOutOfRange ? "border-amber-200 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}>
+                  Scheduled payment <span className="font-semibold tabular-nums">{formatMoney(previewMonthly)}</span> across {termValue || 0} months
+                  {" "}at {Number(apr) || 0}% APR
+                  {monthlyTooLow && ` — below Elite's ${formatMoney(minMonthly)} minimum installment. Choose a shorter term.`}
+                  {!monthlyTooLow && termOutOfRange && ` — the term must be between ${minTerm} and ${maxTerm} months.`}
+                </div>
                 <Textarea className="min-h-16" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Internal approval note (optional)" />
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    disabled={busy}
-                    onClick={() => onAction("approve_internal_loan", { loan_id: loan.id, apr: Number(apr), term_months: Number(term), first_payment_date: firstDate, note })}
+                    disabled={busy || monthlyTooLow || termOutOfRange || !(termValue > 0)}
+                    onClick={() => onAction("approve_internal_loan", { loan_id: loan.id, apr: Number(apr), term_months: termValue, first_payment_date: firstDate, note })}
                   >
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Approve terms
                   </Button>

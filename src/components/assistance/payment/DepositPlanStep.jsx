@@ -40,7 +40,11 @@ export default function DepositPlanStep({
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Financed by Elite</p>
             <p className="text-xl font-extrabold tabular-nums text-slate-900">{formatMoney(financed)}</p>
             <p className="text-[11px] text-slate-500">
-              {terms ? `${terms.apr}% APR · ${terms.term_months} months` : "Monthly terms set on approval"}
+              {terms
+                ? `${terms.apr}% APR · ${terms.term_months} months`
+                : deposit?.financing?.can_finance
+                  ? `${deposit.financing.min_term_months}–${deposit.financing.max_eligible_term} monthly payments, you choose`
+                  : "Monthly terms set on approval"}
             </p>
           </div>
         </div>

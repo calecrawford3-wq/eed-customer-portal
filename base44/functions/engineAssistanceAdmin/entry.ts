@@ -15,6 +15,7 @@ import {
   identityAdminSummary, identityGate, loadVerificationForLoan, readIdentitySession,
 } from '../../shared/identityVerification.ts';
 import { deliverAssistanceEmail, retryAssistanceEmail } from '../../shared/assistanceEmail.ts';
+import { financingOptions, financingTermLimits } from '../../shared/financingTerms.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
 // role. Applicant data, documents and financial records never leave through a
@@ -160,6 +161,9 @@ export default async function (req) {
       if (data.internal_financing_enabled !== undefined) patch.internal_financing_enabled = data.internal_financing_enabled !== false;
       if (data.internal_financing_apr !== undefined) patch.internal_financing_apr = Math.min(36, Math.max(0, num(data.internal_financing_apr)));
       if (data.internal_financing_term_months !== undefined) patch.internal_financing_term_months = Math.min(84, Math.max(1, Math.round(num(data.internal_financing_term_months) || 12)));
+      if (data.internal_financing_min_term_months !== undefined) patch.internal_financing_min_term_months = Math.min(84, Math.max(1, Math.round(num(data.internal_financing_min_term_months) || 3)));
+      if (data.internal_financing_max_term_months !== undefined) patch.internal_financing_max_term_months = Math.min(84, Math.max(1, Math.round(num(data.internal_financing_max_term_months) || 24)));
+      if (data.internal_financing_min_monthly_payment !== undefined) patch.internal_financing_min_monthly_payment = Math.min(100000, Math.max(1, num(data.internal_financing_min_monthly_payment) || 100));
       if (data.internal_financing_disclosure_text !== undefined) patch.internal_financing_disclosure_text = str(data.internal_financing_disclosure_text, 4000);
       if (data.offer_terms_text !== undefined) patch.offer_terms_text = str(data.offer_terms_text, 3000);
       if (data.internal_notes !== undefined) patch.internal_notes = str(data.internal_notes, 2000);
@@ -781,10 +785,39 @@ export default async function (req) {
         return Response.json({ error: identityStatus.reason }, { status: 409 });
       }
       const apr = Math.min(36, Math.max(0, num(data.apr)));
-      const termMonths = Math.min(84, Math.max(1, Math.round(num(data.term_months) || 12)));
+      const limits = financingTermLimits(approvalSettings);
+      const termMonths = Math.round(num(data.term_months) || limits.maxTerm);
+      if (termMonths < limits.minTerm || termMonths > limits.maxTerm) {
+        return Response.json({ error: `Choose a term between ${limits.minTerm} and ${limits.maxTerm} monthly payments.` }, { status: 400 });
+      }
+      // A term whose scheduled payment falls below the configured minimum is
+      // never approved, even when staff type it by hand.
+      const pricing = financingOptions(loan.principal, { ...approvalSettings, internal_financing_apr: apr });
+      const option = pricing.options.find((item: any) => item.term_months === termMonths);
+      if (!option || !option.meets_minimum) {
+        return Response.json({
+          error: `At ${round2(apr)}% APR a ${termMonths}-month plan pays $${round2(option?.monthly_payment || 0).toFixed(2)} per month, below the $${limits.minMonthly.toFixed(2)} minimum installment. Choose a term that keeps the payment at or above the minimum, or decline the request.`,
+        }, { status: 400 });
+      }
       const firstDate = str(data.first_payment_date, 10) || shiftMonths(today(), 1);
       const terms = buildLoanSchedule(loan.principal, apr, termMonths, firstDate);
       const now = new Date().toISOString();
+      // The customer's own choice is never silently replaced: when the approved
+      // plan differs, the loan is flagged and they must accept the change.
+      const requestedTerm = Math.round(Number(loan.requested_term_months) || Number(loan.term_months) || 0);
+      const requestedMonthly = round2(loan.requested_monthly_payment || loan.monthly_payment);
+      const requestedApr = round2(loan.requested_apr !== undefined && loan.requested_apr !== null ? loan.requested_apr : loan.apr);
+      const termsChanged = requestedTerm !== terms.term_months
+        || cents(requestedMonthly) !== cents(terms.monthly_payment)
+        || Math.round(requestedApr * 100) !== Math.round(terms.apr * 100);
+      const customerAsked = requestedTerm
+        ? `Customer asked for ${requestedTerm} months at $${requestedMonthly.toFixed(2)} (${requestedApr}% APR)`
+        : 'No customer-selected plan on file';
+      if (loan.signed_at && termsChanged) {
+        return Response.json({
+          error: 'The customer already signed these terms. Void and reissue the agreement instead of changing them here.',
+        }, { status: 409 });
+      }
       const updated = await loans.update(loan.id, {
         status: 'approved',
         apr: terms.apr,
@@ -794,11 +827,14 @@ export default async function (req) {
         finance_charge: terms.finance_charge,
         first_payment_date: firstDate,
         schedule: terms.schedule,
+        terms_changed: termsChanged,
+        terms_change_consent_at: '',
+        terms_change_consent_name: '',
         approved_by: user.email || 'Admin',
         approved_at: now,
         decline_reason: '',
         internal_notes: data.note !== undefined ? str(data.note, 2000) : loan.internal_notes,
-        audit_trail: appendAudit(loan, user, 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}`),
+        audit_trail: appendAudit(loan, user, 'loan_approved', `${terms.apr}% APR over ${terms.term_months} months at $${round2(terms.monthly_payment).toFixed(2)}/month on $${round2(loan.principal).toFixed(2)}; first payment ${firstDate}. ${customerAsked}${termsChanged ? ' — approved terms differ, so the customer must accept the change before signing' : ''}`),
       });
       const synced = await syncDepositState(base44, loan.offer_id, user.email || 'Admin');
       // Issuing the exact hashed agreement is what lets the customer read and
