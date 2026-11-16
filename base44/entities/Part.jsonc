@@ -225,6 +225,11 @@
       "default": false,
       "description": "Require manual shipping quote for oversized or special handling parts"
     },
+    "turn14_dropship_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin opt-in to request Turn 14 direct-to-customer fulfillment after verified payment"
+    },
     "turn14_item_id": {
       "type": "string"
     },
