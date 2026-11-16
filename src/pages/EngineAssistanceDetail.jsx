@@ -20,6 +20,9 @@ import CollectionsPanel from "@/components/assistance/CollectionsPanel";
 import IdentityVerificationPanel from "@/components/assistance/IdentityVerificationPanel";
 import LedgerTable from "@/components/assistance/LedgerTable";
 import DemoSessionPanel from "@/components/assistance/demo/DemoSessionPanel";
+import ApplicationProgress from "@/components/assistance/admin/ApplicationProgress";
+import NextActionPanel from "@/components/assistance/admin/NextActionPanel";
+import { applicationStage } from "@/components/assistance/admin/applicationStage";
 
 export default function EngineAssistanceDetail() {
   const { id } = useParams();
@@ -154,6 +157,7 @@ export default function EngineAssistanceDetail() {
   }
 
   const { application, offer, attempts, ledger, build, job, platforms, loan, agreement, caseDoc, settings, verification, identitySettings, deliveries } = data;
+  const stage = applicationStage({ application, offer, loan, verification, caseDoc });
   const name = `${application.first_name || ""} ${application.last_name || ""}`.trim() || "Applicant";
 
   return (
@@ -174,6 +178,8 @@ export default function EngineAssistanceDetail() {
           {offer && <StatusBadge status={offer.status} />}
         </div>
       </div>
+
+      <ApplicationProgress stages={stage.stages} action={stage.action} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
@@ -215,6 +221,7 @@ export default function EngineAssistanceDetail() {
         </div>
 
         <div className="space-y-4 order-1 lg:order-2">
+          <NextActionPanel loan={loan} verification={verification} settings={settings} onAction={run} busy={!!busy} />
           <ApplicationDecisionPanel application={application} onAction={run} busy={!!busy} />
           <ApplicationDocuments application={application} onChanged={refresh} />
           <Card>

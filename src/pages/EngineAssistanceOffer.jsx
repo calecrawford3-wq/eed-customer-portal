@@ -12,7 +12,7 @@ import PublicAssistanceShell from "@/components/assistance/PublicAssistanceShell
 import PlanSummary from "@/components/assistance/PlanSummary";
 import PaymentsHistory from "@/components/assistance/PaymentsHistory";
 import StatusBadge from "@/components/assistance/StatusBadge";
-import PaymentWizard from "@/components/assistance/payment/PaymentWizard";
+import FinancingJourney from "@/components/assistance/wizard/FinancingJourney";
 import LoanScheduleCard from "@/components/assistance/LoanScheduleCard";
 
 export default function EngineAssistanceOffer() {
@@ -245,7 +245,7 @@ export default function EngineAssistanceOffer() {
             </div>
           </CardContent></Card>
         ) : (
-          <PaymentWizard
+          <FinancingJourney
             offer={offer}
             paying={paying}
             actionBusy={actionBusy}

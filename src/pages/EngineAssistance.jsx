@@ -11,9 +11,11 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/money";
 import ApplicationQueueCard from "@/components/assistance/ApplicationQueueCard";
 import FundSettingsDialog from "@/components/assistance/FundSettingsDialog";
+import { applicationStage } from "@/components/assistance/admin/applicationStage";
 
 const FILTERS = [
   ["all", "All"],
+  ["action", "Needs my action"],
   ["open", "Needs review"],
   ["submitted", "New"],
   ["under_review", "Under review"],
@@ -58,11 +60,45 @@ export default function EngineAssistance() {
     queryFn: () => base44.entities.EngineAssistanceLedgerEntry.list("-occurred_at", 500),
   });
 
+  const { data: loans = [] } = useQuery({
+    queryKey: ["engine-assistance-loans"],
+    queryFn: () => base44.entities.EngineAssistanceInternalLoan.list("-created_date", 300),
+  });
+
+  const { data: verifications = [] } = useQuery({
+    queryKey: ["engine-assistance-verifications"],
+    queryFn: () => base44.entities.EngineAssistanceIdentityVerification.list("-created_date", 300),
+  });
+
   const offerByApp = useMemo(() => {
     const map = {};
     offers.forEach((offer) => { if (offer.application_id) map[offer.application_id] = offer; });
     return map;
   }, [offers]);
+
+  const loanByOffer = useMemo(() => {
+    const map = {};
+    loans.forEach((loan) => { if (loan.offer_id) map[loan.offer_id] = loan; });
+    return map;
+  }, [loans]);
+
+  const verificationByLoan = useMemo(() => {
+    const map = {};
+    verifications.forEach((row) => { if (row.loan_id) map[row.loan_id] = row; });
+    return map;
+  }, [verifications]);
+
+  const loanFor = (application) => loanByOffer[offerByApp[application.id]?.id] || null;
+  const verificationFor = (application) => {
+    const loan = loanFor(application);
+    return loan ? verificationByLoan[loan.id] || null : null;
+  };
+  const stageFor = (application) => applicationStage({
+    application,
+    offer: offerByApp[application.id],
+    loan: loanFor(application),
+    verification: verificationFor(application),
+  });
 
   const counts = useMemo(() => ({
     needsReview: applications.filter((a) => ["submitted", "under_review"].includes(a.status)).length,
@@ -88,13 +124,14 @@ export default function EngineAssistance() {
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return applications.filter((app) => {
+      if (filter === "action" && stageFor(app).action.level !== "urgent") return false;
       if (filter === "open" && !["submitted", "under_review"].includes(app.status)) return false;
-      if (!["all", "open"].includes(filter) && app.status !== filter) return false;
+      if (!["all", "action", "open"].includes(filter) && app.status !== filter) return false;
       if (!query) return true;
       return [app.application_number, app.first_name, app.last_name, app.email, app.engine_platform_text]
         .filter(Boolean).join(" ").toLowerCase().includes(query);
     });
-  }, [applications, filter, search]);
+  }, [applications, filter, search, offerByApp, loanByOffer, verificationByLoan]);
 
   const applyUrl = bootstrap?.apply_url ? window.location.origin + bootstrap.apply_url : "";
 
@@ -190,7 +227,13 @@ export default function EngineAssistance() {
       ) : (
         <div className="space-y-2.5">
           {visible.map((application) => (
-            <ApplicationQueueCard key={application.id} application={application} offer={offerByApp[application.id]} />
+            <ApplicationQueueCard
+              key={application.id}
+              application={application}
+              offer={offerByApp[application.id]}
+              loan={loanFor(application)}
+              verification={verificationFor(application)}
+            />
           ))}
         </div>
       )}

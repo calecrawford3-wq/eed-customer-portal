@@ -204,6 +204,12 @@ export default function InternalLoanPanel({ offer, loan, onAction, busy, identit
               <p className="text-[11px] text-amber-700">Waiting on the customer to sign the approved disclosures. The deposit cannot be paid until then.</p>
             )}
 
+            <p className="text-[11px] leading-relaxed text-slate-600">
+              {loan.autopay?.status === "saved"
+                ? `Autopay card on file: ${loan.autopay.brand || "card"} ending ${loan.autopay.last4 || "****"}${loan.autopay.saved_at ? `, saved ${format(new Date(loan.autopay.saved_at), "MMM d, yyyy")}` : ""} — never charged automatically; Elite collects each installment manually.`
+                : "No card on file. Autopay is optional and never required."}
+            </p>
+
             {!!(loan.payments || []).length && (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1">Installments collected</p>
