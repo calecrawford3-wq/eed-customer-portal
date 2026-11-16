@@ -1,1 +1,122 @@
-{"name":"Turn14FeedRun","type":"object","properties":{"feed":{"type":"string"},"mode":{"type":"string"},"status":{"type":"string"},"page":{"type":"number"},"total_pages":{"type":"number"},"rows_received":{"type":"number"},"error":{"type":"string"},"started_at":{"type":"string"},"finished_at":{"type":"string"},"requested_by":{"type":"string"},"test_environment":{"type":"boolean","default":true}}}
+{
+  "name": "Turn14FeedRun",
+  "type": "object",
+  "properties": {
+    "feed": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "description": "feed_page = single test page read, linked_parts_sync = refresh of every linked supplier product"
+    },
+    "status": {
+      "type": "string"
+    },
+    "page": {
+      "type": "number"
+    },
+    "total_pages": {
+      "type": "number"
+    },
+    "rows_received": {
+      "type": "number"
+    },
+    "error": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "requested_by": {
+      "type": "string"
+    },
+    "triggered_by": {
+      "type": "string",
+      "description": "manual = run from the Inventory screen, inventory_workflow / pricing_workflow = scheduled workflow"
+    },
+    "test_environment": {
+      "type": "boolean",
+      "default": true
+    },
+    "checked": {
+      "type": "number",
+      "default": 0,
+      "description": "Linked products the supplier was asked about in this run"
+    },
+    "updated": {
+      "type": "number",
+      "default": 0
+    },
+    "unchanged": {
+      "type": "number",
+      "default": 0
+    },
+    "failed": {
+      "type": "number",
+      "default": 0
+    },
+    "flagged": {
+      "type": "number",
+      "default": 0,
+      "description": "Products flagged for admin review: became unavailable, no longer purchasable, or selling below MAP"
+    },
+    "unavailable": {
+      "type": "number",
+      "default": 0,
+      "description": "Products reporting zero supplier warehouse quantity after this run"
+    },
+    "batches": {
+      "type": "number",
+      "default": 0
+    },
+    "stopped_early": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the run reached its size or time limit and the remainder is picked up by the next run"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "flagged_products": {
+      "type": "array",
+      "description": "Supplier changes an admin should look at. Supplier quantities and Elite physical stock are separate numbers.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_id": {
+            "type": "string"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "supplier_out_of_stock",
+              "supplier_not_purchasable",
+              "sell_price_below_map"
+            ]
+          },
+          "previous_quantity": {
+            "type": "number"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "sell_price": {
+            "type": "number"
+          },
+          "map_price": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

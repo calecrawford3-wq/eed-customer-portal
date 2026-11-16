@@ -1,0 +1,48 @@
+{
+  "description": "Every 6 hours, refreshes supplier purchase cost, MAP and availability for every product linked to Turn 14. Never overwrites Elite's own cost, sell price, markup or website configuration; flags products selling below MAP.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 */6 * * *",
+      "one_time_date": null,
+      "timezone": "America/Chicago",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Turn 14 Pricing Synchronization",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "turn14_pricing_synchronization",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_pricing": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "turn14SyncLinked",
+            "args": {
+              "mode": "pricing",
+              "triggered_by": "pricing_workflow"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Refresh supplier cost and MAP",
+            "description": "All linked products, in batches"
+          }
+        }
+      }
+    ]
+  }
+}

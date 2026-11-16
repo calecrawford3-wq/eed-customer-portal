@@ -1,0 +1,48 @@
+{
+  "description": "Every 30 minutes, refreshes supplier warehouse inventory for every product linked to Turn 14. Writes only supplier fields (turn14_available_quantity, turn14_last_synced_at); never Elite physical stock, prices or website settings.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/30 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Chicago",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Turn 14 Inventory Synchronization",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "turn14_inventory_synchronization",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_inventory": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "turn14SyncLinked",
+            "args": {
+              "mode": "inventory",
+              "triggered_by": "inventory_workflow"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Refresh supplier inventory",
+            "description": "All linked products, in batches"
+          }
+        }
+      }
+    ]
+  }
+}
