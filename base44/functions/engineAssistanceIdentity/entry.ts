@@ -4,8 +4,9 @@ import { publicCapability } from '../../shared/publicCapability.ts';
 import { rows, offerExpired, ensureSettings, syncDepositState, loanOutstanding } from '../../shared/engineAssistance.ts';
 import {
   IDENTITY_CONSENT_TEXT, IDENTITY_CONSENT_VERSION, IDENTITY_PROVIDER, identityAppBaseUrl,
-  applyIdentitySession, checkIdentityAvailability, createIdentitySession, ensureIdentitySettings,
-  ensureVerificationRecord, identityGate, loadVerificationForLoan, publicIdentity, readIdentitySession,
+  appendTrail, applyIdentitySession, checkIdentityAvailability, createIdentitySession, ensureIdentitySettings,
+  ensureVerificationRecord, identityGate, identityStartError, loadVerificationForLoan, publicIdentity,
+  readIdentitySession,
 } from '../../shared/identityVerification.ts';
 
 // Public, token-authorized identity verification for one assistance offer.
@@ -41,7 +42,7 @@ export default async function (req) {
       return Response.json({ error: 'Identity verification is not available for this request.' }, { status: 409 });
     }
 
-    const settings = await ensureIdentitySettings(base44);
+    let settings = await ensureIdentitySettings(base44);
     const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
     const stripe = key ? new Stripe(key) : null;
     let verification = await loadVerificationForLoan(base44, loan.id);
@@ -65,6 +66,38 @@ export default async function (req) {
           }
         } catch (error: any) {
           console.error('[engineAssistanceIdentity] refresh', String(error?.message || '').slice(0, 160));
+        }
+      }
+      // A stored "unavailable" left by an earlier failed attempt is not a
+      // current fact about the provider. Re-read availability, and clear the
+      // stale mark when the provider can in fact be used, so the customer can
+      // start a real session. A verified or exception record is never touched.
+      const staleUnavailable = !!verification
+        && String(verification.status) === 'unavailable'
+        && !verification.provider_session_id;
+      const availabilityStale = settings?.available !== true
+        && !verification?.provider_session_id;
+      if (stripe && (staleUnavailable || availabilityStale)) {
+        try {
+          const availability = await checkIdentityAvailability(stripe);
+          settings = await updateSettings(base44, settings, {
+            available: availability.available,
+            checked_at: availability.checked_at,
+            error: availability.available ? '' : availability.error,
+            livemode: availability.available ? availability.livemode : settings?.livemode === true,
+          });
+          if (staleUnavailable && availability.available) {
+            const now = new Date().toISOString();
+            verification = await base44.asServiceRole.entities.EngineAssistanceIdentityVerification.update(verification.id, {
+              status: 'not_started',
+              provider_status: '',
+              last_error: '',
+              last_checked_at: now,
+              audit_trail: appendTrail(verification, 'System', 'provider_available', 'Provider availability confirmed; the earlier unavailable mark was cleared so a real check can start'),
+            });
+          }
+        } catch (error: any) {
+          console.error('[engineAssistanceIdentity] availability', String(error?.message || '').slice(0, 160));
         }
       }
       let resumeUrl = '';
@@ -95,14 +128,15 @@ export default async function (req) {
       if (typedName.length < 2) {
         return Response.json({ error: 'Type your full legal name as it appears on your ID.' }, { status: 400 });
       }
-      if (!key) {
-        await updateSettings(base44, settings, { available: false, checked_at: new Date().toISOString(), error: 'Portal Stripe key is not configured' });
+      if (!key || !stripe) {
+        const reason = 'The portal Stripe key is not configured, so no verification session can be created. Elite must add the key before this check can run.';
+        settings = await updateSettings(base44, settings, { available: false, checked_at: new Date().toISOString(), error: reason });
         return Response.json({
-          error: 'Verification unavailable — setup required. Elite Engine Development has been notified. Nothing is owed and no financing can start until identity verification is available.',
+          error: reason,
           setup_required: true,
+          identity: publicIdentity(verification, settings),
         }, { status: 409 });
       }
-      if (!stripe) return Response.json({ error: 'Verification unavailable — setup required.' }, { status: 409 });
 
       verification = verification || await ensureVerificationRecord(base44, { offer, loan });
       const application = /^[a-f0-9]{24}$/i.test(String(offer.application_id || ''))
@@ -141,27 +175,32 @@ export default async function (req) {
         await updateSettings(base44, settings, { available: true, checked_at: now, error: '', livemode: session.livemode === true });
         return respond({ identity: publicIdentity(saved, { ...settings, available: true }), url: String(session.url) });
       } catch (error: any) {
-        const message = String(error?.message || 'Identity verification could not be started');
-        console.error('[engineAssistanceIdentity] start', message.slice(0, 200));
+        console.error('[engineAssistanceIdentity] start', String(error?.message || '').slice(0, 200));
+        // The provider's own availability is a separate fact from this failed
+        // attempt. Only an availability check that fails makes the check
+        // unavailable; a refused session keeps availability as it really is and
+        // records the actionable reason on the attempt so it can be retried.
         const availability = await checkIdentityAvailability(stripe);
+        const reason = identityStartError(error);
         const nextSettings = await updateSettings(base44, settings, {
-          available: false,
+          available: availability.available,
           checked_at: availability.checked_at,
-          error: message.slice(0, 240),
+          error: availability.available ? '' : availability.error,
         });
-        await base44.asServiceRole.entities.EngineAssistanceIdentityVerification.update(verification.id, {
-          status: 'unavailable',
-          last_error: 'Verification could not be started. Elite must finish provider setup.',
-          last_checked_at: new Date().toISOString(),
-          audit_trail: [...(verification.audit_trail || []), {
-            at: new Date().toISOString(), by: 'System', action: 'provider_unavailable',
-            note: 'Provider refused to create a verification session; setup is required.',
-          }].slice(-200),
+        const now = new Date().toISOString();
+        const failed = await base44.asServiceRole.entities.EngineAssistanceIdentityVerification.update(verification.id, {
+          status: availability.available ? 'failed' : 'unavailable',
+          last_error: reason,
+          last_checked_at: now,
+          audit_trail: appendTrail(verification, 'System', 'session_not_created',
+            availability.available
+              ? `Provider refused a new verification session: ${reason}`
+              : `Provider unavailable: ${reason}`),
         });
         return Response.json({
-          error: 'Verification unavailable — setup required. Elite Engine Development has been notified. Nothing is owed and no financing can start until identity verification is available.',
-          setup_required: true,
-          identity: publicIdentity({ ...verification, status: 'unavailable' }, nextSettings),
+          error: reason,
+          setup_required: !availability.available,
+          identity: publicIdentity(failed, nextSettings),
         }, { status: 409 });
       }
     }

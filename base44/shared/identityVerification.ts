@@ -164,6 +164,25 @@ export async function readIdentitySession(stripe: any, sessionId: string) {
   }
 }
 
+// Turns a failed session-creation error into a short, actionable, sanitized
+// reason. Nothing here is a verification result: only the provider can report
+// one, and a failed attempt never marks an identity as checked.
+export function identityStartError(error: any) {
+  const raw = String(error?.message || '').replace(/\s+/g, ' ').trim();
+  const lower = raw.toLowerCase();
+  if (/identity is not enabled|not activated|no such feature|not available in your country|signed up for identity/.test(lower)) {
+    return 'Stripe Identity is not enabled on the connected Stripe account yet. Elite must finish the Identity setup in Stripe before this check can run.';
+  }
+  if (/invalid api key|api key|authentication|permission|not authorized/.test(lower)) {
+    return 'The connected Stripe key was rejected or lacks the Identity permission. Elite must update the payment keys.';
+  }
+  if (/return_url|url_invalid|invalid url/.test(lower)) {
+    return 'The provider rejected the return page for this check. Elite must correct the portal web address.';
+  }
+  if (raw) return raw.slice(0, 200);
+  return 'The identity provider did not open a verification page. Try again, or contact Elite Engine Development.';
+}
+
 export function identitySafeError(session: any) {
   const code = String(session?.last_error?.code || '');
   if (!code) return '';
@@ -262,14 +281,20 @@ export async function loadVerificationForLoan(base44: any, loanId: string) {
 export function publicIdentity(verification: any, settings: any) {
   const gate = identityGate(settings, verification);
   const canStart = gate.enabled && gate.status !== 'verified' && gate.status !== 'exception' && gate.status !== 'processing';
+  // Provider availability and a past failed attempt are two different facts.
+  // A stale 'unavailable' record must never look like a permanent block: the
+  // customer can always attempt a real session, and the attempt reports the
+  // provider's actual reason. Only a switched-off setting blocks the form.
+  const providerUnavailable = settings?.available === false;
   return {
     provider_label: IDENTITY_PROVIDER_LABEL,
     status: gate.status,
     required: gate.required,
     verified: gate.verified,
     exception: gate.exception,
-    unavailable: gate.unavailable,
-    setup_required: !gate.verified && !gate.exception && settings?.available === false,
+    enabled: gate.enabled,
+    unavailable: !gate.enabled || providerUnavailable,
+    setup_required: !gate.verified && !gate.exception && providerUnavailable,
     verified_at: verification?.verified_at || '',
     consent_version: IDENTITY_CONSENT_VERSION,
     consent_text: IDENTITY_CONSENT_TEXT,
