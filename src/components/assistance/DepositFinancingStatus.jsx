@@ -5,11 +5,12 @@ import { format } from "date-fns";
 import { parseOfferDate } from "@/lib/offerDate";
 import { formatMoney } from "@/lib/money";
 import AgreementSignatureForm from "./agreement/AgreementSignatureForm";
+import FinancingApplicationForm from "./financing/FinancingApplicationForm";
 
 // The in-house financing half of the split plan. It shows only what Elite has
 // actually approved: nothing here promises a live loan before the terms are
 // approved and the disclosures are signed.
-export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, hideAmounts = false, emphasize = false, agreement = null, autopayEnabled = false }) {
+export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRequest, onSign, onCancel, hideAmounts = false, agreement = null }) {
   const status = String(deposit?.loan_status || "");
   const active = ['active', 'completed'].includes(status);
   const approved = ['approved', 'active', 'completed'].includes(status);
@@ -59,6 +60,12 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           <div className="flex-1">
             <p className="font-semibold">Awaiting Elite approval</p>
             <p className="text-amber-700">Elite reviews the terms by hand. Nothing is owed under this plan until it is approved, signed and the deposit is paid.</p>
+            {loan?.application?.legal_name && (
+              <p className="text-amber-700">
+                Application on file for {loan.application.legal_name}
+                {loan.application.submitted_at ? `, submitted ${format(new Date(loan.application.submitted_at), "MMM d, yyyy")}` : ""}.
+              </p>
+            )}
             <Button size="sm" variant="ghost" className="px-0 h-auto mt-1 text-amber-800" disabled={!!actionBusy} onClick={onCancel}>
               {actionBusy === "cancel" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Withdraw request
             </Button>
@@ -107,7 +114,6 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           </div>
           <AgreementSignatureForm
             busy={actionBusy === "sign"}
-            autopayEnabled={!!autopayEnabled}
             onSubmit={(payload) => onSign(payload)}
           />
         </div>
@@ -117,14 +123,7 @@ export default function DepositFinancingStatus({ deposit, loan, actionBusy, onRe
           <p>Signed by {loan?.signed_name}. Paying the deposit starts the plan.</p>
         </div>
       ) : deposit?.can_request ? (
-        <div className="space-y-2">
-          <p className="text-xs leading-relaxed text-slate-600">
-            Elite sets a fixed APR and term, you sign the disclosures, and only then is the deposit due.
-          </p>
-          <Button size={emphasize ? "default" : "sm"} variant={emphasize ? "default" : "outline"} className={emphasize ? "w-full" : undefined} disabled={!!actionBusy} onClick={onRequest}>
-            {actionBusy === "request" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Request in-house financing
-          </Button>
-        </div>
+        <FinancingApplicationForm busy={actionBusy === "request"} onSubmit={(payload) => onRequest(payload)} />
       ) : deposit?.reason ? (
         <p className="text-xs text-slate-600">{deposit.reason}</p>
       ) : null}

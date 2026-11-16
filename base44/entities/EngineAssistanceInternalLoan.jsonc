@@ -175,6 +175,125 @@
       "type": "string",
       "format": "date-time"
     },
+    "borrower_application": {
+      "type": "object",
+      "description": "Customer-submitted financing application, validated and stored by the server. No Social Security number, ID number or document is ever stored here; if a provider requires an SSN it is entered only on the provider's hosted page.",
+      "properties": {
+        "legal_name": {
+          "type": "string"
+        },
+        "signature_name": {
+          "type": "string"
+        },
+        "address_line1": {
+          "type": "string"
+        },
+        "address_line2": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string",
+          "default": "US"
+        },
+        "date_of_birth": {
+          "type": "string",
+          "format": "date"
+        },
+        "employment_status": {
+          "type": "string",
+          "enum": [
+            "employed_full_time",
+            "employed_part_time",
+            "self_employed",
+            "retired",
+            "student",
+            "unemployed",
+            "other"
+          ]
+        },
+        "employer_name": {
+          "type": "string"
+        },
+        "monthly_income": {
+          "type": "number"
+        },
+        "income_period": {
+          "type": "string",
+          "default": "monthly"
+        },
+        "consent": {
+          "type": "boolean",
+          "default": false
+        },
+        "consent_version": {
+          "type": "string"
+        },
+        "consent_text": {
+          "type": "string"
+        },
+        "submitted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "autopay": {
+      "type": "object",
+      "description": "Stripe-hosted payment-method setup for optional autopay. Stores only the provider reference and the card brand/last4; no card number is ever held. Saving a card never charges it and never enables automatic collection.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_set",
+            "saved",
+            "revoked"
+          ],
+          "default": "not_set"
+        },
+        "provider": {
+          "type": "string",
+          "default": "stripe"
+        },
+        "payment_method_id": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "last4": {
+          "type": "string"
+        },
+        "exp_month": {
+          "type": "number"
+        },
+        "exp_year": {
+          "type": "number"
+        },
+        "saved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "livemode": {
+          "type": "boolean",
+          "default": false
+        },
+        "consent_version": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
     "internal_notes": {
       "type": "string"
     },

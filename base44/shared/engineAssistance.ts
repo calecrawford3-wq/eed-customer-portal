@@ -5,6 +5,7 @@
 import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 import { deliverAssistanceEmail } from './assistanceEmail.ts';
+import { publicApplicationSummary } from './financingApplication.ts';
 
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
@@ -559,6 +560,19 @@ export function publicLoan(loan: any) {
     can_sign: loan.status === 'approved' && !loan.signed_at,
     can_cancel: ['pending_approval', 'approved'].includes(String(loan.status || '')),
     decline_reason: loan.status === 'declined' ? loan.decline_reason || '' : '',
+    application_submitted: !!loan.borrower_application,
+    application: publicApplicationSummary(loan.borrower_application),
+    // Only the provider reference and the printed card details, never a number.
+    autopay: loan.autopay && loan.autopay.status === 'saved'
+      ? {
+        status: 'saved',
+        brand: loan.autopay.brand || '',
+        last4: loan.autopay.last4 || '',
+        saved_at: loan.autopay.saved_at || '',
+        livemode: loan.autopay.livemode === true,
+        note: loan.autopay.note || '',
+      }
+      : null,
     schedule: schedule.map((row: any) => ({
       number: row.number,
       due_date: row.due_date,

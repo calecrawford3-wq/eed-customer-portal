@@ -35,6 +35,7 @@ export default function EngineAssistanceOffer() {
   useEffect(() => {
     if (params.get("payment") === "success") setBanner("success");
     if (params.get("payment") === "canceled") setBanner("canceled");
+    if (params.get("autopay") === "canceled") setBanner("autopay_canceled");
   }, [params]);
 
   // Returning from the provider's hosted page is not proof of anything: the
@@ -53,8 +54,28 @@ export default function EngineAssistanceOffer() {
     setBanner("identity");
     refreshIdentity();
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params, token]);
+
+  // Returning from the provider's card setup proves nothing on its own: the
+  // server reads that session back from Stripe before storing a method.
+  useEffect(() => {
+    if (params.get("autopay") !== "complete") return undefined;
+    let live = true;
+    (async () => {
+      try {
+        const res = await base44.functions.invoke("engineAssistanceFinancing", {
+          token, action: "autopay_status", session_id: params.get("session_id") || "",
+        });
+        if (res.data?.error) throw new Error(res.data.error);
+        if (live) setBanner(res.data?.autopay ? "autopay" : "autopay_pending");
+      } catch (error) {
+        toast.error(error?.message || "The saved payment method could not be confirmed");
+      } finally {
+        if (live) await refetch();
+      }
+    })();
+    return () => { live = false; };
+  }, [params, token, refetch]);
 
   // A success redirect is not proof of payment. Re-read the offer for a short
   // while so the page shows only what the provider actually confirmed.
@@ -146,6 +167,24 @@ export default function EngineAssistanceOffer() {
             <p>Your identity is verified. Continue with your agreement and deposit below.</p>
           </div>
         )}
+        {banner === "autopay" && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 flex-none" />
+            <p>Your payment method was saved with Stripe. Nothing was charged, and Elite will contact you before any installment is collected.</p>
+          </div>
+        )}
+        {banner === "autopay_pending" && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 flex items-start gap-2">
+            <Clock className="h-4 w-4 mt-0.5 flex-none" />
+            <p>Stripe has not confirmed the saved card yet. This page updates when it does.</p>
+          </div>
+        )}
+        {banner === "autopay_canceled" && (
+          <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 flex items-start gap-2">
+            <Info className="h-4 w-4 mt-0.5 flex-none" />
+            <p>No card was saved. Autopay is optional and nothing else changed.</p>
+          </div>
+        )}
         {banner === "canceled" && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 flex items-start gap-2">
             <Info className="h-4 w-4 mt-0.5 flex-none" />
@@ -206,7 +245,7 @@ export default function EngineAssistanceOffer() {
             paying={paying}
             actionBusy={actionBusy}
             onCheckout={checkout}
-            onRequest={() => runFinancing("request_internal", {}, "In-house financing requested. Elite will review the terms.")}
+            onRequest={(payload) => runFinancing("request_internal", payload || {}, "Financing application submitted. Elite will review it by hand.")}
             onSign={(payload) => runFinancing("sign_disclosures", {
               signature_name: payload?.name,
               esign_consent: payload?.esign_consent === true,

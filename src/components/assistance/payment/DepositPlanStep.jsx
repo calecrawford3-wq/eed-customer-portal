@@ -6,13 +6,18 @@ import { formatMoney } from "@/lib/money";
 import ChoiceTile from "./ChoiceTile";
 import DepositFinancingStatus from "../DepositFinancingStatus";
 import IdentityVerificationCard from "../identity/IdentityVerificationCard";
+import AutopaySetupCard from "../autopay/AutopaySetupCard";
 
 // Step 2 for the deposit plan. The deposit is the only amount this page can
 // ever charge; the remainder belongs to the in-house agreement, which must be
 // approved and signed before the deposit payment opens.
-export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false, token = "", identity = null, onIdentityChanged = null }) {
+export default function DepositPlanStep({
+  deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel,
+  agreement = null, token = "", identity = null, onIdentityChanged = null, autopayEnabled = false, paymentsTestMode = false,
+}) {
   const [method, setMethod] = useState("");
   const [consent, setConsent] = useState(false);
+  const [authDeposit, setAuthDeposit] = useState(false);
 
   const amount = Number(deposit?.deposit_outstanding ?? deposit?.deposit_amount ?? 0);
   const financed = Number(deposit?.internal_amount || 0);
@@ -20,6 +25,7 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
   const lenders = deposit?.deposit_lenders?.eligible || [];
   const busy = !!paying;
   const terms = ["approved", "active", "completed"].includes(String(loan?.status || "")) ? loan : null;
+  const signed = !!loan?.signed_at;
 
   return (
     <div className="space-y-3">
@@ -43,7 +49,7 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
 
       {!ready && !deposit?.awaiting_approval && (
         <p className="text-xs leading-relaxed text-slate-600">
-          Next: Elite approves your in-house plan, you sign the disclosures, then your deposit is due.
+          Next: complete the financing application below, verify your identity, Elite reviews the terms, you sign, then your deposit is due.
         </p>
       )}
 
@@ -62,10 +68,18 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
         onSign={onSign}
         onCancel={onCancel}
         hideAmounts
-        emphasize
         agreement={agreement}
-        autopayEnabled={autopayEnabled}
       />
+
+      {signed && (
+        <AutopaySetupCard
+          token={token}
+          autopay={loan?.autopay}
+          enabled={autopayEnabled}
+          signed={signed}
+          onChanged={onIdentityChanged}
+        />
+      )}
 
       {ready ? (
         <>
@@ -104,10 +118,21 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
               </Button>
             </div>
           ) : method === "now" ? (
-            <Button className="w-full" disabled={busy} onClick={() => onCheckout("deposit_card", false)}>
-              {paying === "deposit_card" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Pay {formatMoney(amount)} deposit
-            </Button>
+            <div className="space-y-2">
+              {paymentsTestMode && (
+                <p className="rounded-xl border border-blue-200 bg-blue-50 p-2.5 text-[11px] leading-relaxed text-blue-900">
+                  Stripe test mode is configured, so this checkout is a test. No real money moves and no card is charged.
+                </p>
+              )}
+              <label className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600">
+                <Checkbox checked={authDeposit} onCheckedChange={(value) => setAuthDeposit(value === true)} className="mt-0.5" />
+                <span>I authorize Elite Engine Development to charge {formatMoney(amount)} for my deposit now. This is the deposit only; the financed remainder is never charged here.</span>
+              </label>
+              <Button className="w-full" disabled={busy || !authDeposit} onClick={() => onCheckout("deposit_card", false)}>
+                {paying === "deposit_card" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Pay {formatMoney(amount)} deposit
+              </Button>
+            </div>
           ) : null}
         </>
       ) : (

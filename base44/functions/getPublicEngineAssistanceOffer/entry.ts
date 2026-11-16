@@ -47,8 +47,14 @@ export default async function (req) {
       payments_disabled_reason: 'Online payment is not enabled yet. Contact Elite Engine Development to arrange payment.',
     };
 
+    const paymentKey = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
     return Response.json({
-      offer: publicOffer(current, application, liveSettings, loan, agreement, identity, identitySettings),
+      offer: {
+        ...publicOffer(current, application, liveSettings, loan, agreement, identity, identitySettings),
+        // Lets the page say plainly whether checkout is a Stripe test. No key is
+        // ever returned, only which mode the configured key runs in.
+        payments_test_mode: paymentKey.startsWith('sk_test_'),
+      },
     }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error: any) {
     console.error('[getPublicEngineAssistanceOffer]', error?.message);

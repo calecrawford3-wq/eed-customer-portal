@@ -1,3 +1,4 @@
+import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
   rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
@@ -9,12 +10,23 @@ import {
 } from '../../shared/installmentAgreement.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
+import { validateFinancingApplication } from '../../shared/financingApplication.ts';
 
 // Public, token-authorized actions for the customer's in-house financing
 // request. Nothing here charges money or approves credit: the customer asks for
 // terms, signs the disclosures once staff approved them, or withdraws.
 
 const str = (value: any, max = 2000) => String(value ?? '').trim().slice(0, max);
+const AUTOPAY_SOURCE = 'eed_assistance_autopay_v1';
+
+function appOrigin(req: Request) {
+  const header = req.headers.get('x-base44-app-url') || '';
+  try {
+    const url = new URL(header);
+    if (url.protocol === 'https:' && !url.username && !url.password) return url.origin;
+  } catch { /* fall through */ }
+  return 'https://race-engine-specs.base44.app';
+}
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -56,6 +68,10 @@ export default async function (req) {
       if (existing && existing.status === 'pending_approval') {
         return Response.json({ loan: publicLoan(existing), already_requested: true });
       }
+      // The financing application is validated here, not in the browser. Only
+      // the allowlisted fields are stored, and no SSN or ID number is accepted.
+      const applied = validateFinancingApplication(body.application);
+      if (!applied.ok) return Response.json({ error: applied.error }, { status: 400 });
       const principal = round2(plan.internal_amount);
       if (principal <= 0) {
         return Response.json({ error: 'There is no remaining balance to finance on this offer.' }, { status: 409 });
@@ -91,8 +107,9 @@ export default async function (req) {
         paid_amount: 0,
         outstanding_balance: 0,
         payments: [],
+        borrower_application: applied.application,
       };
-      const note = `Requested Elite in-house financing of $${principal.toFixed(2)} after a $${plan.deposit_amount.toFixed(2)} deposit`;
+      const note = `Financing application submitted by ${applied.application.legal_name}; requested $${principal.toFixed(2)} after a $${plan.deposit_amount.toFixed(2)} deposit`;
       const loan = existing
         ? await loans.update(existing.id, {
           ...payload,
@@ -192,6 +209,108 @@ export default async function (req) {
         audit_trail: appendAudit(offer, 'Customer', 'internal_financing_canceled', 'Customer withdrew the in-house financing request'),
       });
       return Response.json({ loan: publicLoan(updated) });
+    }
+
+    // Optional autopay: the card is entered on Stripe's hosted setup page. This
+    // never charges anything and never turns on automatic collection.
+    if (action === 'autopay_setup') {
+      if (!existing) return Response.json({ error: 'There is no in-house financing request on this offer.' }, { status: 404 });
+      if (!existing.signed_at) {
+        return Response.json({ error: 'Sign your Retail Installment Agreement first. A card can be saved after that.' }, { status: 409 });
+      }
+      if (!['approved', 'active'].includes(String(existing.status))) {
+        return Response.json({ error: 'Saving a card becomes available once Elite approves your terms and you sign the agreement.' }, { status: 409 });
+      }
+      if (settings.autopay_enabled !== true) {
+        return Response.json({ error: 'Autopay card setup is not switched on yet. Elite must enable Autopay in the Engine Assistance settings before a card can be saved.' }, { status: 409 });
+      }
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
+      if (!/^sk_(test|live)_/.test(key)) {
+        return Response.json({ error: 'Card setup is not configured yet. Elite must finish the Stripe online payment setup first.' }, { status: 503 });
+      }
+      const appId = Deno.env.get('BASE44_APP_ID') || '';
+      if (!appId) return Response.json({ error: 'App configuration is missing' }, { status: 503 });
+
+      const customers = base44.asServiceRole.entities.Customer;
+      const customer = existing.customer_id ? rows(await customers.filter({ id: existing.customer_id }))[0] : null;
+      if (!customer) {
+        return Response.json({ error: 'Elite has no customer record linked to this offer yet, so a card cannot be saved. Contact Elite Engine Development.' }, { status: 409 });
+      }
+      const stripe = new Stripe(key);
+      let stripeCustomerId = customer.stripe_vault_customer_id || '';
+      if (!stripeCustomerId) {
+        const created = await stripe.customers.create({
+          email: customer.email || undefined,
+          name: [customer.first_name, customer.last_name].filter(Boolean).join(' ') || undefined,
+          metadata: { base44_app_id: appId, customer_id: customer.id, offer_id: offer.id },
+        });
+        stripeCustomerId = created.id;
+        await customers.update(customer.id, { stripe_vault_customer_id: stripeCustomerId });
+      }
+
+      const returnPath = `/engine-assistance/offer/${token}`;
+      const origin = appOrigin(req);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'setup',
+        customer: stripeCustomerId,
+        payment_method_types: ['card'],
+        success_url: `${origin}${returnPath}?autopay=complete&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${returnPath}?autopay=canceled`,
+        metadata: {
+          source: AUTOPAY_SOURCE,
+          base44_app_id: appId,
+          offer_id: offer.id,
+          loan_id: existing.id,
+          consent_version: 'autopay-v1',
+        },
+      });
+      await loans.update(existing.id, {
+        audit_trail: appendAudit(existing, 'Customer', 'autopay_setup_started', `Stripe card setup session ${session.id} opened; nothing charged`),
+      });
+      return Response.json({ checkout_url: session.url, test_mode: !key.startsWith('sk_live_') });
+    }
+
+    // Only a session read back from Stripe can store a payment method.
+    if (action === 'autopay_status') {
+      const sessionId = str(body.session_id, 90);
+      if (!existing || !sessionId) return Response.json({ autopay: existing?.autopay || null });
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
+      if (!/^sk_(test|live)_/.test(key)) return Response.json({ autopay: existing.autopay || null });
+      const appId = Deno.env.get('BASE44_APP_ID') || '';
+      const stripe = new Stripe(key);
+      const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['setup_intent'] });
+      if (session.metadata?.source !== AUTOPAY_SOURCE
+        || session.metadata?.base44_app_id !== appId
+        || session.metadata?.loan_id !== existing.id) {
+        return Response.json({ error: 'That card setup does not belong to this plan.' }, { status: 400 });
+      }
+      if (session.status !== 'complete') {
+        return Response.json({ autopay: existing.autopay || null, pending: true });
+      }
+      const intent: any = session.setup_intent;
+      const methodId = typeof intent === 'string' ? intent : intent?.payment_method;
+      if (!methodId) return Response.json({ autopay: existing.autopay || null, pending: true });
+      const method = await stripe.paymentMethods.retrieve(methodId);
+      const now = new Date().toISOString();
+      const autopay = {
+        status: 'saved',
+        provider: 'stripe',
+        payment_method_id: method.id,
+        brand: method.card?.brand || '',
+        last4: method.card?.last4 || '',
+        exp_month: method.card?.exp_month || 0,
+        exp_year: method.card?.exp_year || 0,
+        saved_at: now,
+        livemode: session.livemode === true,
+        consent_version: 'autopay-v1',
+        note: 'Card saved with Stripe. Elite does not charge it automatically and contacts the customer before any installment is collected.',
+      };
+      const updated = await loans.update(existing.id, {
+        autopay,
+        audit_trail: appendAudit(existing, 'Customer', 'autopay_method_saved',
+          `${method.card?.brand || 'card'} ending ${method.card?.last4 || '****'} saved with Stripe (${session.livemode ? 'live' : 'test'} mode); nothing charged`),
+      });
+      return Response.json({ autopay: updated.autopay });
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
