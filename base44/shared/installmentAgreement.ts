@@ -486,6 +486,8 @@ export function publicAgreement(agreement: any) {
     issued_at: agreement.issued_at || '',
     accepted_at: agreement.accepted_at || '',
     signer_name: agreement.signer_name || '',
+    signature_paths: agreement.status === 'accepted' ? (agreement.signature_paths || []) : [],
+    signature_hash: agreement.status === 'accepted' ? (agreement.signature_hash || '') : '',
     token: agreement.agreement_token || '',
     snapshot: agreement.snapshot || null,
     sections: Array.isArray(agreement.sections) ? agreement.sections : [],
