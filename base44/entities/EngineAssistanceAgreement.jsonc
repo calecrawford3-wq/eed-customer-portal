@@ -112,6 +112,21 @@
       "type": "string",
       "description": "Typed full name entered by the customer when accepting"
     },
+    "signature_paths": {
+      "type": "array",
+      "description": "Customer-drawn signature stroke paths, bound to the accepted agreement hash",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signature_hash": {
+      "type": "string",
+      "description": "SHA-256 binding signature paths to signer name and agreement content hash"
+    },
+    "signature_method": {
+      "type": "string",
+      "description": "handwritten_vector for touch or mouse signature"
+    },
     "esign_consent": {
       "type": "boolean",
       "default": false,
