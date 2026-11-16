@@ -13,7 +13,11 @@ import PlanSummary from "@/components/assistance/PlanSummary";
 import PaymentsHistory from "@/components/assistance/PaymentsHistory";
 import StatusBadge from "@/components/assistance/StatusBadge";
 import FinancingJourney from "@/components/assistance/wizard/FinancingJourney";
+import JourneyErrorBoundary from "@/components/assistance/wizard/JourneyErrorBoundary";
 import LoanScheduleCard from "@/components/assistance/LoanScheduleCard";
+
+// Only plain strings are ever handed to JSX from this payload.
+const asText = (value) => (typeof value === "string" ? value : typeof value === "number" ? String(value) : "");
 
 export default function EngineAssistanceOffer() {
   const { token } = useParams();
@@ -109,6 +113,7 @@ export default function EngineAssistanceOffer() {
   };
 
   const runFinancing = async (action, payload = {}, successMessage) => {
+    if (actionBusy) return;
     setActionBusy(
       action === "request_internal" ? "request"
         : action === "sign_disclosures" ? "sign"
@@ -150,8 +155,8 @@ export default function EngineAssistanceOffer() {
 
   return (
     <PublicAssistanceShell
-      title={offer.applicant_first_name ? `${offer.applicant_first_name}, here is your engine assistance offer` : "Your engine assistance offer"}
-      subtitle={`${offer.fund_name} · Offer ${offer.offer_number}`}
+      title={asText(offer.applicant_first_name) ? `${asText(offer.applicant_first_name)}, here is your engine assistance offer` : "Your engine assistance offer"}
+      subtitle={[asText(offer.fund_name), asText(offer.offer_number) ? `Offer ${asText(offer.offer_number)}` : ""].filter(Boolean).join(" · ")}
     >
       <div className="space-y-4">
         {banner === "success" && !paid && !loanActive && (
@@ -245,24 +250,26 @@ export default function EngineAssistanceOffer() {
             </div>
           </CardContent></Card>
         ) : (
-          <FinancingJourney
-            offer={offer}
-            paying={paying}
-            actionBusy={actionBusy}
-            onCheckout={checkout}
-            onRequest={(payload) => runFinancing("request_internal", payload || {}, "Financing application submitted. Elite will review it by hand.")}
-            onSign={(payload) => runFinancing("sign_disclosures", {
-              signature_name: payload?.name,
-              esign_consent: payload?.esign_consent === true,
-              accept_terms: payload?.accept_terms === true,
-              terms_change_accepted: payload?.terms_change_accepted === true,
-              autopay_authorized: payload?.autopay_authorized === true,
-            }, "Agreement signed")}
-            onChangePlan={(payload) => runFinancing("change_plan", payload || {}, "Payment plan change sent to Elite for review.")}
-            onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}
-            token={token}
-            onIdentityChanged={refreshIdentity}
-          />
+          <JourneyErrorBoundary onRecover={refetch}>
+            <FinancingJourney
+              offer={offer}
+              paying={paying}
+              actionBusy={actionBusy}
+              onCheckout={checkout}
+              onRequest={(payload) => runFinancing("request_internal", payload || {}, "Financing application submitted. Elite will review it by hand.")}
+              onSign={(payload) => runFinancing("sign_disclosures", {
+                signature_name: payload?.name,
+                esign_consent: payload?.esign_consent === true,
+                accept_terms: payload?.accept_terms === true,
+                terms_change_accepted: payload?.terms_change_accepted === true,
+                autopay_authorized: payload?.autopay_authorized === true,
+              }, "Agreement signed")}
+              onChangePlan={(payload) => runFinancing("change_plan", payload || {}, "Payment plan change sent to Elite for review.")}
+              onCancel={() => runFinancing("cancel_request", {}, "In-house financing request withdrawn")}
+              token={token}
+              onIdentityChanged={refreshIdentity}
+            />
+          </JourneyErrorBoundary>
         )}
 
         <PaymentsHistory payments={offer.payments || []} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -11,7 +11,6 @@ import StepUnderwriting from "./StepUnderwriting";
 import StepAgreement from "./StepAgreement";
 import StepDeposit from "./StepDeposit";
 import StepDeclined from "./StepDeclined";
-import IdentityVerificationCard from "../identity/IdentityVerificationCard";
 import FullBalanceStep from "../payment/FullBalanceStep";
 import { EMPTY_APPLICANT, draftKey, validateApplicant } from "./applicantForm";
 
@@ -70,7 +69,7 @@ export default function FinancingJourney({
   const selected = eligible.find((option) => option.term_months === Number(term)) || null;
 
   const base = useMemo(() => {
-    if (status === "pending_approval") return verified ? [{ id: "underwriting" }] : [{ id: "identity" }, { id: "underwriting" }];
+    if (status === "pending_approval") return [{ id: "underwriting" }];
     if (status === "approved" && !signed) return [{ id: "agreement" }];
     if (status === "declined" && !restart) return [{ id: "declined" }];
     if (signed && !active) return [{ id: "deposit" }];
@@ -84,7 +83,11 @@ export default function FinancingJourney({
 
   useEffect(() => { setIndex(0); }, [flowKey]);
 
-  const current = screens[Math.min(index, screens.length - 1)]?.id || screens[0].id;
+  // The step list shrinks the moment the server status changes: four application
+  // steps become the single review step right after submitting. Every read goes
+  // through this clamped index, so a stale index can never fall off the list.
+  const safeIndex = Math.min(Math.max(index, 0), Math.max(screens.length - 1, 0));
+  const current = screens[safeIndex]?.id || "review";
   const applicant = validateApplicant(form);
 
   const canAdvance = (() => {
@@ -95,27 +98,37 @@ export default function FinancingJourney({
     return false;
   })();
 
-  const showNav = ["plan", "terms", "applicant", "identity"].includes(current);
+  const showNav = ["plan", "terms", "applicant"].includes(current);
 
   const refresh = async () => {
     setRefreshing(true);
     try { await onIdentityChanged?.(); } finally { setRefreshing(false); }
   };
 
+  // One submission per application: a second tap while the first is in flight is
+  // ignored, and the server refuses a duplicate request for the same offer.
+  const submitting = useRef(false);
+  const [submittedOnce, setSubmittedOnce] = useState(false);
   const submit = async () => {
-    if (!selected) return;
-    await onRequest({
-      application: { ...form, monthly_income: Number(form.monthly_income), consent: true },
-      requested_term_months: selected.term_months,
-    });
-    setConsent(false);
-    try { localStorage.removeItem(draftKey(token)); } catch { /* nothing to clear */ }
+    if (!selected || submitting.current || actionBusy === "request" || submittedOnce) return;
+    submitting.current = true;
+    try {
+      await onRequest({
+        application: { ...form, monthly_income: Number(form.monthly_income), consent: true },
+        requested_term_months: selected.term_months,
+      });
+      setSubmittedOnce(true);
+      setConsent(false);
+      try { localStorage.removeItem(draftKey(token)); } catch { /* nothing to clear */ }
+    } finally {
+      submitting.current = false;
+    }
   };
 
   return (
     <Card>
       <CardContent className="p-4 sm:p-6">
-        <JourneyHeader screens={screens} index={index} fundName={offer?.fund_name || ""} />
+        <JourneyHeader screens={screens} index={safeIndex} fundName={typeof offer?.fund_name === "string" ? offer.fund_name : ""} />
 
         {current === "plan" && (
           <StepPlan offer={offer} deposit={deposit} full={full} value={mode} onChange={(next) => { setMode(next); }} />
@@ -140,33 +153,17 @@ export default function FinancingJourney({
             onSubmit={submit}
           />
         )}
-        {current === "identity" && (
-          <div className="space-y-3">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Verify your identity</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                Stripe runs a secure government photo ID and selfie check on its own page. Elite receives only the result and the date — never your
-                ID number, a Social Security number or a document image. This is a document check, not a credit check.
-              </p>
-            </div>
-            <IdentityVerificationCard
-              token={token}
-              identity={identity}
-              loanStatus={status}
-              onChanged={onIdentityChanged}
-            />
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              You can continue while the provider reviews your check. Elite cannot approve the plan or start it until the result is verified.
-            </p>
-          </div>
-        )}
         {current === "underwriting" && (
           <StepUnderwriting
             loan={loan}
             deposit={deposit}
+            identity={identity}
+            token={token}
+            verified={verified}
             actionBusy={actionBusy}
             onCancel={onCancel}
             onRefresh={refresh}
+            onIdentityChanged={onIdentityChanged}
             refreshing={refreshing}
           />
         )}
@@ -213,9 +210,9 @@ export default function FinancingJourney({
           />
         )}
 
-        {(showNav || index > 0) && (
+        {(showNav || safeIndex > 0) && (
           <div className="mt-4 flex items-center gap-2">
-            {index > 0 && (
+            {safeIndex > 0 && (
               <Button variant="outline" className="h-11 flex-1" disabled={!!paying || !!actionBusy} onClick={() => setIndex((value) => Math.max(0, value - 1))}>
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>

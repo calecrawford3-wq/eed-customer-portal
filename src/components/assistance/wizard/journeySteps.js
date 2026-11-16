@@ -10,6 +10,7 @@ export const MILESTONES = [
   { id: "underwriting", label: "Elite review", caption: "Hands-on approval" },
   { id: "agreement", label: "Sign terms", caption: "Agreement and disclosures" },
   { id: "deposit", label: "Deposit", caption: "Pay and activate" },
+  { id: "declined", label: "Not approved", caption: "Talk to Elite" },
 ];
 
 export const milestone = (id) => MILESTONES.find((entry) => entry.id === id) || { id, label: id, caption: "" };
