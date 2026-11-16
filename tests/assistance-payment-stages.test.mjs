@@ -223,3 +223,49 @@ test('concurrent different receipts cannot overcredit balance',async()=>{
  assert.equal(r.filter(x=>x.status==='fulfilled').length,1);
  assert.equal(h.offer.paid_amount,600);assert.equal(h.offer.payments.length,1);
 });
+
+test('deposit webhook then Affirm remainder settle exact total once with provider-grounded admin attempts',async()=>{
+ const h=assistance();const d=await h.checkout('deposit_lender');
+ const settle=async(id,method)=>{
+   Object.assign(h.state.sessions[id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_'+id,latest_charge:{payment_method_details:{type:method}}}});
+   return h.deliver(id);
+ };
+ assert.equal((await settle(d.body.session_id,'affirm')).status,200);
+ assert.equal(h.offer.paid_amount,500);assert.equal(h.offer.payment_route_claim,'');
+ const r=await h.checkout('remainder_affirm');assert.equal(r.status,200);
+ assert.equal((await settle(r.body.session_id,'affirm')).status,200);
+ assert.equal(h.offer.paid_amount,1000);assert.equal(h.offer.status,'paid');
+ assert.equal((await h.deliver(r.body.session_id)).status,200);
+ assert.equal(h.offer.payments.length,2);
+ assert.ok(h.state.rows.EngineAssistanceFinancingAttempt.every(a=>a.provider_decision==='not_reported'&&a.selected_method==='affirm'&&a.verified_amount===500));
+ assert.equal((await h.checkout('deposit_card')).status,409);
+});
+test('in-house application after outright deposit finances only remainder, duplicates do not create another loan',async()=>{
+ const h=assistance();h.deposit();
+ const application={legal_name:'Test Customer',address_line1:'123 Main St',city:'Tulsa',state:'OK',postal_code:'74101',date_of_birth:'1990-01-01',employment_status:'employed_full_time',monthly_income:3000,consent:true};
+ const request=()=>h.call('engineAssistanceFinancing',{token:h.token,action:'request_internal',application,requested_term_months:3});
+ const r=await request();assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal(h.state.rows.EngineAssistanceInternalLoan[0].principal,500);
+ assert.equal((await request()).status,200);assert.equal(h.state.rows.EngineAssistanceInternalLoan.length,1);
+ assert.equal((await h.checkout('pay_in_full')).status,409);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'cancel_request'})).status,200);
+ assert.equal((await h.checkout('remainder_affirm')).status,200);
+});
+test('approved signed exact remainder activates only once after verified identity',async()=>{
+ const h=assistance();h.deposit();h.offer.payment_route='internal';h.offer.payment_route_claim='reserved';
+ const loan={id:'loan',offer_id:'offerA',status:'approved',signed_at:'now',principal:500,apr:0,term_months:3};
+ h.state.rows.EngineAssistanceInternalLoan=[loan];
+ h.state.rows.EngineAssistanceAgreement=[{id:'agree',offer_id:'offerA',loan_id:'loan',status:'accepted',snapshot:{figures:{amount_financed:500}}}];
+ h.state.rows.EngineAssistanceIdentityVerification=[{id:'verify',loan_id:'loan',status:'verified'}];
+ assert.equal((await h.a.activateInternalLoan(h.base44,h.offer,loan)).status,'active');
+ assert.equal(loan.principal,500);assert.equal((await h.checkout('remainder_affirm')).status,409);
+});
+test('expired checkout is never a lender denial and stale failed event cannot overwrite paid funding',async()=>{
+ const h=assistance();const d=await h.checkout('deposit_lender');
+ h.state.sessions[d.body.session_id].status='expired';
+ assert.equal((await h.deliver(d.body.session_id,'checkout.session.expired')).status,200);
+ assert.equal(h.state.rows.EngineAssistanceFinancingAttempt[0].provider_decision,'not_reported');
+ Object.assign(h.state.sessions[d.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_late',latest_charge:{payment_method_details:{type:'affirm'}}}});
+ assert.equal((await h.deliver(d.body.session_id,'checkout.session.async_payment_failed')).status,200);
+ assert.equal(h.state.rows.EngineAssistanceFinancingAttempt[0].status,'completed');
+});
