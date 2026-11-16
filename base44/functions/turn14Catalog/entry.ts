@@ -58,13 +58,21 @@ export default async function(req){
   const conflicts=existing.filter(x=>x.turn14_item_id&&x.turn14_item_id!==itemId);
   const available=Object.values(inventory).reduce((s,v)=>s+(Number.isFinite(Number(v))?Math.max(0,Number(v)):0),0);
   const details={item_id:itemId,sku,manufacturer_part_number:mfr,name:String(a.product_name||a.part_description||sku),brand:String(a.brand||''),cost,retail,map:hasMap?map:null,sell_price:sell,supplier_available:available,match_count:existing.length,conflict:conflicts.length>0,existing:existing.map(x=>({id:x.id,name:x.name,part_number:x.part_number,turn14_item_id:x.turn14_item_id||''}))};
+  const prior=existing.length===1?existing[0]:null;
+  const supplierFields={turn14_item_id:itemId,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
+  const labels={turn14_item_id:'Turn 14 link',turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
+  const differences=prior?Object.entries(supplierFields).filter(([key,value])=>String(prior[key]??(typeof value==='number'?0:''))!==String(value)).map(([key,value])=>({field:key,label:labels[key],before:prior[key]??null,after:value})):[];
+  details.already_imported=!!prior?.turn14_item_id&&String(prior.turn14_item_id)===itemId;
+  details.changes=differences;
+  details.outcome=prior?(differences.length?'resync_changes':'already_current'):'new_import';
   if(action==='import_check')return Response.json({preview:details,read_only:true});
   if(conflicts.length||existing.length>1)return Response.json({error:'Ambiguous or conflicting existing inventory match; no import performed',preview:details},{status:409});
   if(body.confirm_item_id!==itemId)return Response.json({error:'Explicit confirmation required; no import performed'},{status:400});
-  const fields={turn14_item_id:itemId,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
+  const fields={...supplierFields,turn14_last_synced_at:new Date().toISOString()};
   let part,mode;
   if(existing.length){
-   part=await svc.Part.update(existing[0].id,fields);mode='linked';
+   if(differences.length||!details.already_imported){part=await svc.Part.update(existing[0].id,fields);mode=details.already_imported?'resynced':'linked';}
+   else {part=existing[0];mode='already_current';}
   }else{
    part=await svc.Part.create({...fields,part_number:sku,supplier_part_number:mfr,name:details.name,description:String(a.part_description||''),website_brand:details.brand,website_image_url:String(a.thumbnail||''),unit_cost:cost,sell_price:sell,quantity_on_hand:0,website_published:false,website_inventory_policy:'tracked',category:'other',status:'active'});
    mode='created_unpublished';
@@ -72,7 +80,7 @@ export default async function(req){
   const maps=await svc.Turn14ItemMap.filter({turn14_item_id:itemId});
   const mapFields={turn14_item_id:itemId,turn14_part_number:sku,manufacturer_part_number:mfr,elite_part_id:part.id,match_status:'matched',brand_id:String(a.brand_id||''),last_seen_at:new Date().toISOString(),source:'turn14_test'};
   if(maps.length)await svc.Turn14ItemMap.update(maps[0].id,mapFields);else await svc.Turn14ItemMap.create(mapFields);
-  return Response.json({success:true,mode,part_id:part.id,preview:details});
+  return Response.json({success:true,mode,part_id:part.id,changes:differences,preview:details});
  }
 
  return Response.json({error:'Unknown action'},{status:400});
