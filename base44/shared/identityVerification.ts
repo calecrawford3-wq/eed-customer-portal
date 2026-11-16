@@ -56,7 +56,10 @@ export function identityAppBaseUrl() {
 // Settings + gate
 // ---------------------------------------------------------------------------
 export async function ensureIdentitySettings(base44: any) {
-  const found = rows(await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.filter({ key: 'global' }))[0];
+  const matches = rows(await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.filter({ key: 'global' }));
+  // Legacy duplicate globals can exist. Prefer the most recently provider-checked
+  // record rather than an arbitrary older record that still says unavailable.
+  const found = matches.sort((a: any, b: any) => String(b.checked_at || b.updated_date || '').localeCompare(String(a.checked_at || a.updated_date || '')))[0];
   if (found) return found;
   return await base44.asServiceRole.entities.EngineAssistanceIdentitySettings.create({
     key: 'global',
