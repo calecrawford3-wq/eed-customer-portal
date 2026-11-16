@@ -22,11 +22,13 @@ export default async function(req:Request){
    const supplierStock=Number(part.turn14_available_quantity||0);
    const manufacturerDirect=!!String(part.turn14_dropship_controller_id||'').trim();
    if(supplierStock<qty&&!manufacturerDirect)problems.push('Insufficient Turn 14 warehouse stock and no manufacturer-direct controller: '+line.sku);
-   if(supplierStock<qty&&manufacturerDirect)problems.push('Manufacturer-direct availability must be confirmed by supplier quote: '+line.sku);
+   // Manufacturer-direct eligibility is separate from warehouse quantity.
+   // Quote must still be confirmed before any real supplier submission.
    if(!Number.isFinite(Number(part.turn14_purchase_cost)))problems.push('Missing supplier cost: '+line.sku);
    items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,supplier_stock:supplierStock,manufacturer_direct:manufacturerDirect,dropship_controller_id:String(part.turn14_dropship_controller_id||''),unit_cost:Number(part.turn14_purchase_cost||0)});
   }
   if(!items.length)problems.push('No dropship-enabled Turn 14 products in this fulfillment');
+  if(order.order_payment_review_required===true||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)problems.push('Order payment adjustment must be reconciled before supplier submission');
   if(order.shipping_method!=='ship')problems.push('Order is not shipping to customer');
   if(!order.recipient_name||!order.shipping_address)problems.push('Customer shipping details are missing');
   if(!order.payment_verified)problems.push('Payment is not verified');
@@ -45,13 +47,15 @@ export default async function(req:Request){
  }
  if(body.action==='queue'){
   if(!order.payment_verified||order.shipping_method!=='ship')return Response.json({error:'Verified payment and shipping are required'},{status:409});
+  if(order.order_payment_review_required===true||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)return Response.json({error:'Reconcile the order payment adjustment before queueing dropship fulfillment'},{status:409});
   if(['pending_review','ready_for_submission','submitted','shipped'].includes(order.turn14_dropship_status))return Response.json({error:'Dropship request already exists; no duplicate created'},{status:409});
   const items=[];for(const line of order.line_items||[]){
    const part=line.part_id?await svc.Part.get(String(line.part_id)).catch(()=>null):null;
    if(!part?.turn14_item_id)continue;
    if(!part.turn14_dropship_enabled)continue;
    const qty=Number(line.quantity||0);
-   if(!Number.isInteger(qty)||qty<=0||Number(part.turn14_available_quantity||0)<qty||!Number.isFinite(Number(part.turn14_purchase_cost)))return Response.json({error:'Dropship item not ready: '+line.sku},{status:409});
+   const direct=!!String(part.turn14_dropship_controller_id||'').trim();
+   if(!Number.isInteger(qty)||qty<=0||(Number(part.turn14_available_quantity||0)<qty&&!direct)||!Number.isFinite(Number(part.turn14_purchase_cost)))return Response.json({error:'Dropship item not ready: '+line.sku},{status:409});
    items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,unit_cost:Number(part.turn14_purchase_cost)});
   }
   if(!items.length||!order.shipping_address||!order.recipient_name)return Response.json({error:'No eligible items or customer shipping address'},{status:409});
