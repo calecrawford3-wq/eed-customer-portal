@@ -35,7 +35,7 @@ export default function PlanChoices({ full, finance, deposit, onSelect, testOffe
         amount={formatMoney(deposit?.deposit_amount || 0)}
         amountCaption="today"
         helper={`Then ${formatMoney(deposit?.internal_amount || 0)} financed by Elite in monthly payments.`}
-        note={demo && !deposit?.available ? "TEST OFFER — real financing stays locked here. Use “Start complete TEST walkthrough” to run every step without payment." : depositAvailable ? "Elite's in-house plan needs approval and your signature." : deposit?.reason || "This plan is not available for this balance."}
+        note={demo && !deposit?.available ? "TEST OFFER — a simulated walkthrough of this plan for Elite staff. Nothing is charged, approved or signed for real." : depositAvailable ? "Elite's in-house plan needs approval and your signature." : deposit?.reason || "This plan is not available for this balance."}
         disabled={!depositAvailable}
         onClick={() => onSelect("deposit")}
       />

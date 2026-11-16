@@ -6,6 +6,8 @@ import PlanChoices from "./PlanChoices";
 import FullBalanceStep from "./FullBalanceStep";
 import DepositPlanStep from "./DepositPlanStep";
 import PlanStepper from "./PlanStepper";
+import InlineTestJourney from "../demo/InlineTestJourney";
+import { TEST_OFFER_NUMBER } from "@/lib/demoSteps";
 
 const HEADINGS = {
   plan: { title: "How would you like to pay?", subtitle: "Your fund assistance is already applied." },
@@ -26,6 +28,50 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
 
   const [step, setStep] = useState(requestInFlight || Number(deposit?.deposit_paid) > 0 ? "deposit" : "plan");
   const heading = HEADINGS[step] || HEADINGS.plan;
+  const isTestOffer = offer?.offer_number === TEST_OFFER_NUMBER;
+
+  const depositPanel = (
+    <DepositPlanStep
+      deposit={deposit}
+      loan={offer?.internal_loan}
+      paying={paying}
+      actionBusy={actionBusy}
+      onCheckout={onCheckout}
+      onRequest={onRequest}
+      onSign={onSign}
+      onCancel={onCancel}
+      agreement={offer?.internal_agreement}
+      autopayEnabled={offer?.autopay_enabled === true}
+      token={token}
+      identity={offer?.identity}
+      onIdentityChanged={onIdentityChanged}
+    />
+  );
+
+  // The TEST offer runs this same deposit path as a complete simulated
+  // walkthrough for an authenticated admin only. Every other visitor gets the
+  // untouched production gates (`fallback`).
+  if (step === "deposit" && isTestOffer) {
+    const productionDeposit = (
+      <Card>
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-slate-900">{HEADINGS.deposit.title}</h3>
+              <p className="mt-0.5 text-xs text-slate-600">{HEADINGS.deposit.subtitle}</p>
+            </div>
+            <Button variant="ghost" size="sm" className="-mr-2 flex-none" disabled={!!paying || !!actionBusy} onClick={() => setStep("plan")}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </div>
+          <PlanStepper current={deposit?.deposit_verified ? 3 : 2} />
+          {depositPanel}
+        </CardContent>
+      </Card>
+    );
+    return <InlineTestJourney offer={offer} fallback={productionDeposit} />;
+  }
 
   return (
     <Card>
@@ -45,28 +91,11 @@ export default function PaymentWizard({ offer, paying, actionBusy, onCheckout, o
 
         {step === "deposit" && <PlanStepper current={deposit?.deposit_verified ? 3 : 2} />}
 
-        {step === "plan" && <PlanChoices full={full} finance={finance} deposit={deposit} onSelect={setStep} testOffer={offer?.offer_number === 'EAO-2026-1002'} />}
+        {step === "plan" && <PlanChoices full={full} finance={finance} deposit={deposit} onSelect={setStep} testOffer={isTestOffer} />}
 
         {step === "full" && <FullBalanceStep full={full} finance={finance} paying={paying} onCheckout={onCheckout} />}
 
-        {step === "deposit" && (
-          <DepositPlanStep
-            deposit={deposit}
-            loan={offer?.internal_loan}
-            paying={paying}
-            actionBusy={actionBusy}
-            onCheckout={onCheckout}
-            onRequest={onRequest}
-            onSign={onSign}
-            onCancel={onCancel}
-            agreement={offer?.internal_agreement}
-            autopayEnabled={offer?.autopay_enabled === true}
-            token={token}
-            identity={offer?.identity}
-            onIdentityChanged={onIdentityChanged}
-            offer={offer}
-          />
-        )}
+        {step === "deposit" && depositPanel}
       </CardContent>
     </Card>
   );

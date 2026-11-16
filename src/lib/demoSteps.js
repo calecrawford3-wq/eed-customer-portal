@@ -1,5 +1,6 @@
 // Presentation metadata for the isolated assistance walkthrough.
 // The server owns the step order; this list only labels it for the screen.
+export const TEST_OFFER_NUMBER = "EAO-2026-1002";
 export const DEMO_BANNER = "TEST MODE — NO REAL PAYMENT OR ID VERIFICATION";
 export const DEMO_WATERMARK = "TEST ONLY — NOT LEGALLY BINDING";
 

@@ -6,12 +6,11 @@ import { formatMoney } from "@/lib/money";
 import ChoiceTile from "./ChoiceTile";
 import DepositFinancingStatus from "../DepositFinancingStatus";
 import IdentityVerificationCard from "../identity/IdentityVerificationCard";
-import TestWalkthroughStart from "../demo/TestWalkthroughStart";
 
 // Step 2 for the deposit plan. The deposit is the only amount this page can
 // ever charge; the remainder belongs to the in-house agreement, which must be
 // approved and signed before the deposit payment opens.
-export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false, token = "", identity = null, onIdentityChanged = null, offer = null }) {
+export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onCheckout, onRequest, onSign, onCancel, agreement = null, autopayEnabled = false, token = "", identity = null, onIdentityChanged = null }) {
   const [method, setMethod] = useState("");
   const [consent, setConsent] = useState(false);
 
@@ -117,7 +116,6 @@ export default function DepositPlanStep({ deposit, loan, paying, actionBusy, onC
             <Lock className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-400" />
             <p>Deposit payment opens once your plan is approved and signed. Nothing is owed before then.</p>
           </div>
-          <TestWalkthroughStart offer={offer} compact />
         </div>
       )}
     </div>

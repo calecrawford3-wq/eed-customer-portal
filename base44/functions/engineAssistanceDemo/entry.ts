@@ -245,6 +245,25 @@ export default async function (req: Request) {
       return Response.json({ demo: demoView(session), token: demoToken }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
+    // The normal offer page resumes the caller's own open test session for the
+    // test offer instead of creating a new one on every page view. The session
+    // token is only ever returned to an authenticated admin.
+    if (action === 'resume') {
+      const user = await adminUser(base44);
+      if (!user) return Response.json({ error: 'Only an authenticated Elite admin can open the test walkthrough.' }, { status: 403 });
+      const offer = body.offer_id
+        ? rows(await entities.EngineAssistanceOffer.filter({ id: String(body.offer_id) }))[0]
+        : rows(await entities.EngineAssistanceOffer.filter({ offer_number: DEMO_OFFER_NUMBER }))[0];
+      if (!offer || String(offer.offer_number || '') !== DEMO_OFFER_NUMBER) {
+        return Response.json({ demo: null, token: '' }, { headers: { 'Cache-Control': 'no-store' } });
+      }
+      const openSession = rows(await entities[SESSIONS].filter({ offer_id: offer.id }, { sort: '-created_date', limit: 10 }))
+        .find((row: any) => ['in_progress', 'awaiting_approval'].includes(String(row.status || '')));
+      if (!openSession) return Response.json({ demo: null, token: '' }, { headers: { 'Cache-Control': 'no-store' } });
+      await entities[SESSIONS].update(openSession.id, { last_viewed_at: new Date().toISOString() });
+      return Response.json({ demo: demoView(openSession), token: openSession.token }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     const token = body.token;
     if (!publicCapability(token)) return Response.json({ error: 'A valid test walkthrough link is required.' }, { status: 400 });
     const session = await loadSession(base44, token);

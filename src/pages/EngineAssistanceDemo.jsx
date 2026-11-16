@@ -11,26 +11,8 @@ import DemoBanner from "@/components/assistance/demo/DemoBanner";
 import DemoStepper from "@/components/assistance/demo/DemoStepper";
 import DemoAdminControls from "@/components/assistance/demo/DemoAdminControls";
 import DemoSuccess from "@/components/assistance/demo/DemoSuccess";
-import DemoStepPlan from "@/components/assistance/demo/DemoStepPlan";
-import DemoStepIdentity from "@/components/assistance/demo/DemoStepIdentity";
-import DemoStepFinancing from "@/components/assistance/demo/DemoStepFinancing";
-import DemoStepApproval from "@/components/assistance/demo/DemoStepApproval";
-import DemoStepAgreement from "@/components/assistance/demo/DemoStepAgreement";
-import DemoStepAutopay from "@/components/assistance/demo/DemoStepAutopay";
-import DemoStepDeposit from "@/components/assistance/demo/DemoStepDeposit";
-import DemoLoanDashboard from "@/components/assistance/demo/DemoLoanDashboard";
+import { STEP_COMPONENTS } from "@/components/assistance/demo/demoStepComponents";
 import { DEMO_STEPS, stepIndex } from "@/lib/demoSteps";
-
-const STEP_COMPONENTS = {
-  plan: DemoStepPlan,
-  identity: DemoStepIdentity,
-  financing: DemoStepFinancing,
-  approval: DemoStepApproval,
-  agreement: DemoStepAgreement,
-  autopay: DemoStepAutopay,
-  deposit: DemoStepDeposit,
-  dashboard: DemoLoanDashboard,
-};
 
 // Token-scoped, isolated test walkthrough. Opening this link cannot touch live
 // financing, payments, identity or agreements: the server only reads/writes the
@@ -124,7 +106,7 @@ export default function EngineAssistanceDemo() {
   }
 
   const completed = demo.status === "completed";
-  const StepComponent = STEP_COMPONENTS[activeStep] || DemoStepPlan;
+  const StepComponent = STEP_COMPONENTS[activeStep] || STEP_COMPONENTS.plan;
 
   return (
     <PublicAssistanceShell
