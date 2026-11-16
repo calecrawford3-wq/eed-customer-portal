@@ -394,9 +394,12 @@ export default function EstimateDetail() {
     const machiningTotal = machiningItems.reduce((s, m) => s + (Number(m.price) || 0) * (Number(m.quantity) || 1), 0);
     const selectedAddonTotal = (addons || []).filter(a => a.selection_state === 'preselected' || a.selection_state === 'customer_selected').reduce((s, a) => s + (Number(a.price) || 0), 0);
     const baseSubtotal = partTotal + laborTotal + machiningTotal + selectedAddonTotal;
-    const pricing_allowance_amount = Math.round(Math.max(0, baseSubtotal) * (Number(form.pricing_allowance_rate) || 0)) / 100;
-    const subtotal = baseSubtotal + pricing_allowance_amount;
-    const tax_amount = partTotal * (1 + (Number(form.pricing_allowance_rate) || 0) / 100) * (Number(taxRate) / 100); // tax on parts including their allocated allowance
+    const hasEmbeddedAllowance = lineItems.some(l => l.pricing_allowance_embedded === true);
+    const pricing_allowance_amount = hasEmbeddedAllowance
+      ? Math.round(lineItems.reduce((sum,l) => sum + (l.pricing_allowance_embedded ? Math.max(0, (Number(l.unit_price)||0) - (Number(l.allowance_base_price)||0)) * (Number(l.quantity)||0) : 0), 0) * 100) / 100
+      : Math.round(Math.max(0, baseSubtotal) * (Number(form.pricing_allowance_rate) || 0)) / 100;
+    const subtotal = baseSubtotal + (hasEmbeddedAllowance ? 0 : pricing_allowance_amount);
+    const tax_amount = partTotal * (hasEmbeddedAllowance ? 1 : 1 + (Number(form.pricing_allowance_rate) || 0) / 100) * (Number(taxRate) / 100);
     let discount_amount = 0;
     if (discountType === "amount") {
       discount_amount = Math.min(Number(discountValue) || 0, subtotal);
@@ -447,7 +450,8 @@ export default function EstimateDetail() {
     // replacing a kit or core credit with a regular part does not retain
     // incompatible fields (is_kit, kit_id, kit_components, is_core_credit,
     // core_id, core_details) that would misclassify or misprocess the new item.
-    lines[pickingIdx] = normalizePart(lines[pickingIdx] || {}, part, price);
+    const adjustedPrice = Math.round(price * (1 + (Number(form.pricing_allowance_rate)||0)/100) * 100)/100;
+    lines[pickingIdx] = { ...normalizePart(lines[pickingIdx] || {}, part, adjustedPrice), pricing_allowance_embedded: true, allowance_base_price: price }; 
     const totals = recalc(lines, form.labor_items || [], form.machining_items || [], form.tax_rate, form.discount_type || "none", form.discount_value || 0);
     setForm({ ...form, line_items: lines, ...totals });
   };
@@ -534,7 +538,8 @@ export default function EstimateDetail() {
       return {
         part_id: part.id, part_number: part.part_number, item_name: part.name,
         quantity: 1, unit_cost: part.unit_cost || 0, shipping_cost: Number(part.shipping_cost) || 0,
-        unit_price: price, total: price,
+        unit_price: Math.round(price*(1+(Number(form.pricing_allowance_rate)||0)/100)*100)/100, total: Math.round(price*(1+(Number(form.pricing_allowance_rate)||0)/100)*100)/100,
+        pricing_allowance_embedded: true, allowance_base_price: price,
       };
     });
     const allLines = [...form.line_items, ...newLines];
