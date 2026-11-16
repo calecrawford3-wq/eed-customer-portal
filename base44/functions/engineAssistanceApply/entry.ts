@@ -34,6 +34,47 @@ export default async function (req) {
     const action = String(body.action || 'template');
     const token = body.token;
 
+    // Customer-authorized Stripe Financial Connections for AEF income review.
+    // Store only Stripe IDs and connection status; never bank credentials or raw transactions.
+    if (action === 'start_bank_link' || action === 'confirm_bank_link') {
+      const statusToken = body.status_token;
+      if (!publicCapability(statusToken)) return Response.json({ error: 'Valid application token required.' }, { status: 400 });
+      const app = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: statusToken }))[0];
+      if (!app || !['pending_payment', 'submitted', 'under_review', 'info_requested'].includes(app.status)) return Response.json({ error: 'Application not available for bank verification.' }, { status: 404 });
+      const secret = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
+      if (!/^sk_(test|live)_/.test(secret)) return Response.json({ error: 'Stripe is not configured.' }, { status: 503 });
+      const stripe = new Stripe(secret);
+      if (action === 'start_bank_link') {
+        const publishableKey = Deno.env.get('PORTAL_STRIPE_PUBLISHABLE_KEY') || Deno.env.get('STRIPE_PUBLISHABLE_KEY') || '';
+        if (!/^pk_(test|live)_/.test(publishableKey) || publishableKey.slice(3, 7) !== secret.slice(3, 7)) return Response.json({ error: 'Stripe Financial Connections needs a matching publishable key configured.' }, { status: 503 });
+        let customerId = app.income_verification_customer_id;
+        if (!customerId) {
+          const customer = await stripe.customers.create({ email: app.email, name: [app.first_name, app.last_name].filter(Boolean).join(' '), metadata: { aef_application_id: app.id } });
+          customerId = customer.id;
+          await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { income_verification_customer_id: customerId });
+        }
+        const session = await stripe.financialConnections.sessions.create({
+          account_holder: { type: 'customer', customer: customerId },
+          permissions: ['transactions', 'ownership'],
+          filters: { countries: ['US'] },
+        });
+        await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, {
+          income_verification_status: 'requested', income_verification_provider: 'stripe_financial_connections',
+          income_verification_session_id: session.id,
+        });
+        return Response.json({ client_secret: session.client_secret, publishable_key: publishableKey });
+      }
+      if (!app.income_verification_session_id) return Response.json({ error: 'Start a bank connection first.' }, { status: 409 });
+      const session = await stripe.financialConnections.sessions.retrieve(app.income_verification_session_id);
+      const accounts = session.accounts?.data || [];
+      if (!accounts.length) return Response.json({ connected: false, message: 'No bank account connection has been confirmed.' });
+      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, {
+        income_verification_status: 'connected', income_verification_account_count: accounts.length,
+        income_verification_verified_at: new Date().toISOString(),
+      });
+      return Response.json({ connected: true, account_count: accounts.length, note: 'Bank connection confirmed; income has not yet been reviewed.' });
+    }
+
     // Stripe-hosted submission deposit. Server verifies the exact Checkout session;
     // returning from Checkout never counts as proof of payment.
     if (action === 'confirm_fee' || action === 'pay_fee') {
