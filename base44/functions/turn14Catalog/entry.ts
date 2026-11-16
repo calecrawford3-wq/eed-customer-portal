@@ -18,6 +18,30 @@ export default async function(req){
   const filtered=all;
   return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:false});
  }
+ if(action==='search_sku'){
+  const sku=String(body.sku||'').trim().toLowerCase();
+  const brandId=String(body.brand_id||'');
+  const start=Number(body.start_page||1);
+  if(sku.length<3||sku.length>80||!/^[a-z0-9._-]+$/i.test(sku)||!/^[0-9]*$/.test(brandId)||!Number.isInteger(start)||start<1)
+   return Response.json({error:'Enter a valid part number and page'},{status:400});
+  const matches=[];let pages=1;let scanned=0;
+  // Search the supplier's real catalog pages in bounded batches, not just the visible page.
+  // No unsupported supplier search endpoint or fabricated SKU mapping.
+  for(let p=start;p<start+5;p++){
+   const endpoint=brandId?'/v1/items/brand/'+brandId+'?page='+p:'/v1/items?page='+p;
+   const data=await turn14Request(endpoint);
+   pages=Number(data.meta?.total_pages||p);
+   scanned++;
+   for(const x of itemArray(data)){
+    const a=x.attributes||{};
+    const values=[a.part_number,a.mfr_part_number,a.manufacturer_part_number,a.product_name,a.part_description].map(v=>String(v||'').toLowerCase());
+    if(values.some(v=>v.includes(sku)))matches.push({id:String(x.id||''),part_number:String(a.part_number||''),product_name:String(a.product_name||a.part_description||''),brand_id:String(a.brand_id||'')});
+   }
+   if(matches.length>=30||p>=pages)break;
+  }
+  const next=start+scanned;
+  return Response.json({matches:matches.slice(0,30),scanned_pages:scanned,next_page:next<=pages?next:null,total_pages:pages,complete:next>pages});
+ }
  if(action==='verify_item_data'){
   const itemId=String(body.item_id||'');
   if(!/^[a-zA-Z0-9_-]{1,64}$/.test(itemId))return Response.json({error:'Invalid item ID'},{status:400});
