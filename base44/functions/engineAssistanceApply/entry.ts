@@ -126,7 +126,7 @@ export default async function (req) {
 
     const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
     const consents = body.consents && typeof body.consents === 'object' ? body.consents : {};
-    if (!consents.truthful || !consents.privacy) return Response.json({ error: 'Both acknowledgements are required to submit' }, { status: 400 });
+    if (!consents.truthful || !consents.privacy || body.fee_policy_accepted !== true) return Response.json({ error: 'Certification, privacy notice and submission deposit policy must be accepted.' }, { status: 400 });
 
     const fields = (template.sections || []).flatMap((s: any) => s.fields || []);
     const missing = fields.filter((f: any) => f.required && !clamps(answers[f.key], 40)).map((f: any) => f.label || f.key);
@@ -155,6 +155,7 @@ export default async function (req) {
       submission_fee_cents: 2000,
       submission_fee_status: 'pending',
       submission_fee_policy_version: 'aef-deposit-v1',
+      submission_fee_credit_cents: 0,
       income_verification_status: 'not_requested',
       template_key: template.key,
       template_version: template.version_number,
