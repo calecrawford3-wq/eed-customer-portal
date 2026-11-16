@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { HeartHandshake, Settings2, Copy, Search, Loader2, AlertTriangle, Wallet, BadgeCheck, ShieldAlert } from "lucide-react";
+import { HeartHandshake, Settings2, Copy, Search, Loader2, AlertTriangle, Wallet, BadgeCheck, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/money";
 import ApplicationQueueCard from "@/components/assistance/ApplicationQueueCard";
@@ -39,6 +39,22 @@ export default function EngineAssistance() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [emailPanelOpen, setEmailPanelOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const sendInvitation = async () => {
+    if (!inviteEmail.trim()) { toast.error("Enter a recipient email"); return; }
+    setSendingInvite(true);
+    try {
+      const response = await base44.functions.invoke("engineAssistanceAdmin", { action: "email_application_link", data: { email: inviteEmail.trim(), name: inviteName.trim() } });
+      const result = response.data || response;
+      if (!result.sent) throw new Error(result.error || "The email was not accepted");
+      toast.success(`Application invitation accepted for ${result.recipient}`);
+      setEmailPanelOpen(false); setInviteEmail(""); setInviteName("");
+    } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Could not send invitation"); }
+    finally { setSendingInvite(false); }
+  };
 
   const { data: bootstrap } = useQuery({
     queryKey: ["engine-assistance-bootstrap"],
@@ -153,6 +169,7 @@ export default function EngineAssistance() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setEmailPanelOpen(v => !v)} disabled={!applyUrl}><Mail className="h-4 w-4" /> Email application link</Button>
           <Button variant="outline" size="sm" onClick={copyLink} disabled={!applyUrl}>
             <Copy className="h-4 w-4" /> Application link
           </Button>
@@ -164,6 +181,8 @@ export default function EngineAssistance() {
           </Button>
         </div>
       </div>
+
+      {emailPanelOpen && <Card><CardContent className="p-4 sm:p-5 space-y-3"><h3 className="font-bold text-slate-900">Send Affordable Engine Fund application</h3><p className="text-sm text-slate-600">Email the secure application link using Elite’s connected mail account. No application is created until the recipient submits it.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input placeholder="Recipient name (optional)" value={inviteName} onChange={e => setInviteName(e.target.value)} /><Input type="email" placeholder="Recipient email address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div><div className="flex flex-wrap gap-2"><Button disabled={sendingInvite || !inviteEmail.trim()} onClick={sendInvitation}>{sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Send application email</Button><Button variant="outline" onClick={() => setEmailPanelOpen(false)}>Cancel</Button></div></CardContent></Card>}
 
       {bootstrap && bootstrap.settings?.payments_enabled === false && (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
