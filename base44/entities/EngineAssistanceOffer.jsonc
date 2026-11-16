@@ -372,6 +372,21 @@
           }
         }
       }
+    },
+    "payment_route_claim": {
+      "type": "string"
+    },
+    "payment_route": {
+      "type": "string"
+    },
+    "payment_route_started_at": {
+      "type": "string"
+    },
+    "payment_route_session": {
+      "type": "string"
+    },
+    "payment_route_options": {
+      "type": "string"
     }
   },
   "required": [

@@ -2,6 +2,7 @@
 // Every amount is calculated here on the server. The browser never supplies a
 // price, an assistance amount, a payment status, or an applicant identifier.
 
+import { reserveRoute, retireOfferSessions } from './assistancePaymentRoute.ts';
 import { publicAgreement, lendingGate, latestAgreement } from './installmentAgreement.ts';
 import { identityGate, ensureIdentitySettings, loadVerificationForLoan, publicIdentity } from './identityVerification.ts';
 import { deliverAssistanceEmail } from './assistanceEmail.ts';
@@ -351,7 +352,7 @@ export function loanScheduleWithStatus(loan: any) {
 // price, an approval, or a lender that is not configured.
 export function offerPaymentPlan(offer: any, settings: any, loan: any = null, agreement: any = null, identity: any = null, identitySettings: any = null) {
   const totals = computeOfferTotals(offer);
-  const pct = depositPercentFor(offer, settings);
+  const pct = 50;
   const depositTarget = round2(totals.total * (pct / 100));
   const depositPaid = round2(Math.min(totals.paid_amount, depositTarget));
   const depositOutstanding = round2(Math.max(0, depositTarget - totals.paid_amount));
@@ -377,14 +378,15 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     && agreement.status === 'accepted'
     && (!loan?.id || agreement.loan_id === loan.id);
   const statusOpen = !['void', 'declined', 'draft', 'expired', 'paid'].includes(String(offer?.status || ''));
-  const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !loanActive;
+  const internalReserved = ['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus) || offer.payment_route === 'internal';
+  const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !internalReserved;
 
   const fullLenders = lendersForAmount(settings, totals.balance_due);
   const depositLenders = lendersForAmount(settings, depositOutstanding);
   const depositPossible = cents(depositTarget) > 0 && cents(depositTarget) < cents(totals.total);
 
   const payInFull = {
-    enabled: gatewayOpen && Number(offer?.pay_in_full_enabled) !== false,
+    enabled: gatewayOpen && offer?.pay_in_full_enabled !== false,
     amount: totals.balance_due,
     reason: !paymentsEnabled
       ? 'Online payment is not available yet.'
@@ -407,7 +409,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
         ? `${fullLenders.blocked[0].reason}, so no enabled lender covers this balance.`
         : 'No third-party lender is enabled right now. Paying in full by card still works.');
   const financeFull = {
-    enabled: payInFull.enabled && Number(offer?.installments_enabled) !== false && fullLenders.eligible.length > 0,
+    enabled: payInFull.enabled && offer?.installments_enabled !== false && fullLenders.eligible.length > 0,
     amount: totals.balance_due,
     lenders: fullLenders.eligible,
     blocked: fullLenders.blocked,
@@ -432,7 +434,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
   // An approved but unsigned plan can still be changed by the customer before
   // signing: priced at the approved APR, never at a rate the browser supplies.
   const limits = financingTermLimits(settings);
-  const changeablePlan = loanApproved && !loanSigned && !depositVerified;
+  const changeablePlan = loanApproved && !loanSigned;
   const approvedMonthly = round2(loan?.monthly_payment);
   const belowMinimum = loanApproved && !loanSigned
     && cents(approvedMonthly) > 0
@@ -484,13 +486,13 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     template_status: settings?.agreement_template_status === 'approved_counsel' ? 'approved_counsel' : 'draft',
     agreement_status: agreement?.status || '',
     agreement_accepted: agreementAccepted,
-    can_request: !blockedReason && !depositVerified && !['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus),
+    can_request: !blockedReason && depositVerified && !['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus),
     awaiting_approval: loanStatus === 'pending_approval',
-    can_sign: !blockedReason && loanApproved && !loanSigned && !depositVerified,
-    can_accept_agreement: !blockedReason && loanApproved && !agreementAccepted && !depositVerified,
+    can_sign: !blockedReason && loanApproved && !loanSigned,
+    can_accept_agreement: !blockedReason && loanApproved && !agreementAccepted,
     declined: loanStatus === 'declined',
     canceled: loanStatus === 'canceled',
-    enabled: !blockedReason && !depositVerified && !loanActive && loanReady && agreementAccepted && identityStatus.ok,
+    enabled: gatewayOpen && !depositVerified && depositPossible,
     payment_reason: blockedReason
       || (depositVerified || loanActive
         ? ''
@@ -506,7 +508,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
                 ? identityStatus.reason
                 : ''),
     deposit_lenders: depositLenders,
-    finance_deposit_enabled: !blockedReason && !depositVerified && !loanActive && loanReady && depositLenders.eligible.length > 0,
+    finance_deposit_enabled: gatewayOpen && !depositVerified && depositPossible && depositLenders.eligible.some((m: any) => m.type === 'affirm'),
     finance_deposit_reason: depositLenders.eligible.length
       ? ''
       : (depositLenders.blocked[0]?.reason
@@ -533,7 +535,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     lending_allowed: lending.allowed,
     payment_plan: paymentPlan,
     identity: { ...identityStatus, settings_available: identitySettings?.available === true },
-    pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath },
+    pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath, remainder_affirm: { enabled: gatewayOpen && depositVerified && fullLenders.eligible.some((m: any) => m.type === 'affirm'), amount: totals.balance_due } },
   };
 }
 
@@ -632,6 +634,15 @@ export async function activateInternalLoan(base44: any, offer: any, loan: any, a
       outstanding_balance: 0,
       audit_trail: appendAudit(loan, actor, 'loan_canceled', 'The balance was collected directly, so nothing needed financing'),
     });
+  }
+  if (offer.payment_route !== 'internal') {
+    // Legacy plans cannot activate while a provider checkout can still collect.
+    if (offer.payment_route_claim) return loan;
+    const held = await reserveRoute(base44, offer, 'internal');
+    const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+    if (!key) return loan;
+    const { default: Stripe } = await import('npm:stripe@13.11.0');
+    await retireOfferSessions(base44, new Stripe(key), held);
   }
   const terms = buildLoanSchedule(principal, loan.apr, loan.term_months, loan.first_payment_date || shiftMonths(today(), 1));
   const updated = await entity.update(loan.id, {
@@ -791,7 +802,7 @@ export function verifiedAssistanceFacts(session: any, appId: string, live: boole
   const allowed = ['card', 'affirm', 'klarna', 'afterpay_clearpay', 'us_bank_account'];
   const method = allowed.includes(detailType)
     ? detailType
-    : (session.metadata.amount_option === 'installment' ? 'financing' : 'card');
+    : 'other';
   return {
     offer_id: offerId,
     amount: expected,
@@ -815,17 +826,17 @@ export async function recordAssistancePayment(base44: any, facts: any) {
   let offer = rows(await offerEntity.filter({ id: facts.offer_id }))[0];
   if (!offer) throw new Error('Assistance offer not found');
   if ((offer.payments || []).some((p: any) => p.stripe_session_id === facts.session_id)) {
-    return { duplicate: true, offer_id: offer.id };
+    // Receipt already credited; continue repairing idempotent side effects.
   }
   const totals = computeOfferTotals(offer);
-  if (cents(facts.amount) > cents(totals.balance_due) + 1) throw new Error('Payment exceeds the remaining balance and needs staff review');
+  if (facts.amount > cents(totals.balance_due)) throw new Error('Payment exceeds the remaining balance and needs staff review');
 
   const payment = {
-    amount: round2(cents(facts.amount) / 100),
+    amount: round2(facts.amount / 100),
     method: facts.method || 'card',
     provider: 'stripe',
     financed: !!facts.financed,
-    financed_amount: facts.financed ? round2(cents(facts.amount) / 100) : 0,
+    financed_amount: facts.financed ? round2(facts.amount / 100) : 0,
     amount_option: facts.amount_option || 'pay_in_full',
     stripe_session_id: facts.session_id,
     stripe_payment_intent: facts.intent,
@@ -842,6 +853,7 @@ export async function recordAssistancePayment(base44: any, facts: any) {
       break;
     }
     const freshTotals = computeOfferTotals(fresh);
+    if (facts.amount > cents(freshTotals.balance_due)) throw new Error('Payment exceeds current balance; staff review required');
     const paidCents = cents(freshTotals.paid_amount) + cents(payment.amount);
     const balanceCents = Math.max(0, cents(freshTotals.total) - paidCents);
     const result = await offerEntity.updateMany(

@@ -167,6 +167,9 @@
           }
         }
       }
+    },
+    "payment_pathway": {
+      "type": "string"
     }
   },
   "required": [
