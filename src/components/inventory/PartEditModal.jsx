@@ -70,8 +70,8 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
           <DialogTitle>Edit Part</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-2">
-          <div><Label>Part Number *</Label><Input value={form.part_number ?? ""} onChange={e => setForm({ ...form, part_number: e.target.value })} /></div>
-          <div><Label>Name *</Label><Input value={form.name ?? ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label>Elite Part Number *</Label><Input value={form.part_number ?? ""} onChange={e => setForm({ ...form, part_number: e.target.value })} /></div>
+          <div><Label>Elite Product Name *</Label><Input value={form.name ?? ""} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
           <div>
             <Label>Category</Label>
             <Select value={form.category || "other"} onValueChange={v => setForm({ ...form, category: v })}>
@@ -79,7 +79,10 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
               <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace("_", " ")}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Supplier Part #</Label><Input value={form.supplier_part_number ?? ""} onChange={e => setForm({ ...form, supplier_part_number: e.target.value })} /></div>
+          <div><Label>Supplier Part # (Turn 14 SKU)</Label><Input value={form.supplier_part_number ?? ""} onChange={e => setForm({ ...form, supplier_part_number: e.target.value,turn14_supplier_sku:form.turn14_item_id?e.target.value:form.turn14_supplier_sku })} /></div>
+          <div><Label>Supplier Product Name</Label><Input value={form.supplier_product_name ?? ""} onChange={e => setForm({ ...form, supplier_product_name: e.target.value })} placeholder="Original supplier catalog name" /></div>
+          <div><Label>Manufacturer Part Number</Label><Input value={form.manufacturer_part_number ?? ""} onChange={e => setForm({ ...form, manufacturer_part_number: e.target.value })} /></div>
+          {form.turn14_item_id&&<div className="col-span-2 text-xs rounded border p-2 bg-slate-50">Turn 14 Item ID: {form.turn14_item_id}. Elite product name and part number are used for customers. Supplier SKU and supplier name are retained for purchasing. Changing the supplier SKU does not change the linked Turn 14 item ID.</div>
           <div><Label>Storage Location</Label><Input value={form.location ?? ""} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="e.g. Shelf A3" /></div>
           <div>
             <Label>Purchase Cost per Item ($)</Label>
