@@ -31,7 +31,7 @@ export default function EngineAssistanceAgreement() {
     setBusy(true);
     try {
       const res = await base44.functions.invoke("engineAssistanceAgreement", {
-        token, action: "accept", signature_name: payload.name,
+        token, action: "accept", signature_name: payload.name, signature_paths: payload.signature_paths,
         esign_consent: payload.esign_consent === true,
         accept_terms: payload.accept_terms === true,
         autopay_authorized: payload.autopay_authorized === true,
