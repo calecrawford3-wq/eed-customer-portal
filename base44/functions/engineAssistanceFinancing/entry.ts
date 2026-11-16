@@ -303,7 +303,7 @@ export default async function (req) {
       let accepted: any = null;
       try {
         accepted = await acceptAgreementRecord(base44, {
-          agreement, loan: existing, settings, name, ip: forwarded, userAgent,
+          agreement, loan: existing, settings, name, signaturePaths: body.signature_paths, ip: forwarded, userAgent,
           autopayAuthorized: body.autopay_authorized === true,
         });
       } catch (error: any) {
