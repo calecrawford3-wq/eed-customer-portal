@@ -208,7 +208,7 @@ export default function EngineAssistanceDetail() {
             onChanged={refresh}
           />
           <BuildJobPanel application={application} build={build} job={job} platforms={platforms} offer={offer} onAction={run} busy={!!busy} />
-          <FinancingPanel attempts={attempts} onReview={(payload) => run("financing_review", payload)} busy={!!busy} />
+          <FinancingPanel attempts={attempts} onReview={(payload) => run("financing_review", payload)} onRefresh={(attemptId) => run("refresh_financing_attempt", { attempt_id: attemptId })} busy={!!busy} />
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base"><Wallet className="h-4 w-4 text-[#e20404]" /> Fund ledger</CardTitle>
