@@ -22,6 +22,25 @@ export default function EngineAssistanceApply() {
   const [result, setResult] = useState(null);
   const [feeConsent, setFeeConsent] = useState(false);
   const [pendingFee, setPendingFee] = useState(null);
+  const [bankConnected, setBankConnected] = useState(false);
+  const [bankBusy, setBankBusy] = useState(false);
+  const [bankSkipped, setBankSkipped] = useState(false);
+  const connectBank = async () => {
+    if (!pendingFee?.status_token) return;
+    setBankBusy(true);
+    try {
+      const { data } = await base44.functions.invoke("engineAssistanceApply", { action: "start_bank_link", status_token: pendingFee.status_token });
+      if (!data?.client_secret || !data?.publishable_key) throw new Error(data?.error || "Bank connection is not available");
+      if (!window.Stripe) await new Promise((resolve, reject) => { const script = document.createElement("script"); script.src = "https://js.stripe.com/v3/"; script.onload = resolve; script.onerror = () => reject(new Error("Could not load Stripe")); document.head.appendChild(script); });
+      const stripe = window.Stripe(data.publishable_key);
+      const response = await stripe.collectFinancialConnectionsAccounts({ clientSecret: data.client_secret });
+      if (response.error) throw new Error(response.error.message || "Bank connection cancelled");
+      const verified = await base44.functions.invoke("engineAssistanceApply", { action: "confirm_bank_link", status_token: pendingFee.status_token });
+      if (!verified.data?.connected) throw new Error("Bank connection was not confirmed");
+      setBankConnected(true); toast.success("Bank connected. Elite will review income information after submission.");
+    } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Unable to connect bank"); }
+    finally { setBankBusy(false); }
+  };
   const [step, setStep] = useState(0);
   const [draftSaved, setDraftSaved] = useState(false);
   const draftKey = `elite-assistance-draft:${token}`;
@@ -146,7 +165,7 @@ export default function EngineAssistanceApply() {
     );
   }
 
-  if (pendingFee) return <PublicAssistanceShell title="Finish your application" subtitle="Your application is saved, but it is not submitted for review until Stripe confirms the deposit."><Card><CardContent className="p-6 space-y-3"><p className="text-sm text-slate-700">Submission deposit: <strong>$20.00</strong></p><p className="text-sm text-slate-600">If checkout was cancelled or interrupted, you can resume without creating another application.</p><Button disabled={submitting} onClick={() => payFee(pendingFee.status_token)}>{submitting ? "Opening Stripe…" : "Continue to secure payment"}</Button></CardContent></Card></PublicAssistanceShell>;
+  if (pendingFee) return <PublicAssistanceShell title="Verify income & finish application" subtitle="Connect your bank securely before paying the submission deposit."><Card><CardContent className="p-6 space-y-4"><div className="space-y-2"><h3 className="font-bold">Income verification</h3><p className="text-sm text-slate-600">Connect the bank account where you receive income using Stripe Financial Connections. Stripe handles bank sign-in; Elite never receives your online banking password. Elite may review authorized transaction data to assess income. Bank connection is not a credit approval.</p><Button variant="outline" disabled={bankBusy || bankConnected} onClick={connectBank}>{bankBusy ? "Connecting…" : bankConnected ? "Bank connected" : "Securely connect bank"}</Button><p className="text-xs text-slate-500">If your bank is unsupported or you prefer not to connect it, you can provide supporting income documents during review.</p><label className="flex gap-2 items-start text-sm"><Checkbox checked={bankSkipped} onCheckedChange={v => setBankSkipped(v === true)} /><span>I will provide income documentation separately instead of linking a bank.</span></label></div><div className="border-t pt-4 space-y-2"><p className="text-sm text-slate-700">Submission deposit: <strong>$20.00</strong></p><p className="text-xs text-slate-500">Your application is not submitted for review until Stripe confirms payment.</p><Button disabled={submitting || (!bankConnected && !bankSkipped)} onClick={() => payFee(pendingFee.status_token)}>{submitting ? "Opening Stripe…" : "Continue to secure $20 payment"}</Button></div></CardContent></Card></PublicAssistanceShell>;
 
   if (result) {
     return (
