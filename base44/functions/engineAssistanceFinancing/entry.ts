@@ -166,6 +166,7 @@ export default async function (req) {
       let held;
       try {
         held = await reserveRoute(base44, offer, 'internal');
+        if (round2(held.paid_amount) !== round2(offer.paid_amount)) throw new Error('Payment balance changed. Reload before requesting financing.');
         const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
         if (!key) throw new Error('Stripe verification is unavailable.');
         await retireOfferSessions(base44, new Stripe(key), held);

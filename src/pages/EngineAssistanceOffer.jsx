@@ -109,6 +109,7 @@ export default function EngineAssistanceOffer() {
       else throw new Error("Checkout could not be started");
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.message || "Checkout could not be started");
+      await refetch();
     } finally {
       setPaying("");
     }

@@ -173,7 +173,11 @@ export default async function (req) {
     const requestOptions = JSON.parse(persisted.payment_route_options);
     let session;
     try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
-    catch { return Response.json({ error: 'Checkout could not be confirmed. Retry this same option or contact Elite; no alternative payment was started.' }, { status: 409 }); }
+    catch (error) {
+      // A definitive invalid-parameters response did not create a session.
+      // Network/5xx/idempotency ambiguity always keeps the reservation.
+      if (error?.type === 'StripeInvalidRequestError' && error?.statusCode === 400) await releaseRoute(base44, held);
+      return Response.json({ error: 'Checkout could not be confirmed. Retry this same option or contact Elite; no alternative payment was started.' }, { status: 409 }); }
     await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, { payment_route_session: session.id });
     if (!session?.url || session.status === 'expired') return Response.json({ error: 'Checkout has closed. Reload your offer.' }, { status: 409 });
     const offeredMethods = requestOptions.payment_method_types;

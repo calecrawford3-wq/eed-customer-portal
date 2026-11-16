@@ -84,6 +84,13 @@ export default async function (req) {
     }
     if (isExpired || isFailed) {
       try {
+        const verified = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent.latest_charge'] });
+        if (verified.metadata?.source !== ASSISTANCE_STRIPE_SOURCE || verified.metadata?.base44_app_id !== Deno.env.get('BASE44_APP_ID') || verified.livemode !== key.startsWith('sk_live_')) throw new Error('Session identity mismatch');
+        if (verified.payment_status === 'paid') {
+          const facts = verifiedAssistanceFacts(verified, Deno.env.get('BASE44_APP_ID'), key.startsWith('sk_live_'));
+          return Response.json({ received: true, ...await recordAssistancePayment(base44, facts) });
+        }
+        if (isExpired && verified.status !== 'expired') return Response.json({ received: true, ignored: true });
         const attempts = await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({ stripe_session_id: sessionId });
         const list = attempts?.items || attempts || [];
         for (const attempt of list) {
