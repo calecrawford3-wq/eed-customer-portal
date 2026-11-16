@@ -2,6 +2,31 @@
   "name": "WebsitePartsFulfillment",
   "type": "object",
   "properties": {
+    "turn14_dropship_status": {
+      "type": "string",
+      "enum": [
+        "not_requested",
+        "pending_review",
+        "ready_for_submission",
+        "submitted",
+        "shipped",
+        "cancelled",
+        "exception"
+      ],
+      "default": "not_requested"
+    },
+    "turn14_dropship_lines": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "turn14_supplier_order_reference": {
+      "type": "string"
+    },
+    "turn14_dropship_reviewed_at": {
+      "type": "string"
+    },
     "purchase_id": {
       "type": "string"
     },
