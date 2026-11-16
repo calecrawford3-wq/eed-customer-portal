@@ -1,3 +1,4 @@
+import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
 import {
@@ -707,6 +708,16 @@ export default async function (req) {
       if (amount <= 0) return Response.json({ error: 'Enter the payment amount' }, { status: 400 });
       const totals = computeOfferTotals(offer);
       if (amount > totals.balance_due + 0.005) return Response.json({ error: `The remaining balance is $${totals.balance_due.toFixed(2)}` }, { status: 400 });
+      const loanForPayment = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0];
+      if (loanForPayment && ['pending_approval', 'approved', 'active', 'completed'].includes(loanForPayment.status)) return Response.json({ error: 'Withdraw the in-house request or record installments against the active loan, not the offer.' }, { status: 409 });
+      let manualHold;
+      try {
+        manualHold = await reserveRoute(base44, offer, 'manual');
+        const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+        if (!key) throw new Error('Stripe must be verified before recording this offer payment.');
+        await retireOfferSessions(base44, new Stripe(key), manualHold);
+        if (cents(computeOfferTotals(manualHold).paid_amount) !== cents(totals.paid_amount)) throw new Error('Balance changed. Reload before recording payment.');
+      } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
       const method = ['cash', 'check', 'card', 'other'].includes(data.method) ? data.method : 'check';
       const now = new Date().toISOString();
       const payments = [...(offer.payments || []), {
@@ -742,6 +753,7 @@ export default async function (req) {
         recorded_by: user.email || 'Admin',
         occurred_at: now,
       });
+      await releaseRoute(base44, manualHold);
       // Re-derive the deposit from what was collected; a verified deposit with a
       // signed approved agreement activates the in-house plan and opens the job.
       const synced = await syncDepositState(base44, offer.id, user.email || 'Admin');
@@ -960,7 +972,7 @@ export default async function (req) {
         reviewed_at: new Date().toISOString(),
         audit_trail: appendAudit(attempt, user, 'stripe_status_checked', 'Stripe checkout: ' + session.status + ', payment: ' + session.payment_status),
       });
-      return Response.json({ attempt: updated, stripe_checkout_status: session.status, stripe_payment_status: session.payment_status, affirm_approval_proven: affirmPaid });
+      return Response.json({ attempt: updated, stripe_checkout_status: session.status, stripe_payment_status: session.payment_status, affirm_payment_verified: affirmPaid });
     }
 
     if (action === 'financing_review') {

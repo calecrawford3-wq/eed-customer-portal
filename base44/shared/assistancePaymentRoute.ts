@@ -6,7 +6,7 @@ export async function reserveRoute(b: any, offer: any, route: string) {
   const current = rows(await entity(b).filter({ id: offer.id }))[0];
   if (!current) throw new Error('Offer unavailable');
   if (current.payment_route_claim) {
-    if (route === 'internal' || current.payment_route !== route) throw new Error('Finish or close the existing checkout before changing payment options.');
+    if (!['deposit_card', 'deposit_lender', 'pay_in_full', 'finance_full', 'remainder_affirm'].includes(route) || current.payment_route !== route) throw new Error('Finish or close the existing checkout before changing payment options.');
     return current;
   }
   const claim = crypto.randomUUID();

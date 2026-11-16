@@ -22,7 +22,7 @@ export default function StepAgreement({ deposit, loan, agreement, actionBusy, on
         <FileSignature className="mt-0.5 h-4 w-4 flex-none text-[#e20404]" />
         <div className="min-w-0">
           <h3 className="text-base font-bold text-slate-900">Elite approved your terms</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">Read the agreement, then sign. Nothing is owed until you sign and pay the deposit.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">Read the agreement, then sign. Your verified deposit is separate. Elite financing starts after you sign and all approval and identity checks pass.</p>
         </div>
       </div>
 
