@@ -79,7 +79,7 @@ export default function PartEditModal({ part, open, onClose, onSaved }) {
               <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace("_", " ")}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Supplier Part # (Turn 14 SKU)</Label><Input value={form.supplier_part_number ?? ""} onChange={e => setForm({ ...form, supplier_part_number: e.target.value,turn14_supplier_sku:form.turn14_item_id?e.target.value:form.turn14_supplier_sku })} /></div>
+          <div><Label>Supplier Part # (Turn 14 SKU)</Label><Input value={form.turn14_item_id?(form.turn14_supplier_sku||form.supplier_part_number||""):(form.supplier_part_number??"")} disabled={!!form.turn14_item_id} onChange={e => setForm({ ...form, supplier_part_number: e.target.value })} /></div>
           <div><Label>Supplier Product Name</Label><Input value={form.supplier_product_name ?? ""} onChange={e => setForm({ ...form, supplier_product_name: e.target.value })} placeholder="Original supplier catalog name" /></div>
           <div><Label>Manufacturer Part Number</Label><Input value={form.manufacturer_part_number ?? ""} onChange={e => setForm({ ...form, manufacturer_part_number: e.target.value })} /></div>
           {form.turn14_item_id&&<div className="col-span-2 text-xs rounded border p-2 bg-slate-50">Turn 14 Item ID: {form.turn14_item_id}. Elite product name and part number are used for customers. Supplier SKU and supplier name are retained for purchasing. Changing the supplier SKU does not change the linked Turn 14 item ID.</div>
