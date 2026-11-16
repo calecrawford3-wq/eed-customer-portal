@@ -18,10 +18,18 @@ export default async function(req){
   const filtered=all;
   return Response.json({items:filtered.map(x=>({id:String(x.id||''),part_number:String(x.attributes?.part_number||''),product_name:String(x.attributes?.product_name||x.attributes?.part_description||x.attributes?.name||''),part_description:String(x.attributes?.part_description||''),brand_id:String(x.attributes?.brand_id||'')})),pages:Number(data.meta?.total_pages||1),page,rows_on_page:all.length,filtered_to_page:false});
  }
- // Individual-item preview/import calls are intentionally blocked until the
- // paginated items/pricing/inventory feeds and durable item-ID mapping exist.
+ if(action==='preview'){
+  const itemId=String(body.item_id||'');
+  if(!/^[a-zA-Z0-9_-]{1,64}$/.test(itemId))return Response.json({error:'Invalid item ID'},{status:400});
+  const data=await turn14Request('/v1/items/'+itemId);
+  const x=itemArray(data)[0];
+  if(!x)return Response.json({error:'Item not found'},{status:404});
+  const a=x.attributes||{};
+  return Response.json({item:{id:String(x.id||''),name:String(a.product_name||a.part_description||a.name||''),part_number:String(a.part_number||''),brand_id:String(a.brand_id||''),manufacturer_part_number:String(a.mfr_part_number||a.manufacturer_part_number||''),active:a.active??null,raw_attributes:a}});
+ }
+ // Imports remain blocked until pricing/inventory mapping is verified.
  // Turn 14 requires approval of the data integration before ordering work.
- if(action==='preview'||action==='import')return Response.json({error:'Individual-item imports are paused pending paginated feed synchronization and item-ID mapping required by Turn 14. No item was imported.'},{status:409});
+ if(action==='import')return Response.json({error:'Individual-item imports are paused pending paginated feed synchronization and item-ID mapping required by Turn 14. No item was imported.'},{status:409});
  return Response.json({error:'Unknown action'},{status:400});
  }catch(e){console.error('[turn14Catalog]',e.message);return Response.json({error:e.message||'Turn 14 request failed'},{status:502});}
 }
