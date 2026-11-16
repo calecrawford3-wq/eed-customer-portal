@@ -53,14 +53,15 @@ export default async function(req){
   if(!sku)return Response.json({error:'Missing Turn 14 SKU; no import performed'},{status:409});
   const svc=base44.asServiceRole.entities;
   const existingById=await svc.Part.filter({turn14_item_id:itemId});
-  const existingBySku=await svc.Part.filter({part_number:sku});
-  const existing=[...new Map([...existingById,...existingBySku].map(x=>[x.id,x])).values()];
+  const eliteSku=mfr||sku;
+  const [existingBySku,existingBySupplierSku,existingByMfr]=await Promise.all([svc.Part.filter({part_number:sku}),svc.Part.filter({turn14_supplier_sku:sku}),eliteSku!==sku?svc.Part.filter({part_number:eliteSku}):Promise.resolve([])]);
+  const existing=[...new Map([...existingById,...existingBySku,...existingBySupplierSku,...existingByMfr].map(x=>[x.id,x])).values()];
   const conflicts=existing.filter(x=>x.turn14_item_id&&x.turn14_item_id!==itemId);
   const available=Object.values(inventory).reduce((s,v)=>s+(Number.isFinite(Number(v))?Math.max(0,Number(v)):0),0);
-  const details={item_id:itemId,sku,manufacturer_part_number:mfr,name:String(a.product_name||a.part_description||sku),brand:String(a.brand||''),cost,retail,map:hasMap?map:null,sell_price:sell,supplier_available:available,match_count:existing.length,conflict:conflicts.length>0,existing:existing.map(x=>({id:x.id,name:x.name,part_number:x.part_number,turn14_item_id:x.turn14_item_id||''}))};
+  const details={item_id:itemId,sku,elite_part_number:eliteSku,manufacturer_part_number:mfr,name:String(a.product_name||a.part_description||sku),brand:String(a.brand||''),cost,retail,map:hasMap?map:null,sell_price:sell,supplier_available:available,match_count:existing.length,conflict:conflicts.length>0,existing:existing.map(x=>({id:x.id,name:x.name,part_number:x.part_number,turn14_item_id:x.turn14_item_id||''}))};
   const prior=existing.length===1?existing[0]:null;
-  const supplierFields={turn14_item_id:itemId,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
-  const labels={turn14_item_id:'Turn 14 link',turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
+  const supplierFields={turn14_item_id:itemId,turn14_supplier_sku:sku,supplier_product_name:details.name,manufacturer_part_number:mfr,turn14_purchase_cost:cost,turn14_map_price:hasMap?map:0,turn14_available_quantity:available,turn14_dropship_controller_id:String(a.dropship_controller_id||'')};
+  const labels={turn14_item_id:'Turn 14 link',turn14_supplier_sku:'Turn 14 supplier SKU',supplier_product_name:'Supplier product name',manufacturer_part_number:'Manufacturer part number', turn14_purchase_cost:'Turn 14 dealer cost',turn14_map_price:'MAP',turn14_available_quantity:'Supplier stock',turn14_dropship_controller_id:'Dropship controller'};
   const differences=prior?Object.entries(supplierFields).filter(([key,value])=>String(prior[key]??(typeof value==='number'?0:''))!==String(value)).map(([key,value])=>({field:key,label:labels[key],before:prior[key]??null,after:value})):[];
   details.already_imported=!!prior?.turn14_item_id&&String(prior.turn14_item_id)===itemId;
   details.changes=differences;
@@ -74,7 +75,7 @@ export default async function(req){
    if(differences.length||!details.already_imported){part=await svc.Part.update(existing[0].id,fields);mode=details.already_imported?'resynced':'linked';}
    else {part=existing[0];mode='already_current';}
   }else{
-   part=await svc.Part.create({...fields,part_number:sku,supplier_part_number:mfr,name:details.name,description:String(a.part_description||''),website_brand:details.brand,website_image_url:String(a.thumbnail||''),unit_cost:cost,sell_price:sell,quantity_on_hand:0,website_published:false,website_inventory_policy:'tracked',category:'other',status:'active'});
+   part=await svc.Part.create({...fields,part_number:eliteSku,supplier_part_number:sku,name:details.name,description:String(a.part_description||''),website_brand:details.brand,website_image_url:String(a.thumbnail||''),unit_cost:cost,sell_price:sell,quantity_on_hand:0,website_published:false,website_inventory_policy:'tracked',category:'other',status:'active'});
    mode='created_unpublished';
   }
   const maps=await svc.Turn14ItemMap.filter({turn14_item_id:itemId});
