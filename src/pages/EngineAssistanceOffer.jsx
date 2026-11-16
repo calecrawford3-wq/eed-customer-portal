@@ -1,3 +1,4 @@
+import OfferPaymentStages from "@/components/assistance/OfferPaymentStages";
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -21,6 +22,7 @@ const asText = (value) => (typeof value === "string" ? value : typeof value === 
 
 export default function EngineAssistanceOffer() {
   const { token } = useParams();
+  const [requestRemainder, setRequestRemainder] = useState(false);
   const [paying, setPaying] = useState("");
   const [actionBusy, setActionBusy] = useState("");
   const [banner, setBanner] = useState("");
@@ -106,7 +108,7 @@ export default function EngineAssistanceOffer() {
       if (res.data?.checkout_url) window.location.href = res.data.checkout_url;
       else throw new Error("Checkout could not be started");
     } catch (error) {
-      toast.error(error?.message || "Checkout could not be started");
+      toast.error(error?.response?.data?.error || error?.message || "Checkout could not be started");
     } finally {
       setPaying("");
     }
@@ -198,7 +200,7 @@ export default function EngineAssistanceOffer() {
         {banner === "canceled" && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 flex items-start gap-2">
             <Info className="h-4 w-4 mt-0.5 flex-none" />
-            <p>No payment was taken. Your offer is still open{parseOfferDate(offer.expires_on) ? ` through ${format(parseOfferDate(offer.expires_on), "MMM d, yyyy")}` : ""}.</p>
+            <p>Checkout was left before confirmation. Check the verified payment history below. Your offer is still open{parseOfferDate(offer.expires_on) ? ` through ${format(parseOfferDate(offer.expires_on), "MMM d, yyyy")}` : ""}.</p>
           </div>
         )}
 
@@ -249,6 +251,17 @@ export default function EngineAssistanceOffer() {
               <p className="text-sm text-slate-600 mt-1">Contact Elite Engine Development and we will confirm whether the award can be extended.</p>
             </div>
           </CardContent></Card>
+        ) : !["pending_approval", "approved"].includes(loan?.status) && !requestRemainder ? (
+          <OfferPaymentStages offer={offer} paying={paying} onCheckout={checkout}
+            onRequest={() => setRequestRemainder(true)}
+            onClose={async () => {
+              try {
+                const res = await base44.functions.invoke("engineAssistanceFinancing", { token, action: "close_checkout" });
+                if (res.data?.error) throw new Error(res.data.error);
+                await refetch();
+              } catch (error) { toast.error(error?.response?.data?.error || error.message); }
+            }}
+          />
         ) : (
           <JourneyErrorBoundary onRecover={refetch}>
             <FinancingJourney

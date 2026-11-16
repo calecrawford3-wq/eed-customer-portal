@@ -943,17 +943,18 @@ export default async function (req) {
       const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
       if (!key) return Response.json({ error: 'Stripe is not configured.' }, { status: 503 });
       const stripe = new Stripe(key);
-      const session = await stripe.checkout.sessions.retrieve(attempt.stripe_session_id, { expand: ['payment_intent'] });
+      const session = await stripe.checkout.sessions.retrieve(attempt.stripe_session_id, { expand: ['payment_intent.latest_charge'] });
+      if (session.metadata?.source !== 'eed_engine_assistance_v1' || session.metadata?.base44_app_id !== Deno.env.get('BASE44_APP_ID') || session.metadata?.offer_id !== attempt.offer_id || session.livemode !== key.startsWith('sk_live_') || session.currency !== 'usd' || session.mode !== 'payment') return Response.json({ error: 'Stripe session does not match this offer.' }, { status: 409 });
       const intent = session.payment_intent && typeof session.payment_intent !== 'string' ? session.payment_intent : null;
-      const selectedMethod = intent?.payment_method_types?.length === 1 ? intent.payment_method_types[0] : '';
+      const selectedMethod = typeof intent?.latest_charge === 'object' ? intent.latest_charge?.payment_method_details?.type || '' : '';
       const paymentVerified = session.payment_status === 'paid' && session.status === 'complete';
       // Do not claim an Affirm approval or denial from checkout cancellation,
       // expiration, or a card payment. Only the actual paid method proves financing.
-      const affirmPaid = paymentVerified && (intent?.payment_method_types || []).includes('affirm') && selectedMethod === 'affirm';
+      const affirmPaid = paymentVerified && selectedMethod === 'affirm';
       const updated = await attempts.update(attempt.id, {
         status: paymentVerified ? 'completed' : session.status === 'expired' ? 'expired' : attempt.status,
-        provider_decision: affirmPaid ? 'approved' : 'not_reported',
-        provider_decision_source: affirmPaid ? 'stripe_verified_payment' : 'not_reported',
+        provider_decision: 'not_reported',
+        provider_decision_source: 'not_reported',
         verified_amount: paymentVerified ? Number(session.amount_total || 0) / 100 : 0,
         selected_method: selectedMethod || attempt.selected_method || '',
         reviewed_at: new Date().toISOString(),

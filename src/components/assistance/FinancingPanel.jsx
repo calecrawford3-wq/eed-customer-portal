@@ -58,12 +58,13 @@ export default function FinancingPanel({ attempts = [], onReview, onRefresh, bus
               <span className="text-xs font-semibold text-slate-700 tabular-nums">{formatMoney(attempt.amount)}</span>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              {attempt.provider || "stripe"} · {attempt.source === "staff_manual" ? "staff" : "customer checkout"}
+              {attempt.payment_pathway || "Legacy checkout"} · {attempt.provider || "stripe"} · {attempt.source === "staff_manual" ? "staff" : "customer checkout"}
               {attempt.created_date ? ` · ${format(new Date(attempt.created_date), "MMM d, yyyy h:mm a")}` : ""}
             </p>
             {!!(attempt.offered_methods || []).length && (
               <p className="text-[11px] text-slate-500">Offered: {attempt.offered_methods.join(", ")}</p>
             )}
+            {attempt.provider_decision === "not_reported" && <p className="text-[11px] text-slate-600">Lender credit decision not reported. A completed Affirm payment confirms funding of this amount only.</p>}
             {attempt.selected_method && <p className="text-[11px] text-slate-600">Stripe payment method: {attempt.selected_method}</p>}
             {attempt.stripe_session_id && <p className="text-[11px] text-slate-500 break-all">Stripe session: {attempt.stripe_session_id}</p>}
             {attempt.provider_decision_source === "stripe_verified_payment" && <p className="text-[11px] font-medium text-emerald-700">Affirm payment verified by Stripe</p>}

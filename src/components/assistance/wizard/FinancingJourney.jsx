@@ -73,7 +73,7 @@ export default function FinancingJourney({
     if (status === "approved" && !signed) return [{ id: "agreement" }];
     if (status === "declined" && !restart) return [{ id: "declined" }];
     if (signed && !active) return [{ id: "deposit" }];
-    if (deposit.deposit_verified && !active) return [{ id: "deposit" }];
+    if (deposit.deposit_verified && !active) return [{ id: "terms" }, { id: "applicant" }, { id: "review" }];
     return [{ id: "plan" }, { id: "terms" }, { id: "applicant" }, { id: "review" }];
   }, [status, signed, active, verified, restart, deposit.deposit_verified]);
 

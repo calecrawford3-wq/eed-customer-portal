@@ -742,6 +742,7 @@ export function publicOffer(offer: any, application: any, settings: any, loan: a
       : (plan.pathways.finance_full.reason || 'Lender financing is not available for this balance right now.'),
     payments_disabled_reason: settings?.payments_enabled === true ? '' : (settings?.payments_disabled_reason || 'Online payment is not configured yet. Contact Elite Engine Development to arrange payment.'),
     // Deposit + in-house financing, and the four mutually exclusive pathways.
+    checkout_open: !!offer.payment_route_claim && offer.payment_route !== 'internal',
     payment_plan_mode: plan.payment_plan,
     deposit_percent: plan.deposit_percent,
     deposit_amount: plan.deposit_amount,
