@@ -13,6 +13,7 @@ export default async function(req:Request){
  const order=await svc.WebsitePartsFulfillment.get(id);
  if(!order)return Response.json({error:'Order not found'},{status:404});
  if(body.action==='quote'||body.action==='submit'){
+  try{
   if(!order.payment_verified||order.shipping_method!=='ship'||order.status==='cancelled')return Response.json({error:'Verified payment and active shipping order required'},{status:409});
   if(order.order_payment_review_required||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)return Response.json({error:'Resolve pending financial adjustments first'},{status:409});
   if(order.turn14_supplier_order_reference)return Response.json({error:'Supplier order already submitted; duplicate prevented'},{status:409});
@@ -59,6 +60,7 @@ export default async function(req:Request){
   if(!orderId)return Response.json({error:'Supplier response missing order ID; inspect supplier orders before retrying',response},{status:502});
   await svc.WebsitePartsFulfillment.update(order.id,{turn14_supplier_order_reference:orderId,turn14_supplier_order_response:response,turn14_supplier_order_submitted_at:new Date().toISOString(),turn14_dropship_status:'submitted'});
   return Response.json({submitted:true,test_only:true,order_id:orderId,response});
+  }catch(e){const message=e instanceof Error?e.message:String(e);console.error('Turn 14 website supplier request failed',message);return Response.json({error:message||'Turn 14 supplier request failed',action:body.action},{status:502});}
  }
  if(body.action==='review'){
   const items=[];const problems=[];
