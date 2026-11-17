@@ -24,6 +24,13 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [orderSource,setOrderSource]=useState("shop");
+  const [websiteEditor,setWebsiteEditor]=useState(null);
+  const [poActionBusy,setPoActionBusy]=useState(false);
+  const [poActionError,setPoActionError]=useState("");
+  const [chosenSupplier,setChosenSupplier]=useState("");
+  const [chosenPo,setChosenPo]=useState("");
+  const [deliveryMode,setDeliveryMode]=useState("ship_to_shop");
+  const [chosenLines,setChosenLines]=useState([]);
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
 
@@ -36,7 +43,7 @@ export default function PurchaseOrders() {
     queryKey:["purchaseOrdersWebsiteDropship"],
     queryFn:()=>base44.entities.WebsitePartsFulfillment.list("-created_date",500),
   });
-  const websiteSupplierOrders=websiteFulfillments.filter(o=>["pending_review","ready_for_submission","submitted","shipped","exception"].includes(o.turn14_dropship_status)||!!o.turn14_quote_id||!!o.turn14_supplier_order_reference);
+  const websiteSupplierOrders=websiteFulfillments;
   const filteredWebsite=websiteSupplierOrders.filter(o=>{
     const query=`${o.order_number||""} ${o.recipient_name||""} ${o.turn14_quote_id||""} ${o.turn14_supplier_order_reference||""} ${(o.turn14_dropship_lines||[]).map(l=>l.supplier_sku||l.sku).join(" ")}`.toLowerCase();
     return query.includes(search.toLowerCase())&&(filterStatus==="all"||o.turn14_dropship_status===filterStatus);
@@ -53,7 +60,22 @@ export default function PurchaseOrders() {
 
   const getSupplier = (id) => suppliers.find(s => s.id === id);
 
-  const filtered = orders.filter(o => {
+  const shopOrders=orders.filter(o=>!o.website_fulfillment_id);
+  const linkedForWebsite=o=>orders.filter(p=>p.website_fulfillment_id===o.id);
+  const openWebsiteEditor=o=>{setWebsiteEditor(o);setChosenSupplier("");setChosenPo("");setDeliveryMode("ship_to_shop");setChosenLines((o.line_items||[]).map((_,i)=>i));setPoActionError("");};
+  const websitePoAction=async(action)=>{
+    if(!websiteEditor)return;
+    setPoActionBusy(true);setPoActionError("");
+    try{
+      const r=await base44.functions.invoke("websitePurchaseOrderLink",{action,fulfillment_id:websiteEditor.id,supplier_id:chosenSupplier,po_id:chosenPo,mode:deliveryMode,line_indices:chosenLines});
+      const data=r.data||r;if(data.error)throw Error(data.error);
+      toast.success(action==="create"?"Supplier purchase order created":"Purchase order assigned");
+      await Promise.all([qc.invalidateQueries({queryKey:["purchaseOrders"]}),qc.invalidateQueries({queryKey:["purchaseOrdersWebsiteDropship"]})]);
+      setWebsiteEditor(null);
+    }catch(e){setPoActionError(e.response?.data?.error||e.message||"Unable to link purchase order")}
+    finally{setPoActionBusy(false)}
+  };
+  const filtered = shopOrders.filter(o => {
     const supplier = getSupplier(o.supplier_id);
     const matchSearch = `${o.po_number} ${supplier?.name}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || o.status === filterStatus;
@@ -65,7 +87,7 @@ export default function PurchaseOrders() {
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Purchase Orders</h1>
-          <p className="text-slate-500 mt-1">{orders.length} shop POs · {websiteSupplierOrders.length} website supplier requests</p>
+          <p className="text-slate-500 mt-1">{shopOrders.length} shop POs · {websiteSupplierOrders.length} website orders</p>
         </div>
         <Link to="/PurchaseOrderDetail?new=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
@@ -75,8 +97,8 @@ export default function PurchaseOrders() {
       </div>
 
       <div className="flex gap-2 mb-5 border-b pb-3">
-        <Button variant={orderSource==="shop"?"default":"outline"} onClick={()=>{setOrderSource("shop");setFilterStatus("all")}}>Shop Purchase Orders ({orders.length})</Button>
-        <Button variant={orderSource==="website"?"default":"outline"} onClick={()=>{setOrderSource("website");setFilterStatus("all")}}>Website Dropship Orders ({websiteSupplierOrders.length})</Button>
+        <Button variant={orderSource==="shop"?"default":"outline"} onClick={()=>{setOrderSource("shop");setFilterStatus("all")}}>Shop Purchase Orders ({shopOrders.length})</Button>
+        <Button variant={orderSource==="website"?"default":"outline"} onClick={()=>{setOrderSource("website");setFilterStatus("all")}}>Website Orders ({websiteSupplierOrders.length})</Button>
       </div>
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1">
@@ -96,15 +118,15 @@ export default function PurchaseOrders() {
 
       {orderSource==="website" ? (
         websiteLoading?<p className="py-8 text-slate-500">Loading website supplier orders…</p>:
-        filteredWebsite.length===0?<div className="border rounded-xl p-8 text-center text-slate-500">No website dropship orders match your filters.</div>:
+        filteredWebsite.length===0?<div className="border rounded-xl p-8 text-center text-slate-500">No website orders match your filters.</div>:
         <div className="bg-white border rounded-xl overflow-x-auto"><table className="w-full min-w-[850px] text-sm">
-          <thead className="bg-slate-50 border-b"><tr><th className="text-left p-3">Website Order</th><th className="text-left p-3">Supplier</th><th className="text-left p-3">Customer</th><th className="text-left p-3">Turn 14 Quote / Order</th><th className="text-right p-3">Supplier Quote</th><th className="text-center p-3">Status</th><th className="p-3"></th></tr></thead>
+          <thead className="bg-slate-50 border-b"><tr><th className="text-left p-3">Website Order</th><th className="text-left p-3">Supplier</th><th className="text-left p-3">Customer</th><th className="text-left p-3">Linked Purchase Orders</th><th className="text-right p-3">Supplier Quote</th><th className="text-center p-3">Status</th><th className="p-3"></th></tr></thead>
           <tbody>{filteredWebsite.map(o=><tr key={o.id} className="border-b hover:bg-slate-50">
-            <td className="p-3 font-mono font-medium">{o.order_number}</td><td className="p-3">Turn 14 Distribution</td><td className="p-3">{o.recipient_name||"—"}</td>
-            <td className="p-3 text-xs"><div>Quote: {o.turn14_quote_id||"Not requested"}</div><div>Order: {o.turn14_supplier_order_reference||"Not submitted"}</div></td>
+            <td className="p-3 font-mono font-medium">{o.order_number}</td><td className="p-3">{o.turn14_quote_id||o.turn14_supplier_order_reference?"Turn 14 Distribution":"Multiple / Unassigned"}</td><td className="p-3">{o.recipient_name||"—"}</td>
+            <td className="p-3 text-xs"><div>Turn 14: {o.turn14_supplier_order_reference||o.turn14_quote_id||"—"}</div>{linkedForWebsite(o).map(p=><div key={p.id}><Link className="underline text-blue-700" to={`/PurchaseOrderDetail?id=${p.id}`}>{p.po_number}</Link> · {getSupplier(p.supplier_id)?.name||"Supplier"} · {p.website_fulfillment_mode==="direct_to_customer"?"Direct":"To shop"}</div>)}</td>
             <td className="p-3 text-right">{o.turn14_quote_response?.data?.attributes?.total!=null?"$"+Number(o.turn14_quote_response.data.attributes.total).toFixed(2):"—"}</td>
             <td className="p-3 text-center"><Badge className="capitalize">{(o.turn14_dropship_status||"not_requested").replaceAll("_"," ")}</Badge></td>
-            <td className="p-3 text-right"><Link to="/WebsiteOrderFulfillment"><Button size="sm" variant="outline">Manage</Button></Link></td>
+            <td className="p-3 text-right"><div className="flex gap-2 justify-end"><Button size="sm" variant="outline" onClick={()=>openWebsiteEditor(o)}>Assign / Create PO</Button><Link to="/WebsiteOrderFulfillment"><Button size="sm" variant="outline">Fulfillment</Button></Link></div></td>
           </tr>)}</tbody>
         </table></div>
       ) : isLoading ? (
@@ -160,6 +182,21 @@ export default function PurchaseOrders() {
         </div>
       )}
 
+      {websiteEditor&&<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"><div role="dialog" aria-modal="true" aria-label="Website purchase order assignment" className="bg-white rounded-xl p-5 max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-4">
+        <div className="flex justify-between items-center"><h2 className="font-bold text-lg">Supplier POs · {websiteEditor.order_number}</h2><Button variant="outline" onClick={()=>setWebsiteEditor(null)}>Close</Button></div>
+        <p className="text-sm text-slate-600">Assign an existing supplier purchase order or create a new draft for selected website items. No supplier order is sent automatically.</p>
+        {poActionError&&<p className="text-red-700 text-sm">{poActionError}</p>}
+        <div className="border rounded p-3 space-y-2"><h3 className="font-semibold">Assign existing purchase order</h3>
+          <select className="w-full border rounded p-2" value={chosenPo} onChange={e=>setChosenPo(e.target.value)}><option value="">Choose unassigned PO</option>{orders.filter(p=>!p.website_fulfillment_id||p.website_fulfillment_id===websiteEditor.id).map(p=><option key={p.id} value={p.id}>{p.po_number} · {getSupplier(p.supplier_id)?.name||"Supplier"}</option>)}</select>
+          <Button disabled={!chosenPo||poActionBusy} onClick={()=>websitePoAction("assign")}>Assign PO</Button>
+        </div>
+        <div className="border rounded p-3 space-y-3"><h3 className="font-semibold">Create purchase order from website items</h3>
+          <select className="w-full border rounded p-2" value={chosenSupplier} onChange={e=>setChosenSupplier(e.target.value)}><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+          <div className="space-y-1"><p className="text-sm font-medium">Items to purchase</p>{(websiteEditor.line_items||[]).map((l,i)=><label key={i} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={chosenLines.includes(i)} onChange={e=>setChosenLines(v=>e.target.checked?[...v,i]:v.filter(x=>x!==i))}/>{l.quantity} × {l.name} ({l.sku})</label>)}</div>
+          <div><p className="text-sm font-medium">Supplier delivery</p><select className="w-full border rounded p-2" value={deliveryMode} onChange={e=>setDeliveryMode(e.target.value)}><option value="ship_to_shop">Ship to Elite shop</option><option value="direct_to_customer">Ship directly to website customer</option></select></div>
+          <Button disabled={!chosenSupplier||!chosenLines.length||poActionBusy} onClick={()=>websitePoAction("create")}>{poActionBusy?"Saving…":"Create Draft Purchase Order"}</Button>
+        </div>
+      </div></div>}
       <ConfirmDialog
         open={confirmState.open}
         onClose={() => setConfirmState({})}
