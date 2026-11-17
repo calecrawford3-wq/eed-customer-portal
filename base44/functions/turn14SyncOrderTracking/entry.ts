@@ -4,6 +4,20 @@ import {staffOrAutomation} from '../../shared/staffOrAutomation.ts';
 const rows=(v:any):any[]=>Array.isArray(v)?v:v?.items||[];
 const str=(v:any)=>String(v??'').trim();
 const esc=(v:any)=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','&#39;':'&#39;'}[c]||c));
+async function carrierTracking(record:any){
+ const key=Deno.env.get('EASYPOST_API_KEY');
+ if(!key)return record;
+ const headers={Authorization:'Basic '+btoa(key+':'),'Content-Type':'application/json'};
+ try{
+  const url=record.tracker_id?'https://api.easypost.com/v2/trackers/'+encodeURIComponent(record.tracker_id):'https://api.easypost.com/v2/trackers';
+  const init:any={method:record.tracker_id?'GET':'POST',headers};
+  if(!record.tracker_id)init.body=JSON.stringify({tracker:{tracking_code:record.tracking_number,...(record.carrier?{carrier:record.carrier.match(/UPS|FedEx|USPS|DHL/i)?.[0]||undefined}:{})}});
+  const resp=await fetch(url,init);
+  if(!resp.ok)return {...record,tracking_error:'Carrier tracking temporarily unavailable ('+resp.status+')'};
+  const data=await resp.json();
+  return {...record,tracker_id:data.id||record.tracker_id,carrier:data.carrier||record.carrier,carrier_status:data.status||'unknown',tracking_events:(data.tracking_details||[]).slice(-30).map((x:any)=>({status:x.status,message:x.message,datetime:x.datetime,location:x.tracking_location})),estimated_delivery:data.est_delivery_date||'',tracking_url:record.tracking_url||carrierLink(data.carrier||record.carrier,record.tracking_number),tracking_error:''};
+ }catch(e){return {...record,tracking_error:String(e).slice(0,180)}}
+}
 const carrierLink=(carrier:string,number:string)=>{
  const c=carrier.toLowerCase(),n=encodeURIComponent(number);
  if(c.includes('ups'))return 'https://www.ups.com/track?tracknum='+n;
@@ -45,11 +59,17 @@ export default async function(req:Request){
    }
    const previous=rows(t.record.supplier_tracking);
    // Preserve known tracking numbers if a supplier endpoint temporarily omits them.
-   for(const old of previous)if(!tracks.some(x=>x.tracking_number===old.tracking_number))tracks.push(old);
+   for(const old of previous){
+    const current=tracks.find(x=>x.tracking_number===old.tracking_number);
+    if(current)Object.assign(current,{tracker_id:old.tracker_id,carrier_status:old.carrier_status,tracking_events:old.tracking_events,estimated_delivery:old.estimated_delivery});
+    else tracks.push(old);
+   }
+   for(let i=0;i<tracks.length&&i<12;i++)tracks[i]=await carrierTracking(tracks[i]);
    const patch:any={supplier_shipping_status:status,supplier_tracking:tracks,supplier_invoice_ids:invoiceIds,supplier_tracking_last_checked:new Date().toISOString(),supplier_tracking_error:''};
    if(t.type==='website'){
     if(tracks.length&&t.record.turn14_dropship_status==='submitted')patch.turn14_dropship_status='shipped';
     if(tracks.length&&t.record.payment_verified&&!['cancelled','delivered'].includes(t.record.status))patch.status='shipped';
+    if(tracks.length&&tracks.every(x=>x.carrier_status==='delivered')&&t.record.payment_verified)patch.status='delivered';
     await svc.WebsitePartsFulfillment.update(t.record.id,patch);
     const sent=rows(t.record.tracking_notification_sent_keys).map(str);
     const unsent=tracks.filter(x=>!sent.includes(x.tracking_number));
