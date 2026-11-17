@@ -166,7 +166,7 @@ export default function PurchaseOrderDetail() {
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
-      if(isTurn14Supplier(suppliers.find(s=>s.id===data.supplier_id)))data={...data,shipping_address:TURN14_SHOP_ADDRESS};
+      if(isTurn14Supplier(suppliers.find(s=>s.id===data.supplier_id))&&data.website_fulfillment_mode!=="direct_to_customer")data={...data,shipping_address:TURN14_SHOP_ADDRESS};
       if (!id) return base44.entities.PurchaseOrder.create(data);
       // A regular Save must never rewrite receiving-managed quantities,
       // costs, totals, status, receipt IDs or invoice history.
@@ -659,13 +659,14 @@ export default function PurchaseOrderDetail() {
         {turn14Quote?.error&&<p className="text-red-700 text-sm">{turn14Quote.error}</p>}
         {turn14Quote?.response&&<details><summary className="text-xs cursor-pointer">Turn 14 API response</summary><pre className="text-xs whitespace-pre-wrap max-h-64 overflow-auto">{JSON.stringify(turn14Quote.response,null,2)}</pre></details>}
       </div>}
+      {form.website_order_number&&<div className="border rounded-lg p-3 mb-5 text-sm bg-slate-50"><strong>Website order: {form.website_order_number}</strong> · {form.website_fulfillment_mode==="direct_to_customer"?"Direct-to-customer supplier shipment":"Supplier shipment to Elite shop"}<p className="text-xs text-slate-600">This PO is linked to a customer order. Review shipping and receiving carefully; customer-directed shipments must not be received into shop stock.</p></div>}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">PO Details</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div>
               <Label>Supplier *</Label>
-              <Select value={form.supplier_id} onValueChange={v => setForm(f=>({...f,supplier_id:v,shipping_address:isTurn14Supplier(suppliers.find(s=>s.id===v))?TURN14_SHOP_ADDRESS:f.shipping_address}))}>
+              <Select value={form.supplier_id} onValueChange={v => setForm(f=>({...f,supplier_id:v,shipping_address:isTurn14Supplier(suppliers.find(s=>s.id===v))&&f.website_fulfillment_mode!=="direct_to_customer"?TURN14_SHOP_ADDRESS:f.shipping_address}))}>
                 <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>
                   {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -690,7 +691,7 @@ export default function PurchaseOrderDetail() {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Ship To</CardTitle></CardHeader>
           <CardContent>
-            {isTurn14Supplier(suppliers.find(s=>s.id===form.supplier_id))?<><Textarea value={TURN14_SHOP_ADDRESS} readOnly rows={3} className="bg-slate-50" /><p className="text-xs text-slate-500 mt-2">Default receiving address for Turn 14 inventory purchase orders. Website dropship orders use the customer address.</p></>:<Textarea value={form.shipping_address||""} onChange={e => setForm({...form, shipping_address: e.target.value})} rows={5} placeholder="Shipping address..." />}
+            {isTurn14Supplier(suppliers.find(s=>s.id===form.supplier_id))&&form.website_fulfillment_mode!=="direct_to_customer"?<><Textarea value={TURN14_SHOP_ADDRESS} readOnly rows={3} className="bg-slate-50" /><p className="text-xs text-slate-500 mt-2">Default receiving address for Turn 14 inventory purchase orders. Website dropship orders use the customer address.</p></>:<Textarea value={form.shipping_address||""} onChange={e => setForm({...form, shipping_address: e.target.value})} rows={5} placeholder="Shipping address..." />}
           </CardContent>
         </Card>
       </div>
