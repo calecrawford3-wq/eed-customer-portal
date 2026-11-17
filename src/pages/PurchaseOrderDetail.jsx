@@ -50,7 +50,6 @@ export default function PurchaseOrderDetail() {
   }));
   const [turn14Quote,setTurn14Quote]=useState(null);
   const [turn14QuoteBusy,setTurn14QuoteBusy]=useState(false);
-  const [turn14Recipient,setTurn14Recipient]=useState({name:"",email:"",phone:""});
   const [turn14Shipping,setTurn14Shipping]=useState({});
   const [turn14Acknowledge,setTurn14Acknowledge]=useState(false);
   const [sending, setSending] = useState(false);
@@ -264,7 +263,7 @@ export default function PurchaseOrderDetail() {
     try{
       const action=turn14HasQuote?'submit':'quote';
       const shipping_quote_ids=turn14Shipments.map((x,i)=>turn14Shipping[i]);
-      const r=await base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:id,action,recipient_name:turn14Recipient.name,recipient_email:turn14Recipient.email,recipient_phone:turn14Recipient.phone,shipping_quote_ids,acknowledge_regulatory:turn14Acknowledge});
+      const r=await base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:id,action,shipping_quote_ids,acknowledge_regulatory:turn14Acknowledge});
       const data=r.data||r;setTurn14Quote(data);
       if(data.quoted)toast.success("Turn 14 test quote received");
       if(data.submitted)toast.success("Turn 14 TEST order submitted");
@@ -638,11 +637,6 @@ export default function PurchaseOrderDetail() {
       {turn14SupplierSelected&&<div className="border rounded-lg p-4 mb-5 space-y-3">
         <h3 className="font-semibold">Turn 14 TEST API Purchasing</h3>
         <p className="text-xs text-slate-600">Supplier: Turn 14 · Delivery: 640 N 254 Rd, Mounds, OK 74047 · Testing environment only</p>
-        {!turn14HasQuote&&!po?.[0]?.turn14_order_id&&<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div><Label>Receiving Contact Name</Label><Input value={turn14Recipient.name} onChange={e=>setTurn14Recipient(v=>({...v,name:e.target.value}))}/></div>
-          <div><Label>Receiving Email</Label><Input type="email" value={turn14Recipient.email} onChange={e=>setTurn14Recipient(v=>({...v,email:e.target.value}))}/></div>
-          <div><Label>Receiving Phone</Label><Input type="tel" value={turn14Recipient.phone} onChange={e=>setTurn14Recipient(v=>({...v,phone:e.target.value}))}/></div>
-        </div>}
         {turn14HasQuote&&<div className="space-y-2">
           <p className="text-sm font-medium">Turn 14 test quote #{po?.[0]?.turn14_quote_id}</p>
           {turn14Shipments.map((shipment,i)=><div key={i} className="rounded border p-3 text-sm"><p className="font-semibold">Shipment {i+1} · Warehouse {shipment.location||'Unknown'} · {shipment.type||''}</p>

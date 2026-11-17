@@ -28,6 +28,9 @@ import Addons from './Addons';
 
 const defaultSettings = {
   key: "global",
+  turn14_receiving_name: "Cale Crawford",
+  turn14_receiving_email: "cale@eedpower.com",
+  turn14_receiving_phone: "918-310-8532",
   turn14_auto_import: false,
   turn14_inventory_sync: true,
   turn14_dealer_cost_map_sync: true,
@@ -205,6 +208,14 @@ export default function Settings() {
 
         {/* Shipping integration setup — secrets are never saved to AppSettings. */}
         <TabsContent value="shipping">
+          <Card className="border-0 shadow-sm mb-4"><CardHeader><CardTitle>Turn 14 Receiving Contact</CardTitle></CardHeader><CardContent className="space-y-3">
+            <p className="text-sm text-slate-600">Used automatically for all Turn 14 shop purchase-order quotes. This contact information is not displayed in purchase-order editing.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><Label>Receiving Name</Label><Input value={form.turn14_receiving_name??""} onChange={e=>set("turn14_receiving_name",e.target.value)}/></div>
+              <div><Label>Receiving Email</Label><Input type="email" value={form.turn14_receiving_email??""} onChange={e=>set("turn14_receiving_email",e.target.value)}/></div>
+              <div><Label>Business Phone</Label><Input type="tel" value={form.turn14_receiving_phone??""} onChange={e=>set("turn14_receiving_phone",e.target.value)}/></div>
+            </div><p className="text-xs text-slate-500">Use Save Settings at the top to apply changes.</p>
+          </CardContent></Card>
           <Card className="border-0 shadow-sm"><CardHeader><CardTitle>Website Store Checkout</CardTitle></CardHeader><CardContent><StoreCheckoutSettings /></CardContent></Card>
           <Card className="border-0 shadow-sm mt-4"><CardHeader><CardTitle>Website Shipping — EasyPost</CardTitle></CardHeader><CardContent className="space-y-4">
             <p className="text-sm text-slate-600">Connect discounted USPS/UPS shipping rates for website parts orders. Engine freight is billed separately when the engine is ready. Local pickup is free.</p>

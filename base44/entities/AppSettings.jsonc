@@ -2,6 +2,9 @@
   "name": "AppSettings",
   "type": "object",
   "properties": {
+    "turn14_receiving_name": {"type":"string","default":"Cale Crawford"},
+    "turn14_receiving_email": {"type":"string","default":"cale@eedpower.com"},
+    "turn14_receiving_phone": {"type":"string","default":"918-310-8532"},
     "key": {
       "type": "string",
       "description": "Unique settings key, e.g. 'global'"

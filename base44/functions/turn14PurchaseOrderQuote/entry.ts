@@ -53,8 +53,13 @@ export default async function(req:Request){
  const address='640 N 254 Rd, Mounds, OK 74047';
  if(!address)problems.push('Enter a shop shipping address on the purchase order');
  const grouped=new Map();for(const line of lines){const key=line.item_identifier;if(!grouped.has(key))grouped.set(key,{item_identifier:key,item_identifier_type:'item_id',quantity:0});grouped.get(key).quantity+=line.quantity;}
+ const globalSettings=await svc.AppSettings.filter({key:'global'}).catch(()=>[]);
+ const settings=globalSettings[0]||{};
+ const receivingName=String(settings.turn14_receiving_name||'Cale Crawford').trim();
+ const receivingEmail=String(settings.turn14_receiving_email||'cale@eedpower.com').trim();
+ const receivingPhone=String(settings.turn14_receiving_phone||'918-310-8532').trim();
  const fingerprint=JSON.stringify({supplier_id:po.supplier_id,po_number:po.po_number,items:[...grouped.values()].sort((a,b)=>a.item_identifier.localeCompare(b.item_identifier))});
- const quoteBody={data:{environment:'testing',po_number:po.po_number,sales_source:3,locations:[{location:'default',combine_in_out_stock:false,items:[...grouped.values()]}],recipient:{company:'Elite Engine Development',name:String(body.recipient_name||'').trim(),address:'640 N 254 Rd',address_2:'',city:'Mounds',state:'OK',country:'US',zip:'74047',email_address:String(body.recipient_email||'').trim(),phone_number:String(body.recipient_phone||'').trim(),is_shop_address:true}}};
+ const quoteBody={data:{environment:'testing',po_number:po.po_number,sales_source:3,locations:[{location:'default',combine_in_out_stock:false,items:[...grouped.values()]}],recipient:{company:'Elite Engine Development',name:receivingName,address:'640 N 254 Rd',address_2:'',city:'Mounds',state:'OK',country:'US',zip:'74047',email_address:receivingEmail,phone_number:receivingPhone,is_shop_address:true}}};
  if(body.action==='submit'){
   if(!po.turn14_quote_id||!po.turn14_quote_response||po.turn14_quote_fingerprint!==fingerprint)return Response.json({error:'Quote missing or purchase order changed. Request a fresh quote.'},{status:409});
   if(problems.length)return Response.json({error:'Product verification failed',problems},{status:409});
