@@ -2,6 +2,13 @@
   "name": "PurchaseOrder",
   "type": "object",
   "properties": {
+    "turn14_quote_id": {"type":"string"},
+    "turn14_quote_response": {"type":"object"},
+    "turn14_quote_fingerprint": {"type":"string"},
+    "turn14_quote_created_at": {"type":"string"},
+    "turn14_order_id": {"type":"string"},
+    "turn14_order_response": {"type":"object"},
+    "turn14_order_submitted_at": {"type":"string"},
     "supplier_access_token": {
       "type": "string",
       "description": "Random supplier update capability. Admin-only entity."

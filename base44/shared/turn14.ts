@@ -1,7 +1,7 @@
 // Turn 14 account currently has TEST-only permission. Do not use production until approved.
 const ROOT='https://apitest.turn14.com';
 let cachedToken=''; let tokenExpires=0;
-export async function turn14Request(path:string){
+export async function turn14Request(path:string, method:"GET"|"POST"="GET", payload?:any){
  const client_id=Deno.env.get('TURN14_CLIENT_ID');const client_secret=Deno.env.get('TURN14_CLIENT_SECRET');
  if(!client_id||!client_secret)throw new Error('Turn 14 credentials are not configured');
  if(!cachedToken||Date.now()>tokenExpires){
@@ -36,8 +36,9 @@ export async function turn14Request(path:string){
  // Turn 14 manufacturer SKUs can include hyphens, underscores and dots.
 // Still reject traversal, fragments, encoded separators and external URLs.
  if(!/^\/v1\/[a-z0-9/_?=&,.-]+$/i.test(path)||path.includes('..')||path.includes('//'))throw new Error('Invalid Turn 14 path');
- const response=await fetch(`${ROOT}${path}`,{headers:{Authorization:`Bearer ${cachedToken}`,Accept:'application/json'}});
- if(!response.ok){if(response.status===401){cachedToken='';tokenExpires=0;}throw new Error(`Turn 14 request failed (${response.status}); synchronization stopped`);}
+ if(method==='POST'&&!['/v1/quote','/v1/order/from_quote'].includes(path))throw new Error('Unsupported Turn 14 write endpoint');
+ const response=await fetch(`${ROOT}${path}`,{method,headers:{Authorization:`Bearer ${cachedToken}`,Accept:'application/json',...(method==='POST'?{'Content-Type':'application/json'}:{})},...(method==='POST'?{body:JSON.stringify(payload)}:{})});
+ if(!response.ok){if(response.status===401){cachedToken='';tokenExpires=0;}throw new Error(`Turn 14 ${method} ${path} failed (${response.status}): ${(await response.text()).slice(0,1600)}`);}
  return response.json();
 }
 export function itemArray(data:any){return Array.isArray(data?.data)?data.data:data?.data?[data.data]:[]}
