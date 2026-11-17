@@ -2,6 +2,13 @@
   "name": "WebsitePartsFulfillment",
   "type": "object",
   "properties": {
+    "tracking_notification_sent_keys": {"type":"array","items":{"type":"string"},"default":[]},
+    "supplier_shipping_status": {"type":"string"},
+    "supplier_tracking": {"type":"array","items":{"type":"object"},"default":[]},
+    "supplier_tracking_last_checked": {"type":"string"},
+    "supplier_tracking_error": {"type":"string"},
+    "supplier_invoice_ids": {"type":"array","items":{"type":"string"},"default":[]},
+
     "linked_purchase_order_ids": {"type":"array","items":{"type":"string"},"default":[]},
     "turn14_quote_id": {"type":"string"},
     "turn14_quote_response": {"type":"object"},
