@@ -20,7 +20,7 @@ export default async function(req:Request){
   lines.push({item_identifier:String(part.turn14_item_id),item_identifier_type:'item_id',quantity,elite_part_number:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||''});
  }
  if(!lines.length)problems.push('No linked Turn 14 parts');
- const address=String(po.shipping_address||'').trim();
+ const address='640 N 254 Rd, Mounds, OK 74047';
  if(!address)problems.push('Enter a shop shipping address on the purchase order');
  const grouped=new Map();for(const line of lines){const key=line.item_identifier;if(!grouped.has(key))grouped.set(key,{item_identifier:key,item_identifier_type:'item_id',quantity:0});grouped.get(key).quantity+=line.quantity;}
  return Response.json({read_only:true,eligible:!problems.length,problems,po_number:po.po_number,supplier:supplier.name,shipping_address:address,items:lines,quote_preview:{data:{environment:'testing',po_number:po.po_number,locations:[{location:'default',combine_in_out_stock:false,items:[...grouped.values()]}]}},warning:'This is a local test quote preview only. Supplier recipient address must be converted to structured fields and verified before POST /v1/quote. No Turn 14 API order or quote was submitted.'});
