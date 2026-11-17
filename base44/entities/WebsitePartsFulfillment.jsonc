@@ -2,6 +2,12 @@
   "name": "WebsitePartsFulfillment",
   "type": "object",
   "properties": {
+    "turn14_quote_id": {"type":"string"},
+    "turn14_quote_response": {"type":"object"},
+    "turn14_quote_fingerprint": {"type":"string"},
+    "turn14_quote_created_at": {"type":"string"},
+    "turn14_supplier_order_response": {"type":"object"},
+    "turn14_supplier_order_submitted_at": {"type":"string"},
     "turn14_dropship_status": {
       "type": "string",
       "enum": [

@@ -1,4 +1,5 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
+import {turn14Request} from '../../shared/turn14.ts';
 const rows=(x:any)=>Array.isArray(x)?x:x?.items||[];
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
@@ -11,6 +12,51 @@ export default async function(req:Request){
  const svc=sdk.asServiceRole.entities;
  const order=await svc.WebsitePartsFulfillment.get(id);
  if(!order)return Response.json({error:'Order not found'},{status:404});
+ if(body.action==='quote'||body.action==='submit'){
+  if(!order.payment_verified||order.shipping_method!=='ship'||order.status==='cancelled')return Response.json({error:'Verified payment and active shipping order required'},{status:409});
+  if(order.order_payment_review_required||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)return Response.json({error:'Resolve pending financial adjustments first'},{status:409});
+  if(order.turn14_supplier_order_reference)return Response.json({error:'Supplier order already submitted; duplicate prevented'},{status:409});
+  if(!['pending_review','ready_for_submission'].includes(order.turn14_dropship_status))return Response.json({error:'Queue the dropship order for supplier review first'},{status:409});
+  const lines=order.turn14_dropship_lines||[];
+  if(!lines.length)return Response.json({error:'No queued supplier items'},{status:409});
+  const items=new Map();
+  for(const line of lines){
+   const part=await svc.Part.get(line.part_id).catch(()=>null);
+   if(!part?.turn14_dropship_enabled||String(part.turn14_item_id)!==String(line.turn14_item_id))return Response.json({error:'Supplier product link changed; review required'},{status:409});
+   const qty=Number(line.quantity);
+   if(!Number.isInteger(qty)||qty<1)return Response.json({error:'Invalid supplier quantity'},{status:409});
+   const key=String(part.turn14_item_id);
+   if(!items.has(key))items.set(key,{item_identifier:key,item_identifier_type:'item_id',quantity:0});
+   items.get(key).quantity+=qty;
+  }
+  const fingerprint=JSON.stringify({order_number:order.order_number,shipping_address:order.shipping_address,items:[...items.values()].sort((a,b)=>a.item_identifier.localeCompare(b.item_identifier))});
+  let addr:any={};try{addr=typeof order.shipping_address==='string'?JSON.parse(order.shipping_address):order.shipping_address||{};}catch{}
+  const address=String(addr.line1||addr.address||'').trim(),city=String(addr.city||'').trim(),state=String(addr.state||'').trim(),zip=String(addr.postal_code||addr.zip||'').trim();
+  if(!address||!city||!state||!zip)return Response.json({error:'Customer address needs street, city, state and ZIP'},{status:409});
+  const recipientPhone=String(body.recipient_phone||order.recipient_phone||addr.phone||'').trim();
+  if(body.action==='quote'){
+   if(recipientPhone.replace(/\D/g,'').length<10)return Response.json({error:'Enter customer phone number (10 digits) for Turn 14 delivery'},{status:400});
+   const request={data:{environment:'testing',po_number:String(order.order_number),sales_source:2,locations:[{location:'default',combine_in_out_stock:false,items:[...items.values()]}],recipient:{company:'',name:String(order.recipient_name||''),address,address_2:String(addr.line2||''),city,state,country:String(addr.country||'US'),zip,email_address:String(order.recipient_email||''),phone_number:recipientPhone,is_shop_address:false}}};
+   const response=await turn14Request('/v1/quote','POST',request);
+   const quoteId=String(response?.data?.id||'');
+   if(!quoteId)return Response.json({error:'Turn 14 did not return a quote ID',response},{status:502});
+   await svc.WebsitePartsFulfillment.update(order.id,{turn14_quote_id:quoteId,turn14_quote_response:response,turn14_quote_fingerprint:fingerprint,turn14_quote_created_at:new Date().toISOString(),turn14_dropship_status:'ready_for_submission'});
+   return Response.json({quoted:true,test_only:true,quote_id:quoteId,response});
+  }
+  if(!order.turn14_quote_id||!order.turn14_quote_response||order.turn14_quote_fingerprint!==fingerprint)return Response.json({error:'Quote missing or order changed; request a new test quote'},{status:409});
+  const shipments=order.turn14_quote_response?.data?.attributes?.shipment||[];
+  if(!shipments.length||shipments.some(x=>!Array.isArray(x.shipping)||!x.shipping.length))return Response.json({error:'Supplier did not provide shipping options for every shipment'},{status:409});
+  const selections=Array.isArray(body.shipping_quote_ids)?body.shipping_quote_ids.map(String):[];
+  if(selections.length!==shipments.length)return Response.json({error:'Select shipping for every shipment'},{status:409});
+  const shipping=shipments.map((shipment,i)=>{const option=shipment.shipping.find(x=>String(x.shipping_quote_id)===selections[i]);if(!option)throw Error('Invalid shipping selection');return {shipping_id:Number(option.shipping_quote_id),saturday_delivery:false,signature_required:false};});
+  if(body.acknowledge_regulatory!==true)return Response.json({error:'Review and acknowledge regulatory notices'},{status:409});
+  // This integration is locked to the Turn 14 test hostname; never send a production order.
+  const response=await turn14Request('/v1/order/from_quote','POST',{data:{environment:'testing',quote_id:Number(order.turn14_quote_id),po_number:order.order_number,acknowledge_prop_65:true,acknowledge_epa:true,acknowledge_carb:true,shipping}});
+  const orderId=String(response?.data?.id||'');
+  if(!orderId)return Response.json({error:'Supplier response missing order ID; inspect supplier orders before retrying',response},{status:502});
+  await svc.WebsitePartsFulfillment.update(order.id,{turn14_supplier_order_reference:orderId,turn14_supplier_order_response:response,turn14_supplier_order_submitted_at:new Date().toISOString(),turn14_dropship_status:'submitted'});
+  return Response.json({submitted:true,test_only:true,order_id:orderId,response});
+ }
  if(body.action==='review'){
   const items=[];const problems=[];
   for(const line of order.line_items||[]){
