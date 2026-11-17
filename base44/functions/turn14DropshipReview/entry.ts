@@ -32,8 +32,10 @@ export default async function(req:Request){
   }
   const fingerprint=JSON.stringify({order_number:order.order_number,shipping_address:order.shipping_address,items:[...items.values()].sort((a,b)=>a.item_identifier.localeCompare(b.item_identifier))});
   let addr:any={};try{addr=typeof order.shipping_address==='string'?JSON.parse(order.shipping_address):order.shipping_address||{};}catch{}
-  const address=String(addr.line1||addr.address||'').trim(),city=String(addr.city||'').trim(),state=String(addr.state||'').trim(),zip=String(addr.postal_code||addr.zip||'').trim();
-  if(!address||!city||!state||!zip)return Response.json({error:'Customer address needs street, city, state and ZIP'},{status:409});
+  const address=String(addr.line1||addr.address||'').trim(),city=String(addr.city||'').trim(),rawState=String(addr.state||'').trim(),zip=String(addr.postal_code||addr.zip||'').trim();
+  const stateNames:Record<string,string>={alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY','district of columbia':'DC'};
+  const state=stateNames[rawState.toLowerCase()]||rawState.toUpperCase();
+  if(!address||!city||!/^[A-Z]{2}$/.test(state)||!/^\d{5}(-\d{4})?$/.test(zip))return Response.json({error:'Customer address needs street, city, two-letter US state and valid ZIP'},{status:409});
   const settingsRows=await svc.AppSettings.list().catch(()=>[]);
   const settings=Array.isArray(settingsRows)?settingsRows[0]:settingsRows?.items?.[0];
   const recipientPhone=String(settings?.turn14_receiving_phone||'918-310-8532').trim();
