@@ -67,8 +67,9 @@ export default async function(req:Request){
    for(let i=0;i<tracks.length&&i<12;i++)tracks[i]=await carrierTracking(tracks[i]);
    const patch:any={supplier_shipping_status:status,supplier_tracking:tracks,supplier_invoice_ids:invoiceIds,supplier_tracking_last_checked:new Date().toISOString(),supplier_tracking_error:''};
    if(t.type==='website'){
-    if(tracks.length&&t.record.turn14_dropship_status==='submitted')patch.turn14_dropship_status='shipped';
-    if(tracks.length&&t.record.payment_verified&&!['cancelled','delivered'].includes(t.record.status))patch.status='shipped';
+    const shippedConfirmed=tracks.some(x=>['in_transit','out_for_delivery','delivered'].includes(x.carrier_status))||/shipped|complete|fulfilled/i.test(status);
+    if(shippedConfirmed&&t.record.turn14_dropship_status==='submitted')patch.turn14_dropship_status='shipped';
+    if(shippedConfirmed&&t.record.payment_verified&&!['cancelled','delivered'].includes(t.record.status))patch.status='shipped';
     if(tracks.length&&tracks.every(x=>x.carrier_status==='delivered')&&t.record.payment_verified)patch.status='delivered';
     await svc.WebsitePartsFulfillment.update(t.record.id,patch);
     const sent=rows(t.record.tracking_notification_sent_keys).map(str);
