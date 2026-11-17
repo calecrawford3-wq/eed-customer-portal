@@ -33,9 +33,11 @@ export default async function(req:Request){
   let addr:any={};try{addr=typeof order.shipping_address==='string'?JSON.parse(order.shipping_address):order.shipping_address||{};}catch{}
   const address=String(addr.line1||addr.address||'').trim(),city=String(addr.city||'').trim(),state=String(addr.state||'').trim(),zip=String(addr.postal_code||addr.zip||'').trim();
   if(!address||!city||!state||!zip)return Response.json({error:'Customer address needs street, city, state and ZIP'},{status:409});
-  const recipientPhone=String(body.recipient_phone||order.recipient_phone||addr.phone||'').trim();
+  const settingsRows=await svc.AppSettings.list().catch(()=>[]);
+  const settings=Array.isArray(settingsRows)?settingsRows[0]:settingsRows?.items?.[0];
+  const recipientPhone=String(settings?.turn14_receiving_phone||'918-310-8532').trim();
   if(body.action==='quote'){
-   if(recipientPhone.replace(/\D/g,'').length<10)return Response.json({error:'Enter customer phone number (10 digits) for Turn 14 delivery'},{status:400});
+   if(recipientPhone.replace(/\D/g,'').length<10)return Response.json({error:'Configure a valid Elite business phone number in Settings → Shipping'},{status:400});
    const request={data:{environment:'testing',po_number:String(order.order_number),sales_source:2,locations:[{location:'default',combine_in_out_stock:false,items:[...items.values()]}],recipient:{company:'',name:String(order.recipient_name||''),address,address_2:String(addr.line2||''),city,state,country:String(addr.country||'US'),zip,email_address:String(order.recipient_email||''),phone_number:recipientPhone,is_shop_address:false}}};
    const response=await turn14Request('/v1/quote','POST',request);
    const quoteId=String(response?.data?.id||'');
