@@ -65,6 +65,7 @@
       "type": "boolean",
       "default": false
     },
+    "recipient_phone": {"type":"string"},
     "recipient_name": {
       "type": "string"
     },
