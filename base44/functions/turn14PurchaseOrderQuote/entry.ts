@@ -65,7 +65,8 @@ export default async function(req:Request){
   if(problems.length)return Response.json({error:'Product verification failed',problems},{status:409});
   const quote=po.turn14_quote_response;
   const locationRows=Array.isArray(quote.data?.attributes?.shipment)?quote.data.attributes.shipment:[];
-  const available=locationRows.map(x=>x.shipping||x.attributes?.shipping||[]).filter(x=>x.length);
+  if(!locationRows.length||locationRows.some(x=>!Array.isArray(x.shipping)||!x.shipping.length))return Response.json({error:'Turn 14 returned a shipment without available shipping methods. Order submission is blocked; review stock/backorder eligibility.'},{status:409});
+  const available=locationRows.map(x=>x.shipping);
   const chosen=Array.isArray(body.shipping_quote_ids)?body.shipping_quote_ids.map(String):[];
   if(!available.length||chosen.length!==available.length)return Response.json({error:'Choose one shipping method for each quoted location'},{status:409});
   const shipping=available.map((options,i)=>{const match=options.find(o=>String(o.shipping_quote_id)===chosen[i]);if(!match)throw Error('Shipping quote selection does not match saved quote');return {shipping_id:Number(match.shipping_quote_id),saturday_delivery:false,signature_required:false};});

@@ -257,6 +257,7 @@ export default function PurchaseOrderDetail() {
   const savedTurn14Quote=po?.[0]?.turn14_quote_response;
   const turn14Shipments=savedTurn14Quote?.data?.attributes?.shipment||[];
   const turn14HasQuote=!!po?.[0]?.turn14_quote_id;
+  const turn14ShippingUnavailable=turn14HasQuote&&(!turn14Shipments.length||turn14Shipments.some(x=>!Array.isArray(x.shipping)||!x.shipping.length));
   const handleTurn14Primary=async()=>{
     if(!id){toast.error("Save the purchase order first");return;}
     if(form.line_items.some((l,i)=>JSON.stringify(l)!==JSON.stringify(po?.[0]?.line_items?.[i]))||form.line_items.length!==(po?.[0]?.line_items||[]).length){toast.error("Save PO changes before requesting a quote or submitting an order");return;}
@@ -622,7 +623,7 @@ export default function PurchaseOrderDetail() {
           <AlertTriangle className="w-4 h-4 mr-1" /> Order Low Stock
         </Button>
         <Button variant="outline" onClick={() => printPO(form, supplier, settings)}><Printer className="w-4 h-4 mr-1" /> Print</Button>
-        <Button variant="outline" onClick={turn14SupplierSelected?handleTurn14Primary:sendPO} disabled={turn14SupplierSelected?(turn14QuoteBusy||!id||!!po?.[0]?.turn14_order_id):(sending||!form.supplier_id)}>
+        <Button variant="outline" onClick={turn14SupplierSelected?handleTurn14Primary:sendPO} disabled={turn14SupplierSelected?(turn14QuoteBusy||!id||!!po?.[0]?.turn14_order_id||turn14ShippingUnavailable):(sending||!form.supplier_id)}>
           <Send className="w-4 h-4 mr-1" />{turn14SupplierSelected?(turn14QuoteBusy?"Processing…":po?.[0]?.turn14_order_id?"Test Order Submitted":turn14HasQuote?"Submit Test Order":"Request Test Quote"):(sending?"Sending...":"Email to Supplier")}
         </Button>
         {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
@@ -640,8 +641,10 @@ export default function PurchaseOrderDetail() {
         <p className="text-xs text-slate-600">Supplier: Turn 14 · Delivery: 640 N 254 Rd, Mounds, OK 74047 · Testing environment only</p>
         {turn14HasQuote&&<div className="space-y-2">
           <p className="text-sm font-medium">Turn 14 test quote #{po?.[0]?.turn14_quote_id}</p>
+          {turn14ShippingUnavailable&&<p className="text-sm text-amber-700 border border-amber-200 rounded p-3">Turn 14 returned no available shipping method for one or more shipments. The test order cannot be submitted until a valid shipping option is available. Out-of-stock items may require backorder or manufacturer-direct handling.</p>}
           {turn14Shipments.map((shipment,i)=><div key={i} className="rounded border p-3 text-sm"><p className="font-semibold">Shipment {i+1} · Warehouse {shipment.location||'Unknown'} · {shipment.type||''}</p>
-            <select className="border rounded p-2 w-full mt-2" value={turn14Shipping[i]||""} onChange={e=>setTurn14Shipping(v=>({...v,[i]:e.target.value}))}>
+            {(!shipment.shipping||!shipment.shipping.length)&&<p className="text-xs text-amber-700 mt-2">No shipping methods returned for this shipment.</p>}
+            <select disabled={!shipment.shipping?.length} className="border rounded p-2 w-full mt-2" value={turn14Shipping[i]||""} onChange={e=>setTurn14Shipping(v=>({...v,[i]:e.target.value}))}>
               <option value="">Choose a quoted shipping method</option>
               {(shipment.shipping||[]).map((option,j)=><option key={j} value={String(option.shipping_quote_id)}>Shipping code {option.shipping_code} · ${Number(option.cost||0).toFixed(2)} · {option.days_in_transit??'—'} days</option>)}
             </select>
