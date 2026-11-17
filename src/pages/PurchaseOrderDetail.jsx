@@ -256,6 +256,8 @@ export default function PurchaseOrderDetail() {
   const turn14SupplierSelected=isTurn14Supplier(suppliers.find(s=>s.id===form.supplier_id));
   const savedTurn14Quote=po?.[0]?.turn14_quote_response;
   const turn14Shipments=savedTurn14Quote?.data?.attributes?.shipment||[];
+  const cheapestTurn14Shipping=(shipment)=>{const options=Array.isArray(shipment?.shipping)?shipment.shipping:[];return options.filter(o=>o.shipping_quote_id!=null&&Number.isFinite(Number(o.cost))).slice().sort((a,b)=>Number(a.cost)-Number(b.cost))[0]||null;};
+  const selectedTurn14Shipping=(shipment,i)=>{const options=Array.isArray(shipment?.shipping)?shipment.shipping:[];return options.find(o=>String(o.shipping_quote_id)===String(turn14Shipping[i]))||cheapestTurn14Shipping(shipment);};
   const turn14HasQuote=!!po?.[0]?.turn14_quote_id;
   const turn14ShippingUnavailable=turn14HasQuote&&(!turn14Shipments.length||turn14Shipments.some(x=>!Array.isArray(x.shipping)||!x.shipping.length));
   const handleTurn14Primary=async()=>{
@@ -264,7 +266,7 @@ export default function PurchaseOrderDetail() {
     setTurn14QuoteBusy(true);setTurn14Quote(null);
     try{
       const action=turn14HasQuote?'submit':'quote';
-      const shipping_quote_ids=turn14Shipments.map((x,i)=>turn14Shipping[i]);
+      const shipping_quote_ids=turn14Shipments.map((x,i)=>String(selectedTurn14Shipping(x,i)?.shipping_quote_id||""));
       const r=await base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:id,action,shipping_quote_ids,acknowledge_regulatory:turn14Acknowledge});
       const data=r.data||r;setTurn14Quote(data);
       if(data.quoted)toast.success("Turn 14 test quote received");
@@ -644,11 +646,12 @@ export default function PurchaseOrderDetail() {
           {turn14ShippingUnavailable&&<p className="text-sm text-amber-700 border border-amber-200 rounded p-3">Turn 14 returned no available shipping method for one or more shipments. The test order cannot be submitted until a valid shipping option is available. Out-of-stock items may require backorder or manufacturer-direct handling.</p>}
           {turn14Shipments.map((shipment,i)=><div key={i} className="rounded border p-3 text-sm"><p className="font-semibold">Shipment {i+1} · Warehouse {shipment.location||'Unknown'} · {shipment.type||''}</p>
             {(!shipment.shipping||!shipment.shipping.length)&&<p className="text-xs text-amber-700 mt-2">No shipping methods returned for this shipment.</p>}
-            <select disabled={!shipment.shipping?.length} className="border rounded p-2 w-full mt-2" value={turn14Shipping[i]||""} onChange={e=>setTurn14Shipping(v=>({...v,[i]:e.target.value}))}>
+            <select disabled={!shipment.shipping?.length} className="border rounded p-2 w-full mt-2" value={String(selectedTurn14Shipping(shipment,i)?.shipping_quote_id||"")} onChange={e=>setTurn14Shipping(v=>({...v,[i]:e.target.value}))}>
               <option value="">Choose a quoted shipping method</option>
-              {(shipment.shipping||[]).map((option,j)=><option key={j} value={String(option.shipping_quote_id)}>Shipping code {option.shipping_code} · ${Number(option.cost||0).toFixed(2)} · {option.days_in_transit??'—'} days</option>)}
+              {(shipment.shipping||[]).map((option,j)=><option key={j} value={String(option.shipping_quote_id)}>{option.verbose_eta?.startsWith('Free Ship')?'Free Ship to Shop Ground':option.shipping_code===3?'UPS Ground':`Shipping code ${option.shipping_code}`} · ${Number(option.cost||0).toFixed(2)} · {option.days_in_transit??'—'} day(s)</option>)}
             </select>
           </div>)}
+          <p className="text-sm font-medium">Quoted items: ${Number(savedTurn14Quote?.data?.attributes?.total||0).toFixed(2)} · Shipping: ${turn14Shipments.reduce((sum,shipment,i)=>sum+Number(selectedTurn14Shipping(shipment,i)?.cost||0),0).toFixed(2)} · Total: ${(Number(savedTurn14Quote?.data?.attributes?.total||0)+turn14Shipments.reduce((sum,shipment,i)=>sum+Number(selectedTurn14Shipping(shipment,i)?.cost||0),0)).toFixed(2)}</p>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={turn14Acknowledge} onCheckedChange={v=>setTurn14Acknowledge(!!v)}/> I reviewed the quote and any applicable EPA, CARB and Proposition 65 notices.</label>
           <p className="text-xs text-amber-700">The top button submits a TEST order after you select shipping and acknowledge applicable notices. It will not submit a live order.</p>
         </div>}
