@@ -36,9 +36,10 @@ export default async function(req:Request){
   const settingsRows=await svc.AppSettings.list().catch(()=>[]);
   const settings=Array.isArray(settingsRows)?settingsRows[0]:settingsRows?.items?.[0];
   const recipientPhone=String(settings?.turn14_receiving_phone||'918-310-8532').trim();
+  const supplierEmail=String(settings?.turn14_receiving_email||'cale@eedpower.com').trim();
   if(body.action==='quote'){
    if(recipientPhone.replace(/\D/g,'').length<10)return Response.json({error:'Configure a valid Elite business phone number in Settings → Shipping'},{status:400});
-   const request={data:{environment:'testing',po_number:String(order.order_number),sales_source:2,locations:[{location:'default',combine_in_out_stock:false,items:[...items.values()]}],recipient:{company:'',name:String(order.recipient_name||''),address,address_2:String(addr.line2||''),city,state,country:String(addr.country||'US'),zip,email_address:String(order.recipient_email||''),phone_number:recipientPhone,is_shop_address:false}}};
+   const request={data:{environment:'testing',po_number:String(order.order_number),sales_source:2,locations:[{location:'default',combine_in_out_stock:false,items:[...items.values()]}],recipient:{company:'',name:String(order.recipient_name||''),address,address_2:String(addr.line2||''),city,state,country:String(addr.country||'US'),zip,email_address:supplierEmail,phone_number:recipientPhone,is_shop_address:false}}};
    const response=await turn14Request('/v1/quote','POST',request);
    const quoteId=String(response?.data?.id||'');
    if(!quoteId)return Response.json({error:'Turn 14 did not return a quote ID',response},{status:502});
