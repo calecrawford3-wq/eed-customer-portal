@@ -1,5 +1,6 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
 import {turn14Request} from '../../shared/turn14.ts';
+import {staffOrAutomation} from '../../shared/staffOrAutomation.ts';
 const rows=(v:any):any[]=>Array.isArray(v)?v:v?.items||[];
 const str=(v:any)=>String(v??'').trim();
 const esc=(v:any)=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','&#39;':'&#39;'}[c]||c));
@@ -13,12 +14,9 @@ const carrierLink=(carrier:string,number:string)=>{
 };
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
- const sdk=createClientFromRequest(req),user=await sdk.auth.me().catch(()=>null);
+ const sdk=createClientFromRequest(req);
+ if(!await staffOrAutomation(sdk))return Response.json({error:'Admin or verified automation required'},{status:403});
  const b=await req.json().catch(()=>({}));
- const automated=b.automation===true&&!user;
- if(!automated&&user?.role!=='admin')return Response.json({error:'Admin required'},{status:403});
- // Automatic jobs must be invoked using the platform's authenticated automation context.
- if(automated){const auto=await sdk.auth.isAuthenticated().catch(()=>false);if(!auto)return Response.json({error:'Authenticated automation required'},{status:403});}
  const svc=sdk.asServiceRole.entities;
  const website=rows(await svc.WebsitePartsFulfillment.list('-created_date',500)).filter(x=>/^\d+$/.test(str(x.turn14_supplier_order_reference)));
  const shop=rows(await svc.PurchaseOrder.list('-created_date',500)).filter(x=>/^\d+$/.test(str(x.turn14_order_id)));
@@ -51,7 +49,7 @@ export default async function(req:Request){
    const patch:any={supplier_shipping_status:status,supplier_tracking:tracks,supplier_invoice_ids:invoiceIds,supplier_tracking_last_checked:new Date().toISOString(),supplier_tracking_error:''};
    if(t.type==='website'){
     if(tracks.length&&t.record.turn14_dropship_status==='submitted')patch.turn14_dropship_status='shipped';
-    if(tracks.length&&t.record.payment_verified&&t.record.status!=='cancelled')patch.status='shipped';
+    if(tracks.length&&t.record.payment_verified&&!['cancelled','delivered'].includes(t.record.status))patch.status='shipped';
     await svc.WebsitePartsFulfillment.update(t.record.id,patch);
     const sent=rows(t.record.tracking_notification_sent_keys).map(str);
     const unsent=tracks.filter(x=>!sent.includes(x.tracking_number));
