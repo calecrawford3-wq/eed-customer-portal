@@ -2,6 +2,7 @@
   "name": "WebsitePartsFulfillment",
   "type": "object",
   "properties": {
+    "linked_purchase_order_ids": {"type":"array","items":{"type":"string"},"default":[]},
     "turn14_quote_id": {"type":"string"},
     "turn14_quote_response": {"type":"object"},
     "turn14_quote_fingerprint": {"type":"string"},

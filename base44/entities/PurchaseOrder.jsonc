@@ -9,6 +9,9 @@
     "turn14_order_id": {"type":"string"},
     "turn14_order_response": {"type":"object"},
     "turn14_order_submitted_at": {"type":"string"},
+    "website_fulfillment_id": {"type":"string","description":"Website fulfillment this supplier purchase order supplies"},
+    "website_order_number": {"type":"string"},
+    "website_fulfillment_mode": {"type":"string","enum":["ship_to_shop","direct_to_customer"],"default":"ship_to_shop"},
     "supplier_access_token": {
       "type": "string",
       "description": "Random supplier update capability. Admin-only entity."
