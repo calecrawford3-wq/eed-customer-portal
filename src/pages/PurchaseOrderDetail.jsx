@@ -50,6 +50,9 @@ export default function PurchaseOrderDetail() {
   }));
   const [turn14Quote,setTurn14Quote]=useState(null);
   const [turn14QuoteBusy,setTurn14QuoteBusy]=useState(false);
+  const [turn14Recipient,setTurn14Recipient]=useState({name:"",email:"",phone:""});
+  const [turn14Shipping,setTurn14Shipping]=useState({});
+  const [turn14Acknowledge,setTurn14Acknowledge]=useState(false);
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [postingSeconds,setPostingSeconds] = useState(0);
@@ -250,6 +253,26 @@ export default function PurchaseOrderDetail() {
   const addReturn = () => setForm(f => ({ ...f, returns: [...(f.returns || []), { ...emptyReturn, date: new Date().toISOString().split("T")[0] }] }));
   const removeReturn = (idx) => setForm(f => ({ ...f, returns: (f.returns || []).filter((_, i) => i !== idx) }));
 
+  const turn14SupplierSelected=isTurn14Supplier(suppliers.find(s=>s.id===form.supplier_id));
+  const savedTurn14Quote=po?.[0]?.turn14_quote_response;
+  const turn14Shipments=savedTurn14Quote?.data?.attributes?.shipment||[];
+  const turn14HasQuote=!!po?.[0]?.turn14_quote_id;
+  const handleTurn14Primary=async()=>{
+    if(!id){toast.error("Save the purchase order first");return;}
+    if(form.line_items.some((l,i)=>JSON.stringify(l)!==JSON.stringify(po?.[0]?.line_items?.[i]))||form.line_items.length!==(po?.[0]?.line_items||[]).length){toast.error("Save PO changes before requesting a quote or submitting an order");return;}
+    setTurn14QuoteBusy(true);setTurn14Quote(null);
+    try{
+      const action=turn14HasQuote?'submit':'quote';
+      const shipping_quote_ids=turn14Shipments.map((x,i)=>turn14Shipping[i]);
+      const r=await base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:id,action,recipient_name:turn14Recipient.name,recipient_email:turn14Recipient.email,recipient_phone:turn14Recipient.phone,shipping_quote_ids,acknowledge_regulatory:turn14Acknowledge});
+      const data=r.data||r;setTurn14Quote(data);
+      if(data.quoted)toast.success("Turn 14 test quote received");
+      if(data.submitted)toast.success("Turn 14 TEST order submitted");
+      await qc.invalidateQueries({queryKey:['po',id]});
+      await qc.invalidateQueries({queryKey:['purchaseOrders']});
+    }catch(e){setTurn14Quote({error:e.response?.data?.error||e.message||'Turn 14 request failed'});}
+    finally{setTurn14QuoteBusy(false);}
+  };
   const previewTurn14PO=async()=>{if(!id){toast.error("Save the purchase order first");return;}setTurn14QuoteBusy(true);setTurn14Quote(null);try{const response=await base44.functions.invoke("turn14PurchaseOrderQuote",{po_id:id});setTurn14Quote(response.data||response)}catch(e){setTurn14Quote({error:e.response?.data?.error||e.message})}finally{setTurn14QuoteBusy(false)}};
   const sendPO = async () => {
     const supplier = suppliers.find(s => s.id === form.supplier_id);
@@ -599,8 +622,8 @@ export default function PurchaseOrderDetail() {
           <AlertTriangle className="w-4 h-4 mr-1" /> Order Low Stock
         </Button>
         <Button variant="outline" onClick={() => printPO(form, supplier, settings)}><Printer className="w-4 h-4 mr-1" /> Print</Button>
-        <Button variant="outline" onClick={sendPO} disabled={sending || !form.supplier_id}>
-          <Send className="w-4 h-4 mr-1" />{sending ? "Sending..." : "Email to Supplier"}
+        <Button variant="outline" onClick={turn14SupplierSelected?handleTurn14Primary:sendPO} disabled={turn14SupplierSelected?(turn14QuoteBusy||!id||!!po?.[0]?.turn14_order_id):(sending||!form.supplier_id)}>
+          <Send className="w-4 h-4 mr-1" />{turn14SupplierSelected?(turn14QuoteBusy?"Processing…":po?.[0]?.turn14_order_id?"Test Order Submitted":turn14HasQuote?"Submit Test Order":"Request Test Quote"):(sending?"Sending...":"Email to Supplier")}
         </Button>
         {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
           <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={openReceiveMode}>
@@ -612,6 +635,29 @@ export default function PurchaseOrderDetail() {
         </Button>
       </div>
 
+      {turn14SupplierSelected&&<div className="border rounded-lg p-4 mb-5 space-y-3">
+        <h3 className="font-semibold">Turn 14 TEST API Purchasing</h3>
+        <p className="text-xs text-slate-600">Supplier: Turn 14 · Delivery: 640 N 254 Rd, Mounds, OK 74047 · Testing environment only</p>
+        {!turn14HasQuote&&!po?.[0]?.turn14_order_id&&<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div><Label>Receiving Contact Name</Label><Input value={turn14Recipient.name} onChange={e=>setTurn14Recipient(v=>({...v,name:e.target.value}))}/></div>
+          <div><Label>Receiving Email</Label><Input type="email" value={turn14Recipient.email} onChange={e=>setTurn14Recipient(v=>({...v,email:e.target.value}))}/></div>
+          <div><Label>Receiving Phone</Label><Input type="tel" value={turn14Recipient.phone} onChange={e=>setTurn14Recipient(v=>({...v,phone:e.target.value}))}/></div>
+        </div>}
+        {turn14HasQuote&&<div className="space-y-2">
+          <p className="text-sm font-medium">Turn 14 test quote #{po?.[0]?.turn14_quote_id}</p>
+          {turn14Shipments.map((shipment,i)=><div key={i} className="rounded border p-3 text-sm"><p className="font-semibold">Shipment {i+1} · Warehouse {shipment.location||'Unknown'} · {shipment.type||''}</p>
+            <select className="border rounded p-2 w-full mt-2" value={turn14Shipping[i]||""} onChange={e=>setTurn14Shipping(v=>({...v,[i]:e.target.value}))}>
+              <option value="">Choose a quoted shipping method</option>
+              {(shipment.shipping||[]).map((option,j)=><option key={j} value={String(option.shipping_quote_id)}>Shipping code {option.shipping_code} · ${Number(option.cost||0).toFixed(2)} · {option.days_in_transit??'—'} days</option>)}
+            </select>
+          </div>)}
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={turn14Acknowledge} onCheckedChange={v=>setTurn14Acknowledge(!!v)}/> I reviewed the quote and any applicable EPA, CARB and Proposition 65 notices.</label>
+          <p className="text-xs text-amber-700">The top button submits a TEST order after you select shipping and acknowledge applicable notices. It will not submit a live order.</p>
+        </div>}
+        {po?.[0]?.turn14_order_id&&<p className="text-green-700 text-sm">Turn 14 test order confirmed: {po[0].turn14_order_id}</p>}
+        {turn14Quote?.error&&<p className="text-red-700 text-sm">{turn14Quote.error}</p>}
+        {turn14Quote?.response&&<details><summary className="text-xs cursor-pointer">Turn 14 API response</summary><pre className="text-xs whitespace-pre-wrap max-h-64 overflow-auto">{JSON.stringify(turn14Quote.response,null,2)}</pre></details>}
+      </div>}
       {suppliers.some(s=>s.id===form.supplier_id&&/turn\s*14/i.test(s.name||''))&&<div className="border rounded-lg p-4 mb-5 space-y-2"><h3 className="font-semibold">Turn 14 Purchase Order Integration</h3><p className="text-sm text-slate-600">Save this purchase order before testing. Supplier quotes and order submissions are not yet sent.</p><Button type="button" variant="outline" disabled={!id||turn14QuoteBusy} onClick={previewTurn14PO}>{turn14QuoteBusy?'Checking…':'Check Turn 14 Parts & Preview Quote'}</Button>{turn14Quote&&<div className="text-sm">{turn14Quote.error?<p className="text-red-700">{turn14Quote.error}</p>:<><p>{turn14Quote.eligible?'Eligible for test quote preparation':'Review required before quote'}</p>{turn14Quote.checks?.map((x,i)=><p key={i} className="text-green-700">{x}</p>)}{turn14Quote.problems?.map((x,i)=><p key={i} className="text-amber-700">{x}</p>)}<p>Linked supplier lines: {turn14Quote.items?.length||0}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs bg-slate-50 p-2">{JSON.stringify(turn14Quote.quote_preview,null,2)}</pre><p className="text-amber-700">{turn14Quote.warning}</p></>}</div>}</div>}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
