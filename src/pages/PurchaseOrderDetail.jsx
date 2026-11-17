@@ -182,7 +182,7 @@ export default function PurchaseOrderDetail() {
           shipping_address:data.shipping_address||''
         });
       }
-      const {receipt_log,receipt_history,receipt_price_history,supplier_invoice_number,received_date,...editable} = data;
+      const {receipt_log,receipt_history,receipt_price_history,supplier_invoice_number,received_date,turn14_quote_id,turn14_quote_response,turn14_quote_fingerprint,turn14_quote_created_at,turn14_order_id,turn14_order_response,turn14_order_submitted_at,...editable} = data;
       // Preserve the current receipt status and accounting fields if the
       // form is stale, even on an unreceived PO.
       return base44.entities.PurchaseOrder.update(id,{...editable,status:current.status});
@@ -658,7 +658,6 @@ export default function PurchaseOrderDetail() {
         {turn14Quote?.error&&<p className="text-red-700 text-sm">{turn14Quote.error}</p>}
         {turn14Quote?.response&&<details><summary className="text-xs cursor-pointer">Turn 14 API response</summary><pre className="text-xs whitespace-pre-wrap max-h-64 overflow-auto">{JSON.stringify(turn14Quote.response,null,2)}</pre></details>}
       </div>}
-      {suppliers.some(s=>s.id===form.supplier_id&&/turn\s*14/i.test(s.name||''))&&<div className="border rounded-lg p-4 mb-5 space-y-2"><h3 className="font-semibold">Turn 14 Purchase Order Integration</h3><p className="text-sm text-slate-600">Save this purchase order before testing. Supplier quotes and order submissions are not yet sent.</p><Button type="button" variant="outline" disabled={!id||turn14QuoteBusy} onClick={previewTurn14PO}>{turn14QuoteBusy?'Checking…':'Check Turn 14 Parts & Preview Quote'}</Button>{turn14Quote&&<div className="text-sm">{turn14Quote.error?<p className="text-red-700">{turn14Quote.error}</p>:<><p>{turn14Quote.eligible?'Eligible for test quote preparation':'Review required before quote'}</p>{turn14Quote.checks?.map((x,i)=><p key={i} className="text-green-700">{x}</p>)}{turn14Quote.problems?.map((x,i)=><p key={i} className="text-amber-700">{x}</p>)}<p>Linked supplier lines: {turn14Quote.items?.length||0}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs bg-slate-50 p-2">{JSON.stringify(turn14Quote.quote_preview,null,2)}</pre><p className="text-amber-700">{turn14Quote.warning}</p></>}</div>}</div>}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">PO Details</CardTitle></CardHeader>
