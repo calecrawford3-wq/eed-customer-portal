@@ -23,6 +23,7 @@ const STATUS_STYLES = {
 export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [orderSource,setOrderSource]=useState("shop");
   const qc = useQueryClient();
   const [confirmState, setConfirmState] = useState(/** @type {Record<string, any>} */ ({ open: false }));
 
@@ -31,6 +32,15 @@ export default function PurchaseOrders() {
     queryFn: () => base44.entities.PurchaseOrder.list("-created_date", 200),
   });
 
+  const {data: websiteFulfillments=[],isLoading:websiteLoading}=useQuery({
+    queryKey:["purchaseOrdersWebsiteDropship"],
+    queryFn:()=>base44.entities.WebsitePartsFulfillment.list("-created_date",500),
+  });
+  const websiteSupplierOrders=websiteFulfillments.filter(o=>["pending_review","ready_for_submission","submitted","shipped","exception"].includes(o.turn14_dropship_status)||!!o.turn14_quote_id||!!o.turn14_supplier_order_reference);
+  const filteredWebsite=websiteSupplierOrders.filter(o=>{
+    const query=`${o.order_number||""} ${o.recipient_name||""} ${o.turn14_quote_id||""} ${o.turn14_supplier_order_reference||""} ${(o.turn14_dropship_lines||[]).map(l=>l.supplier_sku||l.sku).join(" ")}`.toLowerCase();
+    return query.includes(search.toLowerCase())&&(filterStatus==="all"||o.turn14_dropship_status===filterStatus);
+  });
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: () => base44.entities.Supplier.list("-created_date", 200),
@@ -55,7 +65,7 @@ export default function PurchaseOrders() {
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Purchase Orders</h1>
-          <p className="text-slate-500 mt-1">{orders.length} total POs</p>
+          <p className="text-slate-500 mt-1">{orders.length} shop POs · {websiteSupplierOrders.length} website supplier requests</p>
         </div>
         <Link to="/PurchaseOrderDetail?new=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
@@ -64,6 +74,10 @@ export default function PurchaseOrders() {
         </Link>
       </div>
 
+      <div className="flex gap-2 mb-5 border-b pb-3">
+        <Button variant={orderSource==="shop"?"default":"outline"} onClick={()=>{setOrderSource("shop");setFilterStatus("all")}}>Shop Purchase Orders ({orders.length})</Button>
+        <Button variant={orderSource==="website"?"default":"outline"} onClick={()=>{setOrderSource("website");setFilterStatus("all")}}>Website Dropship Orders ({websiteSupplierOrders.length})</Button>
+      </div>
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -73,14 +87,27 @@ export default function PurchaseOrders() {
           <SelectTrigger className="w-44"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            {["draft","sent","acknowledged","partial","received","cancelled"].map(s => (
+            {(orderSource==="shop"?["draft","sent","acknowledged","partial","received","cancelled"]:["pending_review","ready_for_submission","submitted","shipped","exception"]).map(s => (
               <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {isLoading ? (
+      {orderSource==="website" ? (
+        websiteLoading?<p className="py-8 text-slate-500">Loading website supplier orders…</p>:
+        filteredWebsite.length===0?<div className="border rounded-xl p-8 text-center text-slate-500">No website dropship orders match your filters.</div>:
+        <div className="bg-white border rounded-xl overflow-x-auto"><table className="w-full min-w-[850px] text-sm">
+          <thead className="bg-slate-50 border-b"><tr><th className="text-left p-3">Website Order</th><th className="text-left p-3">Supplier</th><th className="text-left p-3">Customer</th><th className="text-left p-3">Turn 14 Quote / Order</th><th className="text-right p-3">Supplier Quote</th><th className="text-center p-3">Status</th><th className="p-3"></th></tr></thead>
+          <tbody>{filteredWebsite.map(o=><tr key={o.id} className="border-b hover:bg-slate-50">
+            <td className="p-3 font-mono font-medium">{o.order_number}</td><td className="p-3">Turn 14 Distribution</td><td className="p-3">{o.recipient_name||"—"}</td>
+            <td className="p-3 text-xs"><div>Quote: {o.turn14_quote_id||"Not requested"}</div><div>Order: {o.turn14_supplier_order_reference||"Not submitted"}</div></td>
+            <td className="p-3 text-right">{o.turn14_quote_response?.data?.attributes?.total!=null?"$"+Number(o.turn14_quote_response.data.attributes.total).toFixed(2):"—"}</td>
+            <td className="p-3 text-center"><Badge className="capitalize">{(o.turn14_dropship_status||"not_requested").replaceAll("_"," ")}</Badge></td>
+            <td className="p-3 text-right"><Link to="/WebsiteOrderFulfillment"><Button size="sm" variant="outline">Manage</Button></Link></td>
+          </tr>)}</tbody>
+        </table></div>
+      ) : isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
