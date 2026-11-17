@@ -46,6 +46,8 @@ export default function PurchaseOrderDetail() {
     line_items: [{ ...emptyLine }],
     shipping_cost: 0, tax_amount: 0, notes: "", shipping_address: ""
   }));
+  const [turn14Quote,setTurn14Quote]=useState(null);
+  const [turn14QuoteBusy,setTurn14QuoteBusy]=useState(false);
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [postingSeconds,setPostingSeconds] = useState(0);
@@ -245,6 +247,7 @@ export default function PurchaseOrderDetail() {
   const addReturn = () => setForm(f => ({ ...f, returns: [...(f.returns || []), { ...emptyReturn, date: new Date().toISOString().split("T")[0] }] }));
   const removeReturn = (idx) => setForm(f => ({ ...f, returns: (f.returns || []).filter((_, i) => i !== idx) }));
 
+  const previewTurn14PO=async()=>{if(!id){toast.error("Save the purchase order first");return;}setTurn14QuoteBusy(true);setTurn14Quote(null);try{const response=await base44.functions.invoke("turn14PurchaseOrderQuote",{po_id:id});setTurn14Quote(response.data||response)}catch(e){setTurn14Quote({error:e.response?.data?.error||e.message})}finally{setTurn14QuoteBusy(false)}};
   const sendPO = async () => {
     const supplier = suppliers.find(s => s.id === form.supplier_id);
     if (!supplier?.email) { toast.error("Supplier has no email address"); return; }
