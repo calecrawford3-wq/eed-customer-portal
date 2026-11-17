@@ -18,6 +18,8 @@ import EmailsSection from "@/components/emails/EmailsSection";
 import PackingSlipReceiveModal from "@/components/inventory/PackingSlipReceiveModal";
 import {resolveCompanyLogo} from "@/lib/companyLogo";
 
+const TURN14_SHOP_ADDRESS = "640 N 254 Rd, Mounds, OK 74047";
+const isTurn14Supplier = (supplier) => /turn\s*14/i.test(supplier?.name||"");
 const emptyLine = { part_id: "", part_number: "", description: "", quantity: 1, unit_cost: 0, total: 0, received_qty: 0 };
 
 const STATUS_STYLES = {
@@ -161,6 +163,7 @@ export default function PurchaseOrderDetail() {
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
+      if(isTurn14Supplier(suppliers.find(s=>s.id===data.supplier_id)))data={...data,shipping_address:TURN14_SHOP_ADDRESS};
       if (!id) return base44.entities.PurchaseOrder.create(data);
       // A regular Save must never rewrite receiving-managed quantities,
       // costs, totals, status, receipt IDs or invoice history.
@@ -616,7 +619,7 @@ export default function PurchaseOrderDetail() {
           <CardContent className="space-y-3">
             <div>
               <Label>Supplier *</Label>
-              <Select value={form.supplier_id} onValueChange={v => setForm({...form, supplier_id: v})}>
+              <Select value={form.supplier_id} onValueChange={v => setForm(f=>({...f,supplier_id:v,shipping_address:isTurn14Supplier(suppliers.find(s=>s.id===v))?TURN14_SHOP_ADDRESS:f.shipping_address}))}>
                 <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>
                   {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -641,7 +644,7 @@ export default function PurchaseOrderDetail() {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Ship To</CardTitle></CardHeader>
           <CardContent>
-            <Textarea value={form.shipping_address} onChange={e => setForm({...form, shipping_address: e.target.value})} rows={5} placeholder="Shipping address..." />
+            {isTurn14Supplier(suppliers.find(s=>s.id===form.supplier_id))?<><Textarea value={TURN14_SHOP_ADDRESS} readOnly rows={3} className="bg-slate-50" /><p className="text-xs text-slate-500 mt-2">Default receiving address for Turn 14 inventory purchase orders. Website dropship orders use the customer address.</p></>:<Textarea value={form.shipping_address||""} onChange={e => setForm({...form, shipping_address: e.target.value})} rows={5} placeholder="Shipping address..." />}
           </CardContent>
         </Card>
       </div>
