@@ -59,7 +59,7 @@ export default async function(req:Request){
   if(!po.turn14_quote_id||!po.turn14_quote_response||po.turn14_quote_fingerprint!==fingerprint)return Response.json({error:'Quote missing or purchase order changed. Request a fresh quote.'},{status:409});
   if(problems.length)return Response.json({error:'Product verification failed',problems},{status:409});
   const quote=po.turn14_quote_response;
-  const locationRows=Array.isArray(quote.data?.attributes?.locations)?quote.data.attributes.locations:Array.isArray(quote.data?.locations)?quote.data.locations:[];
+  const locationRows=Array.isArray(quote.data?.attributes?.shipment)?quote.data.attributes.shipment:[];
   const available=locationRows.map(x=>x.shipping||x.attributes?.shipping||[]).filter(x=>x.length);
   const chosen=Array.isArray(body.shipping_quote_ids)?body.shipping_quote_ids.map(String):[];
   if(!available.length||chosen.length!==available.length)return Response.json({error:'Choose one shipping method for each quoted location'},{status:409});
