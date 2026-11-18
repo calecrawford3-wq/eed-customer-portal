@@ -1,0 +1,50 @@
+{
+  "name": "MonthlyFundingItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "account_kind": {
+      "type": "string",
+      "enum": [
+        "operating",
+        "payroll"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Cost per payment occurrence in dollars"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "semimonthly",
+        "monthly",
+        "quarterly",
+        "annual"
+      ]
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "created_date": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "account_kind",
+    "amount",
+    "frequency"
+  ]
+}
