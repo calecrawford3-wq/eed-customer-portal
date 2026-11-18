@@ -2,6 +2,7 @@ import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
 import {turn14Request} from '../../shared/turn14.ts';
 import {ensureTurn14WebsitePO} from '../../shared/turn14WebsitePO.ts';
 import {turn14Availability} from '../../shared/turn14Availability.ts';
+import {classifyTurn14SubmissionError} from '../../shared/turn14SubmissionSafety.ts';
 const rows=(x:any)=>Array.isArray(x)?x:x?.items||[];
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
@@ -18,6 +19,7 @@ export default async function(req:Request){
   try{
   if(!order.payment_verified||order.shipping_method!=='ship'||order.status==='cancelled')return Response.json({error:'Verified payment and active shipping order required'},{status:409});
   if(order.order_payment_review_required||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)return Response.json({error:'Resolve pending financial adjustments first'},{status:409});
+  if(body.action==='submit'&&order.turn14_submission_reconciliation_required)return Response.json({error:'Supplier submission outcome is uncertain. Reconcile with Turn 14 before retrying; duplicate supplier purchase prevented.'},{status:409});
   if(order.turn14_supplier_order_reference){if(body.action==='submit'){try{const po=await ensureTurn14WebsitePO(svc,order,String(order.turn14_supplier_order_reference),order.turn14_supplier_order_response);return Response.json({submitted:true,already_submitted:true,test_only:true,order_id:order.turn14_supplier_order_reference,po});}catch(e){return Response.json({submitted:true,already_submitted:true,po_error:String(e instanceof Error?e.message:e),order_id:order.turn14_supplier_order_reference},{status:200});}}return Response.json({error:'Supplier order already submitted; duplicate prevented'},{status:409});}
   if(!['pending_review','ready_for_submission'].includes(order.turn14_dropship_status))return Response.json({error:'Queue the dropship order for supplier review first'},{status:409});
   const lines=order.turn14_dropship_lines||[];
@@ -61,7 +63,18 @@ export default async function(req:Request){
   const shipping=shipments.map((shipment,i)=>{const option=shipment.shipping.find(x=>String(x.shipping_quote_id)===selections[i]);if(!option)throw Error('Invalid shipping selection');return {shipping_id:Number(option.shipping_quote_id),saturday_delivery:false,signature_required:false};});
   if(body.acknowledge_regulatory!==true)return Response.json({error:'Review and acknowledge regulatory notices'},{status:409});
   // This integration is locked to the Turn 14 test hostname; never send a production order.
-  const response=await turn14Request('/v1/order/from_quote','POST',{data:{environment:'testing',quote_id:Number(order.turn14_quote_id),po_number:order.order_number,acknowledge_prop_65:true,acknowledge_epa:true,acknowledge_carb:true,shipping}});
+  let response:any;
+  try{
+   response=await turn14Request('/v1/order/from_quote','POST',{data:{environment:'testing',quote_id:Number(order.turn14_quote_id),po_number:order.order_number,acknowledge_prop_65:true,acknowledge_epa:true,acknowledge_carb:true,shipping}});
+  }catch(e){
+   const message=String(e instanceof Error?e.message:e);
+   const classification=classifyTurn14SubmissionError(message);
+   if(classification.kind==='uncertain'){
+    await svc.WebsitePartsFulfillment.update(order.id,{turn14_submission_reconciliation_required:true,turn14_submission_error:message.slice(0,450),turn14_dropship_status:'exception'});
+    return Response.json({error:'Turn 14 submission result uncertain. Order held for manual reconciliation; do not resubmit until confirmed.',details:message,reconciliation_required:true},{status:409});
+   }
+   return Response.json({error:'Turn 14 rejected the order. Review supplier response and correct before retrying.',details:message,reconciliation_required:false},{status:409});
+  }
   const orderId=String(response?.data?.id||'');
   if(!orderId)return Response.json({error:'Supplier response missing order ID; inspect supplier orders before retrying',response},{status:502});
   await svc.WebsitePartsFulfillment.update(order.id,{turn14_supplier_order_reference:orderId,turn14_supplier_order_response:response,turn14_supplier_order_submitted_at:new Date().toISOString(),turn14_dropship_status:'submitted'});

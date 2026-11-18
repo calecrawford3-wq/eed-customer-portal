@@ -4,6 +4,8 @@
   "properties": {
     "public_tracking_token": {"type":"string"},
     "tracking_notification_sent_keys": {"type":"array","items":{"type":"string"},"default":[]},
+    "turn14_submission_reconciliation_required": {"type":"boolean","default":false},
+    "turn14_submission_error": {"type":"string"},
     "supplier_shipping_status": {"type":"string"},
     "supplier_tracking": {"type":"array","items":{"type":"object"},"default":[]},
     "supplier_tracking_last_checked": {"type":"string"},
