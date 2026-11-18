@@ -66,15 +66,16 @@ export default function Payments() {
   // has an invoice payment, so never add it a second time.
   const invoiceIds=new Set(invoices.map(i=>String(i.id)));
   const invoiceStripeIds=new Set(invoices.flatMap(i=>(i.payments||[]).map(p=>String(p.stripe_payment_intent||'')).filter(Boolean)));
+  const checkoutReferences=new Set(websiteOrders.map(o=>String(o.order_reference||'')).filter(Boolean));
   const linkedCheckoutIds=new Set(websiteOrders.map(o=>String(o.invoice_id||'')).filter(Boolean));
   const websitePayments=websiteOrders.filter(o=>o.paid_at&&o.stripe_payment_intent&&!invoiceIds.has(String(o.invoice_id||''))&&!invoiceStripeIds.has(String(o.stripe_payment_intent))).map(o=>({
     amount:Number(o.total_charge_cents||0)/100,date:o.paid_at,method:'card',note:'Verified website checkout · '+o.stripe_payment_intent,
     _type:'website',_ref:o.order_reference,_id:o.id,_customerName:o.buyer_name||o.buyer_email||'Website customer',_readonly:true
   }));
-  const manualPayments=fulfillmentOrders.filter(o=>o.payment_verified&&String(o.order_number||'').startsWith('MAN-')&&!o.invoice_id&&!linkedCheckoutIds.has(String(o.invoice_id||''))&&Number(o.subtotal_cents||0)+Number(o.shipping_cents||0)+Number(o.tax_cents||0)>0).map(o=>({
+  const manualPayments=fulfillmentOrders.filter(o=>o.payment_verified&&String(o.order_number||'').startsWith('MAN-')&&!o.invoice_id&&!checkoutReferences.has(String(o.purchase_id||''))&&Number(o.subtotal_cents||0)+Number(o.shipping_cents||0)+Number(o.tax_cents||0)>0).map(o=>({
     amount:(Number(o.subtotal_cents||0)+Number(o.shipping_cents||0)+Number(o.tax_cents||0))/100,
     date:o.manual_paid_at||o.created_date,method:String(o.manual_payment_reference||'').startsWith('pi_')?'card':'other',
-    note:'Manual website order · '+(o.manual_payment_reference||'External payment confirmed by staff'),
+    note:'Manual website order · '+(o.manual_payment_reference||'External payment confirmed by staff')+' · Recorded order amount (review if revised)',
     _type:'manual_website',_ref:o.order_number,_id:o.id,_customerName:o.recipient_name||o.recipient_email||'Manual customer',_readonly:true
   }));
   const refundEntries=fulfillmentOrders.flatMap(o=>(o.order_revision_history||[]).filter(h=>['manual_refund_recorded','stripe_refund'].includes(h.action)).map(h=>({
@@ -107,6 +108,8 @@ export default function Payments() {
     return matchSearch && matchYear;
   });
 
+  const grossIn = filtered.filter(p=>Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
+  const refunded = -filtered.filter(p=>Number(p.amount)<0).reduce((s,p)=>s+Number(p.amount||0),0);
   const totalIn = filtered.reduce((s, p) => s + (p.amount || 0), 0);
   const byCash = filtered.filter(p => p.method === "cash").reduce((s, p) => s + (p.amount || 0), 0);
   const byCard = filtered.filter(p => p.method === "card").reduce((s, p) => s + (p.amount || 0), 0);
@@ -156,6 +159,8 @@ export default function Payments() {
         <p className="text-slate-500 mt-1">Received payments across invoices, estimates, website checkouts and manual orders</p>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-3 text-xs mb-5">Website transactions are shown as a reconciled view, not duplicate invoice entries. Manually marked external payments use the recorded order amount; verify any revised orders against actual receipts. This is a receipts dashboard, not a tax-profit calculation.</div>
+      <div className="flex flex-wrap gap-3 mb-4 text-sm"><div className="bg-white border rounded-lg px-4 py-3">Gross received <strong className="ml-2">{grossIn.toLocaleString('en-US',{style:'currency',currency:'USD'})}</strong></div><div className="bg-white border rounded-lg px-4 py-3">Recorded refunds <strong className="ml-2">{refunded.toLocaleString('en-US',{style:'currency',currency:'USD'})}</strong></div></div>
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="border-0 shadow-sm">
