@@ -24,6 +24,8 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [orderSource,setOrderSource]=useState("shop");
+  const [syncBusy,setSyncBusy]=useState(false);
+  const [syncResult,setSyncResult]=useState(null);
   const [websiteEditor,setWebsiteEditor]=useState(null);
   const [poActionBusy,setPoActionBusy]=useState(false);
   const [poActionError,setPoActionError]=useState("");
@@ -60,6 +62,19 @@ export default function PurchaseOrders() {
 
   const getSupplier = (id) => suppliers.find(s => s.id === id);
 
+  const syncTurn14=async()=>{
+    setSyncBusy(true);setSyncResult(null);
+    try{
+      const r=await base44.functions.invoke("turn14SyncOrderTracking",{limit:60});
+      const data=r.data||r;
+      if(data.error)throw Error(data.error);
+      setSyncResult(data);
+      await Promise.all([qc.invalidateQueries({queryKey:"purchaseOrders"}),qc.invalidateQueries({queryKey:"purchaseOrdersWebsiteDropship"})]);
+      if(data.errors?.length)toast.warning("Turn 14 sync finished with errors");
+      else toast.success("Turn 14 order status sync completed");
+    }catch(e){setSyncResult({error:e?.response?.data?.error||e.message||"Unable to sync Turn 14 orders"})}
+    finally{setSyncBusy(false)}
+  };
   const shopOrders=orders.filter(o=>!o.website_fulfillment_id);
   const linkedForWebsite=o=>orders.filter(p=>p.website_fulfillment_id===o.id);
   const openWebsiteEditor=o=>{setWebsiteEditor(o);setChosenSupplier("");setChosenPo("");setDeliveryMode("ship_to_shop");setChosenLines((o.line_items||[]).map((_,i)=>i));setPoActionError("");};
@@ -89,6 +104,7 @@ export default function PurchaseOrders() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Purchase Orders</h1>
           <p className="text-slate-500 mt-1">{shopOrders.length} shop POs · {websiteSupplierOrders.length} website orders</p>
         </div>
+        <Button variant="outline" disabled={syncBusy} onClick={syncTurn14}>{syncBusy?"Syncing…":"Sync Turn 14 Status"}</Button>
         <Link to="/PurchaseOrderDetail?new=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> New Purchase Order
@@ -96,6 +112,9 @@ export default function PurchaseOrders() {
         </Link>
       </div>
 
+      {syncResult&&<div role="status" className="border rounded-lg p-3 mb-4 text-sm bg-slate-50">
+        {syncResult.error?<p className="text-red-700">{syncResult.error}</p>:<><p className="font-semibold">Turn 14 test sync: {syncResult.checked} orders checked · {syncResult.updated} updated · {(syncResult.errors||[]).length} errors</p><p className="text-slate-600">Sandbox only. Customer tracking emails are disabled during testing.</p>{(syncResult.errors||[]).map((e,i)=><p key={i} className="text-amber-700 mt-1">Order {e.order}: {e.error||e.notification}</p>)}</>}
+      </div>}
       <div className="flex gap-2 mb-5 border-b pb-3">
         <Button variant={orderSource==="shop"?"default":"outline"} onClick={()=>{setOrderSource("shop");setFilterStatus("all")}}>Shop Purchase Orders ({shopOrders.length})</Button>
         <Button variant={orderSource==="website"?"default":"outline"} onClick={()=>{setOrderSource("website");setFilterStatus("all")}}>Website Orders ({websiteSupplierOrders.length})</Button>
