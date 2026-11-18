@@ -59,5 +59,57 @@ export default async function(req:Request){
   const key='expense:'+x.id;
   if(!keys.has(key)){await entry(key,acct.id,-cents,x.description||'Expense','expense',x.id,at)}else skipped++;
  }
- return Response.json({posted,skipped,payouts,errors,cutoff:START,notice:'Stripe payout status is not proof of bank receipt. Purchasing-cost rules require verified job costing before activation.'});
+ // Reconcile only explicitly funded job reserves; never infer that invoice retail
+ // parts revenue equals cash reserved or that an unlinked PO is complete.
+ const purchasing=byKind('reserve');
+ let released=0,held=0;
+ if(purchasing){
+  const jobs=list(await e.Job.list('-created_date',500));
+  const pos=list(await e.PurchaseOrder.list('-created_date',500));
+  const estimates=list(await e.Estimate.list('-created_date',500));
+  const invoices=list(await e.Invoice.list('-created_date',500));
+  const funded=ledger.filter((x:any)=>x.source_type==='purchasing_reserve'&&x.source_id&&Number(x.amount_cents)>0&&new Date(x.occurred_at).getTime()>=new Date(START).getTime());
+  const ids=[...new Set(funded.map((x:any)=>x.source_id))];
+  for(const jobId of ids){
+   const job=jobs.find((j:any)=>j.id===jobId);
+   if(!job){held++;continue;}
+   const linkedEstimates=estimates.filter((x:any)=>x.id===job.estimate_id||x.build_id&&x.build_id===job.build_id);
+   const linkedInvoices=invoices.filter((x:any)=>(job.invoice_ids||[]).includes(x.id)||x.estimate_id&&x.estimate_id===job.estimate_id||x.build_id&&x.build_id===job.build_id);
+   const linked=pos.filter((po:any)=>po.build_id&&po.build_id===job.build_id||po.website_order_number&&(linkedInvoices.some((x:any)=>x.invoice_number===po.website_order_number)||linkedEstimates.some((x:any)=>x.estimate_number===po.website_order_number)));
+   // A job with zero linked POs cannot be considered complete; a later PO may still arrive.
+   if(!linked.length||linked.some((po:any)=>po.status!=='received')){held++;continue;}
+   // No release while job is waiting for parts or purchasing may still change.
+   if(job.blocking_condition==='waiting_on_parts'||job.stage==='waiting_on_parts'){held++;continue;}
+   const fundedCents=funded.filter((x:any)=>x.source_id===jobId).reduce((n:number,x:any)=>n+Number(x.amount_cents),0);
+   const actualCents=linked.reduce((n:number,po:any)=>{
+    const total=Number(po.total);
+    const fallback=Number(po.subtotal||0)+Number(po.shipping_cost||0)+Number(po.tax_amount||0);
+    const credits=(po.returns||[]).reduce((sum:number,r:any)=>sum+Number(r.total||0),0);
+    return n+Math.max(0,Math.round((Number.isFinite(total)?total:fallback-credits)*100));
+   },0);
+   const alreadyReleased=ledger.filter((x:any)=>x.source_type==='purchasing_release'&&x.source_id===jobId&&Number(x.amount_cents)<0).reduce((n:number,x:any)=>n-Math.round(Number(x.amount_cents)),0);
+   const surplus=Math.max(0,fundedCents-actualCents-alreadyReleased);
+   if(!surplus){held++;continue;}
+   const available=Math.max(0,balances.get(purchasing.id)||0);
+   const cents=Math.min(surplus,available);
+   if(!cents){held++;continue;}
+   const fingerprint=linked.map((po:any)=>po.id+':'+po.updated_date+':'+po.total).sort().join('|');
+   const key='purchasing-release:'+jobId+':'+fundedCents+':'+actualCents+':'+alreadyReleased+':'+fingerprint;
+   if(keys.has(key+'-out'))continue;
+   const at=new Date().toISOString();
+   await entry(key+'-out',purchasing.id,-cents,'Final PO cost reconciliation · '+(job.job_number||jobId),'purchasing_release',jobId,at,key);
+   await entry(key+'-in',clearing.id,cents,'Released purchasing surplus · '+(job.job_number||jobId),'purchasing_release',jobId,at,key);
+   released+=cents;
+   let remaining=cents;
+   for(const r of rules){
+    if(r.rule_type==='purchasing_cost')continue;
+    const dest=accounts.find((a:any)=>a.id===r.target_account_id&&a.active!==false);
+    if(!dest||dest.id===clearing.id)continue;
+    const proposed=r.rule_type==='percentage'?Math.floor(remaining*Number(r.value||0)/100):Math.round(Number(r.value||0)*100);
+    const allocation=Math.min(remaining,Math.max(0,proposed));
+    if(allocation){await move('release-rule:'+key+':'+r.id,clearing.id,dest.id,allocation,'Released purchasing surplus allocation',at);remaining-=allocation;}
+   }
+  }
+ }
+ return Response.json({posted,skipped,released_cents:released,held_jobs:held,payouts,errors,cutoff:START,notice:'Stripe payout status is not proof of bank receipt. Purchasing-cost rules require verified job costing before activation.'});
 }
