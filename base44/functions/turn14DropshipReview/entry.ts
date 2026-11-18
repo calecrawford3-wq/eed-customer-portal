@@ -1,6 +1,7 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
 import {turn14Request} from '../../shared/turn14.ts';
 import {ensureTurn14WebsitePO} from '../../shared/turn14WebsitePO.ts';
+import {turn14Availability} from '../../shared/turn14Availability.ts';
 const rows=(x:any)=>Array.isArray(x)?x:x?.items||[];
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
@@ -25,6 +26,8 @@ export default async function(req:Request){
   for(const line of lines){
    const part=await svc.Part.get(line.part_id).catch(()=>null);
    if(!part?.turn14_dropship_enabled||String(part.turn14_item_id)!==String(line.turn14_item_id))return Response.json({error:'Supplier product link changed; review required'},{status:409});
+   const availability=turn14Availability(part,Number(line.quantity));
+   if(!availability.eligible)return Response.json({error:'Supplier item unavailable: '+(line.sku||part.part_number)+' — '+availability.reason},{status:409});
    const qty=Number(line.quantity);
    if(!Number.isInteger(qty)||qty<1)return Response.json({error:'Invalid supplier quantity'},{status:409});
    const key=String(part.turn14_item_id);
@@ -82,10 +85,9 @@ export default async function(req:Request){
    if(!Number.isInteger(qty)||qty<=0){problems.push('Invalid quantity for '+line.sku);continue;}
    const supplierStock=Number(part.turn14_available_quantity||0);
    const manufacturerDirect=!!String(part.turn14_dropship_controller_id||'').trim();
-   if(supplierStock<qty&&!manufacturerDirect)problems.push('Insufficient Turn 14 warehouse stock and no manufacturer-direct controller: '+line.sku);
-   // Manufacturer-direct eligibility is separate from warehouse quantity.
-   // Quote must still be confirmed before any real supplier submission.
-   if(!Number.isFinite(Number(part.turn14_purchase_cost)))problems.push('Missing supplier cost: '+line.sku);
+   const availability=turn14Availability(part,qty);
+   if(!availability.eligible)problems.push(line.sku+': '+availability.reason);
+   // A manufacturer-direct flag allows quoting, not guaranteed fulfillment.
    items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,supplier_stock:supplierStock,manufacturer_direct:manufacturerDirect,dropship_controller_id:String(part.turn14_dropship_controller_id||''),unit_cost:Number(part.turn14_purchase_cost||0)});
   }
   if(!items.length)problems.push('No dropship-enabled Turn 14 products in this fulfillment');
@@ -116,7 +118,8 @@ export default async function(req:Request){
    if(!part.turn14_dropship_enabled)continue;
    const qty=Number(line.quantity||0);
    const direct=!!String(part.turn14_dropship_controller_id||'').trim();
-   if(!Number.isInteger(qty)||qty<=0||(Number(part.turn14_available_quantity||0)<qty&&!direct)||!Number.isFinite(Number(part.turn14_purchase_cost)))return Response.json({error:'Dropship item not ready: '+line.sku},{status:409});
+   const availability=turn14Availability(part,qty);
+   if(!availability.eligible)return Response.json({error:'Dropship item not ready: '+line.sku+' — '+availability.reason},{status:409});
    items.push({part_id:part.id,sku:part.part_number,supplier_sku:part.turn14_supplier_sku||part.supplier_part_number||part.part_number,supplier_name:part.supplier_product_name||part.name,turn14_item_id:part.turn14_item_id,quantity:qty,unit_cost:Number(part.turn14_purchase_cost)});
   }
   if(!items.length||!order.shipping_address||!order.recipient_name)return Response.json({error:'No eligible items or customer shipping address'},{status:409});

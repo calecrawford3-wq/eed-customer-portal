@@ -70,7 +70,7 @@ export default async function(req:Request){
      if(p.has_map&&(!mapEntry||!Number.isFinite(Number(mapEntry.price))||Number(mapEntry.price)<=0))throw Error('Missing required MAP');
      const map=p.has_map?Number(mapEntry.price):0;
      const now=new Date().toISOString();
-     const fields:any={turn14_available_quantity:qty,turn14_last_synced_at:now};
+     const fields:any={turn14_available_quantity:qty,turn14_last_synced_at:now,...(typeof p.can_purchase==='boolean'?{turn14_can_purchase:p.can_purchase}:{})};
      if(mode==='pricing'){fields.turn14_purchase_cost=cost;fields.turn14_map_price=map;}
      const diff=Object.entries(fields).filter(([k,v])=>k!=='turn14_last_synced_at'&&String(part[k]??0)!==String(v)).map(([k,v])=>({field:k,before:part[k]??null,after:v}));
      if(diff.length){

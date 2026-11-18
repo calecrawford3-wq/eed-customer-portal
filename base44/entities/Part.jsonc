@@ -255,6 +255,7 @@
     "turn14_map_price": {
       "type": "number"
     },
+    "turn14_can_purchase": {"type":"boolean","description":"Supplier explicitly allows purchase; false blocks new supplier orders"},
     "turn14_available_quantity": {
       "type": "number",
       "default": 0
