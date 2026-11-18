@@ -7,7 +7,7 @@ import React, {
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
-import { uploadAttachments, isPdfAttachment } from "@/lib/messagingUtils";
+import { uploadAttachments, isPdfAttachment, isVideoAttachment } from "@/lib/messagingUtils";
 
 const MessagingContext = createContext(null);
 
@@ -73,9 +73,10 @@ export function MessagingProvider({ children }) {
         const pdfLinks = [];
         attachmentsToUpload.forEach((attachment, index) => {
           if (isPdfAttachment(attachment)) pdfLinks.push("PDF: " + attachment.file.name + "\n" + uploaded[index]);
+          else if (isVideoAttachment(attachment)) pdfLinks.push("Video: " + attachment.file.name + "\n" + uploaded[index]);
           else mediaUrls.push(uploaded[index]);
         });
-        // VoIP.ms MMS accepts images; send PDFs as SMS links to avoid carrier rejection.
+        // VoIP.ms MMS accepts images; send PDFs and videos as SMS links to avoid carrier rejection.
         const outgoingMessage = [variables.message, pdfLinks.join("\n")].filter(Boolean).join("\n\n");
 
         const result = await base44.functions.invoke(

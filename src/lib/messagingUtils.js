@@ -4,6 +4,8 @@ import { compressImage } from "@/lib/compressImage";
 export const MAX_ATTACHMENTS = 3;
 export const MAX_ATTACHMENT_BYTES = 1300 * 1024;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+export const isVideoAttachment = a => /^(video\/(mp4|quicktime|x-m4v|webm))$/i.test(a?.file?.type || "") || /\.(mp4|mov|m4v|webm)$/i.test(a?.file?.name || "");
 export const isPdfAttachment = a => a?.file?.type === "application/pdf" || /\.pdf$/i.test(a?.file?.name || "");
 
 export const ALLOWED_IMAGE_TYPES = new Set([
@@ -171,13 +173,15 @@ export async function buildAttachmentsFromFiles(files, existingCount = 0) {
   for (const file of selectedFiles) {
     if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
       if (file.size > MAX_PDF_BYTES) throw new Error("PDF exceeds 10 MB.");
+    } else if (isVideoAttachment({file})) {
+      if (file.size > MAX_VIDEO_BYTES) throw new Error("Video exceeds 50 MB. Trim or compress it before attaching.");
     } else if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      throw new Error("Only JPG, JPEG, PNG, and GIF files can be attached.");
+      throw new Error("Only PDF, MP4, MOV, M4V, WebM, JPG, PNG, and GIF files can be attached.");
     }
   }
   const processed = await Promise.all(
     selectedFiles.map(async (file) => {
-      if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name) && file.size > MAX_ATTACHMENT_BYTES) {
+      if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name) && !isVideoAttachment({file}) && file.size > MAX_ATTACHMENT_BYTES) {
         try {
           return await compressImage(file, MAX_ATTACHMENT_BYTES);
         } catch {

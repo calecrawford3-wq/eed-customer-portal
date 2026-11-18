@@ -51,7 +51,7 @@ export default function ReplyComposer({
         <input
           ref={replyFileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,application/pdf,.pdf"
+          accept="image/jpeg,image/png,image/gif,application/pdf,.pdf,video/mp4,video/quicktime,video/x-m4v,video/webm,.mp4,.mov,.m4v,.webm"
           multiple
           className="hidden"
           onChange={handleReplyFiles}
@@ -62,7 +62,7 @@ export default function ReplyComposer({
           size="icon"
           onClick={() => replyFileInputRef.current?.click()}
           disabled={attachments.length >= MAX_ATTACHMENTS}
-          title="Attach images or PDF files"
+          title="Attach images, PDFs or videos"
         >
           <Paperclip className="w-4 h-4" />
         </Button>

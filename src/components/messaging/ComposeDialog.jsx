@@ -174,7 +174,7 @@ export default function ComposeDialog({
             <input
               ref={composeFileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/gif,application/pdf,.pdf"
+              accept="image/jpeg,image/png,image/gif,application/pdf,.pdf,video/mp4,video/quicktime,video/x-m4v,video/webm,.mp4,.mov,.m4v,.webm"
               multiple
               className="hidden"
               onChange={handleComposeFiles}

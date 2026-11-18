@@ -1,6 +1,6 @@
 import React from "react";
-import { X, FileText } from "lucide-react";
-import { isPdfAttachment } from "@/lib/messagingUtils";
+import { X, FileText, Video } from "lucide-react";
+import { isPdfAttachment, isVideoAttachment } from "@/lib/messagingUtils";
 
 export default function AttachmentPreviewList({ attachments, onRemove, disabled = false }) {
   if (!attachments.length) return null;
@@ -14,6 +14,11 @@ export default function AttachmentPreviewList({ attachments, onRemove, disabled 
           {isPdfAttachment(attachment) ? (
             <div className="h-full flex flex-col items-center justify-center p-2 text-slate-700">
               <FileText className="w-7 h-7" />
+              <span className="text-[10px] truncate w-full text-center">{attachment.file.name}</span>
+            </div>
+          ) : isVideoAttachment(attachment) ? (
+            <div className="h-full flex flex-col items-center justify-center p-2 text-slate-700">
+              <Video className="w-7 h-7" />
               <span className="text-[10px] truncate w-full text-center">{attachment.file.name}</span>
             </div>
           ) : (
