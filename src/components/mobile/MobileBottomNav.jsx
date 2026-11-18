@@ -58,16 +58,16 @@ const MORE_SECTIONS = [
     ],
   },
   {
-    label: "Standalone Quotes",
+    label: "Quotes & Invoices",
     items: [
       { name: "Estimates", page: "Estimates", icon: ClipboardList },
+      { name: "Invoices", page: "Invoices", icon: DollarSign },
     ],
   },
   {
     label: "Accounting",
     items: [
       { name: "Accounting", page: "Accounting", icon: DollarSign },
-      { name: "Invoices", page: "Invoices", icon: DollarSign },
       { name: "Payments", page: "Payments", icon: DollarSign },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },
       { name: "Check Printing", page: "CheckPrinting", icon: Printer },
