@@ -93,6 +93,10 @@
     },
     "printed_check_id": {
       "type": "string"
+    },
+    "paid_from_account_id": {
+      "type": "string",
+      "description": "Virtual account used to fund this expense"
     }
   },
   "required": [

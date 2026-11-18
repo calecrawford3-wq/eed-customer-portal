@@ -151,10 +151,20 @@ export default async function(req:Request){
   if(!at||new Date(at).getTime()<new Date(START).getTime())continue;
   const cents=Math.round(Number(x.amount||0)*100);
   if(cents<=0)continue;
-  const acct=x.category==='parts_cogs'?byKind('reserve'):byKind('operating');
+  const acct=(x.paid_from_account_id?accounts.find((a:any)=>a.id===x.paid_from_account_id):null)||(x.category==='parts_cogs'?byKind('reserve'):byKind('operating'));
   if(!acct)continue;
   const key='expense:'+x.id;
-  if(!keys.has(key)){await entry(key,acct.id,-cents,x.description||'Expense','expense',x.id,at)}else skipped++;
+  const old=ledger.filter((l:any)=>l.source_type==='expense'&&l.source_id===x.id);
+  const netByAccount=new Map<string,number>();
+  for(const l of old)netByAccount.set(l.account_id,(netByAccount.get(l.account_id)||0)+Number(l.amount_cents||0));
+  const desired=new Map<string,number>([[acct.id,-cents]]);
+  const affected=new Set([...netByAccount.keys(),...desired.keys()]);
+  for(const accountId of affected){
+   const difference=(desired.get(accountId)||0)-(netByAccount.get(accountId)||0);
+   if(!difference)continue;
+   const revisionKey=key+':reconcile:'+accountId+':'+(desired.get(accountId)||0)+':'+(netByAccount.get(accountId)||0);
+   await entry(revisionKey,accountId,difference,'Expense reconciliation: '+(x.description||''),'expense',x.id,new Date().toISOString());
+  }
  }
  // Reconcile only explicitly funded job reserves; never infer that invoice retail
  // parts revenue equals cash reserved or that an unlinked PO is complete.

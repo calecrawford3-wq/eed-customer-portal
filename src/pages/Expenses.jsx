@@ -58,7 +58,7 @@ export default function Expenses() {
     if (params.get("new") !== "1") return;
     params.delete("new");
     window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
-    setEditing(null); setForm({ ...emptyExpense, expense_number: `EXP-${Date.now().toString().slice(-6)}` }); setDialogOpen(true);
+    setEditing(null); setForm({ ...emptyExpense, paid_from_account_id: defaultAccount("other")?.id || "", expense_number: `EXP-${Date.now().toString().slice(-6)}` }); setDialogOpen(true);
   }, []);
 
 
@@ -116,6 +116,9 @@ export default function Expenses() {
     queryFn: () => base44.entities.Expense.list("-date", 500),
   });
 
+  const {data:virtualAccounts=[]}=useQuery({queryKey:["virtualAccounts"],queryFn:()=>base44.entities.VirtualAccount.list("-created_date",100)});
+  const defaultAccount=category=>virtualAccounts.find(a=>a.kind===(category==="parts_cogs"?"reserve":"operating")&&a.active!==false);
+  const accountLabel=a=>a.kind==="equity"?"Distributions":a.name;
   const { data: purchaseOrders = [] } = useQuery({
     queryKey: ["purchaseOrders"],
     queryFn: () => base44.entities.PurchaseOrder.list("-created_date", 200),
@@ -181,12 +184,13 @@ export default function Expenses() {
       notes: noteParts.join(" | "),
       source: "purchase_order",
       po_id: po.id,
+      paid_from_account_id: defaultAccount("parts_cogs")?.id || "",
     });
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ ...emptyExpense, expense_number: `EXP-${Date.now().toString().slice(-6)}` });
+    setForm({ ...emptyExpense, paid_from_account_id: defaultAccount("other")?.id || "", expense_number: `EXP-${Date.now().toString().slice(-6)}` });
     setDialogOpen(true);
   };
   const openEdit = (e) => { setEditing(e); setForm({ ...e }); setDialogOpen(true); };
@@ -304,6 +308,7 @@ export default function Expenses() {
                 <th className="text-left py-3 px-4 font-medium text-slate-600">Description</th>
                 <th className="text-left py-3 px-4 font-medium text-slate-600">Vendor</th>
                 <th className="text-left py-3 px-4 font-medium text-slate-600">Category</th>
+                <th className="text-left py-3 px-4 font-medium text-slate-600">Paid From</th>
                 <th className="text-right py-3 px-4 font-medium text-slate-600">Amount</th>
                 <th className="text-center py-3 px-4 font-medium text-slate-600">Deductible</th>
                 <th className="py-3 px-4 w-20"></th>
@@ -319,6 +324,7 @@ export default function Expenses() {
                   </td>
                   <td className="py-3 px-4 text-slate-600">{exp.vendor || "—"}</td>
                   <td className="py-3 px-4"><Badge className="bg-slate-100 text-slate-700 border-0 text-xs">{getCategoryLabel(exp.category)}</Badge></td>
+                  <td className="py-3 px-4 text-slate-600">{accountLabel(virtualAccounts.find(a=>a.id===exp.paid_from_account_id)||defaultAccount(exp.category)||{name:"Unassigned"})}</td>
                   <td className="py-3 px-4 text-right font-semibold">${Number(exp.amount || 0).toFixed(2)}</td>
                   <td className="py-3 px-4 text-center">
                     {exp.is_deductible ? <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Yes</Badge> : <Badge className="bg-slate-100 text-slate-400 border-0 text-xs">No</Badge>}
@@ -335,7 +341,7 @@ export default function Expenses() {
             </tbody>
             <tfoot className="bg-slate-50 border-t border-slate-200">
               <tr>
-                <td colSpan={4} className="py-3 px-4 font-semibold text-slate-700">Total</td>
+                <td colSpan={5} className="py-3 px-4 font-semibold text-slate-700">Total</td>
                 <td className="py-3 px-4 text-right font-bold text-slate-900">${totalExpenses.toFixed(2)}</td>
                 <td colSpan={2}></td>
               </tr>
@@ -374,7 +380,7 @@ export default function Expenses() {
               <div><Label>Vendor</Label><Input value={form.vendor || ""} onChange={e => setForm({ ...form, vendor: e.target.value })} /></div>
               <div>
                 <Label>Category</Label>
-                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v, paid_from_account_id: !editing && (!form.paid_from_account_id || form.paid_from_account_id===defaultAccount(form.category)?.id) ? (defaultAccount(v)?.id||"") : form.paid_from_account_id })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -393,6 +399,14 @@ export default function Expenses() {
                   <Input type="number" value={form.tax_amount || 0} onChange={e => setForm({ ...form, tax_amount: Number(e.target.value) })} className="pl-7" min="0" step="0.01" />
                 </div>
               </div>
+            </div>
+            <div>
+              <Label>Paid From Account</Label>
+              <Select value={form.paid_from_account_id || defaultAccount(form.category)?.id || ""} onValueChange={v=>setForm({...form,paid_from_account_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
+                <SelectContent>{virtualAccounts.filter(a=>a.active!==false).map(a=><SelectItem key={a.id} value={a.id}>{accountLabel(a)}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 mt-1">Debits the selected virtual account. No bank transfer occurs.</p>
             </div>
             <div>
               <Label>Payment Method</Label>
