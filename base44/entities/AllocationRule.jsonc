@@ -30,6 +30,11 @@
       "type": "number",
       "default": 0,
       "description": "Optional minimum balance to retain in dollars"
+    },
+    "allow_savings_backup": {
+      "type": "boolean",
+      "default": false,
+      "description": "When receiving funds are insufficient, use Savings to fill this target; enable only for essential obligations"
     }
   },
   "required": [

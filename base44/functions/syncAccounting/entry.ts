@@ -38,6 +38,14 @@ export default async function(req:Request){
    const shortfall=Math.max(0,Math.round(floor*100)-(balances.get(dest.id)||0));
    const amount=Math.min(shortfall,Math.max(0,balances.get(clearing.id)||0));
    if(amount>0)await move(prefix+':target:'+r.id,clearing.id,dest.id,amount,'Monthly account funding target',at);
+   // Only opt-in essential targets may draw on Savings. Never drain Savings
+   // for owner distributions, purchasing, or discretionary allocations.
+   if(r.allow_savings_backup===true&&['operating','payroll','tax'].includes(dest.kind)){
+    const savings=byKind('savings');
+    const gap=Math.max(0,Math.round(floor*100)-(balances.get(dest.id)||0));
+    const backup=savings?Math.min(gap,Math.max(0,balances.get(savings.id)||0)):0;
+    if(backup>0)await move(prefix+':savings-backup:'+r.id,savings.id,dest.id,backup,'Automatic Savings backup for '+dest.name,at);
+   }
   }
   // Never send money to savings until every required target is funded.
   const allFunded=monthly.every((r:any)=>{
