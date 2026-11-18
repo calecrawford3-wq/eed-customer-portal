@@ -97,9 +97,9 @@ export default function Expenses() {
         ...f,
         description: result.description || f.description,
         vendor: result.vendor || f.vendor,
-        amount: result.amount || f.amount,
+        amount: Math.max(0, Number(result.amount || f.amount || 0)-Number(result.tax_amount ?? f.tax_amount ?? 0)),
         tax_amount: result.tax_amount ?? f.tax_amount,
-        tax_included_in_amount: true,
+        tax_included_in_amount: false,
         date: result.date || f.date,
         category: result.category || f.category,
         payment_method: result.payment_method || f.payment_method,
@@ -189,9 +189,9 @@ export default function Expenses() {
       category: "parts_cogs",
       description: `PO ${po.po_number}${desc ? `: ${desc.substring(0, 80)}` : ""}`,
       vendor: supplier?.name || "",
-      amount: totalCost,
+      amount: Math.max(0,totalCost-poTax),
       tax_amount: poTax,
-      tax_included_in_amount: true,
+      tax_included_in_amount: false,
       date: po.received_date || new Date().toISOString().split("T")[0],
       payment_method: "other",
       is_deductible: true,
@@ -207,7 +207,7 @@ export default function Expenses() {
     setForm({ ...emptyExpense, paid_from_account_id: defaultAccount("other")?.id || "", expense_number: `EXP-${Date.now().toString().slice(-6)}` });
     setDialogOpen(true);
   };
-  const openEdit = (e) => { setEditing(e); setForm({ ...e, tax_included_in_amount:e.tax_included_in_amount !== false }); setDialogOpen(true); };
+  const openEdit = (e) => { setEditing(e); setForm({ ...e, amount:e.tax_included_in_amount===false?Number(e.amount||0):Math.max(0,Number(e.amount||0)-Number(e.tax_amount||0)), tax_included_in_amount:false }); setDialogOpen(true); };
 
   const filtered = expenses.filter(e => {
     const matchSearch = (e.description + e.vendor + e.category + (e.expense_number || "")).toLowerCase().includes(search.toLowerCase());
@@ -403,7 +403,7 @@ export default function Expenses() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Amount *</Label>
+                <Label>Subtotal *</Label>
                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                   <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} className="pl-7" min="0" step="0.01" />
                 </div>
@@ -423,11 +423,10 @@ export default function Expenses() {
               </Select>
               <p className="text-xs text-slate-500 mt-1">Debits the selected virtual account. No bank transfer occurs.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Switch checked={form.tax_included_in_amount!==false} onCheckedChange={v=>setForm({...form,tax_included_in_amount:v})} />
-              <Label>Amount already includes sales tax</Label>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 flex justify-between items-center">
+              <span className="font-medium text-sm">Total Expense (Subtotal + Tax)</span>
+              <strong className="text-lg">{((Math.round(Number(form.amount||0)*100)+Math.round(Number(form.tax_amount||0)*100))/100).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
             </div>
-            <p className="text-sm text-slate-600">Total deducted from selected account: <strong>{(Number(form.amount||0)+(form.tax_included_in_amount===false?Number(form.tax_amount||0):0)).toLocaleString('en-US',{style:'currency',currency:'USD'})}</strong></p>
             <div>
               <Label>Payment Method</Label>
               <Select value={form.payment_method} onValueChange={v => setForm({ ...form, payment_method: v })}>
