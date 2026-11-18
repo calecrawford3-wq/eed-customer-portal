@@ -40,6 +40,7 @@ const MORE_SECTIONS = [
     items: [
       { name: "Customers", page: "Customers", icon: Users },
       { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
+      { name: "Customer Credits", page: "Credits", icon: Award },
       { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: "refresh" },
     ],
   },
@@ -63,10 +64,11 @@ const MORE_SECTIONS = [
     ],
   },
   {
-    label: "Billing",
+    label: "Accounting",
     items: [
+      { name: "Accounting", page: "Accounting", icon: DollarSign },
+      { name: "Invoices", page: "Invoices", icon: DollarSign },
       { name: "Payments", page: "Payments", icon: DollarSign },
-      { name: "Credits", page: "Credits", icon: Award },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },
       { name: "Check Printing", page: "CheckPrinting", icon: Printer },
     ],

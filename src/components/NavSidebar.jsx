@@ -54,6 +54,7 @@ const navSections = [
     main: { name: "Customers", page: "Customers" },
     secondary: [
       { name: "Customer Success", page: "CustomerSuccess", icon: LifeBuoy },
+      { name: "Customer Credits", page: "Credits", icon: Award },
       { name: "Refresh Requests", page: "RefreshRequests", icon: RefreshCw, badge: "refresh" },
     ],
   },
@@ -72,15 +73,13 @@ const navSections = [
     ],
   },
   {
-    label: "Billing",
+    label: "Accounting",
     icon: Receipt,
-    main: { name: "Invoices", page: "Invoices" },
+    main: { name: "Accounting", page: "Accounting" },
     secondary: [
       { name: "Estimates", page: "Estimates", icon: ClipboardList },
       { name: "Approvals", page: "Approvals", icon: ClipboardCheck, badge: "approvals" },
       { name: "Payments", page: "Payments", icon: DollarSign },
-      { name: "Accounting", page: "Accounting", icon: DollarSign },
-      { name: "Credits", page: "Credits", icon: Award },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },
       { name: "Reports", page: "Reports", icon: BarChart2 },
     ],
