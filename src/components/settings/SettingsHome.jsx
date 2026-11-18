@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {Link} from 'react-router-dom';
 import {Input} from '@/components/ui/input';
-import {Search, Building2, Receipt, Truck, CreditCard, Users, Wrench, Workflow, Package, MonitorSmartphone, Mail, Shield, ChevronRight} from 'lucide-react';
+import {Search, Plug, Building2, Receipt, Truck, CreditCard, Users, Wrench, Workflow, Package, MonitorSmartphone, Mail, Shield, ChevronRight} from 'lucide-react';
 
 export const SETTINGS_CATEGORIES = [
  {name:'Company',tab:'company',icon:Building2,description:'Business identity, contact details and branding'},
@@ -14,6 +14,7 @@ export const SETTINGS_CATEGORIES = [
  {name:'Inventory',tab:'inventory',icon:Package,description:'Storage locations and inventory administration'},
  {name:'Customer Portal',tab:'portal',icon:MonitorSmartphone,description:'Customer onboarding and portal tools'},
  {name:'Communications',tab:'communications',icon:Mail,description:'Email, phone and notifications'},
+ {name:'API Integrations',tab:'api',icon:Plug,description:'Turn 14 and supplier API diagnostics and testing'},
  {name:'System',tab:'system',icon:Shield,description:'Diagnostics, integrations and administration'},
 ];
 export default function SettingsHome({open}){

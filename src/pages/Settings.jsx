@@ -25,6 +25,7 @@ import SpecSheets from './SpecSheets';
 import ReplacementRules from './ReplacementRules';
 import CannedJobs from './CannedJobs';
 import Addons from './Addons';
+import Turn14ApiSettings from '@/components/settings/Turn14ApiSettings';
 
 const defaultSettings = {
   key: "global",
@@ -82,7 +83,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams,setSearchParams] = useSearchParams();
-  const activeTab = ['overview','company','billing','shipping','payments','employees','engines','shop','inventory','portal','communications','system','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+  const activeTab = ['overview','company','billing','shipping','payments','employees','engines','shop','inventory','portal','communications','system','api','email','templates','workflows','storage','telephony','notifications'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
   const openTab = tab=>setSearchParams(tab==='overview'?{}:{tab});
   const [form, setForm] = useState(defaultSettings);
 
@@ -294,20 +295,10 @@ export default function Settings() {
           <ConfigurationEditor title="Manage addons"><Addons/></ConfigurationEditor>
           <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Workflow templates</h3><WorkflowTemplatesPanel/></section>
         </TabsContent>
+        <TabsContent value="api" className="space-y-4"><Turn14ApiSettings form={form} set={set}/></TabsContent>
         <TabsContent value="inventory" className="space-y-4">
           <SettingsLinks title="Inventory administration" links={[{label:'Inventory',to:'/Inventory',detail:'Manage stock and reorder levels'},{label:'Suppliers',to:'/Suppliers'},{label:'Purchase Orders',to:'/PurchaseOrders'}]}/>
-          <section className="rounded-lg border bg-white p-4 space-y-3">
-            <h3 className="font-semibold">Turn 14 Distribution — Integration Preferences</h3>
-            <p className="text-sm text-slate-600">These are your saved preferences. Supplier catalog, pricing, stock synchronization, and dropship order submission will become operational only after Turn 14 API credentials and endpoint verification are completed.</p>
-            {[
-              ['turn14_auto_import','Automatically import catalog products'],
-              ['turn14_inventory_sync','Sync supplier inventory availability'],
-              ['turn14_dealer_cost_map_sync','Sync dealer costs and MAP pricing'],
-              ['turn14_auto_paid_order_fulfillment','Automatically submit eligible paid dropship orders'],
-              ['turn14_hide_supplier_identity','Hide Turn 14 identity on customer-facing pages'],
-            ].map(([key,label])=><label key={key} className="flex items-center gap-3 text-sm"><input type="checkbox" checked={!!form[key]} onChange={e=>set(key,e.target.checked)} />{label}</label>)}
-            <p className="text-xs text-amber-700">Not connected yet — no automatic orders will be submitted until supplier integration is tested and activated.</p>
-          </section>
+          <SettingsLinks title="Supplier API" description="Turn 14 testing, synchronization and configuration are now under API Integrations." links={[{label:'Turn 14 API Settings',to:'/Settings?tab=api'}]}/>
           <section className="rounded-lg border bg-white p-4 space-y-3"><h3 className="font-semibold">Storage locations</h3><StorageLocationsPanel/></section>
         </TabsContent>
         <TabsContent value="portal" className="space-y-4">
