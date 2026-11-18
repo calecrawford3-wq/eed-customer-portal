@@ -104,7 +104,7 @@ export default function PurchaseOrders() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Purchase Orders</h1>
           <p className="text-slate-500 mt-1">{shopOrders.length} shop POs · {websiteSupplierOrders.length} website orders</p>
         </div>
-        <Button variant="outline" disabled={syncBusy} onClick={syncTurn14}>{syncBusy?"Syncing…":"Sync Turn 14 Status"}</Button>
+        <Link to="/Settings?tab=api"><Button variant="outline">API Settings & Tests</Button></Link>
         <Link to="/PurchaseOrderDetail?new=1">
           <Button className="bg-[#e20404] hover:bg-[#c00303] text-white">
             <Plus className="w-4 h-4 mr-2" /> New Purchase Order
