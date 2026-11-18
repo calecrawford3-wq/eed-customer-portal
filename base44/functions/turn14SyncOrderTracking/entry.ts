@@ -39,9 +39,21 @@ export default async function(req:Request){
  let updated=0,errors:any[]=[];
  for(const t of targets){
   try{
-   const result=await turn14Request('/v1/orders/'+t.id);
-   const data=Array.isArray(result.data)?result.data[0]:result.data;
-   if(!data)throw Error('No supplier order returned');
+   let result:any,lookup='order_id',lookupFailure='';
+   try{result=await turn14Request('/v1/orders/'+t.id)}
+   catch(e){
+    const message=String(e instanceof Error?e.message:e);
+    if(!/failed \(404\)/.test(message))throw e;
+    lookupFailure=message;
+    const poNumber=str(t.type==='shop'?t.record.po_number:t.record.order_number);
+    if(!/^[a-zA-Z0-9_-]{1,80}$/.test(poNumber))throw Error('Cannot use PO lookup: invalid PO number');
+    lookup='po_number';
+    try{result=await turn14Request('/v1/orders/po/'+poNumber)}
+    catch(fallbackError){throw Error('Order ID lookup returned 404; PO-number lookup also failed: '+String(fallbackError instanceof Error?fallbackError.message:fallbackError))}
+   }
+   const matches=Array.isArray(result?.data)?result.data:result?.data?[result.data]:[];
+   const data=matches.find((x:any)=>str(x?.id)===t.id)||matches.find((x:any)=>str(x?.attributes?.purchase_order_number)===str(t.type==='shop'?t.record.po_number:t.record.order_number))||matches[0];
+   if(!data)throw Error('Turn 14 returned no order for ID '+t.id+' or the original PO number; sandbox may not retain submitted orders');
    const attr=data.attributes||{},status=str(attr.status)||'Submitted';
    const invoiceRefs=Array.isArray(attr.relationships?.invoice)?attr.relationships.invoice:Array.isArray(data.relationships?.invoice)?data.relationships.invoice:[];
    const invoiceIds=[...new Set(invoiceRefs.map((r:any)=>str(r.invoice_id||r.id)).filter(x=>/^\d+$/.test(x)))];
