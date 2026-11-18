@@ -97,6 +97,51 @@ export default async function(req:Request){
    }else skipped++;
   }
  }
+ // Manual payments are independent of Stripe payouts. Only confirmed, non-Stripe
+ // receipts are credited. Pending checks and customer payment intentions are excluded.
+ let manualPosted=0;
+ const manualRecords=list(await e.ManualPayment.list('-created_date',500));
+ const invoiceRecords=list(await e.Invoice.list('-created_date',500));
+ const estimateRecords=list(await e.Estimate.list('-created_date',500));
+ const websiteRecords=list(await e.WebsitePartsFulfillment.list('-created_date',500));
+ const seenManualReferences=new Set<string>();
+ const cutoffMs=new Date(START).getTime();
+ const validDate=(at:any)=>at&&Number.isFinite(Date.parse(at))&&Date.parse(at)>=cutoffMs;
+ async function postManual(key:string,cents:number,at:string,memo:string,sourceType:string,sourceId:string){
+  if(!Number.isSafeInteger(cents)||cents<=0||!validDate(at)||keys.has(key))return;
+  await entry(key,clearing.id,cents,memo,sourceType,sourceId,at);
+  manualPosted++;
+  if(monthly.length)await allocateAvailable('manual-allocation:'+key,at);
+ }
+ for(const p of manualRecords){
+  if(p.status!=='verified'||!validDate(p.received_at))continue;
+  const reference=[p.invoice_id||'',p.estimate_id||'',p.check_number||'',p.amount||''].join(':');
+  if(p.payment_method==='check'&&p.check_number)seenManualReferences.add(reference);
+  await postManual('manual-payment:'+p.id,Math.round(Number(p.amount||0)*100),p.received_at,'Verified manual '+(p.payment_method||'payment')+' · '+(p.document_number||''),'manual_payment',p.id);
+ }
+ for(const [type,docs] of [['invoice',invoiceRecords],['estimate',estimateRecords]] as const){
+  for(const doc of docs){
+   for(let i=0;i<(doc.payments||[]).length;i++){
+    const p=doc.payments[i];
+    const at=p.date||p.paid_at||p.created_at;
+    const method=String(p.method||p.payment_method||'').toLowerCase();
+    // Card payments can originate from Stripe even if staff manually entered them.
+    // Require a non-card payment method and no processor identifiers.
+    if(!['cash','check','ach','bank_transfer','wire','other'].includes(method)||p.stripe_payment_intent||p.payment_intent||p.stripe_session_id||!validDate(at))continue;
+    if(type==='estimate'&&invoiceRecords.some((inv:any)=>inv.estimate_id===doc.id&&(inv.payments||[]).some((ip:any)=>String(ip.date||'')===String(at)&&Number(ip.amount)===Number(p.amount))))continue;
+    const key='manual-document:'+type+':'+doc.id+':'+(p.id||p.payment_id||i);
+    await postManual(key,Math.round(Number(p.amount||0)*100),at,'Manually recorded '+type+' payment · '+(doc.invoice_number||doc.estimate_number||''),'manual_document_payment',doc.id);
+   }
+  }
+ }
+ for(const order of websiteRecords){
+  if(order.payment_verified!==true||!String(order.order_number||'').startsWith('MAN-')||order.invoice_id)continue;
+  const reference=String(order.manual_payment_reference||'');
+  if(reference.startsWith('pi_')||reference.startsWith('cs_'))continue;
+  const at=order.manual_paid_at;
+  const amount=Math.round(Number(order.subtotal_cents||0)+Number(order.shipping_cents||0)+Number(order.tax_cents||0));
+  await postManual('manual-website-order:'+order.id,amount,at,'Verified manual website order · '+(order.order_number||''),'manual_website_payment',order.id);
+ }
  const expenses=list(await e.Expense.list('-date',500));
  for(const x of expenses){
   const at=x.created_date||x.date;
@@ -162,5 +207,5 @@ export default async function(req:Request){
   }
  }
  if(monthly.length)await allocateAvailable('periodic-target:'+new Date().toISOString().slice(0,13),new Date().toISOString());
- return Response.json({posted,skipped,released_cents:released,held_jobs:held,payouts,errors,cutoff:START,notice:'Stripe payout status is not proof of bank receipt. Purchasing-cost rules require verified job costing before activation.'});
+ return Response.json({posted,manual_posted:manualPosted,skipped,released_cents:released,held_jobs:held,payouts,errors,cutoff:START,notice:'Stripe payout status is not proof of bank receipt. Purchasing-cost rules require verified job costing before activation.'});
 }
