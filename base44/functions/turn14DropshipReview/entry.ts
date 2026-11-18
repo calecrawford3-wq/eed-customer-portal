@@ -1,5 +1,6 @@
 import {createClientFromRequest} from 'npm:@base44/sdk@0.8.54';
 import {turn14Request} from '../../shared/turn14.ts';
+import {ensureTurn14WebsitePO} from '../../shared/turn14WebsitePO.ts';
 const rows=(x:any)=>Array.isArray(x)?x:x?.items||[];
 export default async function(req:Request){
  if(req.method!=='POST')return Response.json({error:'Method not allowed'},{status:405});
@@ -16,7 +17,7 @@ export default async function(req:Request){
   try{
   if(!order.payment_verified||order.shipping_method!=='ship'||order.status==='cancelled')return Response.json({error:'Verified payment and active shipping order required'},{status:409});
   if(order.order_payment_review_required||Number(order.order_adjustment_due_cents||0)>0||Number(order.order_adjustment_refund_cents||0)>0)return Response.json({error:'Resolve pending financial adjustments first'},{status:409});
-  if(order.turn14_supplier_order_reference)return Response.json({error:'Supplier order already submitted; duplicate prevented'},{status:409});
+  if(order.turn14_supplier_order_reference){if(body.action==='submit'){try{const po=await ensureTurn14WebsitePO(svc,order,String(order.turn14_supplier_order_reference),order.turn14_supplier_order_response);return Response.json({submitted:true,already_submitted:true,test_only:true,order_id:order.turn14_supplier_order_reference,po});}catch(e){return Response.json({submitted:true,already_submitted:true,po_error:String(e instanceof Error?e.message:e),order_id:order.turn14_supplier_order_reference},{status:200});}}return Response.json({error:'Supplier order already submitted; duplicate prevented'},{status:409});}
   if(!['pending_review','ready_for_submission'].includes(order.turn14_dropship_status))return Response.json({error:'Queue the dropship order for supplier review first'},{status:409});
   const lines=order.turn14_dropship_lines||[];
   if(!lines.length)return Response.json({error:'No queued supplier items'},{status:409});
@@ -61,7 +62,14 @@ export default async function(req:Request){
   const orderId=String(response?.data?.id||'');
   if(!orderId)return Response.json({error:'Supplier response missing order ID; inspect supplier orders before retrying',response},{status:502});
   await svc.WebsitePartsFulfillment.update(order.id,{turn14_supplier_order_reference:orderId,turn14_supplier_order_response:response,turn14_supplier_order_submitted_at:new Date().toISOString(),turn14_dropship_status:'submitted'});
-  return Response.json({submitted:true,test_only:true,order_id:orderId,response});
+  try{
+   const po=await ensureTurn14WebsitePO(svc,{...order,turn14_supplier_order_reference:orderId},orderId,response);
+   return Response.json({submitted:true,test_only:true,order_id:orderId,response,po});
+  }catch(e){
+   const po_error=String(e instanceof Error?e.message:e);
+   console.error('Supplier accepted order but linked PO creation failed',orderId,po_error);
+   return Response.json({submitted:true,test_only:true,order_id:orderId,response,po_error,warning:'Supplier submission succeeded. PO creation failed; use Submit Test Order again to repair the linked PO without placing another supplier order.'});
+  }
   }catch(e){const message=e instanceof Error?e.message:String(e);console.error('Turn 14 website supplier request failed',message);return Response.json({error:message||'Turn 14 supplier request failed',action:body.action},{status:502});}
  }
  if(body.action==='review'){
