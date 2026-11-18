@@ -44,7 +44,7 @@ export default function ComposeDialog({
       setComposeAttachments((current) => [...current, ...additions]);
       setComposeAttachmentError("");
     } catch (error) {
-      setComposeAttachmentError(error?.message || "Unable to attach image.");
+      setComposeAttachmentError(error?.message || "Unable to attach file.");
     } finally {
       event.target.value = "";
     }
@@ -174,7 +174,7 @@ export default function ComposeDialog({
             <input
               ref={composeFileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/gif"
+              accept="image/jpeg,image/png,image/gif,application/pdf,.pdf"
               multiple
               className="hidden"
               onChange={handleComposeFiles}
@@ -190,7 +190,7 @@ export default function ComposeDialog({
             </Button>
             <AttachmentPreviewList attachments={composeAttachments} onRemove={removeComposeAttachment} />
             <div className="text-xs text-slate-400">
-              {composeAttachments.length}/{MAX_ATTACHMENTS} images selected
+              {composeAttachments.length}/{MAX_ATTACHMENTS} files selected
             </div>
             {composeAttachmentError && <p className="text-xs text-red-600">{composeAttachmentError}</p>}
           </div>

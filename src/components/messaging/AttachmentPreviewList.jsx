@@ -1,5 +1,6 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
+import { isPdfAttachment } from "@/lib/messagingUtils";
 
 export default function AttachmentPreviewList({ attachments, onRemove, disabled = false }) {
   if (!attachments.length) return null;
@@ -10,11 +11,14 @@ export default function AttachmentPreviewList({ attachments, onRemove, disabled 
           key={attachment.id}
           className="relative w-20 h-20 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden"
         >
-          <img
-            src={attachment.previewUrl}
-            alt={`Selected attachment ${index + 1}`}
-            className="w-full h-full object-cover"
-          />
+          {isPdfAttachment(attachment) ? (
+            <div className="h-full flex flex-col items-center justify-center p-2 text-slate-700">
+              <FileText className="w-7 h-7" />
+              <span className="text-[10px] truncate w-full text-center">{attachment.file.name}</span>
+            </div>
+          ) : (
+            <img src={attachment.previewUrl} alt="Selected image" className="w-full h-full object-cover" />
+          )}
           <button
             type="button"
             onClick={() => onRemove(attachment.id)}

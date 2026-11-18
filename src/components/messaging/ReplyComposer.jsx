@@ -26,7 +26,7 @@ export default function ReplyComposer({
       setAttachments((current) => [...current, ...additions]);
       setAttachmentError("");
     } catch (error) {
-      setAttachmentError(error?.message || "Unable to attach image.");
+      setAttachmentError(error?.message || "Unable to attach file.");
     } finally {
       event.target.value = "";
     }
@@ -51,7 +51,7 @@ export default function ReplyComposer({
         <input
           ref={replyFileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif"
+          accept="image/jpeg,image/png,image/gif,application/pdf,.pdf"
           multiple
           className="hidden"
           onChange={handleReplyFiles}
@@ -62,7 +62,7 @@ export default function ReplyComposer({
           size="icon"
           onClick={() => replyFileInputRef.current?.click()}
           disabled={attachments.length >= MAX_ATTACHMENTS}
-          title="Attach images"
+          title="Attach images or PDF files"
         >
           <Paperclip className="w-4 h-4" />
         </Button>
@@ -86,7 +86,7 @@ export default function ReplyComposer({
       </div>
 
       <div className="flex justify-between text-xs text-slate-400">
-        <span>{`${attachments.length}/${MAX_ATTACHMENTS} images`}</span>
+        <span>{`${attachments.length}/${MAX_ATTACHMENTS} files`}</span>
         <span>
           {draft.length} characters
           {(draft.length > 160 || attachments.length > 0) && " · Sends as MMS"}

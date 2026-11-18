@@ -7,7 +7,7 @@ import React, {
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
-import { uploadAttachments } from "@/lib/messagingUtils";
+import { uploadAttachments, isPdfAttachment } from "@/lib/messagingUtils";
 
 const MessagingContext = createContext(null);
 
@@ -68,14 +68,21 @@ export function MessagingProvider({ children }) {
       } = _sendParams;
 
       try {
-        const mediaUrls = await uploadAttachments(
-          attachmentsToUpload
-        );
+        const uploaded = await uploadAttachments(attachmentsToUpload);
+        const mediaUrls = [];
+        const pdfLinks = [];
+        attachmentsToUpload.forEach((attachment, index) => {
+          if (isPdfAttachment(attachment)) pdfLinks.push("PDF: " + attachment.file.name + "\n" + uploaded[index]);
+          else mediaUrls.push(uploaded[index]);
+        });
+        // VoIP.ms MMS accepts images; send PDFs as SMS links to avoid carrier rejection.
+        const outgoingMessage = [variables.message, pdfLinks.join("\n")].filter(Boolean).join("\n\n");
 
         const result = await base44.functions.invoke(
           "sendVoipSms",
           {
             ...variables,
+            message: outgoingMessage,
             media_urls: mediaUrls,
           }
         );
