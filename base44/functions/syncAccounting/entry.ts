@@ -26,6 +26,29 @@ export default async function(req:Request){
   await entry(key+'-out',from,-cents,memo,'virtual_allocation',key,at,key);
   await entry(key+'-in',to,cents,memo,'virtual_allocation',key,at,key);
  }
+ // Monthly targets are account funding floors, not percentages of each payout.
+ // Balance already held in the envelope counts toward the target. Savings is last.
+ const monthly=rules.filter((r:any)=>r.rule_type==='monthly_target'&&Number(r.value)>0);
+ async function allocateAvailable(prefix:string,at:string){
+  if(!monthly.length)return;
+  for(const r of monthly){
+   const dest=accounts.find((a:any)=>a.id===r.target_account_id&&a.active!==false);
+   if(!dest||dest.id===clearing.id||dest.kind==='savings'||dest.kind==='reserve')continue;
+   const floor=Math.max(Number(r.value||0),Number(r.minimum_balance||0));
+   const shortfall=Math.max(0,Math.round(floor*100)-(balances.get(dest.id)||0));
+   const amount=Math.min(shortfall,Math.max(0,balances.get(clearing.id)||0));
+   if(amount>0)await move(prefix+':target:'+r.id,clearing.id,dest.id,amount,'Monthly account funding target',at);
+  }
+  // Never send money to savings until every required target is funded.
+  const allFunded=monthly.every((r:any)=>{
+   const dest=accounts.find((a:any)=>a.id===r.target_account_id&&a.active!==false);
+   if(!dest||dest.kind==='savings'||dest.kind==='reserve')return true;
+   return (balances.get(dest.id)||0)>=Math.round(Math.max(Number(r.value||0),Number(r.minimum_balance||0))*100);
+  });
+  if(!allFunded)return;
+  const savings=byKind('savings');
+  if(savings){const amount=Math.max(0,balances.get(clearing.id)||0);if(amount>0)await move(prefix+':savings',clearing.id,savings.id,amount,'Surplus after monthly funding targets',at);}
+ }
  const stripeKey=Deno.env.get('PORTAL_STRIPE_SECRET_KEY')||Deno.env.get('WEBSITE_STRIPE_SECRET_KEY')||Deno.env.get('STRIPE_SECRET_KEY');
  let payouts:any[]=[];
  if(stripeKey){
@@ -38,13 +61,14 @@ export default async function(req:Request){
    const at=new Date(p.created*1000).toISOString(),key='stripe-payout:'+p.id;
    if(!keys.has(key)){await entry(key,clearing.id,p.amount,'Stripe payout marked paid (bank receipt not independently verified)','stripe_payout',p.id,at);
     let remaining=p.amount;
-    for(const r of rules){
+    for(const r of monthly.length?[]:rules){
      const dest=accounts.find((a:any)=>a.id===r.target_account_id&&a.active!==false);
-     if(!dest||r.rule_type==='purchasing_cost')continue; // needs verified job costs
+     if(!dest||r.rule_type==='purchasing_cost'||r.rule_type==='monthly_target')continue; // needs verified job costs
      const cents=r.rule_type==='percentage'?Math.floor(remaining*Number(r.value||0)/100):Math.round(Number(r.value||0)*100);
      const actual=Math.min(remaining,Math.max(0,cents));
      if(actual){await move('allocation:'+p.id+':'+r.id,clearing.id,dest.id,actual,'Stripe payout allocation',at);remaining-=actual;}
     }
+    if(monthly.length)await allocateAvailable('allocation:'+p.id,at);
    }else skipped++;
   }
  }
@@ -101,15 +125,17 @@ export default async function(req:Request){
    await entry(key+'-in',clearing.id,cents,'Released purchasing surplus · '+(job.job_number||jobId),'purchasing_release',jobId,at,key);
    released+=cents;
    let remaining=cents;
-   for(const r of rules){
-    if(r.rule_type==='purchasing_cost')continue;
+   for(const r of monthly.length?[]:rules){
+    if(r.rule_type==='purchasing_cost'||r.rule_type==='monthly_target')continue;
     const dest=accounts.find((a:any)=>a.id===r.target_account_id&&a.active!==false);
     if(!dest||dest.id===clearing.id)continue;
     const proposed=r.rule_type==='percentage'?Math.floor(remaining*Number(r.value||0)/100):Math.round(Number(r.value||0)*100);
     const allocation=Math.min(remaining,Math.max(0,proposed));
     if(allocation){await move('release-rule:'+key+':'+r.id,clearing.id,dest.id,allocation,'Released purchasing surplus allocation',at);remaining-=allocation;}
    }
+   if(monthly.length)await allocateAvailable('release-allocation:'+key,at);
   }
  }
+ if(monthly.length)await allocateAvailable('periodic-target:'+new Date().toISOString().slice(0,13),new Date().toISOString());
  return Response.json({posted,skipped,released_cents:released,held_jobs:held,payouts,errors,cutoff:START,notice:'Stripe payout status is not proof of bank receipt. Purchasing-cost rules require verified job costing before activation.'});
 }
