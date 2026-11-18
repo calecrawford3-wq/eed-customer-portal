@@ -73,10 +73,14 @@ export function MessagingProvider({ children }) {
         const pdfLinks = [];
         attachmentsToUpload.forEach((attachment, index) => {
           if (isPdfAttachment(attachment)) pdfLinks.push("PDF: " + attachment.file.name + "\n" + uploaded[index]);
-          else if (isVideoAttachment(attachment)) pdfLinks.push("Video: " + attachment.file.name + "\n" + uploaded[index]);
+          else if (isVideoAttachment(attachment)) {
+            const isMp4 = /\.mp4$/i.test(attachment.file.name) || attachment.file.type === "video/mp4";
+            if (isMp4 && attachment.file.size <= 1300 * 1024) mediaUrls.push(uploaded[index]);
+            else pdfLinks.push("Video (open link; MMS requires MP4 under 1.3 MB): " + attachment.file.name + "\n" + uploaded[index]);
+          }
           else mediaUrls.push(uploaded[index]);
         });
-        // VoIP.ms MMS accepts images; send PDFs and videos as SMS links to avoid carrier rejection.
+        // VoIP.ms permits MP4 MMS under 1300 KB; larger or MOV videos use explicit links.
         const outgoingMessage = [variables.message, pdfLinks.join("\n")].filter(Boolean).join("\n\n");
 
         if (!outgoingMessage.trim() && !mediaUrls.length) throw new Error("No message or attachment to send.");
