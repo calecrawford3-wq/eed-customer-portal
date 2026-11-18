@@ -1,0 +1,1 @@
+{"name":"VirtualAccount","type":"object","properties":{"name":{"type":"string"},"kind":{"type":"string","enum":["clearing","reserve","operating","payroll","tax","savings","equity","other"]},"active":{"type":"boolean"},"description":{"type":"string"}},"required":["name","kind"]}

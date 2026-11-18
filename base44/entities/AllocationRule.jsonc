@@ -1,0 +1,1 @@
+{"name":"AllocationRule","type":"object","properties":{"name":{"type":"string"},"target_account_id":{"type":"string"},"rule_type":{"type":"string","enum":["percentage","fixed","purchasing_cost"]},"value":{"type":"number"},"priority":{"type":"integer"},"enabled":{"type":"boolean"}},"required":["name","target_account_id","rule_type"]}

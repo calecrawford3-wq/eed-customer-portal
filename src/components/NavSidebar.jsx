@@ -79,6 +79,7 @@ const navSections = [
       { name: "Estimates", page: "Estimates", icon: ClipboardList },
       { name: "Approvals", page: "Approvals", icon: ClipboardCheck, badge: "approvals" },
       { name: "Payments", page: "Payments", icon: DollarSign },
+      { name: "Accounting", page: "Accounting", icon: DollarSign },
       { name: "Credits", page: "Credits", icon: Award },
       { name: "Expenses", page: "Expenses", icon: TrendingDown },
       { name: "Reports", page: "Reports", icon: BarChart2 },
