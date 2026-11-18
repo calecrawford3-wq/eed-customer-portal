@@ -30,22 +30,22 @@ export default async function(req:Request){
  // Balance already held in the envelope counts toward the target. Savings is last.
  const monthlyItems=list(await e.MonthlyFundingItem.list('-created_date',500)).filter((x:any)=>x.active!==false);
  const factor=(f:string)=>f==='weekly'?52/12:f==='biweekly'?26/12:f==='semimonthly'?2:f==='quarterly'?1/3:f==='annual'?1/12:1;
- const derivedTargets=new Map(['operating','payroll'].map(kind=>[kind,Math.round(monthlyItems.filter((x:any)=>x.account_kind===kind).reduce((sum:number,x:any)=>sum+Math.max(0,Number(x.amount||0))*factor(x.frequency),0)*100)]));
+ const derivedTargets=new Map(['operating','payroll','equity'].map(kind=>[kind,Math.round(monthlyItems.filter((x:any)=>x.account_kind===kind).reduce((sum:number,x:any)=>sum+Math.max(0,Number(x.amount||0))*factor(x.frequency),0)*100)]));
  const configured=rules.filter((r:any)=>r.rule_type==='monthly_target'&&Number(r.value)>0);
  // Itemized budgets override manually entered target values for their account kind.
  // Other accounts (taxes, owner draw) retain their explicitly configured targets.
  const monthly=configured.map((r:any)=>{
   const dest=accounts.find((a:any)=>a.id===r.target_account_id);
-  return dest&&['operating','payroll'].includes(dest.kind)&&monthlyItems.some((x:any)=>x.account_kind===dest.kind)
+  return dest&&['operating','payroll','equity'].includes(dest.kind)&&monthlyItems.some((x:any)=>x.account_kind===dest.kind)
    ?{...r,value:(derivedTargets.get(dest.kind)||0)/100}:r;
  });
- for(const kind of ['operating','payroll']){
+ for(const kind of ['operating','payroll','equity']){
   if(!monthlyItems.some((x:any)=>x.account_kind===kind))continue;
   if(monthly.some((r:any)=>accounts.find((a:any)=>a.id===r.target_account_id)?.kind===kind))continue;
   const dest=byKind(kind);
-  if(dest)monthly.push({id:'auto-'+kind,target_account_id:dest.id,rule_type:'monthly_target',value:(derivedTargets.get(kind)||0)/100,minimum_balance:0,allow_savings_backup:true,priority:kind==='payroll'?20:30});
+  if(dest)monthly.push({id:'auto-'+kind,target_account_id:dest.id,rule_type:'monthly_target',value:(derivedTargets.get(kind)||0)/100,minimum_balance:0,allow_savings_backup:kind!=='equity',priority:kind==='payroll'?20:kind==='operating'?30:90});
  }
- monthly.sort((a:any,b:any)=>(a.priority||100)-(b.priority||100));
+ monthly.sort((a:any,b:any)=>{const ak=accounts.find((x:any)=>x.id===a.target_account_id)?.kind;const bk=accounts.find((x:any)=>x.id===b.target_account_id)?.kind;return (ak==='equity'?10000:a.priority||100)-(bk==='equity'?10000:b.priority||100);});
  async function allocateAvailable(prefix:string,at:string){
   if(!monthly.length)return;
   for(const r of monthly){

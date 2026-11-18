@@ -9,7 +9,8 @@
       "type": "string",
       "enum": [
         "operating",
-        "payroll"
+        "payroll",
+        "equity"
       ]
     },
     "category": {
