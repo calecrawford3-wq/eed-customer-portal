@@ -274,7 +274,7 @@ const routes = createRoutesFromElements(
     <Route path="/additional-work/:token" element={<AdditionalWorkViewer />} />
     <Route path="/estimate/:token" element={<EstimateViewer />} />
     <Route path="/invoice/:token" element={<InvoiceViewer />} />
-    <Route path="/track/:token" element={<PublicOrderTracking />} />
+    <Route path="/track/:token" element={<SiteShell />}><Route index element={<PublicOrderTracking />} /></Route>
     <Route path="/comparison/:token" element={<PublicStageComparison />} />
     <Route path="/legal/:token" element={<PublicLegalViewer />} />
     <Route path="/engine-assistance/apply/:token" element={<EngineAssistanceApply />} />

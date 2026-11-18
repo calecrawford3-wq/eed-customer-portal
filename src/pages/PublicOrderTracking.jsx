@@ -19,10 +19,10 @@ export default function PublicOrderTracking(){
  const {token}=useParams();
  const {data,isLoading,error}=useQuery({queryKey:['public-order-tracking',token],enabled:!!token,
  queryFn:async()=>{const r=await base44Public.functions.invoke('getPublicOrderTracking',{token});if(r.data?.error)throw Error(r.data.error);return r.data},refetchInterval:300000});
+ React.useEffect(()=>{if(window.location.hostname.toLowerCase()==='portal.eedpower.com')window.location.replace('https://eliteenginedevelopment.com/track/'+encodeURIComponent(token));},[token]);
  const shipments=data?.shipments||[];
  const furthest=shipments.length?Math.min(...shipments.map(s=>progress(s.status,data.status))):0;
- return <main className="min-h-screen bg-[#f5f6f8] text-slate-900">
- <header className="bg-[#141414] border-b-4 border-[#d71920] px-5 py-6 text-white"><div className="max-w-3xl mx-auto"><div className="text-3xl font-black italic tracking-tight text-[#ef2028]">ELITE</div><div className="text-xs font-bold tracking-widest">ENGINE DEVELOPMENT</div></div></header>
+ return <main className="min-h-[70vh] bg-[#f5f6f8] text-slate-900">
  <div className="max-w-3xl mx-auto p-4 sm:p-8">
  {isLoading?<p className="py-20 text-center">Loading live shipment tracking…</p>:error||!data?<div className="bg-white rounded-xl p-8 text-center"><AlertCircle className="mx-auto mb-3 text-red-600"/><h1 className="text-xl font-bold">Tracking unavailable</h1><p className="mt-2 text-slate-600">This tracking link is invalid or shipment details are temporarily unavailable.</p></div>:<>
  <p className="text-xs font-bold tracking-[.18em] text-red-700">ELITE ORDER TRACKING</p>

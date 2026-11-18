@@ -27,7 +27,7 @@ export default async function(req:Request){
  const key='manual:'+carrier.toLowerCase()+':'+tracking;
  const url=trackingUrl(carrier,tracking);
  const token=String(o.public_tracking_token||crypto.randomUUID().replace(/-/g,'')+crypto.randomUUID().replace(/-/g,''));
- const portalUrl='https://portal.eedpower.com/track/'+encodeURIComponent(token);
+ const portalUrl='https://eliteenginedevelopment.com/track/'+encodeURIComponent(token);
  const current=Array.isArray(o.supplier_tracking)?o.supplier_tracking:[];
  const next=[...current.filter((t:any)=>t.tracking_number!==tracking),{tracking_number:tracking,carrier,tracking_url:url,status:'Tracking issued',source:'manual',carrier_status:'unknown'}];
  await svc.WebsitePartsFulfillment.update(o.id,{carrier,tracking_number:tracking,supplier_tracking:next,public_tracking_token:token,status:body.mark_shipped===true?'shipped':o.status});
