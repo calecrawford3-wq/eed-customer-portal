@@ -43,6 +43,8 @@ export default function Payments() {
     queryFn: () => base44.entities.Estimate.list("-created_date", 500),
   });
 
+  const {data:websiteOrders=[]}=useQuery({queryKey:['payments-website-cart'],queryFn:()=>base44.entities.WebsiteCartOrder.list('-created_date',500)});
+  const {data:fulfillmentOrders=[]}=useQuery({queryKey:['payments-website-fulfillment'],queryFn:()=>base44.entities.WebsitePartsFulfillment.list('-created_date',500)});
   const isLoading = invoicesLoading || estimatesLoading;
 
   const { data: customers = [] } = useQuery({
@@ -60,6 +62,25 @@ export default function Payments() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["estimates"] }); setEditOpen(false); toast.success("Payment updated"); },
   });
 
+  // Build a read-only reconciliation view. A processed website checkout already
+  // has an invoice payment, so never add it a second time.
+  const invoiceIds=new Set(invoices.map(i=>String(i.id)));
+  const invoiceStripeIds=new Set(invoices.flatMap(i=>(i.payments||[]).map(p=>String(p.stripe_payment_intent||'')).filter(Boolean)));
+  const linkedCheckoutIds=new Set(websiteOrders.map(o=>String(o.invoice_id||'')).filter(Boolean));
+  const websitePayments=websiteOrders.filter(o=>o.paid_at&&o.stripe_payment_intent&&!invoiceIds.has(String(o.invoice_id||''))&&!invoiceStripeIds.has(String(o.stripe_payment_intent))).map(o=>({
+    amount:Number(o.total_charge_cents||0)/100,date:o.paid_at,method:'card',note:'Verified website checkout · '+o.stripe_payment_intent,
+    _type:'website',_ref:o.order_reference,_id:o.id,_customerName:o.buyer_name||o.buyer_email||'Website customer',_readonly:true
+  }));
+  const manualPayments=fulfillmentOrders.filter(o=>o.payment_verified&&String(o.order_number||'').startsWith('MAN-')&&!o.invoice_id&&!linkedCheckoutIds.has(String(o.invoice_id||''))&&Number(o.subtotal_cents||0)+Number(o.shipping_cents||0)+Number(o.tax_cents||0)>0).map(o=>({
+    amount:(Number(o.subtotal_cents||0)+Number(o.shipping_cents||0)+Number(o.tax_cents||0))/100,
+    date:o.manual_paid_at||o.created_date,method:String(o.manual_payment_reference||'').startsWith('pi_')?'card':'other',
+    note:'Manual website order · '+(o.manual_payment_reference||'External payment confirmed by staff'),
+    _type:'manual_website',_ref:o.order_number,_id:o.id,_customerName:o.recipient_name||o.recipient_email||'Manual customer',_readonly:true
+  }));
+  const refundEntries=fulfillmentOrders.flatMap(o=>(o.order_revision_history||[]).filter(h=>['manual_refund_recorded','stripe_refund'].includes(h.action)).map(h=>({
+    amount:-Number(h.amount_cents||0)/100,date:h.at,method:h.method||'other',note:'Refund · '+(h.reference||h.refund_id||''),
+    _type:'refund',_ref:o.order_number,_id:o.id,_customerName:o.recipient_name||o.recipient_email||'',_readonly:true
+  })));
   // Flatten all payments
   const allPayments = [
     ...invoices.flatMap(inv => (inv.payments || []).map((p, i) => ({
@@ -72,13 +93,15 @@ export default function Payments() {
       _customer: customers.find(c => c.id === est.customer_id),
       _ref: est.estimate_number, _id: est.id,
     }))),
+    ...websitePayments,...manualPayments,...refundEntries,
   ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   const filtered = allPayments.filter(p => {
     const matchSearch = (
-      (p._ref || "") + (p._customer?.first_name || "") + (p._customer?.last_name || "") + (p.method || "") + (p.note || "")
+      (p._ref || "") + (p._customerName || "") + (p._customer?.first_name || "") + (p._customer?.last_name || "") + (p.method || "") + (p.note || "")
     ).toLowerCase().includes(search.toLowerCase());
     const matchYear = yearFilter === "all" || (p.date || "").slice(0, 4) === yearFilter;
+    if (tab === "website") return matchSearch && matchYear && ["website","manual_website","refund"].includes(p._type);
     if (tab === "invoice") return matchSearch && matchYear && p._type === "invoice";
     if (tab === "estimate") return matchSearch && matchYear && p._type === "estimate";
     return matchSearch && matchYear;
@@ -130,14 +153,14 @@ export default function Payments() {
     <div className="p-4 md:p-8">
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Payments</h1>
-        <p className="text-slate-500 mt-1">All received payments across invoices and estimates</p>
+        <p className="text-slate-500 mt-1">Received payments across invoices, estimates, website checkouts and manual orders</p>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs text-slate-500">Total Received</p>
+            <p className="text-xs text-slate-500">Net Received</p>
             <p className="text-2xl font-bold text-emerald-600">${totalIn.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
@@ -180,6 +203,7 @@ export default function Payments() {
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList>
           <TabsTrigger value="all">All ({allPayments.length})</TabsTrigger>
+          <TabsTrigger value="website">Website ({allPayments.filter(p => ["website","manual_website","refund"].includes(p._type)).length})</TabsTrigger>
           <TabsTrigger value="invoice">Invoices ({allPayments.filter(p => p._type === "invoice").length})</TabsTrigger>
           <TabsTrigger value="estimate">Estimates ({allPayments.filter(p => p._type === "estimate").length})</TabsTrigger>
         </TabsList>
@@ -225,15 +249,15 @@ export default function Payments() {
                             {p._customer.first_name} {p._customer.last_name}
                           </Link>
                         ) : (
-                          <span className="font-medium">Unknown</span>
+                          <span className="font-medium">{p._customerName||"Unknown"}</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
                           <span className="font-mono text-[#e20404]">{p._ref}</span>
-                          <Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
+                          {!p._readonly&&<Link to={p._type === "invoice" ? `/InvoiceDetail?id=${p._id}` : `/EstimateDetail?id=${p._id}`}>
                             <ExternalLink className="w-3 h-3 text-slate-400 hover:text-[#e20404]" />
-                          </Link>
+                          </Link>}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -249,12 +273,12 @@ export default function Payments() {
                       <td className="py-3 px-4 text-right font-bold text-emerald-700">${Number(p.amount || 0).toFixed(2)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
+                          {!p._readonly&&<Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => openEdit(p)}>
                             <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Payment", message: "Delete this payment? The invoice/estimate balance will be recalculated.", confirmLabel: "Delete", onConfirm: () => handleDeletePayment(p) })}>
+                          </Button>}
+                          {!p._readonly&&<Button size="sm" variant="ghost" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => setConfirmState({ open: true, title: "Delete Payment", message: "Delete this payment? The invoice/estimate balance will be recalculated.", confirmLabel: "Delete", onConfirm: () => handleDeletePayment(p) })}>
                             <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          </Button>}
                         </div>
                       </td>
                     </tr>
