@@ -89,7 +89,7 @@ export default async function(req:Request){
     if(false&&unsent.length&&/^\S+@\S+\.\S+$/.test(str(t.record.recipient_email))){ // Test API: never send shipment emails from sandbox
      try{
       const list=unsent.map(x=>'<li>'+esc(x.carrier||'Carrier')+': <strong>'+esc(x.tracking_number)+'</strong>'+(x.tracking_url?' — <a href="'+esc(x.tracking_url)+'">Track package</a>':'')+'</li>').join('');
-      await sdk.asServiceRole.integrations.Core.SendEmail({to:t.record.recipient_email,subject:'Your Elite Engine Development order has shipped — '+t.record.order_number,from_name:'Elite Engine Development',body:'<p>Your order '+esc(t.record.order_number)+' has shipping tracking available.</p><ul>'+list+'</ul><p>Carrier tracking scans and delivery estimates are maintained by the shipping carrier.</p>'});
+      await sdk.asServiceRole.integrations.Core.SendEmail({to:t.record.recipient_email,subject:'Your Elite Engine Development order has shipped — '+t.record.order_number,from_name:'Elite Engine Development',body:'<p>Your order '+esc(t.record.order_number)+' has shipping tracking available.</p><ul>'+list+'</ul><p><a href=+esc(portalUrl)+>Track your order in My Elite</a></p><p>Carrier tracking scans and delivery estimates are maintained by the shipping carrier.</p>'});
       await svc.WebsitePartsFulfillment.update(t.record.id,{tracking_notification_sent_keys:[...new Set([...sent,...unsent.map(x=>x.tracking_number)])]});
      }catch(e){errors.push({order:t.id,notification:String(e)});}
     }

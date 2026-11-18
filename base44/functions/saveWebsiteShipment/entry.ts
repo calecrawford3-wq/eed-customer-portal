@@ -25,6 +25,7 @@ export default async function(req:Request){
  const keys=Array.isArray(o.tracking_notification_sent_keys)?o.tracking_notification_sent_keys:[];
  const key='manual:'+carrier.toLowerCase()+':'+tracking;
  const url=trackingUrl(carrier,tracking);
+ const portalUrl='https://portal.eedpower.com/CustomerPortal?tab=website-orders&order='+encodeURIComponent(String(o.order_number||''));
  const current=Array.isArray(o.supplier_tracking)?o.supplier_tracking:[];
  const next=[...current.filter((t:any)=>t.tracking_number!==tracking),{tracking_number:tracking,carrier,tracking_url:url,status:'Tracking issued',source:'manual',carrier_status:'unknown'}];
  await svc.WebsitePartsFulfillment.update(o.id,{carrier,tracking_number:tracking,supplier_tracking:next,status:body.mark_shipped===true?'shipped':o.status});
@@ -33,7 +34,7 @@ export default async function(req:Request){
  const to=String(o.recipient_email||'').trim();
  if(!/^\S+@\S+\.\S+$/.test(to))return Response.json({saved:true,notification:'failed',error:'Customer email missing or invalid'});
  try{
-  const bodyHtml=(sandbox?'<p><strong>TEST NOTIFICATION — no real shipment is confirmed by Turn 14.</strong></p>':'')+'<p>Tracking details for your Elite Engine Development order <strong>'+safe(o.order_number)+'</strong>:</p><p>Carrier: '+safe(carrier)+'</p><p>Tracking: <strong>'+safe(tracking)+'</strong></p>'+(url?'<p><a href="'+safe(url)+'">Track your package</a></p>':'')+'<p>Carrier scans and delivery estimates may take time to appear.</p>';
+  const bodyHtml=(sandbox?'<p><strong>TEST NOTIFICATION — no real shipment is confirmed by Turn 14.</strong></p>':'')+'<p>Tracking details for your Elite Engine Development order <strong>'+safe(o.order_number)+'</strong>:</p><p>Carrier: '+safe(carrier)+'</p><p>Tracking: <strong>'+safe(tracking)+'</strong></p>'+'<p><a href="'+safe(portalUrl)+'">Track your order in My Elite</a></p>'+'<p>Carrier scans and delivery estimates may take time to appear.</p>';
   await sdk.asServiceRole.integrations.Core.SendEmail({to,subject:(sandbox?'[TEST] ':'')+'Shipping tracking for Elite order '+o.order_number,from_name:'Elite Engine Development',body:bodyHtml});
   await svc.WebsitePartsFulfillment.update(o.id,{tracking_notification_sent_keys:[...keys,key]});
   return Response.json({saved:true,notification:'sent',to,sandbox});

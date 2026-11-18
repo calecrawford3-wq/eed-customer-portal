@@ -67,7 +67,7 @@ export default function CustomerPortal() {
   const signOutToPortal = () => base44.auth.logout(portalSignInUrl);
   const [searchParams, setSearchParams] = useSearchParams();
   const [portalDocument, setPortalDocument] = useState(null);
-  const [portalTab, setPortalTab] = useState('home');
+  const [portalTab, setPortalTab] = useState(() => new URLSearchParams(window.location.search).get('tab')==='website-orders'?'website-orders':'home');
   const portalSection = ['engines','builds'].includes(portalTab) ? 'engines' : ['invoices','estimates','findings','credits','tax'].includes(portalTab) ? 'documents' : portalTab;
   const goPortalSection = section => setPortalTab(section === 'documents' ? 'invoices' : section === 'engines' ? 'engines' : section);
   useEffect(() => {
