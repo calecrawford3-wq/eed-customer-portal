@@ -370,8 +370,6 @@ export default async function (req) {
         internal_financed_amount: 0,
         audit_trail: appendAudit(offer, 'Customer', 'internal_financing_canceled', 'Customer withdrew the in-house financing request'),
       } });
-      const updated = rows(await loans.filter({ id: existing.id }))[0];
-      if (updated?.status !== 'canceled') return Response.json({ error: 'The financing status changed. Reload before continuing.' }, { status: 409 });
       if (offer.payment_route === 'internal') await releaseRoute(base44, offer);
       return Response.json({ loan: publicLoan(updated) });
     }
