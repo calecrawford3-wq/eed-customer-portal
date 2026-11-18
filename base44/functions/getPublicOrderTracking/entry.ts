@@ -26,8 +26,8 @@ export default async function(req:Request){
        tracking_events:(t.tracking_details||[]).slice(-40).map((e:any)=>({status:e.status,message:e.message,datetime:e.datetime,location:e.tracking_location})),
        estimated_delivery:t.est_delivery_date||x.estimated_delivery||'',tracking_checked_at:new Date().toISOString(),tracking_error:''};
       refreshed=true;
-     }else{x.tracking_checked_at=new Date().toISOString();x.tracking_error='Carrier update unavailable';refreshed=true;}
-    }catch{x.tracking_checked_at=new Date().toISOString();x.tracking_error='Carrier update unavailable';refreshed=true;}
+     }else{x.tracking_checked_at=new Date().toISOString();x.tracking_error='Carrier update unavailable (HTTP '+response.status+')';refreshed=true;}
+    }catch(e){x.tracking_checked_at=new Date().toISOString();x.tracking_error='Carrier update unavailable';console.warn('Tracking refresh failed',String(e));refreshed=true;}
    }
    enriched.push(x);
   }
