@@ -4,7 +4,7 @@ import { compressImage } from "@/lib/compressImage";
 export const MAX_ATTACHMENTS = 3;
 export const MAX_ATTACHMENT_BYTES = 1300 * 1024;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
-export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
 export const isVideoAttachment = a => /^(video\/(mp4|quicktime|x-m4v|webm))$/i.test(a?.file?.type || "") || /\.(mp4|mov|m4v|webm)$/i.test(a?.file?.name || "");
 export const isPdfAttachment = a => a?.file?.type === "application/pdf" || /\.pdf$/i.test(a?.file?.name || "");
 
@@ -174,7 +174,7 @@ export async function buildAttachmentsFromFiles(files, existingCount = 0) {
     if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
       if (file.size > MAX_PDF_BYTES) throw new Error("PDF exceeds 10 MB.");
     } else if (isVideoAttachment({file})) {
-      if (file.size > MAX_VIDEO_BYTES) throw new Error("Video exceeds 50 MB. Trim or compress it before attaching.");
+      if (file.size > MAX_VIDEO_BYTES) throw new Error("Video exceeds 10 MB. Trim or compress it before attaching.");
     } else if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       throw new Error("Only PDF, MP4, MOV, M4V, WebM, JPG, PNG, and GIF files can be attached.");
     }
@@ -201,11 +201,17 @@ export async function buildAttachmentsFromFiles(files, existingCount = 0) {
 export async function uploadAttachments(attachments) {
   const uploadedUrls = [];
   for (const attachment of attachments) {
-    const result = await base44.integrations.Core.UploadFile({ file: attachment.file });
-    if (!result?.file_url) {
-      throw new Error(`Upload failed for ${attachment.file.name}.`);
+    let result;
+    try {
+      result = await base44.integrations.Core.UploadFile({ file: attachment.file });
+    } catch (error) {
+      throw new Error("Unable to upload " + attachment.file.name + " (" + (attachment.file.size/1048576).toFixed(1) + " MB): " + (error?.message || "upload rejected") + ". Try a smaller video.");
     }
-    uploadedUrls.push(result.file_url);
+    const url = result?.file_url || result?.data?.file_url;
+    if (!url || !url.startsWith("https://")) {
+      throw new Error("Upload did not return a usable link for " + attachment.file.name);
+    }
+    uploadedUrls.push(url);
   }
   return uploadedUrls;
 }

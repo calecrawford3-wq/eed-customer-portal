@@ -79,6 +79,8 @@ export function MessagingProvider({ children }) {
         // VoIP.ms MMS accepts images; send PDFs and videos as SMS links to avoid carrier rejection.
         const outgoingMessage = [variables.message, pdfLinks.join("\n")].filter(Boolean).join("\n\n");
 
+        if (!outgoingMessage.trim() && !mediaUrls.length) throw new Error("No message or attachment to send.");
+        if (outgoingMessage.length > 2048) throw new Error("Attachment links exceed the SMS length limit. Send fewer files.");
         const result = await base44.functions.invoke(
           "sendVoipSms",
           {
@@ -104,18 +106,18 @@ export function MessagingProvider({ children }) {
           return prev.filter((m) => m.tempId !== tempId);
         });
 
-        if (result?.status === "sent") {
+        const sendResult = result?.data || result;
+        if (sendResult?.status === "sent") {
           playSuccessSound();
         } else {
           playErrorSound();
-          toast.error(
-            result?.status === "unknown"
-              ? "Message sent but delivery unconfirmed — check the conversation."
-              : "Message failed to send — check the conversation."
-          );
+          toast.error(sendResult?.error || (sendResult?.status === "unknown"
+            ? "Message sent but delivery unconfirmed — check the conversation."
+            : "Message failed to send — check the conversation."));
         }
       } catch (error) {
         console.error("Send failed", error);
+        toast.error(error?.response?.data?.error || error?.message || "Video could not be sent.");
 
         // The backend may have succeeded even if the client-side invoke
         // threw (timeout, network blip). Refresh from the DB so the real
