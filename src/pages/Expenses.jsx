@@ -130,14 +130,25 @@ export default function Expenses() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: /** @param {Record<string, any>} data */ (data) => editing
-      ? base44.entities.Expense.update(editing.id, data)
-      : base44.entities.Expense.create(data),
+    mutationFn: async (data) => {
+      const saved = editing
+        ? await base44.entities.Expense.update(editing.id, data)
+        : await base44.entities.Expense.create(data);
+      const id=saved?.id||editing?.id;
+      if(!id)throw Error("Expense saved, but no ID returned for account reconciliation");
+      const response=await base44.functions.invoke("reconcileExpenseAccount",{expense_id:id});
+      const result=response?.data||response;
+      if(!result?.ok)throw Error("Expense saved, but account balance was not updated: "+(result?.error||"reconciliation unavailable"));
+      return result;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["virtual-ledger"] });
+      qc.invalidateQueries({ queryKey: ["virtual-accounts"] });
       setDialogOpen(false);
-      toast.success(editing ? "Expense updated" : "Expense recorded");
+      toast.success(editing ? "Expense and account updated" : "Expense recorded and account debited");
     },
+    onError: error=>toast.error(error?.message||"Unable to update expense account"),
   });
 
   const deleteMutation = useMutation({
