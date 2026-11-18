@@ -50,6 +50,8 @@ export default function PurchaseOrderDetail() {
     shipping_cost: 0, tax_amount: 0, notes: "", shipping_address: ""
   }));
   const [turn14Quote,setTurn14Quote]=useState(null);
+  const autoQuoteRef=useRef('');
+  const [trackingRefreshBusy,setTrackingRefreshBusy]=useState(false);
   const [turn14QuoteBusy,setTurn14QuoteBusy]=useState(false);
   const [turn14Shipping,setTurn14Shipping]=useState({});
   const [turn14Acknowledge,setTurn14Acknowledge]=useState(false);
@@ -191,11 +193,46 @@ export default function PurchaseOrderDetail() {
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       qc.invalidateQueries({ queryKey: ["po", id] });
       qc.invalidateQueries({ queryKey: ["job-pos"] });
+      if(isTurn14Supplier(suppliers.find(x=>x.id===form.supplier_id))&&!form.turn14_order_id){
+        const poId=id||result?.id;
+        if(poId){
+          setTurn14QuoteBusy(true);
+          base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:poId,action:'quote'})
+            .then(r=>{const data=r.data||r;setTurn14Quote(data);if(data.quoted){toast.success('Turn 14 quote updated automatically');qc.invalidateQueries({queryKey:['po',poId]});}})
+            .catch(e=>setTurn14Quote({error:e?.response?.data?.error||e.message||'Quote refresh failed'}))
+            .finally(()=>setTurn14QuoteBusy(false));
+        }
+      }
       toast.success("Purchase order saved; posted receiving and pricing records preserved");
       if (isNew) navigate(`/PurchaseOrderDetail?id=${result.id}`);
     },
   });
 
+  // Quote automatically on opening a saved, unsent Turn 14 PO. Never submit automatically.
+  useEffect(()=>{
+    const current=po?.[0];
+    if(!id||!current||!isTurn14Supplier(suppliers.find(x=>x.id===current.supplier_id))||current.turn14_order_id||!current.line_items?.some(x=>x.part_id))return;
+    const signature=String(current.id)+':'+String(current.updated_date||current.turn14_quote_created_at||'');
+    if(autoQuoteRef.current===signature)return;
+    autoQuoteRef.current=signature;
+    setTurn14QuoteBusy(true);
+    base44.functions.invoke('turn14PurchaseOrderQuote',{po_id:id,action:'quote'})
+      .then(r=>{const data=r.data||r;setTurn14Quote(data);if(data.quoted)qc.invalidateQueries({queryKey:['po',id]});})
+      .catch(e=>setTurn14Quote({error:e?.response?.data?.error||e.message||'Quote unavailable'}))
+      .finally(()=>setTurn14QuoteBusy(false));
+  },[id,po?.[0]?.updated_date,po?.[0]?.turn14_order_id,suppliers.length]);
+  const refreshTurn14Tracking=async()=>{
+    if(!form.turn14_order_id)return;
+    setTrackingRefreshBusy(true);
+    try{
+      const r=await base44.functions.invoke('turn14SyncOrderTracking',{order_id:form.turn14_order_id,limit:1});
+      const data=r.data||r;
+      if(data.errors?.length)toast.warning(data.errors[0]?.error||'Supplier tracking not available');
+      else toast.success('Supplier tracking refreshed');
+      await qc.invalidateQueries({queryKey:['po',id]});
+    }catch(e){toast.error(e?.response?.data?.error||e.message||'Tracking refresh failed')}
+    finally{setTrackingRefreshBusy(false)}
+  };
   const updateLine = (idx, field, value) => {
     const lines = [...form.line_items];
     lines[idx] = { ...lines[idx], [field]: value };
@@ -626,7 +663,7 @@ export default function PurchaseOrderDetail() {
         </Button>
         <Button variant="outline" onClick={() => printPO(form, supplier, settings)}><Printer className="w-4 h-4 mr-1" /> Print</Button>
         <Button variant="outline" onClick={turn14SupplierSelected?handleTurn14Primary:sendPO} disabled={turn14SupplierSelected?(turn14QuoteBusy||!id||!!po?.[0]?.turn14_order_id||turn14ShippingUnavailable):(sending||!form.supplier_id)}>
-          <Send className="w-4 h-4 mr-1" />{turn14SupplierSelected?(turn14QuoteBusy?"Processing…":po?.[0]?.turn14_order_id?"Test Order Submitted":turn14HasQuote?"Submit Test Order":"Request Test Quote"):(sending?"Sending...":"Email to Supplier")}
+          <Send className="w-4 h-4 mr-1" />{turn14SupplierSelected?(turn14QuoteBusy?"Processing…":po?.[0]?.turn14_order_id?"Test Order Submitted":turn14HasQuote?"Submit Order to Turn 14":"Preparing Quote"):(sending?"Sending...":"Email to Supplier")}
         </Button>
         {id && ["sent","acknowledged","ready","partial"].includes(form.status) && (
           <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={openReceiveMode}>
@@ -639,7 +676,7 @@ export default function PurchaseOrderDetail() {
       </div>
 
       {turn14SupplierSelected&&<div className="border rounded-lg p-4 mb-5 space-y-3">
-        <h3 className="font-semibold">Turn 14 TEST API Purchasing</h3>
+        <h3 className="font-semibold">Turn 14 Purchasing</h3>
         <p className="text-xs text-slate-600">Supplier: Turn 14 · Delivery: 640 N 254 Rd, Mounds, OK 74047 · Testing environment only</p>
         {turn14HasQuote&&<div className="space-y-2">
           <p className="text-sm font-medium">Turn 14 test quote #{po?.[0]?.turn14_quote_id}</p>
@@ -659,7 +696,7 @@ export default function PurchaseOrderDetail() {
         {turn14Quote?.error&&<p className="text-red-700 text-sm">{turn14Quote.error}</p>}
         {turn14Quote?.response&&<details><summary className="text-xs cursor-pointer">Turn 14 API response</summary><pre className="text-xs whitespace-pre-wrap max-h-64 overflow-auto">{JSON.stringify(turn14Quote.response,null,2)}</pre></details>}
       </div>}
-      {form.turn14_order_id&&<div className="border rounded-lg p-4 mb-5 text-sm space-y-2"><strong>Turn 14 Supplier Tracking · Order #{form.turn14_order_id}</strong><p>Supplier status: {form.supplier_shipping_status||"Awaiting update"}</p>{(form.supplier_tracking||[]).map((t,i)=><div key={i} className="border-t pt-2"><strong>{t.carrier||"Carrier"} · {t.tracking_number}</strong><p>Carrier status: {t.carrier_status||"Tracking issued"}</p>{t.tracking_url&&<a className="text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={t.tracking_url}>View carrier tracking</a>}{(t.tracking_events||[]).slice(-4).map((e,j)=><p key={j} className="text-xs text-slate-500">{e.datetime||""} · {e.message||e.status}</p>)}</div>)}{form.supplier_tracking_error&&<p className="text-amber-700">Sync: {form.supplier_tracking_error}</p>}{form.supplier_tracking_last_checked&&<p className="text-xs text-slate-500">Last checked: {new Date(form.supplier_tracking_last_checked).toLocaleString()}</p>}</div>}
+      {form.turn14_order_id&&<div className="border rounded-lg p-4 mb-5 text-sm space-y-2"><div className="flex items-center justify-between gap-3"><strong>Turn 14 Supplier Tracking · Order #{form.turn14_order_id}</strong><Button size="sm" variant="outline" onClick={refreshTurn14Tracking} disabled={trackingRefreshBusy}>{trackingRefreshBusy?'Refreshing…':'Refresh tracking'}</Button></div><p>Supplier status: {form.supplier_shipping_status||"Awaiting update"}</p>{(form.supplier_tracking||[]).map((t,i)=><div key={i} className="border-t pt-2"><strong>{t.carrier||"Carrier"} · {t.tracking_number}</strong><p>Carrier status: {t.carrier_status||"Tracking issued"}</p>{t.tracking_url&&<a className="text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={t.tracking_url}>View carrier tracking</a>}{(t.tracking_events||[]).slice(-4).map((e,j)=><p key={j} className="text-xs text-slate-500">{e.datetime||""} · {e.message||e.status}</p>)}</div>)}{form.supplier_tracking_error&&<p className="text-amber-700">Sync: {form.supplier_tracking_error}</p>}{form.supplier_tracking_last_checked&&<p className="text-xs text-slate-500">Last checked: {new Date(form.supplier_tracking_last_checked).toLocaleString()}</p>}</div>}
       {form.website_order_number&&<div className="border rounded-lg p-3 mb-5 text-sm bg-slate-50"><strong>Website order: {form.website_order_number}</strong> · {form.website_fulfillment_mode==="direct_to_customer"?"Direct-to-customer supplier shipment":"Supplier shipment to Elite shop"}<p className="text-xs text-slate-600">This PO is linked to a customer order. Review shipping and receiving carefully; customer-directed shipments must not be received into shop stock.</p></div>}
       <div className="grid grid-cols-2 gap-6 mb-6">
         <Card className="border-0 shadow-sm">
