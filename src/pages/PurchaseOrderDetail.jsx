@@ -211,7 +211,7 @@ export default function PurchaseOrderDetail() {
   // Quote automatically on opening a saved, unsent Turn 14 PO. Never submit automatically.
   useEffect(()=>{
     const current=po?.[0];
-    if(!id||!current||!isTurn14Supplier(suppliers.find(x=>x.id===current.supplier_id))||current.turn14_order_id||!current.line_items?.some(x=>x.part_id))return;
+    if(!id||!current||!isTurn14Supplier(suppliers.find(x=>x.id===current.supplier_id))||current.turn14_order_id||current.turn14_quote_id||!current.line_items?.some(x=>x.part_id))return;
     const signature=String(current.id)+':'+String(current.updated_date||current.turn14_quote_created_at||'');
     if(autoQuoteRef.current===signature)return;
     autoQuoteRef.current=signature;
