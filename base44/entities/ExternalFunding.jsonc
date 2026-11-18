@@ -1,0 +1,18 @@
+{
+  "name":"ExternalFunding",
+  "type":"object",
+  "properties":{
+    "account_id":{"type":"string"},
+    "amount_cents":{"type":"integer"},
+    "funding_type":{"type":"string","enum":["owner_contribution","owner_loan","business_transfer","other"]},
+    "funding_date":{"type":"string","format":"date"},
+    "source_description":{"type":"string"},
+    "reference":{"type":"string"},
+    "memo":{"type":"string"},
+    "status":{"type":"string","enum":["recorded","void"],"default":"recorded"},
+    "ledger_key":{"type":"string"},
+    "recorded_by":{"type":"string"},
+    "recorded_at":{"type":"string"}
+  },
+  "required":["account_id","amount_cents","funding_type","funding_date","ledger_key"]
+}
