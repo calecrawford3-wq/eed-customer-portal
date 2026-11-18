@@ -149,7 +149,7 @@ export default async function(req:Request){
  for(const x of expenses){
   const at=x.created_date||x.date;
   if(!at||new Date(at).getTime()<new Date(START).getTime())continue;
-  const cents=Math.round(Number(x.amount||0)*100);
+  const cents=Math.round((Number(x.amount||0)+(x.tax_included_in_amount===false?Number(x.tax_amount||0):0))*100);
   if(cents<=0)continue;
   const acct=(x.paid_from_account_id?accounts.find((a:any)=>a.id===x.paid_from_account_id):null)||(x.category==='parts_cogs'?byKind('reserve'):byKind('operating'));
   if(!acct)continue;

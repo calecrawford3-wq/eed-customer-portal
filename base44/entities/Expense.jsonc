@@ -97,6 +97,10 @@
     "paid_from_account_id": {
       "type": "string",
       "description": "Virtual account used to fund this expense"
+    },
+    "tax_included_in_amount": {
+      "type": "boolean",
+      "description": "True when Amount includes tax; false when Tax Paid is additional. Legacy null means included."
     }
   },
   "required": [

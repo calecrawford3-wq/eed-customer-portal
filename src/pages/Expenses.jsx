@@ -36,6 +36,7 @@ const emptyExpense = {
   vendor: "",
   amount: 0,
   tax_amount: 0,
+  tax_included_in_amount: false,
   date: new Date().toISOString().split("T")[0],
   payment_method: "card",
   is_deductible: true,
@@ -98,6 +99,7 @@ export default function Expenses() {
         vendor: result.vendor || f.vendor,
         amount: result.amount || f.amount,
         tax_amount: result.tax_amount ?? f.tax_amount,
+        tax_included_in_amount: true,
         date: result.date || f.date,
         category: result.category || f.category,
         payment_method: result.payment_method || f.payment_method,
@@ -189,6 +191,7 @@ export default function Expenses() {
       vendor: supplier?.name || "",
       amount: totalCost,
       tax_amount: poTax,
+      tax_included_in_amount: true,
       date: po.received_date || new Date().toISOString().split("T")[0],
       payment_method: "other",
       is_deductible: true,
@@ -204,7 +207,7 @@ export default function Expenses() {
     setForm({ ...emptyExpense, paid_from_account_id: defaultAccount("other")?.id || "", expense_number: `EXP-${Date.now().toString().slice(-6)}` });
     setDialogOpen(true);
   };
-  const openEdit = (e) => { setEditing(e); setForm({ ...e }); setDialogOpen(true); };
+  const openEdit = (e) => { setEditing(e); setForm({ ...e, tax_included_in_amount:e.tax_included_in_amount !== false }); setDialogOpen(true); };
 
   const filtered = expenses.filter(e => {
     const matchSearch = (e.description + e.vendor + e.category + (e.expense_number || "")).toLowerCase().includes(search.toLowerCase());
@@ -213,7 +216,8 @@ export default function Expenses() {
     return matchSearch;
   });
 
-  const totalExpenses = filtered.reduce((s, e) => s + (e.amount || 0), 0);
+  const expenseTotal=e=>Number(e.amount||0)+(e.tax_included_in_amount===false?Number(e.tax_amount||0):0);
+  const totalExpenses = filtered.reduce((s, e) => s + expenseTotal(e), 0);
   const totalTax = filtered.reduce((s, e) => s + (e.tax_amount || 0), 0);
   const deductible = filtered.filter(e => e.is_deductible).reduce((s, e) => s + (e.amount || 0), 0);
 
@@ -336,7 +340,7 @@ export default function Expenses() {
                   <td className="py-3 px-4 text-slate-600">{exp.vendor || "—"}</td>
                   <td className="py-3 px-4"><Badge className="bg-slate-100 text-slate-700 border-0 text-xs">{getCategoryLabel(exp.category)}</Badge></td>
                   <td className="py-3 px-4 text-slate-600">{accountLabel(virtualAccounts.find(a=>a.id===exp.paid_from_account_id)||defaultAccount(exp.category)||{name:"Unassigned"})}</td>
-                  <td className="py-3 px-4 text-right font-semibold">${Number(exp.amount || 0).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-right font-semibold">${expenseTotal(exp).toFixed(2)}</td>
                   <td className="py-3 px-4 text-center">
                     {exp.is_deductible ? <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Yes</Badge> : <Badge className="bg-slate-100 text-slate-400 border-0 text-xs">No</Badge>}
                   </td>
@@ -419,6 +423,11 @@ export default function Expenses() {
               </Select>
               <p className="text-xs text-slate-500 mt-1">Debits the selected virtual account. No bank transfer occurs.</p>
             </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.tax_included_in_amount!==false} onCheckedChange={v=>setForm({...form,tax_included_in_amount:v})} />
+              <Label>Amount already includes sales tax</Label>
+            </div>
+            <p className="text-sm text-slate-600">Total deducted from selected account: <strong>{(Number(form.amount||0)+(form.tax_included_in_amount===false?Number(form.tax_amount||0):0)).toLocaleString('en-US',{style:'currency',currency:'USD'})}</strong></p>
             <div>
               <Label>Payment Method</Label>
               <Select value={form.payment_method} onValueChange={v => setForm({ ...form, payment_method: v })}>

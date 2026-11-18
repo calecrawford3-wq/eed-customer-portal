@@ -14,7 +14,7 @@ export default async function(req:Request){
  const accts=list(accounts);
  const account=(x.paid_from_account_id?accts.find((a:any)=>a.id===x.paid_from_account_id):null)||accts.find((a:any)=>a.kind===(x.category==='parts_cogs'?'reserve':'operating')&&a.active!==false);
  if(!account)return Response.json({error:'No valid funding account'},{status:409});
- const desired=-Math.round(Number(x.amount||0)*100);
+ const desired=-Math.round((Number(x.amount||0)+(x.tax_included_in_amount===false?Number(x.tax_amount||0):0))*100);
  if(!Number.isSafeInteger(desired)||desired>=0)return Response.json({error:'Invalid expense amount'},{status:400});
  const old=list(allLedger).filter((l:any)=>l.source_type==='expense'&&l.source_id===x.id);
  const current=new Map<string,number>();
