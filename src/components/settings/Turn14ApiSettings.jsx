@@ -14,13 +14,14 @@ export default function Turn14ApiSettings({form,set}){
   ['Sync supplier inventory',()=>base44.functions.invoke('turn14SyncLinked',{mode:'inventory'})],
   ['Sync supplier pricing / MAP',()=>base44.functions.invoke('turn14SyncLinked',{mode:'pricing'})],
   ['Refresh submitted order tracking',()=>base44.functions.invoke('turn14SyncOrderTracking',{limit:60})],
+  ['Prepare paid website orders',()=>base44.functions.invoke('turn14PreparePaidOrders',{})],
  ];
  return <section className="rounded-xl border bg-white p-5 space-y-4">
  <div><h3 className="text-xl font-bold">Turn 14 Distribution</h3><p className="text-sm text-slate-600">API diagnostics and supplier synchronization. The integration currently uses Turn 14's testing environment; live purchasing is not enabled.</p></div>
  <div className="grid sm:grid-cols-2 gap-3">{[
  ['turn14_inventory_sync','Automatically synchronize supplier inventory'],
  ['turn14_dealer_cost_map_sync','Automatically synchronize dealer costs and MAP'],
- ['turn14_auto_import','Automatically import supplier catalog items (requires catalog selection and verified mapping)'],
+ ['turn14_auto_import','Automatically import supplier catalog items (catalog-wide automation not yet enabled)'],
  ['turn14_hide_supplier_identity','Hide supplier identity from customers'],
  ].map(([key,label])=><label key={key} className="flex items-center gap-2 text-sm border rounded-lg p-3"><input type="checkbox" checked={!!form[key]} onChange={e=>set(key,e.target.checked)}/>{label}</label>)}</div>
  <p className="text-xs text-amber-700">Paid website orders may be prepared automatically, but final supplier submission remains an explicit staff action. Turning on a preference does not activate production purchasing.</p>
