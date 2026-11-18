@@ -11,6 +11,7 @@ import WebsiteEnginePricing from './pages/WebsiteEnginePricing';
 import WebsiteAnalytics from './pages/WebsiteAnalytics';
 import WebsiteStoreCatalog from './pages/WebsiteStoreCatalog';
 import WebsiteOrderFulfillment from './pages/WebsiteOrderFulfillment';
+import PublicOrderTracking from './pages/PublicOrderTracking';
 import WebsiteMediaManager from './pages/WebsiteMediaManager';
 import WebsiteCartOrders from './pages/WebsiteCartOrders';
 import WebsiteManualOrder from './pages/WebsiteManualOrder';
@@ -273,6 +274,7 @@ const routes = createRoutesFromElements(
     <Route path="/additional-work/:token" element={<AdditionalWorkViewer />} />
     <Route path="/estimate/:token" element={<EstimateViewer />} />
     <Route path="/invoice/:token" element={<InvoiceViewer />} />
+    <Route path="/track/:token" element={<PublicOrderTracking />} />
     <Route path="/comparison/:token" element={<PublicStageComparison />} />
     <Route path="/legal/:token" element={<PublicLegalViewer />} />
     <Route path="/engine-assistance/apply/:token" element={<EngineAssistanceApply />} />

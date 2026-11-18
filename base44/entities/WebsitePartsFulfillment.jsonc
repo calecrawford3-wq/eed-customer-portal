@@ -2,6 +2,7 @@
   "name": "WebsitePartsFulfillment",
   "type": "object",
   "properties": {
+    "public_tracking_token": {"type":"string"},
     "tracking_notification_sent_keys": {"type":"array","items":{"type":"string"},"default":[]},
     "supplier_shipping_status": {"type":"string"},
     "supplier_tracking": {"type":"array","items":{"type":"object"},"default":[]},
