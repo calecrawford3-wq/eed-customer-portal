@@ -104,7 +104,6 @@ export default async function(req:Request){
  const invoiceRecords=list(await e.Invoice.list('-created_date',500));
  const estimateRecords=list(await e.Estimate.list('-created_date',500));
  const websiteRecords=list(await e.WebsitePartsFulfillment.list('-created_date',500));
- const seenManualReferences=new Set<string>();
  const cutoffMs=new Date(START).getTime();
  const validDate=(at:any)=>at&&Number.isFinite(Date.parse(at))&&Date.parse(at)>=cutoffMs;
  async function postManual(key:string,cents:number,at:string,memo:string,sourceType:string,sourceId:string){
@@ -115,8 +114,6 @@ export default async function(req:Request){
  }
  for(const p of manualRecords){
   if(p.status!=='verified'||!validDate(p.received_at))continue;
-  const reference=[p.invoice_id||'',p.estimate_id||'',p.check_number||'',p.amount||''].join(':');
-  if(p.payment_method==='check'&&p.check_number)seenManualReferences.add(reference);
   await postManual('manual-payment:'+p.id,Math.round(Number(p.amount||0)*100),p.received_at,'Verified manual '+(p.payment_method||'payment')+' · '+(p.document_number||''),'manual_payment',p.id);
  }
  for(const [type,docs] of [['invoice',invoiceRecords],['estimate',estimateRecords]] as const){
@@ -128,6 +125,12 @@ export default async function(req:Request){
     // Card payments can originate from Stripe even if staff manually entered them.
     // Require a non-card payment method and no processor identifiers.
     if(!['cash','check','ach','bank_transfer','wire','other'].includes(method)||p.stripe_payment_intent||p.payment_intent||p.stripe_session_id||!validDate(at))continue;
+    // A verified ManualPayment may also be reflected in the document payments array.
+    // Treat the verified manual record as canonical to avoid double-crediting it.
+    if(manualRecords.some((mp:any)=>mp.status==='verified'&&Number(mp.amount)===Number(p.amount)&&
+      (type==='invoice'?mp.invoice_id===doc.id:mp.estimate_id===doc.id)&&
+      (mp.payment_method===method||!mp.payment_method)&&
+      Math.abs(Date.parse(mp.received_at||0)-Date.parse(at))<7*86400000))continue;
     if(type==='estimate'&&invoiceRecords.some((inv:any)=>inv.estimate_id===doc.id&&(inv.payments||[]).some((ip:any)=>String(ip.date||'')===String(at)&&Number(ip.amount)===Number(p.amount))))continue;
     const key='manual-document:'+type+':'+doc.id+':'+(p.id||p.payment_id||i);
     await postManual(key,Math.round(Number(p.amount||0)*100),at,'Manually recorded '+type+' payment · '+(doc.invoice_number||doc.estimate_number||''),'manual_document_payment',doc.id);
