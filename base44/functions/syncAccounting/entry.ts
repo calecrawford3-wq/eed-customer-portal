@@ -147,8 +147,9 @@ export default async function(req:Request){
  }
  const expenses=list(await e.Expense.list('-date',500));
  for(const x of expenses){
+  const historical=typeof x.date==='string'&&x.date.slice(0,10)<'2026-11-18';
   const at=x.created_date||x.date;
-  if(!at||new Date(at).getTime()<new Date(START).getTime())continue;
+  if(!historical&&(!at||new Date(at).getTime()<new Date(START).getTime()))continue;
   const cents=Math.round((Number(x.amount||0)+(x.tax_included_in_amount===false?Number(x.tax_amount||0):0))*100);
   if(cents<=0)continue;
   const acct=(x.paid_from_account_id?accounts.find((a:any)=>a.id===x.paid_from_account_id):null)||(x.category==='parts_cogs'?byKind('reserve'):byKind('operating'));
@@ -157,7 +158,7 @@ export default async function(req:Request){
   const old=ledger.filter((l:any)=>l.source_type==='expense'&&l.source_id===x.id);
   const netByAccount=new Map<string,number>();
   for(const l of old)netByAccount.set(l.account_id,(netByAccount.get(l.account_id)||0)+Number(l.amount_cents||0));
-  const desired=new Map<string,number>([[acct.id,-cents]]);
+  const desired=new Map<string,number>(historical?[]:[[acct.id,-cents]]);
   const affected=new Set([...netByAccount.keys(),...desired.keys()]);
   for(const accountId of affected){
    const difference=(desired.get(accountId)||0)-(netByAccount.get(accountId)||0);
