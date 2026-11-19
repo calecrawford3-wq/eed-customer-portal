@@ -533,6 +533,22 @@
       "type": "number",
       "default": 0,
       "description": "Fine vertical print calibration in millimeters"
+    },
+    "amazon_business_approved_card_last4": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "9478",
+        "8403"
+      ],
+      "description": "Approved Amazon Business card last-four digits. Only matched payment transactions may be auto-posted."
+    },
+    "amazon_business_auto_import_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Disabled until Amazon Business API authorization and reconciliation workflow are verified."
     }
   },
   "required": [
