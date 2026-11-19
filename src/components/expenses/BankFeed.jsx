@@ -15,7 +15,8 @@ export default function BankFeed({expenses=[]}){
  const connections=connectionData?.connections||[];
  const refresh=()=>{qc.invalidateQueries({queryKey:["bank-transactions"]});qc.invalidateQueries({queryKey:["simplefin-connections"]});qc.invalidateQueries({queryKey:["expenses"]});};
  const run=async fn=>{setBusy(true);try{await fn();refresh();}catch(e){toast.error(e.message||"Bank action failed");}finally{setBusy(false);}};
- const overdue=transactions.filter(t=>t.status==="review"&&t.amount>0&&!t.pending&&t.date&&Date.now()-Date.parse(t.date+"T00:00:00")>=Number(days)*86400000);\n const review=transactions.filter(t=>["review","pending_po"].includes(t.status)&&t.amount>0&&!t.pending);
+ const overdue=transactions.filter(t=>t.status==="review"&&t.amount>0&&!t.pending&&t.date&&Date.now()-Date.parse(t.date+"T00:00:00")>=Number(days)*86400000);
+ const review=transactions.filter(t=>["review","pending_po"].includes(t.status)&&t.amount>0&&!t.pending);
  const linked=transactions.filter(t=>["matched","ignored"].includes(t.status));
  const reconcile=(transaction_id,action,extra={})=>run(async()=>{const r=await invoke("reviewBankPurchase",{transaction_id,action,...extra});toast.success(r.status==="pending_po"?"Linked PO; awaiting receipt":"Bank transaction reviewed");});
  return <div className="border rounded-xl p-4 space-y-4 bg-white">
