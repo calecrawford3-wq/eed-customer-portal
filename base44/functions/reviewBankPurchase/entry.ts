@@ -12,6 +12,7 @@ export default async function(req:Request){
   const tx=rows(await e.BankTransaction.filter({id:transaction_id}))[0];
   if(!tx||tx.status==='removed')throw Error('Bank transaction not found');
   if(tx.expense_id||tx.status==='matched')throw Error('This bank transaction has already been reconciled');
+  if(tx.status==='pending_po'&&action!=='match_po')throw Error('Transaction already linked to a PO; resolve the PO first');
   if(tx.pending||Number(tx.amount)<=0)throw Error('Only posted purchases can be reconciled');
   if(action==='ignore'){
    await e.BankTransaction.update(tx.id,{status:'ignored',review_note:String(notes||'Not a business expense').slice(0,500),reviewed_at:new Date().toISOString()});
@@ -30,6 +31,7 @@ export default async function(req:Request){
   }else if(action==='match_po'){
    po=rows(await e.PurchaseOrder.filter({id:po_id}))[0];
    if(!po)throw Error('Purchase order not found');
+   if(tx.po_id&&tx.po_id!==po.id)throw Error('Transaction is linked to a different PO');
    if(used.some((t:any)=>t.po_id===po.id))throw Error('This PO already has a matched bank purchase. Review split or multiple payments manually.');
    const poExpense=expenses.find((x:any)=>x.po_id===po.id);
    if(poExpense){
