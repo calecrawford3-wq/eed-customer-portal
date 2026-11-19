@@ -151,9 +151,9 @@ export default async function(req:Request){
   const at=x.created_date||x.date;
   if(!historical&&(!at||new Date(at).getTime()<new Date(START).getTime()))continue;
   const cents=Math.round((Number(x.amount||0)+(x.tax_included_in_amount===false?Number(x.tax_amount||0):0))*100);
-  if(cents<=0)continue;
+  if(cents<=0&&!historical)continue;
   const acct=(x.paid_from_account_id?accounts.find((a:any)=>a.id===x.paid_from_account_id):null)||(x.category==='parts_cogs'?byKind('reserve'):byKind('operating'));
-  if(!acct)continue;
+  if(!acct&&!historical)continue;
   const key='expense:'+x.id;
   const old=ledger.filter((l:any)=>l.source_type==='expense'&&l.source_id===x.id);
   const netByAccount=new Map<string,number>();

@@ -14,7 +14,7 @@ export default async function(req:Request){
  if(!historical&&(!at||Date.parse(at)<Date.parse('2026-11-18T08:08:00.000Z')))return Response.json({ok:true,skipped:'Before accounting start date'});
  const accts=list(accounts);
  const account=(x.paid_from_account_id?accts.find((a:any)=>a.id===x.paid_from_account_id):null)||accts.find((a:any)=>a.kind===(x.category==='parts_cogs'?'reserve':'operating')&&a.active!==false);
- if(!account)return Response.json({error:'No valid funding account'},{status:409});
+ if(!account&&!historical)return Response.json({error:'No valid funding account'},{status:409});
  const desired=historical?0:-Math.round((Number(x.amount||0)+(x.tax_included_in_amount===false?Number(x.tax_amount||0):0))*100);
  if(!historical&&(!Number.isSafeInteger(desired)||desired>=0))return Response.json({error:'Invalid expense amount'},{status:400});
  const old=list(allLedger).filter((l:any)=>l.source_type==='expense'&&l.source_id===x.id);
@@ -31,5 +31,5 @@ export default async function(req:Request){
   await e.VirtualLedgerEntry.create({transaction_key:key,account_id:id,amount_cents:difference,occurred_at:new Date().toISOString(),memo:'Expense reconciliation: '+(x.description||''),source_type:'expense',source_id:x.id});
   posted++;
  }
- return Response.json({ok:true,posted,account_id:account.id,amount_cents:desired,historical});
+ return Response.json({ok:true,posted,account_id:account?.id||null,amount_cents:desired,historical});
 }
