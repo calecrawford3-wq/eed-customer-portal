@@ -40,6 +40,7 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showLinkBuild, setShowLinkBuild] = useState(false);
+  const [creatingBuild, setCreatingBuild] = useState(false);
   const printRef = useRef(null);
 
   const { data: specSheets = [] } = useQuery({
@@ -76,14 +77,28 @@ export default function JobBuildTab({ job, build, platform, customer, customers,
     valve_lash_exhaust: currentHeadSpecData.last_valve_lash_exhaust || {},
   } : priorBuild;
 
+  const createBuildSheet=async()=>{
+    setCreatingBuild(true);
+    try{
+      const response=await base44.functions.invoke('ensureJobBuild',{job_id:job.id});
+      const result=response?.data||response;
+      if(!result?.ok)throw Error(result?.error||'Could not prepare build sheet');
+      await qc.invalidateQueries({queryKey:['job',job.id]});
+      await qc.invalidateQueries({queryKey:['job-linked','EngineBuild']});
+      toast.success(result.created?'Build sheet created and linked':'Existing build sheet restored');
+    }catch(error){toast.error(error?.response?.data?.error||error?.message||'Unable to prepare build sheet');}
+    finally{setCreatingBuild(false);}
+  };
+
   if (!build) {
     return (
       <Card className="border-0 shadow-sm">
         <CardContent className="py-8 text-center space-y-3">
           <p className="text-sm text-slate-400">
-            No build linked yet. The build is created automatically when the job is activated (estimate approved + deposit received), or you can link an existing build manually.
+            This job has no linked build sheet. An approved estimate allows you to prepare the build sheet now; the engine must be linked or checked in first. This does not mark a deposit as received or activate the job.
           </p>
-          <div>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Button size="sm" onClick={createBuildSheet} disabled={creatingBuild||!job?.estimate_id}>{creatingBuild?'Preparing…':'Create / Restore Build Sheet'}</Button>
             <Button size="sm" variant="outline" onClick={() => setShowLinkBuild(true)}>
               <Link2 className="w-3.5 h-3.5 mr-1" /> Link Existing Build
             </Button>
