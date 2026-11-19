@@ -40,6 +40,18 @@
     },
     "category": {
       "type": "string"
+    },
+    "po_id": {
+      "type": "string"
+    },
+    "review_note": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "suggested_po_id": {
+      "type": "string"
     }
   },
   "rls": {
