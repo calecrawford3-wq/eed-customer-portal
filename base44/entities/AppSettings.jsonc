@@ -2,9 +2,18 @@
   "name": "AppSettings",
   "type": "object",
   "properties": {
-    "turn14_receiving_name": {"type":"string","default":"Cale Crawford"},
-    "turn14_receiving_email": {"type":"string","default":"cale@eedpower.com"},
-    "turn14_receiving_phone": {"type":"string","default":"918-310-8532"},
+    "turn14_receiving_name": {
+      "type": "string",
+      "default": "Cale Crawford"
+    },
+    "turn14_receiving_email": {
+      "type": "string",
+      "default": "cale@eedpower.com"
+    },
+    "turn14_receiving_phone": {
+      "type": "string",
+      "default": "918-310-8532"
+    },
     "key": {
       "type": "string",
       "description": "Unique settings key, e.g. 'global'"
@@ -499,6 +508,31 @@
     "turn14_hide_supplier_identity": {
       "type": "boolean",
       "default": true
+    },
+    "check_paper_preset": {
+      "type": "string",
+      "default": "docugard_04501_2",
+      "description": "Check stock alignment preset"
+    },
+    "check_payee_offset_y_mm": {
+      "type": "number",
+      "default": 0,
+      "description": "Fine vertical print calibration in millimeters"
+    },
+    "check_amount_offset_y_mm": {
+      "type": "number",
+      "default": 0,
+      "description": "Fine vertical print calibration in millimeters"
+    },
+    "check_date_offset_y_mm": {
+      "type": "number",
+      "default": 0,
+      "description": "Fine vertical print calibration in millimeters"
+    },
+    "check_signature_offset_y_mm": {
+      "type": "number",
+      "default": 0,
+      "description": "Fine vertical print calibration in millimeters"
     }
   },
   "required": [
