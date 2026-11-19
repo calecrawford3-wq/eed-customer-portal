@@ -60,7 +60,8 @@ Deno.serve(async req=>{
   await svc.entities.SimpleFinCredential.update(con.id,{last_synced_at:new Date().toISOString(),status:'active'});
   return Response.json({added,accounts:(data.accounts||[]).map((a:any)=>({id:a.id,name:a.name,currency:a.currency}))});
  }
- if(action==='approve'){
+ if(action==='approve')return Response.json({error:'Use bank reconciliation review to prevent duplicate expenses'},{status:409});
+  if(false){
   const tx=rows(await svc.entities.BankTransaction.filter({id:body.transaction_id}))[0];
   if(!tx||!String(tx.plaid_transaction_id||'').startsWith('simplefin:'))throw Error('Transaction not found');
   if(tx.expense_id)return Response.json({expense_id:tx.expense_id,already_matched:true});

@@ -51,7 +51,8 @@ Deno.serve(async(req)=>{
    await svc.entities.BankConnection.update(con.id,{cursor,last_synced_at:new Date().toISOString()});
    return Response.json({added:count});
   }
-  if(action==='approve'){
+  if(action==='approve')return Response.json({error:'Use bank reconciliation review to prevent duplicate expenses'},{status:409});
+  if(false){
    const tx=rows(await svc.entities.BankTransaction.filter({id:body.transaction_id}))[0];if(!tx)throw Error('Transaction not found');
    if(tx.expense_id)return Response.json({expense_id:tx.expense_id,already_matched:true});
    if(tx.amount<=0||tx.pending)throw Error('Only posted purchases can be expensed');
