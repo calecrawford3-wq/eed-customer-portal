@@ -62,6 +62,7 @@ import EstimateDetail from './pages/EstimateDetail';
 import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
 import Inventory from './pages/Inventory';
+import ShopEngineBuilds from './pages/ShopEngineBuilds';
 import Suppliers from './pages/Suppliers';
 import PurchaseOrders from './pages/PurchaseOrders';
 import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
@@ -94,6 +95,7 @@ export const PAGES = {
     "Invoices": Invoices,
     "InvoiceDetail": InvoiceDetail,
     "Inventory": Inventory,
+    "ShopEngineBuilds": ShopEngineBuilds,
     "Suppliers": Suppliers,
     "PurchaseOrders": PurchaseOrders,
     "PurchaseOrderDetail": PurchaseOrderDetail,
