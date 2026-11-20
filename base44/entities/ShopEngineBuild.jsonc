@@ -1,0 +1,13 @@
+{
+ "name":"ShopEngineBuild","type":"object",
+ "properties":{
+  "name":{"type":"string"},"platform_id":{"type":"string"},"engine_serial_number":{"type":"string"},"eed_id":{"type":"string"},
+  "core_id":{"type":"string"},"core_cost":{"type":"number"},"status":{"type":"string","default":"planning"},
+  "lines":{"type":"array","items":{"type":"object"}},"labor_cost":{"type":"number"},"machining_cost":{"type":"number"},"other_cost":{"type":"number"},
+  "sale_price":{"type":"number"},"build_id":{"type":"string"},"notes":{"type":"string"},
+  "completed_at":{"type":"string"},"inventory_committed":{"type":"boolean","default":false},
+  "total_cost_snapshot":{"type":"number"},"sale_status":{"type":"string","default":"not_listed"}
+ },
+ "required":["name","platform_id"],
+ "rls":{"read":{"user_condition":{"role":"admin"}},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}
+}
