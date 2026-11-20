@@ -11,7 +11,7 @@ import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/compo
 const usd=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
 const call=async body=>{const r=await base44.functions.invoke('shopEngineBuild',body),d=r?.data||r;if(!d.ok)throw Error(d.error||'Operation failed');return d};
 export default function ShopEngineBuilds(){
- const qc=useQueryClient(),[selected,setSelected]=useState(''),[name,setName]=useState(''),[platform,setPlatform]=useState(''),[busy,setBusy]=useState(false),[draft,setDraft]=useState(null),[partId,setPartId]=useState(''),[qty,setQty]=useState('1'),[source,setSource]=useState('stock');
+ const qc=useQueryClient(),[selected,setSelected]=useState(''),[name,setName]=useState(''),[platform,setPlatform]=useState(''),[busy,setBusy]=useState(false),[draft,setDraft]=useState(null),[pickerOpen,setPickerOpen]=useState(false);
  const {data:records=[]}=useQuery({queryKey:['shop-engine-builds'],queryFn:()=>base44.entities.ShopEngineBuild.list('-created_date',200)});
  const {data:cores=[]}=useQuery({queryKey:['shop-engine-cores'],queryFn:()=>base44.entities.EngineCore.list('-created_date',500)});
  const {data:components=[]}=useQuery({queryKey:['shop-engine-components'],queryFn:()=>base44.entities.EngineComponent.list('-created_date',1500)});
