@@ -94,7 +94,7 @@ export default async function(req:Request){
    const coreRequired=new Map<string,number>();
    for(const l of lines){if(l.item_type==='core')coreRequired.set(l.core_id,(coreRequired.get(l.core_id)||0)+Number(l.qty));else required.set(l.part_id,(required.get(l.part_id)||0)+Number(l.qty));}
    for(const [id,qty] of required){const p=parts.find((p:any)=>p.id===id);if(!p||Number(p.quantity_on_hand)<qty)throw Error('Insufficient inventory for '+(p?.name||id));}
-   for(const [id,qty] of coreRequired){const c=rows(await e.EngineCore.filter({id}))[0];if(!c||Number(c.quantity_on_hand)<qty+(id===record.core_id?1:0))throw Error('Insufficient additional core inventory for '+(c?.name||id));}
+   for(const [id,qty] of coreRequired){const c=rows(await e.EngineCore.filter({id}))[0];if(!c||Number(c.quantity_on_hand)<qty+(id===record.core_id?1:0))throw Error('Insufficient additional core inventory for '+(c?.name||id));if(c.serialized_tracking_enabled)throw Error('Additional serialized cores require unit-level assignment; use the base case selector or a non-serialized core');}
    const cost=money(record.core_cost+lines.reduce((s:number,l:any)=>s+Number(l.qty)*(Number(l.unit_cost||0)+Number(l.shipping_cost||0)),0)+Number(record.labor_cost||0)+Number(record.machining_cost||0)+Number(record.other_cost||0));
    // The commitment marker is written before inventory mutations to prevent accidental
    // double consumption on retries. Partial failures require manual reconciliation.
