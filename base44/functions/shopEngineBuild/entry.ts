@@ -20,7 +20,7 @@ export default async function(req:Request){
    const lines=Array.isArray(b.lines)?b.lines:[];
    if(lines.length>200)throw Error('Too many part lines');
    for(const l of lines){
-    if(!l.part_id||!Number.isInteger(Number(l.qty))||Number(l.qty)<=0||Number(l.qty)>1000||!['stock','purchase'].includes(l.source))throw Error('Invalid part line');
+    if(!(l.item_type==='core'?l.core_id:l.part_id)||!Number.isInteger(Number(l.qty))||Number(l.qty)<=0||Number(l.qty)>1000||!['stock','purchase'].includes(l.source))throw Error('Invalid part line');
     if(!Number.isFinite(Number(l.unit_cost))||Number(l.unit_cost)<0)throw Error('Invalid part cost');
    }
    const component=b.base_component_id?rows(await e.EngineComponent.filter({id:b.base_component_id}))[0]:null;
@@ -59,8 +59,8 @@ export default async function(req:Request){
     if(otherEngine)throw Error('EED ID already assigned to another registered engine');
    }
    const parts=rows(await e.Part.list('-created_date',5000));
-   for(const l of lines)if(!parts.some((p:any)=>p.id===l.part_id))throw Error('One or more parts no longer exist');
-   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',base_component_id:component?.id||'',core_cost:component?money(Number(component.acquisition_cost||0)+Number(component.repair_cost_total||0)):core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id,qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:component?String(component.physical_serial_number):String(b.engine_serial_number||''),eed_id:eedId,notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
+   for(const l of lines){if(l.item_type==='core'){if(!rows(await e.EngineCore.filter({id:l.core_id})).length)throw Error('Core no longer exists')}else if(!parts.some((p:any)=>p.id===l.part_id))throw Error('One or more parts no longer exist');}
+   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',base_component_id:component?.id||'',core_cost:component?money(Number(component.acquisition_cost||0)+Number(component.repair_cost_total||0)):core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id||'',core_id:l.core_id||'',item_type:l.item_type||'part',kit_id:l.kit_id||'',qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:component?String(component.physical_serial_number):String(b.engine_serial_number||''),eed_id:eedId,notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
    return Response.json({ok:true});
   }
   if(action==='build_sheet'){
@@ -91,8 +91,10 @@ export default async function(req:Request){
    if(!core||Number(core.quantity_on_hand)<1)throw Error('Core is no longer available');
    const parts=rows(await e.Part.list('-created_date',5000));
    const required=new Map<string,number>();
-   for(const l of lines)required.set(l.part_id,(required.get(l.part_id)||0)+Number(l.qty));
+   const coreRequired=new Map<string,number>();
+   for(const l of lines){if(l.item_type==='core')coreRequired.set(l.core_id,(coreRequired.get(l.core_id)||0)+Number(l.qty));else required.set(l.part_id,(required.get(l.part_id)||0)+Number(l.qty));}
    for(const [id,qty] of required){const p=parts.find((p:any)=>p.id===id);if(!p||Number(p.quantity_on_hand)<qty)throw Error('Insufficient inventory for '+(p?.name||id));}
+   for(const [id,qty] of coreRequired){const c=rows(await e.EngineCore.filter({id}))[0];if(!c||Number(c.quantity_on_hand)<qty+(id===record.core_id?1:0))throw Error('Insufficient additional core inventory for '+(c?.name||id));}
    const cost=money(record.core_cost+lines.reduce((s:number,l:any)=>s+Number(l.qty)*(Number(l.unit_cost||0)+Number(l.shipping_cost||0)),0)+Number(record.labor_cost||0)+Number(record.machining_cost||0)+Number(record.other_cost||0));
    // The commitment marker is written before inventory mutations to prevent accidental
    // double consumption on retries. Partial failures require manual reconciliation.
@@ -100,6 +102,7 @@ export default async function(req:Request){
    await e.EngineComponent.update(component.id,{inventory_state:'installed',notes:String(component.notes||'')+' | Installed in Elite shop build '+record.id});
    if(!core.serialized_tracking_enabled)await e.EngineCore.update(core.id,{quantity_on_hand:Number(core.quantity_on_hand)-1});
    for(const [id,qty] of required){const p=parts.find((p:any)=>p.id===id);await e.Part.update(id,{quantity_on_hand:Number(p.quantity_on_hand)-qty});}
+   for(const [id,qty] of coreRequired){const c=rows(await e.EngineCore.filter({id}))[0];await e.EngineCore.update(id,{quantity_on_hand:Number(c.quantity_on_hand)-qty});}
    await e.ShopEngineBuild.update(record.id,{status:'for_sale',sale_status:'internal_inventory',completed_at:new Date().toISOString()});
    return Response.json({ok:true,total_cost:cost,sale_price:record.sale_price});
   }
