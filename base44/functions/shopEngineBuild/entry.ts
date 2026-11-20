@@ -10,7 +10,7 @@ export default async function(req:Request){
   const b=await req.json(),action=b.action;
   if(action==='create'){
    if(!b.platform_id||!String(b.name||'').trim())throw Error('Engine name and platform required');
-   const record=await e.ShopEngineBuild.create({name:String(b.name).trim(),platform_id:b.platform_id,engine_serial_number:String(b.engine_serial_number||''),eed_id:String(b.eed_id||''),status:'planning',lines:[],core_id:'',core_cost:0,labor_cost:0,machining_cost:0,other_cost:0,sale_price:0,inventory_committed:false,sale_status:'not_listed'});
+   const record=await e.ShopEngineBuild.create({name:String(b.name).trim(),platform_id:b.platform_id,engine_serial_number:String(b.engine_serial_number||''),eed_id:String(b.eed_id||''),status:'planning',lines:[],core_id:'',base_component_id:'',core_cost:0,labor_cost:0,machining_cost:0,other_cost:0,sale_price:0,inventory_committed:false,sale_status:'not_listed'});
    return Response.json({ok:true,id:record.id});
   }
   const record=rows(await e.ShopEngineBuild.filter({id:b.id}))[0];
@@ -23,15 +23,27 @@ export default async function(req:Request){
     if(!l.part_id||!Number.isInteger(Number(l.qty))||Number(l.qty)<=0||Number(l.qty)>1000||!['stock','purchase'].includes(l.source))throw Error('Invalid part line');
     if(!Number.isFinite(Number(l.unit_cost))||Number(l.unit_cost)<0)throw Error('Invalid part cost');
    }
+   const component=b.base_component_id?rows(await e.EngineComponent.filter({id:b.base_component_id}))[0]:null;
+   if(component){
+    if(component.component_type!=='engine_case'||component.inventory_state!=='in_stock'||component.status==='retired')throw Error('Base engine case is not available in stock');
+    if(component.engine_core_id!==b.core_id)throw Error('Serialized engine case does not belong to the selected core');
+    if(component.platform_id&&component.platform_id!==record.platform_id)throw Error('Engine case platform differs from shop build');
+    const serial=String(component.physical_serial_number||'').trim();
+    if(!serial)throw Error('Selected engine case has no physical serial number recorded');
+    if(b.engine_serial_number&&String(b.engine_serial_number)!==serial)throw Error('Engine serial must match selected case');
+    const other=rows(await e.ShopEngineBuild.list('-created_date',500)).find((x:any)=>x.id!==record.id&&x.base_component_id===component.id&&!['cancelled'].includes(x.status));
+    if(other)throw Error('This serialized engine case is already assigned to another shop build');
+   }
    const core=b.core_id?rows(await e.EngineCore.filter({id:b.core_id}))[0]:null;
    if(b.core_id&&!core)throw Error('Selected core does not exist');
    const parts=rows(await e.Part.list('-created_date',5000));
    for(const l of lines)if(!parts.some((p:any)=>p.id===l.part_id))throw Error('One or more parts no longer exist');
-   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',core_cost:core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id,qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:String(b.engine_serial_number||''),eed_id:String(b.eed_id||''),notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
+   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',base_component_id:component?.id||'',core_cost:component?money(Number(component.acquisition_cost||0)+Number(component.repair_cost_total||0)):core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id,qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:component?String(component.physical_serial_number):String(b.engine_serial_number||''),eed_id:String(b.eed_id||''),notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
    return Response.json({ok:true});
   }
   if(action==='build_sheet'){
-   if(!record.engine_serial_number)throw Error('Enter engine serial number before creating build sheet');
+   if(!record.base_component_id)throw Error('Select a serialized inventory engine case first');
+   if(!record.engine_serial_number)throw Error('Selected engine case must have a physical serial number');
    if(record.build_id){
     const existing=rows(await e.EngineBuild.filter({id:record.build_id}))[0];
     if(existing)return Response.json({ok:true,build_id:existing.id,existing:true});
@@ -45,11 +57,14 @@ export default async function(req:Request){
   if(action==='complete'){
    if(record.inventory_committed)return Response.json({ok:true,already_completed:true});
    if(!record.build_id)throw Error('Create a build sheet first');
-   if(!record.core_id)throw Error('Select an inventory core');
+   if(!record.core_id||!record.base_component_id)throw Error('Select a serialized inventory engine case');
    if(!record.engine_serial_number)throw Error('Engine serial number required');
    if(!(Number(record.sale_price)>0))throw Error('Enter a sale price');
    const lines=record.lines||[];
    if(lines.some((l:any)=>l.source==='purchase'))throw Error('Vendor purchase lines must be received into stock and changed to Stock before completion');
+   const component=rows(await e.EngineComponent.filter({id:record.base_component_id}))[0];
+   if(!component||component.engine_core_id!==record.core_id||component.inventory_state!=='in_stock'||component.component_type!=='engine_case')throw Error('Selected serialized engine case is no longer available');
+   if(String(component.physical_serial_number||'')!==String(record.engine_serial_number||''))throw Error('Base engine serial changed; review the build before completion');
    const core=rows(await e.EngineCore.filter({id:record.core_id}))[0];
    if(!core||Number(core.quantity_on_hand)<1)throw Error('Core is no longer available');
    const parts=rows(await e.Part.list('-created_date',5000));
@@ -60,7 +75,8 @@ export default async function(req:Request){
    // The commitment marker is written before inventory mutations to prevent accidental
    // double consumption on retries. Partial failures require manual reconciliation.
    await e.ShopEngineBuild.update(record.id,{inventory_committed:true,status:'inventory_processing',total_cost_snapshot:cost});
-   await e.EngineCore.update(core.id,{quantity_on_hand:Number(core.quantity_on_hand)-1});
+   await e.EngineComponent.update(component.id,{inventory_state:'installed',notes:String(component.notes||'')+' | Installed in Elite shop build '+record.id});
+   if(!core.serialized_tracking_enabled)await e.EngineCore.update(core.id,{quantity_on_hand:Number(core.quantity_on_hand)-1});
    for(const [id,qty] of required){const p=parts.find((p:any)=>p.id===id);await e.Part.update(id,{quantity_on_hand:Number(p.quantity_on_hand)-qty});}
    await e.ShopEngineBuild.update(record.id,{status:'for_sale',sale_status:'internal_inventory',completed_at:new Date().toISOString()});
    return Response.json({ok:true,total_cost:cost,sale_price:record.sale_price});
