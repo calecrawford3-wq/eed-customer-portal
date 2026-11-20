@@ -222,6 +222,7 @@ export default function Inventory() {
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Inventory</h1>
+          <a href="/ShopEngineBuilds" className="inline-block mt-2 text-sm font-semibold text-red-600 underline">Elite-Owned Engine Builds →</a>
           <p className="text-slate-500 mt-1">{parts.length} parts · {laborItems.length} labor items · {machiningItems.length} machining items</p>
         </div>
       </div>
