@@ -15,6 +15,7 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
   const [generated, setGenerated] = useState(false);
   const [sentIds, setSentIds] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [purchaseMode,setPurchaseMode] = useState("shortages");
 
   const { data: parts = [] } = useQuery({
     queryKey: ["parts"],
@@ -30,11 +31,12 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
     if (open && parts.length > 0 && suppliers.length > 0 && lineItems?.length > 0) {
       buildPOGroups();
     }
-  }, [open, parts, suppliers, lineItems]);
+  }, [open, parts, suppliers, lineItems, purchaseMode]);
 
   const buildPOGroups = () => {
     const neededItems = [];
 
+    const demand = new Map();
     for (const item of lineItems) {
       // Whole-kit lines: expand component parts for purchasing (labor stays out of POs)
       if (item.is_kit && Array.isArray(item.kit_components)) {
@@ -43,24 +45,23 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
           if (!comp.part_id) continue;
           const part = parts.find(p => p.id === comp.part_id);
           if (!part) continue;
-          const needed = (Number(comp.quantity) || 1) * kitQty - (part.quantity_on_hand || 0);
-          if (needed <= 0) continue;
-          neededItems.push({ part, quantity_needed: needed, from_line: item });
+          const qty = (Number(comp.quantity) || 1) * kitQty;
+          demand.set(part.id, {part, qty:(demand.get(part.id)?.qty||0)+qty});
         }
         continue;
       }
       if (!item.part_id) continue;
       const part = parts.find(p => p.id === item.part_id);
       if (!part) continue;
-      const inStock = part.quantity_on_hand || 0;
-      const needed = (item.quantity || 1) - inStock;
-      if (needed <= 0) continue; // enough in stock
+      const qty = Number(item.quantity) || 1;
+      demand.set(part.id,{part,qty:(demand.get(part.id)?.qty||0)+qty});
+    }
 
-      neededItems.push({
-        part,
-        quantity_needed: needed,
-        from_line: item,
-      });
+    // Aggregate demand by part ID first. Subtract stock only once per part,
+    // rather than once per estimate line or kit component.
+    for(const {part,qty} of demand.values()){
+      const needed=purchaseMode==='all'?qty:Math.max(0,qty-Math.max(0,Number(part.quantity_on_hand)||0));
+      if(needed>0)neededItems.push({part,quantity_needed:needed});
     }
 
     if (neededItems.length === 0) {
@@ -221,13 +222,17 @@ export default function GeneratePOModal({ open, onClose, lineItems, sourceNumber
           <DialogTitle>Generate Purchase Orders</DialogTitle>
         </DialogHeader>
 
+        <div className="flex items-center justify-between gap-3 flex-wrap border rounded-lg bg-slate-50 px-3 py-2 mb-3">
+          <div><p className="text-sm font-semibold">What should this PO include?</p><p className="text-xs text-slate-500">Order every estimate part or only quantities missing from recorded stock.</p></div>
+          <div className="flex gap-2"><Button size="sm" variant={purchaseMode==='shortages'?'default':'outline'} onClick={()=>setPurchaseMode('shortages')}>Shortages only</Button><Button size="sm" variant={purchaseMode==='all'?'default':'outline'} onClick={()=>setPurchaseMode('all')}>All estimate parts</Button></div>
+        </div>
         {!generated ? (
           <div className="py-8 text-center text-slate-400">Analyzing inventory...</div>
         ) : poGroups.length === 0 ? (
           <div className="py-8 text-center">
             <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
             <p className="text-lg font-semibold text-slate-800">All parts are in stock!</p>
-            <p className="text-slate-500 text-sm mt-1">No purchase orders needed.</p>
+            <p className="text-slate-500 text-sm mt-1">No purchase orders needed for the selected mode.</p>
             <Button className="mt-4" variant="outline" onClick={onClose}>Close</Button>
           </div>
         ) : (
