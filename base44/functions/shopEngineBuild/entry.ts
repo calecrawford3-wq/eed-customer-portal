@@ -36,9 +36,31 @@ export default async function(req:Request){
    }
    const core=b.core_id?rows(await e.EngineCore.filter({id:b.core_id}))[0]:null;
    if(b.core_id&&!core)throw Error('Selected core does not exist');
+   let eedId=String(b.eed_id||record.eed_id||'').trim();
+   if(component){
+    const serial=String(component.physical_serial_number||'').trim();
+    const registered=rows(await e.CustomerEngine.list('-created_date',5000)).find((x:any)=>x.engine_serial_number===serial);
+    const existingShop=rows(await e.ShopEngineBuild.list('-created_date',5000)).find((x:any)=>x.id!==record.id&&x.engine_serial_number===serial&&x.eed_id);
+    if(registered?.eed_id&&eedId&&registered.eed_id!==eedId)throw Error('Serial already has EED ID '+registered.eed_id);
+    if(existingShop?.eed_id&&eedId&&existingShop.eed_id!==eedId)throw Error('Serial already has EED ID '+existingShop.eed_id);
+    if(registered?.eed_id)eedId=registered.eed_id;
+    else if(existingShop?.eed_id)eedId=existingShop.eed_id;
+    else if(!eedId){
+      const allEngines=rows(await e.CustomerEngine.list('-created_date',5000));
+      const allBuilds=rows(await e.EngineBuild.list('-created_date',5000));
+      const allShop=rows(await e.ShopEngineBuild.list('-created_date',5000));
+      const ids=[...allEngines,...allBuilds,...allShop].map((x:any)=>Number(/^EED(\d+)$/i.exec(String(x.eed_id||''))?.[1]||0));
+      const next=Math.max(1039,...ids)+1;
+      eedId='EED'+next;
+    }
+    const conflicting=rows(await e.ShopEngineBuild.list('-created_date',5000)).find((x:any)=>x.id!==record.id&&x.eed_id===eedId&&x.engine_serial_number!==serial);
+    if(conflicting)throw Error('EED ID already assigned to another shop engine');
+    const otherEngine=rows(await e.CustomerEngine.list('-created_date',5000)).find((x:any)=>x.eed_id===eedId&&x.engine_serial_number!==serial);
+    if(otherEngine)throw Error('EED ID already assigned to another registered engine');
+   }
    const parts=rows(await e.Part.list('-created_date',5000));
    for(const l of lines)if(!parts.some((p:any)=>p.id===l.part_id))throw Error('One or more parts no longer exist');
-   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',base_component_id:component?.id||'',core_cost:component?money(Number(component.acquisition_cost||0)+Number(component.repair_cost_total||0)):core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id,qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:component?String(component.physical_serial_number):String(b.engine_serial_number||''),eed_id:String(b.eed_id||''),notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
+   await e.ShopEngineBuild.update(record.id,{core_id:core?.id||'',base_component_id:component?.id||'',core_cost:component?money(Number(component.acquisition_cost||0)+Number(component.repair_cost_total||0)):core?money(core.unit_cost):0,lines:lines.map((l:any)=>({part_id:l.part_id,qty:Number(l.qty),source:l.source,unit_cost:money(l.unit_cost),shipping_cost:money(l.shipping_cost)})),labor_cost:money(b.labor_cost),machining_cost:money(b.machining_cost),other_cost:money(b.other_cost),sale_price:money(b.sale_price),engine_serial_number:component?String(component.physical_serial_number):String(b.engine_serial_number||''),eed_id:eedId,notes:String(b.notes||''),status:record.status==='planning'?'planning':record.status});
    return Response.json({ok:true});
   }
   if(action==='build_sheet'){
