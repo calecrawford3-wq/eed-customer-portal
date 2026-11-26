@@ -9,7 +9,7 @@ export default async function(req:Request){
  const b=await req.json(),svc=sdk.asServiceRole;
  if(typeof b.job_id!=='string'||b.job_id.length>150)return fail('Invalid job');
  const job=rows(await svc.entities.Job.filter({id:b.job_id}))[0];
- if(!job||job.job_type!=='machining'||job.is_engine_build)return fail('Machining-only job required',409);
+ if(!job||job.job_type!=='machining')return fail('Machining-only job required',409);
  const existing=rows(await svc.entities.JobReturnShipment.filter({job_id:job.id}));
  const purchased=existing.find(x=>x.status==='purchased');
  const unresolved=existing.find(x=>['purchase_pending','purchase_review'].includes(x.status));

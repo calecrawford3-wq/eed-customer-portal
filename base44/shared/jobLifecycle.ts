@@ -169,7 +169,7 @@ async function reconcileJobFromEstimate(base44, { estimate, build, invoice_id, a
     build_id: buildId,
     invoice_ids: invoiceIds,
     platform_id: estimate.customer_engine_id ? (build?.platform_id || job?.platform_id || "") : (build?.platform_id || job?.platform_id || ""),
-    is_engine_build: estimate.is_engine_build ?? job?.is_engine_build ?? false,
+    is_engine_build: job?.job_type === "machining" ? false : (estimate.is_engine_build ?? job?.is_engine_build ?? false),
     deposit_required: !!estimate.deposit_required && (Number(estimate.deposit_amount) || 0) > 0,
     deposit_amount: Number(estimate.deposit_amount) || 0,
     deposit_met: depositMet,
