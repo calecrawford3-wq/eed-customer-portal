@@ -25,7 +25,7 @@ export default function JobEstimateTab({ job, estimate }) {
           <CardContent className="py-8 text-center">
             <p className="text-sm text-slate-400 mb-3">No estimate linked to this job.</p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Link to={`/EstimateDetail?new=1&customer_id=${encodeURIComponent(job.customer_id || '')}&customer_engine_id=${encodeURIComponent(job.customer_engine_id || '')}&job_id=${encodeURIComponent(job.id)}&return_job=1`}>
+              <Link to={`/EstimateDetail?new=1&customer_id=${encodeURIComponent(job.customer_id || '')}&customer_engine_id=${encodeURIComponent(job.customer_engine_id || '')}&job_id=${encodeURIComponent(job.id)}&job_type=${encodeURIComponent(job.job_type || "")}&return_job=1`}>
                 <Button size="sm" className="bg-[#e20404] hover:bg-red-700"><Plus className="w-4 h-4 mr-1" /> Create Job Estimate</Button>
               </Link>
               <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
@@ -52,7 +52,7 @@ export default function JobEstimateTab({ job, estimate }) {
             <CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" /> {estimate.estimate_number}</CardTitle>
             <div className="flex items-center gap-2">
               <Badge className={STATUS_CLS[estimate.status] || "bg-slate-100"}>{estimate.status}</Badge>
-              <Link to={`/EstimateDetail?id=${estimate.id}&job_id=${job.id}&return_job=1`}><Button variant="outline" size="sm">Edit Job Estimate</Button></Link>
+              <Link to={`/EstimateDetail?id=${estimate.id}&job_id=${job.id}&job_type=${encodeURIComponent(job.job_type || "")}&return_job=1`}><Button variant="outline" size="sm">Edit Job Estimate</Button></Link>
             </div>
           </div>
         </CardHeader>

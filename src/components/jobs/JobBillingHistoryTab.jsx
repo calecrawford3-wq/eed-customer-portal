@@ -17,7 +17,7 @@ function Section({ icon: Icon, title, subtitle, children, open = false }) {
 export default function JobBillingHistoryTab({ job, estimate, invoices, customer, initialSection }) {
   return <div className="space-y-3">
     <Section icon={ClipboardList} title="Estimate & Approvals" subtitle="Quoted work, approval and deposit requirements" open={initialSection === 'estimate'}><JobEstimateTab job={job} estimate={estimate}/></Section>
-    <Section icon={Receipt} title="Invoice & Payments" subtitle="Balance, payments and release status" open={!initialSection || initialSection === 'invoice'}><JobInvoiceTab job={job} invoices={invoices}/></Section>
+    <Section icon={Receipt} title="Invoice & Payments" subtitle="Balance, payments and release status" open={!initialSection || initialSection === 'invoice'}><JobInvoiceTab job={job} invoices={invoices} estimate={estimate}/></Section>
     <Section icon={MessageSquare} title="Communication & Documents" subtitle="Messages, calls, email and job documents" open={initialSection === 'comms'}><JobCommsTab job={job} customer={customer}/></Section>
   </div>;
 }

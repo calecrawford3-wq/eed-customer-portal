@@ -22,7 +22,7 @@ const STATUS_CLS = {
   void: "bg-slate-100 text-slate-400",
 };
 
-export default function JobInvoiceTab({ job, invoices }) {
+export default function JobInvoiceTab({ job, invoices, estimate }) {
   const qc = useQueryClient();
   const [recordingFor, setRecordingFor] = useState(null);
   const [payForm, setPayForm] = useState({ amount: "", method: "cash", date: new Date().toISOString().split("T")[0], note: "" });
@@ -35,7 +35,7 @@ export default function JobInvoiceTab({ job, invoices }) {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-8 text-center">
             <p className="text-sm text-slate-400 mb-3">No invoices linked to this job yet.</p>
-            <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+            {job.job_type === "machining" && estimate && <div className="mb-3"><Link to={"/EstimateDetail?id="+estimate.id+"&job_id="+job.id+"&job_type=machining&return_job=1"}><Button>Convert to Invoice</Button></Link><p className="text-xs text-slate-500 mt-2">Open the estimate to approve or convert it.</p></div>}<Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
               <Link2 className="w-4 h-4 mr-1" /> Link Invoice
             </Button>
           </CardContent>

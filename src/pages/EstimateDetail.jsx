@@ -267,7 +267,7 @@ export default function EstimateDetail() {
         return;
       }
       loadedIdRef.current = incomingId;
-      setForm({ labor_items: [], machining_items: [], payments: [], ...estimate[0] });
+      setForm({ labor_items: [], machining_items: [], payments: [], ...estimate[0], ...(prefillMachiningJob ? {is_engine_build:false} : {}) });
       setDocVersion(v => v + 1);
       // Sync engine stage when estimate loads
       if (estimate[0].customer_engine_id) {
@@ -1011,7 +1011,7 @@ export default function EstimateDetail() {
     setForm(updated);
     await saveMutation.mutateAsync(updated);
 
-    if (form.is_engine_build) {
+    if (form.is_engine_build && !prefillMachiningJob) {
       // Auto-create engine build + invoice, prefilling from previous build for this engine
       setConvertingToBuild(true);
       const cust = customers.find(c => c.id === form.customer_id);
