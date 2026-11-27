@@ -106,6 +106,7 @@ import InvoiceViewer from './pages/InvoiceViewer';
 import PublicStageComparison from './pages/PublicStageComparison';
 import PublicLegalViewer from './pages/PublicLegalViewer';
 import SiteLegal from './pages/publicsite/SiteLegal';
+import SiteAEFPrivacyPolicy from './pages/publicsite/SiteAEFPrivacyPolicy';
 import JobCardErrorBoundary from '@/components/jobs/JobCardErrorBoundary';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from './Layout.jsx';
@@ -264,6 +265,7 @@ const routes = createRoutesFromElements(
       <Route path="portal" element={<SiteFullPortal />} />
       <Route path="cart/success" element={<SiteOrderSuccess />} />
       <Route path="legal" element={<SiteLegal />} />
+      <Route path="aef-privacy-policy" element={<SiteAEFPrivacyPolicy />} />
     </Route>
     <Route path="/debug-sw" element={<DebugServiceWorker />} />
     <Route path="/PortalAccess" element={isPublicWebsiteDomain ? <Navigate to="/site" replace /> : <PortalAccess />} />
