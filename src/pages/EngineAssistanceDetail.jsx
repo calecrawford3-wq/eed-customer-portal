@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ import { applicationStage } from "@/components/assistance/admin/applicationStage
 
 export default function EngineAssistanceDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const qc = useQueryClient();
   const [busy, setBusy] = useState("");
 
@@ -97,6 +100,7 @@ export default function EngineAssistanceDetail() {
     try {
       const res = await base44.functions.invoke("engineAssistanceAdmin", { action, data: payload });
       if (res.data?.error) throw new Error(res.data.error);
+      if (action === "delete_application") { if (!res.data?.deleted) throw new Error("Deletion was not confirmed"); toast.success("Application permanently deleted"); refresh(); navigate("/EngineAssistance"); return; }
       const email = res.data?.email;
 
       // A send is only reported as successful when the provider accepted it.
@@ -131,7 +135,7 @@ export default function EngineAssistanceDetail() {
       );
       refresh();
     } catch (error) {
-      toast.error(error?.message || "The action could not be completed");
+      toast.error(error?.response?.data?.error || error?.message || "The action could not be completed");
     } finally {
       setBusy("");
     }
@@ -176,9 +180,11 @@ export default function EngineAssistanceDetail() {
         <div className="flex items-center gap-2">
           <StatusBadge status={application.status} />
           {offer && <StatusBadge status={offer.status} />}
+          <Button variant="outline" className="text-red-700 border-red-200" disabled={!!busy} onClick={() => setDeleteOpen(true)}>Delete application</Button>
         </div>
       </div>
 
+      {deleteOpen && <Card><CardContent className="p-4 space-y-3"><h3 className="font-bold text-red-700">Permanently delete application</h3><p className="text-sm">This removes the local application and associated invitation delivery records. Linked offers, payments, customer records or shop work block deletion. Stripe records and uploaded files are not deleted by this action.</p><label className="block text-sm">Type {application.application_number} to confirm<input className="block w-full border rounded p-2 mt-1" value={deleteConfirmation} onChange={e=>setDeleteConfirmation(e.target.value)} /></label><div className="flex gap-2"><Button variant="destructive" disabled={!!busy || deleteConfirmation !== application.application_number} onClick={()=>run("delete_application",{application_id:id,confirmation:deleteConfirmation})}>Permanently delete</Button><Button variant="outline" onClick={()=>{setDeleteOpen(false);setDeleteConfirmation("")}}>Cancel</Button></div></CardContent></Card>}
       <ApplicationProgress stages={stage.stages} action={stage.action} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
