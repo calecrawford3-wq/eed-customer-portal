@@ -61,6 +61,7 @@ export default function InvoiceDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
+  const [duplicatingEstimate,setDuplicatingEstimate]=useState(false);
 
   const [form, setForm] = useState(/** @type {Record<string, any>} */ ({
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
@@ -997,6 +998,7 @@ export default function InvoiceDetail() {
         <Button variant="outline" size="sm" onClick={convertToEstimate} disabled={converting || !form.customer_id} title="Create a new estimate from this invoice">
           <ArrowLeft className="w-4 h-4 mr-1" /> {converting ? "Converting..." : "To Estimate"}
         </Button>
+        {id && <Button variant="outline" size="sm" disabled={duplicatingEstimate||invoiceLoading} onClick={async()=>{if(!invoice?.[0]||duplicatingEstimate)return;if(!window.confirm("Create a new draft estimate from this saved invoice? Payments and existing job links will not be copied."))return;setDuplicatingEstimate(true);try{const source=invoice[0];const cleanLine=({engine_section,engine_id,customer_engine_id,build_id,actual_cost,...line})=>line;const draft={estimate_number:"EST-"+Date.now().toString().slice(-6),customer_id:source.customer_id,customer_engine_id:"",status:"draft",is_engine_build:false,issue_date:new Date().toISOString().slice(0,10),expiry_date:new Date(Date.now()+30*86400000).toISOString().slice(0,10),line_items:(source.line_items||[]).map(cleanLine),labor_items:(source.labor_items||[]).map(cleanLine),machining_items:(source.machining_items||[]).map(cleanLine),subtotal:source.subtotal||0,total:source.total||0,tax_rate:source.tax_rate||0,tax_amount:source.tax_amount||0,discount_type:source.discount_type||"none",discount_value:source.discount_value||0,discount_amount:source.discount_amount||0,shipping_cost:source.shipping_cost||0,pricing_allowance_rate:source.pricing_allowance_rate??5,pricing_allowance_amount:source.pricing_allowance_amount||0,notes:source.notes||"",contains_illegal_parts:!!source.contains_illegal_parts,internal_notes:"Duplicated from "+source.invoice_number,payments:[],amount_paid:0,applied_credits:0,deposit_required:false,deposit_paid:false,deposit_amount:0};const created=await base44.entities.Estimate.create(draft);await qc.invalidateQueries({queryKey:["estimates"]});toast.success("Draft estimate created");navigate("/EstimateDetail?id="+encodeURIComponent(created.id));}catch(e){toast.error(e?.message||"Could not duplicate invoice");}finally{setDuplicatingEstimate(false);}}}><FileText className="w-4 h-4 mr-1"/>{duplicatingEstimate?"Duplicating…":"Duplicate as Estimate"}</Button>}
         <Button variant="outline" size="sm" onClick={() => setPrintMode(true)}><Printer className="w-4 h-4 mr-1" /> View</Button>
         <Button variant="outline" size="sm" onClick={() => setPrintPartsListMode(true)} title="Print engine build parts list (no prices)"><Package className="w-4 h-4 mr-1" /> Parts List</Button>
         <Button variant="outline" size="sm" onClick={sendInvoice} disabled={sending || !form.customer_id}>
