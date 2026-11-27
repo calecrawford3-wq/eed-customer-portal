@@ -185,6 +185,30 @@ export default async function (req) {
       return Response.json({ settings: updated });
     }
 
+    if (action === 'delete_application') {
+      const app = await loadApp(str(data.application_id, 60));
+      if (!app) return Response.json({ error: 'Application not found.' }, { status: 404 });
+      if (data.confirmation !== app.application_number) return Response.json({ error: 'Enter the exact application number to confirm deletion.' }, { status: 400 });
+      const svc = base44.asServiceRole.entities;
+      const related = await Promise.all([
+        offers.filter({ application_id: app.id }),
+        svc.EngineAssistanceInternalLoan.filter({ application_id: app.id }),
+        attempts.filter({ application_id: app.id }),
+        ledger.filter({ application_id: app.id }),
+        svc.EngineAssistanceEmailDelivery.filter({ application_id: app.id }),
+      ]);
+      const [offerRows, loanRows, attemptRows, ledgerRows, emailRows] = related.map(rows);
+      if (app.build_id || app.job_id || app.customer_engine_id || app.customer_id || app.submission_fee_session_id || app.submission_fee_payment_intent || ['paid','credited','refunded'].includes(app.submission_fee_status) || offerRows.length || loanRows.length || attemptRows.length || ledgerRows.length)
+        return Response.json({ error: 'This application has linked offers, financial activity, customer records or shop work. It cannot be safely deleted using test cleanup.' }, { status: 409 });
+      if (app.income_verification_session_id) {
+        // Disconnecting a provider account is a separate operation; do not imply remote data deletion.
+        console.log('[AEF] deleting local application with financial connection reference', app.id);
+      }
+      for (const email of emailRows) await svc.EngineAssistanceEmailDelivery.delete(email.id);
+      await apps.delete(app.id);
+      return Response.json({ deleted: true, application_number: app.application_number });
+    }
+
     if (action === 'email_application_link') {
       const to = str(data.email, 320).toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return Response.json({ error: 'Enter a valid recipient email address.' }, { status: 400 });
