@@ -115,8 +115,8 @@ export default function EngineAssistanceApply() {
     fields.forEach((field) => {
       if (field.required && !String(answers[field.key] ?? "").trim()) nextErrors[field.key] = "Required";
     });
-    if (!consents.truthful || !consents.privacy || !feeConsent) {
-      toast.error("Please accept the certification, privacy notice and $20 submission deposit policy");
+    if (!consents.truthful || !consents.privacy) {
+      toast.error("Please accept the certification and privacy notice");
       setErrors(nextErrors);
       return;
     }
@@ -136,7 +136,7 @@ export default function EngineAssistanceApply() {
         documents,
       });
       if (res.data?.error) throw new Error(res.data.error);
-      if (res.data?.pending_payment) { setPendingFee({ status_token: res.data.status_token }); await payFee(res.data.status_token); return; }
+      if (res.data?.pending_payment) { setPendingFee({ status_token: res.data.status_token }); return; }
       setResult(res.data);
       try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -165,7 +165,7 @@ export default function EngineAssistanceApply() {
     );
   }
 
-  if (pendingFee) return <PublicAssistanceShell title="Verify income & finish application" subtitle="Connect your bank securely before paying the submission deposit."><Card><CardContent className="p-6 space-y-4"><div className="space-y-2"><h3 className="font-bold">Income verification</h3><p className="text-sm text-slate-600">Connect the bank account where you receive income using Stripe Financial Connections. Stripe handles bank sign-in; Elite never receives your online banking password. Elite may review authorized transaction data to assess income. Bank connection is not a credit approval.</p><Button variant="outline" disabled={bankBusy || bankConnected} onClick={connectBank}>{bankBusy ? "Connecting…" : bankConnected ? "Bank connected" : "Securely connect bank"}</Button><p className="text-xs text-slate-500">If your bank is unsupported or you prefer not to connect it, you can provide supporting income documents during review.</p><label className="flex gap-2 items-start text-sm"><Checkbox checked={bankSkipped} onCheckedChange={v => setBankSkipped(v === true)} /><span>I will provide income documentation separately instead of linking a bank.</span></label></div><div className="border-t pt-4 space-y-2"><p className="text-sm text-slate-700">Submission deposit: <strong>$20.00</strong></p><p className="text-xs text-slate-500">Your application is not submitted for review until Stripe confirms payment.</p><Button disabled={submitting || (!bankConnected && !bankSkipped)} onClick={() => payFee(pendingFee.status_token)}>{submitting ? "Opening Stripe…" : "Continue to secure $20 payment"}</Button></div></CardContent></Card></PublicAssistanceShell>;
+  if (pendingFee) return <PublicAssistanceShell title="Verify income & finish application" subtitle="Connect your bank securely before submitting. No application payment is required."><Card><CardContent className="p-6 space-y-4"><div className="space-y-2"><h3 className="font-bold">Income verification</h3><p className="text-sm text-slate-600">Connect the bank account where you receive income using Stripe Financial Connections. Stripe handles bank sign-in; Elite never receives your online banking password. Elite may review authorized transaction data to assess income. Bank connection is not a credit approval.</p><Button variant="outline" disabled={bankBusy || bankConnected} onClick={connectBank}>{bankBusy ? "Connecting…" : bankConnected ? "Bank connected" : "Securely connect bank"}</Button><p className="text-xs text-slate-500">If your bank is unsupported or you prefer not to connect it, you can provide supporting income documents during review.</p><label className="flex gap-2 items-start text-sm"><Checkbox checked={bankSkipped} onCheckedChange={v => setBankSkipped(v === true)} /><span>I will provide income documentation separately instead of linking a bank.</span></label></div><div className="border-t pt-4 space-y-2"><p className="text-sm">Submission deposit temporarily waived.</p><Button disabled={submitting || bankBusy || (!bankConnected && !bankSkipped)} onClick={async () => { setSubmitting(true); try { const {data} = await base44.functions.invoke("engineAssistanceApply", {action:"finish_without_fee",status_token:pendingFee.status_token}); if (!data?.ok) throw new Error(data?.error || "Submission failed"); setResult(data); setPendingFee(null); try {localStorage.removeItem(draftKey)} catch {} } catch(e) {toast.error(e?.response?.data?.error || e.message)} finally {setSubmitting(false)} }}>{submitting ? "Submitting…" : "Submit application — no payment"}</Button></div></CardContent></Card></PublicAssistanceShell>;
 
   if (result) {
     return (
@@ -224,7 +224,7 @@ export default function EngineAssistanceApply() {
 
         {currentStep === totalSteps - 1 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <h3 className="text-base font-bold text-slate-900">Review and acknowledgements</h3>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm"><strong>$20 AEF submission deposit</strong><p>Tier 1 (under $35,000): refundable if denied or withdrawn before review; if approved and purchased, credited to your engine deposit. Tier 2 ($35,000–$75,000) and Tier 3 (over $75,000): nonrefundable unless required by law; credited toward your engine purchase if approved and purchased. No charitable tax deduction is represented. Applying does not guarantee assistance or financing.</p><label className="flex items-start gap-2"><Checkbox checked={feeConsent} onCheckedChange={v => setFeeConsent(v === true)} /><span>I understand the $20 submission deposit and the refund/credit terms. I authorize proceeding to Stripe Checkout after submitting.</span></label></div>
+          <p className="rounded-lg border p-3 text-sm">The application submission deposit is temporarily waived. No payment is required.</p>
           <p className="text-sm text-slate-600">Review your answers before submitting. Use Back to make changes.</p>
           <div className="max-h-64 overflow-auto rounded-lg border p-3 space-y-2">{fields.filter(f => String(answers[f.key] ?? "").trim()).map(f => <div key={f.key} className="border-b pb-1 text-xs"><strong className="block text-slate-700">{f.label}</strong><span className="whitespace-pre-wrap break-words text-slate-600">{String(answers[f.key])}</span></div>)}</div>
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.template?.consent_text}</p>
