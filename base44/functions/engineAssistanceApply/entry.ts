@@ -46,7 +46,7 @@ export default async function (req) {
       if (!app || !['pending_payment', 'submitted', 'under_review', 'info_requested'].includes(app.status)) return Response.json({ error: 'Application not available for bank verification.' }, { status: 404 });
       const secret = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
       if (!/^sk_(test|live)_/.test(secret)) return Response.json({ error: 'Stripe is not configured.' }, { status: 503 });
-      const stripe = new Stripe(secret);
+      const stripe = new Stripe(secret, { httpClient: Stripe.createFetchHttpClient() });
       if (action === 'start_bank_link') {
         const publishableKey = Deno.env.get('PORTAL_STRIPE_PUBLISHABLE_KEY') || Deno.env.get('STRIPE_PUBLISHABLE_KEY') || '';
         if (!/^pk_(test|live)_/.test(publishableKey) || publishableKey.slice(3, 7) !== secret.slice(3, 7)) return Response.json({ error: 'Stripe Financial Connections needs a matching publishable key configured.' }, { status: 503 });
@@ -252,8 +252,8 @@ export default async function (req) {
     console.error('[engineAssistanceApply]', requestedAction, bankStage, error?.message);
     if (['start_bank_link','confirm_bank_link'].includes(requestedAction)) {
       const code = String(error?.code || error?.type || '').replace(/[^a-zA-Z0-9_]/g,'').slice(0,80);
-      const provider = error?.type?.startsWith('Stripe');
-      const safeMessage = provider ? String(error?.message || '').replace(/(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+|(?:fcsess|fca|cus)_[A-Za-z0-9_]+/g,'[redacted]').slice(0,400) : '';
+      const provider = Boolean(error?.type?.startsWith('Stripe') || error?.raw?.type || error?.requestId);
+      const safeMessage = provider ? String(error?.raw?.message || error?.message || '').replace(/(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+|(?:fcsess|fca|cus)_[A-Za-z0-9_]+/g,'[redacted]').slice(0,400) : '';
       return Response.json({ error: 'Bank connection failed' + (bankStage ? ' while ' + bankStage : '') + (code ? ' (' + code + ')' : '') + (safeMessage ? ': ' + safeMessage : '. Please contact Elite for assistance.') }, { status: 502 });
     }
     return Response.json({ error: 'The application could not be submitted. Please try again.' }, { status: 500 });
