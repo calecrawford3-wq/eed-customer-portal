@@ -28,10 +28,13 @@ function reference(answers: any, n: number) {
 
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  let requestedAction = '';
+  let bankStage = '';
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || 'template');
+    requestedAction = action;
     const token = body.token;
 
     // Customer-authorized Stripe Financial Connections for AEF income review.
@@ -47,17 +50,20 @@ export default async function (req) {
       if (action === 'start_bank_link') {
         const publishableKey = Deno.env.get('PORTAL_STRIPE_PUBLISHABLE_KEY') || Deno.env.get('STRIPE_PUBLISHABLE_KEY') || '';
         if (!/^pk_(test|live)_/.test(publishableKey) || publishableKey.slice(3, 7) !== secret.slice(3, 7)) return Response.json({ error: 'Stripe Financial Connections needs a matching publishable key configured.' }, { status: 503 });
+        bankStage = 'creating Stripe customer';
         let customerId = app.income_verification_customer_id;
         if (!customerId) {
           const customer = await stripe.customers.create({ email: app.email, name: [app.first_name, app.last_name].filter(Boolean).join(' '), metadata: { aef_application_id: app.id } });
           customerId = customer.id;
           await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { income_verification_customer_id: customerId });
         }
+        bankStage = 'creating Financial Connections session';
         const session = await stripe.financialConnections.sessions.create({
           account_holder: { type: 'customer', customer: customerId },
           permissions: ['transactions', 'ownership'],
           filters: { countries: ['US'] },
         });
+        bankStage = 'saving Financial Connections session';
         await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, {
           income_verification_status: 'requested', income_verification_provider: 'stripe_financial_connections',
           income_verification_session_id: session.id,
@@ -243,7 +249,13 @@ export default async function (req) {
 
     return Response.json({ ok: true, pending_payment: true, application_number: created.application_number, status_token: statusToken, status_url: `/engine-assistance/status/${statusToken}` });
   } catch (error: any) {
-    console.error('[engineAssistanceApply]', error?.message);
+    console.error('[engineAssistanceApply]', requestedAction, bankStage, error?.message);
+    if (['start_bank_link','confirm_bank_link'].includes(requestedAction)) {
+      const code = String(error?.code || error?.type || '').replace(/[^a-zA-Z0-9_]/g,'').slice(0,80);
+      const provider = error?.type?.startsWith('Stripe');
+      const safeMessage = provider ? String(error?.message || '').replace(/(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+|(?:fcsess|fca|cus)_[A-Za-z0-9_]+/g,'[redacted]').slice(0,400) : '';
+      return Response.json({ error: 'Bank connection failed' + (bankStage ? ' while ' + bankStage : '') + (code ? ' (' + code + ')' : '') + (safeMessage ? ': ' + safeMessage : '. Please contact Elite for assistance.') }, { status: 502 });
+    }
     return Response.json({ error: 'The application could not be submitted. Please try again.' }, { status: 500 });
   }
 }
