@@ -77,6 +77,16 @@ export default async function (req) {
 
     // Stripe-hosted submission deposit. Server verifies the exact Checkout session;
     // returning from Checkout never counts as proof of payment.
+    // Temporary AEF application fee pause; existing paid sessions may still reconcile.
+    if (action === 'pay_fee') return Response.json({ error: 'Application deposit collection is temporarily paused.' }, { status: 409 });
+    if (action === 'finish_without_fee') {
+      if (!publicCapability(body.status_token)) return Response.json({ error: 'Valid application token required.' }, { status: 400 });
+      const app = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: body.status_token }))[0];
+      if (!app || app.status !== 'pending_payment' || app.submission_fee_session_id || app.submission_fee_status === 'paid') return Response.json({ error: 'Application requires payment reconciliation or is already submitted.' }, { status: 409 });
+      const now = new Date().toISOString();
+      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { status: 'submitted', submission_fee_status: 'not_required', submission_fee_cents: 0, submitted_at: now, audit_trail: [...(app.audit_trail || []), { at: now, by: 'System', action: 'fee_waived', note: 'Temporary application fee pause; no payment collected.' }] });
+      return Response.json({ ok: true, application_number: app.application_number, status_token: body.status_token });
+    }
     if (action === 'confirm_fee' || action === 'pay_fee') {
       const statusToken = body.status_token;
       if (!publicCapability(statusToken)) return Response.json({ error: 'A valid application status token is required.' }, { status: 400 });
@@ -167,7 +177,7 @@ export default async function (req) {
 
     const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
     const consents = body.consents && typeof body.consents === 'object' ? body.consents : {};
-    if (!consents.truthful || !consents.privacy || body.fee_policy_accepted !== true) return Response.json({ error: 'Certification, privacy notice and submission deposit policy must be accepted.' }, { status: 400 });
+    if (!consents.truthful || !consents.privacy) return Response.json({ error: 'Certification, privacy notice and submission deposit policy must be accepted.' }, { status: 400 });
 
     const fields = (template.sections || []).flatMap((s: any) => s.fields || []);
     const missing = fields.filter((f: any) => f.required && !clamps(answers[f.key], 40)).map((f: any) => f.label || f.key);
@@ -193,7 +203,7 @@ export default async function (req) {
     const created = await base44.asServiceRole.entities.EngineAssistanceApplication.create({
       application_number: await nextApplicationNumber(base44),
       status: 'pending_payment',
-      submission_fee_cents: 2000,
+      submission_fee_cents: 0,
       submission_fee_status: 'pending',
       submission_fee_policy_version: 'aef-deposit-v1',
       submission_fee_credit_cents: 0,
