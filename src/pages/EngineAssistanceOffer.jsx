@@ -118,6 +118,15 @@ export default function EngineAssistanceOffer() {
     }
   };
 
+  // On returning from the lender, refresh the saved status without guessing
+  // whether a customer finished, was declined, or received funding.
+  useEffect(() => {
+    if (!offer?.acorn?.reference) return undefined;
+    const refreshOnReturn=()=>{if(document.visibilityState==="visible")refetch();};
+    document.addEventListener("visibilitychange",refreshOnReturn);
+    return ()=>document.removeEventListener("visibilitychange",refreshOnReturn);
+  },[offer?.acorn?.reference,refetch]);
+
   const openAcorn = async () => {
     try {
       if(offer.checkout_open && !await runFinancing("close_checkout")) return;
