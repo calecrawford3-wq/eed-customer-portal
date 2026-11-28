@@ -104,17 +104,45 @@ function checkStripeContext(value, app, secret) {
 function accountSummary(account, previous = {}) {
   const ownership = typeof account.ownership === 'object' ? account.ownership : null;
   const names = (ownership?.owners?.data || []).map(o => redactNumbers(o.name, 150)).filter(Boolean).slice(0, 20);
+  const ownershipId = typeof account.ownership === 'string' ? account.ownership : account.ownership?.id || '';
+  const expandedOwners = Array.isArray(ownership?.owners?.data);
+  const sameOwnership = !!ownershipId && ownershipId === previous.ownership_snapshot_id;
+  const ownershipStatus = account.ownership_refresh?.status || (ownership?.id ? 'succeeded' : 'not_requested');
   return {
     id: account.id, institution_name: textValue(account.institution_name, 120), last4: /^\d{4}$/.test(account.last4 || '') ? account.last4 : '',
     status: account.status, permissions: account.permissions || [], context_verified: true,
-    owner_names: names.length ? names : previous.owner_names || [], ownership_status: account.ownership_refresh?.status || (names.length ? 'succeeded' : 'not_requested'),
+    owner_names: expandedOwners ? names : sameOwnership || ownershipStatus === 'pending' ? previous.owner_names || [] : [],
+    ownership_status: ownershipStatus,
+    ownership_data_loaded: expandedOwners || (sameOwnership && previous.ownership_data_loaded === true) || (ownershipStatus === 'succeeded' && !account.ownership),
     transactions_status: account.transaction_refresh?.status || 'not_requested',
+    transactions_requested_at: providerTimestamp(account.transaction_refresh?.last_attempted_at),
+    ownership_requested_at: providerTimestamp(account.ownership_refresh?.last_attempted_at),
     ownership_next_refresh_available_at: account.ownership_refresh?.next_refresh_available_at || null,
     next_refresh_available_at: account.transaction_refresh?.next_refresh_available_at || null,
     transaction_refresh_id: account.transaction_refresh?.id || '',
     imported_transaction_refresh_id: previous.imported_transaction_refresh_id || '',
     has_imported_transactions: !!previous.has_imported_transactions,
-    ownership_snapshot_id: typeof account.ownership === 'string' ? account.ownership : account.ownership?.id || '',
+    ownership_snapshot_id: ownershipId,
+  };
+}
+function providerTimestamp(value) {
+  if (!Number.isFinite(value) || value <= 0 || value > 253402300799) return '';
+  return new Date(value * 1000).toISOString();
+}
+export function financialRetrievalState(record = {}) {
+  const accounts = (record.bank_accounts || []).filter(a => a.context_verified && a.status === 'active');
+  const transactionsPending = accounts.some(a => a.transactions_status === 'pending');
+  const ownershipPending = accounts.some(a => a.ownership_status === 'pending');
+  const hasTransactions = accounts.some(a => a.has_imported_transactions) || (record.transactions || []).length > 0;
+  const timestamps = accounts.flatMap(a => [a.transactions_status === 'pending' ? a.transactions_requested_at : '', a.ownership_status === 'pending' ? a.ownership_requested_at : '']).filter(value => Number.isFinite(Date.parse(value))).sort();
+  return {
+    pending: transactionsPending || ownershipPending, transactions_pending: transactionsPending, ownership_pending: ownershipPending,
+    needs_sync: accounts.some(a => (a.transactions_status === 'succeeded' && (!a.has_imported_transactions || a.transaction_refresh_id !== a.imported_transaction_refresh_id)) || (a.ownership_status === 'succeeded' && a.ownership_snapshot_id && !a.ownership_data_loaded)),
+    has_transaction_data: hasTransactions,
+    transactions_ready: accounts.length > 0 && accounts.every(a => a.transactions_status === 'succeeded' && a.has_imported_transactions && !a.sync_error),
+    not_requested: accounts.some(a => a.transactions_status === 'not_requested' || a.ownership_status === 'not_requested'),
+    failed: (record.bank_accounts || []).some(a => a.status !== 'active' || a.sync_error || a.transactions_status === 'failed' || a.ownership_status === 'failed') || !!record.errors?.length,
+    last_checked_at: record.last_checked_at || '', pending_since: timestamps[0] || null,
   };
 }
 export async function startBankLink(base44, app, consent = false) {
@@ -184,8 +212,8 @@ export async function confirmBankLink(base44, app) {
   return { connected: active.length > 0, account_count: active.length, note: active.length ? 'Bank connected. Transaction retrieval and income review are separate steps.' : 'No active account with transaction and ownership permissions is confirmed yet.' };
 }
 
-export async function syncBankData(base44, app, requestRefresh = false) {
-  const state = await financialState(base44, app);
+export async function syncBankData(base44, app, requestRefresh = false, initialState = null) {
+  const state = initialState || await financialState(base44, app);
   let record = state.review;
   // Backfill legacy connections by verifying the stored Stripe session, never
   // by trusting a caller-supplied account ID or the old connected status flag.
@@ -222,13 +250,15 @@ export async function syncBankData(base44, app, requestRefresh = false) {
         errors.push(`${saved.institution_name || 'Bank'} is disconnected. Ask the applicant to reconnect or supply statements.`);
         continue;
       }
-      const features = ['transactions', 'ownership'].filter(feature => {
+      // GET/check may retrieve completed snapshots, but only an explicit
+      // refresh request may start provider work (including initial retrieval).
+      const features = requestRefresh ? ['transactions', 'ownership'].filter(feature => {
         if (!account.permissions?.includes(feature)) return false;
         const refresh = feature === 'transactions' ? account.transaction_refresh : account.ownership_refresh;
         // Initial retrieval is needed for connections created by the old code.
         if (!refresh) return true;
-        return requestRefresh && refresh.status !== 'pending' && Number.isFinite(refresh.next_refresh_available_at) && refresh.next_refresh_available_at <= Math.floor(now / 1000);
-      });
+        return refresh.status !== 'pending' && Number.isFinite(refresh.next_refresh_available_at) && refresh.next_refresh_available_at <= Math.floor(now / 1000);
+      }) : [];
       if (features.length) {
         await stripeFinancialRequest(secret, `/v1/financial_connections/accounts/${saved.id}/refresh`, features.map(feature => ['features[]', feature]), 'POST', `aef-refresh-${app.id}-${saved.id}-${Math.floor(now / 60000)}`);
         refreshRequests++;
@@ -256,6 +286,13 @@ export async function syncBankData(base44, app, requestRefresh = false) {
         continue;
       }
       sourceChanged ||= summary.transaction_refresh_id !== saved.imported_transaction_refresh_id;
+      if (saved.has_imported_transactions && !record.truncated && summary.transaction_refresh_id && summary.transaction_refresh_id === saved.imported_transaction_refresh_id && Number(record.requested_days || 90) === requestedDays) {
+        // Ownership can take longer. Reuse a complete, unchanged transaction
+        // snapshot instead of downloading its pages on every ownership check.
+        accountRows.push(summary);
+        transactions.push(...(record.transactions || []).filter(t => t.account_id === saved.id));
+        continue;
+      }
       const accountTransactions = [];
       let accountTruncated = false;
       let cursor = '';
@@ -284,10 +321,11 @@ export async function syncBankData(base44, app, requestRefresh = false) {
     }
   }
   const unique = [...new Map(transactions.map(t => [t.id, t])).values()].slice(0, MAX_TRANSACTIONS);
+  const notRequested = accountRows.some(a => a.transactions_status === 'not_requested' || a.ownership_status === 'not_requested');
   sourceChanged ||= JSON.stringify(unique) !== JSON.stringify(record.transactions || []) || truncated || pending;
   await saveFinancialRecord(base44, app, {
     bank_accounts: accountRows, transactions: unique, source: 'stripe',
-    status: pending ? 'pending' : errors.length ? 'needs_attention' : 'ready', errors: [...new Set(errors)],
+    status: errors.length ? 'needs_attention' : pending ? 'pending' : notRequested ? 'not_requested' : 'ready', errors: [...new Set(errors)],
     last_synced_at: new Date().toISOString(), truncated, requested_days: requestedDays,
     ...(sourceChanged && record.review_status === 'reviewed' ? { review_status: 'unreviewed', reviewed_at: '', reviewed_by: '', confirmed_monthly_income_cents: null } : {}),
   }, record);
@@ -338,8 +376,8 @@ export async function processStatement(base44, app, statement, actor = 'Applican
     return { ...statement, status: 'needs_review' };
   }
 }
-export async function adminFinancialView(base44, app) {
-  const state = await financialState(base44, app);
+export async function adminFinancialView(base44, app, initialState = null) {
+  const state = initialState || await financialState(base44, app);
   const record = state.review || {};
   const method = app.income_method || (record.bank_accounts?.length ? 'bank' : 'statements');
   const checklist = evaluateStatementSet(state.statements, app.income_statement_months === 6 ? 6 : 3);
@@ -351,17 +389,36 @@ export async function adminFinancialView(base44, app) {
   const transactionIds = new Set(transactions.map(t => t.id));
   const corrections = (record.corrections || []).filter(c => transactionIds.has(c.transaction_id));
   const corrected = new Map(corrections.map(c => [c.transaction_id, c]));
-  const summary = summarizeTransactions(transactions, corrections, Date.now(), { truncated: !!record.truncated || selectedStatements.some(s => !s.transactions_complete), requestedDays: app.income_statement_months === 6 ? 180 : 90 });
-  if (method === 'bank') summary.flags = [...(summary.flags || []), 'Bank cash-flow calculations use positive amounts as money in and negative amounts as money out. Confirm against source records before verifying income.'];
+  const summary = summarizeTransactions(transactions, corrections, Date.now(), { truncated: method === 'bank' ? !!record.truncated : selectedStatements.some(s => !s.transactions_complete), requestedDays: app.income_statement_months === 6 ? 180 : 90 });
+  const retrieval = financialRetrievalState(record);
+  if (method === 'bank') {
+    summary.totals_available = retrieval.has_transaction_data;
+    summary.availability = retrieval.has_transaction_data
+      ? retrieval.pending || retrieval.failed || !retrieval.transactions_ready || record.truncated ? 'partial' : 'ready'
+      : retrieval.transactions_pending || retrieval.needs_sync ? 'pending' : (record.bank_accounts || []).some(a => a.transactions_status === 'failed' || a.sync_error) ? 'failed' : retrieval.not_requested ? 'not_requested' : retrieval.pending ? 'pending' : 'not_requested';
+    if (!retrieval.has_transaction_data) {
+      // No snapshot has arrived: zero is not an observed financial result.
+      summary.flags = [];
+      summary.coverage = { ...summary.coverage, earliest: null, latest: null, days: null };
+    } else if (!retrieval.transactions_ready || retrieval.transactions_pending) {
+      summary.flags = summary.flags.filter(flag => !flag.startsWith('Observed transactions span '));
+      summary.flags.push('Some transaction records are still being retrieved. Displayed totals use previously received records and may change.');
+    }
+    if (retrieval.has_transaction_data) summary.flags.push('Bank cash-flow calculations use positive amounts as money in and negative amounts as money out. Confirm against source records before verifying income.');
+  } else {
+    summary.totals_available = selectedStatements.length > 0;
+    summary.availability = selectedStatements.length ? 'ready' : 'not_requested';
+  }
   const answerValue = key => (app.answers || []).find(a => a.key === key)?.value || '';
   const allowedNames = [[app.first_name, app.last_name].filter(Boolean).join(' '), answerValue('guardian_name')].filter(Boolean).map(n => n.toLowerCase().replace(/[^a-z]/g, ''));
   for (const account of record.bank_accounts || []) {
-    if (!account.owner_names?.length) summary.flags.push(`${account.institution_name || 'Bank'} account-owner information is unavailable; verify ownership manually.`);
-    else if (!account.owner_names.some(n => allowedNames.includes(n.toLowerCase().replace(/[^a-z]/g, '')))) summary.flags.push(`${account.institution_name || 'Bank'} owner name differs from the applicant/guardian name. Review household ownership.`);
+    if (account.ownership_status === 'pending' || account.ownership_status === 'not_requested' || (account.ownership_snapshot_id && !account.ownership_data_loaded)) continue;
+    if (!account.owner_names?.length && ['succeeded', 'failed'].includes(account.ownership_status)) summary.flags.push(`${account.institution_name || 'Bank'} account-owner information is unavailable; verify ownership manually.`);
+    else if (account.owner_names?.length && !account.owner_names.some(n => allowedNames.includes(n.toLowerCase().replace(/[^a-z]/g, '')))) summary.flags.push(`${account.institution_name || 'Bank'} owner name differs from the applicant/guardian name. Review household ownership.`);
   }
   const review = {
     source: method === 'bank' ? 'stripe' : 'statements', status: record.status || 'not_started', last_synced_at: record.last_synced_at || '',
-    bank_accounts: record.bank_accounts || [], errors: record.errors || [],
+    bank_accounts: record.bank_accounts || [], errors: record.errors || [], retrieval,
     transactions: transactions.map(t => ({ ...t, category: corrected.get(t.id)?.category || t.category || 'unreviewed' })), summary,
     review_status: record.review_status || 'unreviewed', notes: record.notes || '',
     confirmed_monthly_income_cents: record.confirmed_monthly_income_cents ?? null,
