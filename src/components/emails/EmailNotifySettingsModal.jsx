@@ -20,12 +20,14 @@ export default function EmailNotifySettingsModal({ open, onClose }) {
     queryKey: ["app-settings"],
     queryFn: async () => (await base44.entities.AppSettings.filter({ key: "global" }))[0],
   });
+  const [pushEnabled,setPushEnabled]=useState(false);
   const [enabled, setEnabled] = useState(false);
   const [start, setStart] = useState("22:00");
   const [end, setEnd] = useState("07:00");
   const [notifyFullResync, setNotifyFullResync] = useState(false);
 
   useEffect(() => {
+    setPushEnabled(settings?.email_push_notifications_enabled === true);
     try {
       const cfg = settings?.email_notify_quiet_hours ? JSON.parse(settings.email_notify_quiet_hours) : null;
       if (cfg) {
@@ -42,6 +44,7 @@ export default function EmailNotifySettingsModal({ open, onClose }) {
       const list = await base44.entities.AppSettings.filter({ key: "global" });
       const s = list && list[0];
       const payload = {
+        email_push_notifications_enabled: pushEnabled,
         email_notify_quiet_hours: JSON.stringify({ enabled, start, end }),
         email_notify_on_full_resync: notifyFullResync,
       };
@@ -65,19 +68,26 @@ export default function EmailNotifySettingsModal({ open, onClose }) {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
+              <Label>App email notifications</Label>
+              <p className="text-xs text-slate-500">Send internal alerts for synced emails and email follow-ups. Mail sync, Acorn status processing, and customer emails continue when off.</p>
+            </div>
+            <Switch checked={pushEnabled} onCheckedChange={setPushEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <Label>Quiet hours</Label>
               <p className="text-xs text-slate-500">Suppress new-email push alerts during this window (shop time, America/Chicago).</p>
             </div>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
+            <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!pushEnabled} />
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
               <Label className="text-xs text-slate-500">Start</Label>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} disabled={!enabled} />
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} disabled={!pushEnabled || !enabled} />
             </div>
             <div className="flex-1">
               <Label className="text-xs text-slate-500">End</Label>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} disabled={!enabled} />
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} disabled={!pushEnabled || !enabled} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -85,7 +95,7 @@ export default function EmailNotifySettingsModal({ open, onClose }) {
               <Label>Notify on full resync</Label>
               <p className="text-xs text-slate-500">Push alerts for old emails pulled during a full historical resync (off by default).</p>
             </div>
-            <Switch checked={notifyFullResync} onCheckedChange={setNotifyFullResync} />
+            <Switch checked={notifyFullResync} onCheckedChange={setNotifyFullResync} disabled={!pushEnabled} />
           </div>
         </div>
         <DialogFooter>

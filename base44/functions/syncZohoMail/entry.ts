@@ -478,7 +478,7 @@ export default async function(req) {
     }
 
     // Push a summary notification for new inbound mail — respecting quiet hours + resync suppression
-    if (newInbound.length) {
+    if (newInbound.length && settings?.email_push_notifications_enabled === true) {
       let quietCfg = null;
       try { quietCfg = settings?.email_notify_quiet_hours ? JSON.parse(settings.email_notify_quiet_hours) : null; } catch (_) { quietCfg = null; }
       const notifyOnFullResync = settings?.email_notify_on_full_resync === true;

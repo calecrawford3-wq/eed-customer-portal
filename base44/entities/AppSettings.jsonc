@@ -222,6 +222,11 @@
       },
       "description": "Recent client-generated send IDs (max 100) used for idempotent email sending \u2014 prevents duplicate sends on retries."
     },
+    "email_push_notifications_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Master switch for internal new-email push alerts and email follow-up notifications. Does not affect mail synchronization or customer email delivery."
+    },
     "email_notify_quiet_hours": {
       "type": "string",
       "description": "JSON {enabled, start, end} for push-notification quiet hours in shop local time (America/Chicago). When active, new-email push alerts are suppressed during this window."

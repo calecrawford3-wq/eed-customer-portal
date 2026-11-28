@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
 
     if (created > 0) {
       try {
+        const settings = await base44.asServiceRole.entities.AppSettings.filter({key:"global"});
+        if (settings?.[0]?.email_push_notifications_enabled === true) {
+
         await base44.asServiceRole.entities.Notification.create({
           title: "Email Follow-ups Needed",
           message: `${created} thread${created === 1 ? "" : "s"} need${created === 1 ? "s" : ""} a follow-up. Review in Customer Success.`,
@@ -105,6 +108,7 @@ Deno.serve(async (req) => {
           link_url: "/CustomerSuccess",
           is_read: false,
         });
+        }
       } catch (e) {
         console.warn("[emailFollowUpDigest] notification failed:", e.message);
       }
