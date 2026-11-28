@@ -332,10 +332,20 @@ export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
       .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')));
     const latest=matches[0];
     const outcome=latest?.customer_reported_lender===m.type?latest.customer_reported_outcome:'';
-    const complete=!!latest?.stripe_session_id&&latest.status==='expired'&&latest.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
+    const complete=!!latest?.stripe_session_id&&latest.status==='expired'&&latest.provider_decision!=='approved'&&(['declined','insufficient_amount'].includes(outcome)||latest.review_status==='denied');
     return {type:m.type,label:m.label,complete,attempted:!!latest?.stripe_session_id,outcome:outcome||''};
   });
-  return {amount,entries,complete:plan.deposit_verified&&entries.every(e=>e.complete)};
+  // A non-disclosed or approved-but-unused prior deposit attempt does not
+  // become a denial just because a later lender paid the deposit.
+  let skippedVerified=true;
+  if(offer.guided_financing_started&&continuation!==null&&continuation>=0){
+    const prior=attempts.filter(a=>a.payment_pathway==='deposit_lender'&&cents(a.amount)===cents(plan.deposit_amount)&&a.offered_methods?.length===1&&FINANCE_ORDER.indexOf(a.offered_methods[0])>=0&&FINANCE_ORDER.indexOf(a.offered_methods[0])<continuation);
+    skippedVerified=FINANCE_ORDER.slice(0,continuation).every(type=>{
+      const latest=prior.filter(a=>a.offered_methods[0]===type).sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')))[0];
+      return !latest||(latest.status==='expired'&&latest.provider_decision!=='approved'&&(['declined','insufficient_amount'].includes(latest.customer_reported_outcome)||latest.review_status==='denied'));
+    });
+  }
+  return {amount,entries,complete:plan.deposit_verified&&skippedVerified&&entries.every(e=>e.complete)};
 }
 export const FINANCE_ORDER=['affirm','sunbit','klarna','afterpay_clearpay'];
 // A verified deposit lender determines the continuation point, not a browser

@@ -511,3 +511,46 @@ test('remaining balance must be checked afresh and unsuccessful outcomes are req
  assert.equal(checks([attempt('affirm','declined'),attempt('klarna','declined'),attempt('afterpay_clearpay','declined',{provider_decision:'approved'})]),false);
  assert.equal(checks([attempt('affirm','declined'),attempt('klarna','insufficient_amount'),attempt('afterpay_clearpay','declined')]),true);
 });
+test('guided checkout asks outcome for exact session, walks full then deposit, continues after verified deposit lender',async()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=3000;h.offer.sunbit_service_confirmed=true;
+ h.state.lenderConfig={active:true,affirm:{available:true},sunbit:{available:true},klarna:{available:true},afterpay_clearpay:{available:true}};
+ const go=(pathway,lender)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,lender,consent:true,guided:true,replace_existing:true});
+ const report=async(r,outcome)=>{
+   assert.equal(r.status,200,JSON.stringify(r.body));
+   const session_id=r.body.session_id;
+   const result=await h.call('engineAssistanceFinancing',{token:h.token,action:'checkout_return',session_id});
+   assert.equal(result.status,200);assert.equal(result.body.paid_or_pending,false);
+   assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'report_lender_outcome',session_id,outcome})).status,200);
+ };
+ assert.equal((await go('deposit_lender','affirm')).status,409);
+ await report(await go('finance_full','affirm'),'declined');
+ assert.equal((await go('finance_full','klarna')).status,409);
+ await report(await go('finance_full','sunbit'),'prefer_not_to_say');
+ await report(await go('finance_full','klarna'),'declined');
+ const deposit=await go('deposit_lender','affirm');assert.equal(deposit.status,200);
+ Object.assign(h.state.sessions[deposit.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_'+deposit.body.session_id,latest_charge:{payment_method_details:{type:'affirm'}}}});
+ assert.equal((await h.deliver(deposit.body.session_id)).status,200);
+ assert.equal((await go('remainder_affirm','affirm')).status,409);
+ assert.equal((await go('remainder_affirm','sunbit')).status,200);
+});
+test('last deposit lender success does not restart the remainder sequence',()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=3000;
+ h.offer.payments=[{amount:1500,method:'afterpay_clearpay',financed:true,amount_option:'deposit_lender',stripe_session_id:'cs_test_verified'}];h.offer.paid_amount=1500;
+ const settings={...h.settings,financing_methods:h.a.FINANCE_ORDER.map(type=>({type,label:type,available:true}))};
+ const plan=h.a.offerPaymentPlan(h.offer,settings);
+ const guide=h.a.guidedFinance(h.offer,plan,[]);
+ assert.equal(guide.stage,'remainder');assert.equal(guide.continuation,3);assert.equal(guide.next,null);
+ assert.equal(h.a.remainderLenderChecks(h.offer,plan,[]).complete,true);
+});
+test('Acorn full and deposit reviews have separate references even when remaining equals deposit',()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=4000;h.settings.acorn_enabled=true;
+ h.offer.acorn_financing={reference:'full-ref',amount_cents:400000,stage:'full',status:'no_offers',status_source:'zoho_verified'};
+ const plan=h.a.offerPaymentPlan(h.offer,h.settings);
+ const a={payment_pathway:'finance_full',amount:4000,offered_methods:['affirm'],stripe_session_id:'cs_test_full',status:'expired',customer_reported_lender:'affirm',customer_reported_outcome:'declined'};
+ const guide=h.a.guidedFinance(h.offer,plan,[a]);assert.equal(guide.stage,'deposit');
+ const option=h.a.guidedAcornOption(h.offer,h.settings,null,plan,guide);assert.equal(option.stage,'deposit');assert.equal(option.amount,2000);assert.equal(option.review_complete,false);
+ h.offer.acorn_financing_history=[h.offer.acorn_financing];h.offer.acorn_financing={reference:'deposit-ref',amount_cents:200000,stage:'deposit',status:'no_offers',status_source:'zoho_verified'};
+ h.offer.payments=[{amount:2000,method:'card'}];h.offer.paid_amount=2000;
+ const p=h.a.offerPaymentPlan(h.offer,h.settings),g=h.a.guidedFinance(h.offer,p,[]);
+ assert.equal(h.a.guidedAcornOption(h.offer,h.settings,null,p,g).review_complete,false);
+});

@@ -149,6 +149,7 @@ export default function EngineAssistanceOffer() {
     }
   };
   useEffect(()=>{
+    if(!offer?.id)return;
     let remembered="";try{if(offer?.id)remembered=sessionStorage.getItem("eed-lender-return:"+offer.id)||"";}catch{}
     const session=offer?.pending_lender_return?.session_id||remembered;
     const success=params.get("payment")==="success"?params.get("session_id"):null;
@@ -170,11 +171,12 @@ export default function EngineAssistanceOffer() {
   // On returning from the lender, refresh the saved status without guessing
   // whether a customer finished, was declined, or received funding.
   useEffect(() => {
-    if (!offer?.acorn?.reference) return undefined;
+    if (!offer?.id) return undefined;
     const refreshOnReturn=()=>{if(document.visibilityState==="visible")refetch();};
     document.addEventListener("visibilitychange",refreshOnReturn);
-    return ()=>document.removeEventListener("visibilitychange",refreshOnReturn);
-  },[offer?.acorn?.reference,refetch]);
+    window.addEventListener("pageshow",refreshOnReturn);
+    return ()=>{document.removeEventListener("visibilitychange",refreshOnReturn);window.removeEventListener("pageshow",refreshOnReturn);};
+  },[offer?.id,refetch]);
 
   const openAcorn = async () => {
     try {
@@ -340,18 +342,7 @@ export default function EngineAssistanceOffer() {
             onReviewReturn={()=>reviewCheckoutReturn(offer.pending_lender_return?.session_id,true)}
             onAcornLaunch={openAcorn}
             onAcornRefresh={refetch}
-            onReport={async (lender,outcome)=>{
-              if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
-              return runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded");
-            }}
             onCancel={() => runFinancing("cancel_request", {}, "Request withdrawn")}
-            onClose={async () => {
-              try {
-                const res = await base44.functions.invoke("engineAssistanceFinancing", { token, action: "close_checkout" });
-                if (res.data?.error) throw new Error(res.data.error);
-                await refetch();
-              } catch (error) { toast.error(error?.response?.data?.error || error.message); }
-            }}
           />
         ) : (
           <JourneyErrorBoundary onRecover={refetch}>
@@ -386,9 +377,9 @@ export default function EngineAssistanceOffer() {
             <select className="border rounded-lg p-3 w-full text-sm" value={returnOutcome} onChange={e=>setReturnOutcome(e.target.value)}><option value="">Choose outcome</option><option value="declined">Not approved</option><option value="insufficient_amount">Approved for less than requested</option><option value="approved_not_accepted">Approved, but did not accept</option><option value="unsuitable_terms">Terms were unsuitable</option><option value="technical_issue">Technical issue</option><option value="not_completed">Did not complete application</option><option value="prefer_not_to_say">Prefer not to say</option></select>
             <Button className="w-full" disabled={!returnOutcome||returnSaving} onClick={saveReturnOutcome}>{returnSaving?"Saving…":"Save and continue"}</Button>
            </>}
-           {returnModal.paid_or_pending&&!offer.deposit_verified&&!offer.paid&&<p className="text-sm">Waiting for verified payment confirmation. Do not start another checkout yet.</p>}
+           {returnModal.paid_or_pending&&!offer.paid&&!(returnModal.pathway==="deposit_lender"&&offer.deposit_verified)&&<p className="text-sm">Waiting for verified payment confirmation. Do not start another checkout yet.</p>}
            {(returnModal.saved||(returnModal.paid_or_pending&&returnModal.pathway==="deposit_lender"&&offer.deposit_verified))&&<>
-            {offer.financing_guide?.next&&(offer.financing_guide.continuation!=null||offer.acorn?.review_complete!==false)?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">{offer.financing_guide.next.label} · {formatMoney(offer.financing_guide.amount)}</p><Button className="w-full" disabled={!!paying} onClick={()=>checkout(offer.financing_guide.stage==="deposit"?"deposit_lender":offer.financing_guide.stage==="remainder"?"remainder_affirm":"finance_full",true,offer.financing_guide.next.type)}>Continue to {offer.financing_guide.next.label}</Button></div>:offer.acorn?.eligible&&offer.acorn?.review_complete===false&&!offer.financing_guide?.continuation?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">Acorn Finance · {formatMoney(offer.acorn.amount)}</p><Button className="w-full" onClick={()=>{setReturnModal(null);openAcorn();}}>Continue to Acorn</Button></div>:<p className="text-sm">Return to your offer to review the next available payment option.</p>}
+            {offer.financing_guide?.next&&(offer.financing_guide.continuation!=null||offer.acorn?.review_complete!==false)?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">{offer.financing_guide.next.label} · {formatMoney(offer.financing_guide.amount)}</p><Button className="w-full" disabled={!!paying} onClick={()=>checkout(offer.financing_guide.stage==="deposit"?"deposit_lender":offer.financing_guide.stage==="remainder"?"remainder_affirm":"finance_full",true,offer.financing_guide.next.type)}>Continue to {offer.financing_guide.next.label}</Button></div>:offer.acorn?.eligible&&offer.acorn?.review_complete===false&&offer.financing_guide?.continuation==null?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">Acorn Finance · {formatMoney(offer.acorn.amount)}</p><Button className="w-full" onClick={()=>{setReturnModal(null);openAcorn();}}>Continue to Acorn</Button></div>:offer.internal_financing_unlocked?<Button className="w-full" onClick={()=>{setReturnModal(null);setRequestRemainder(true);}}>Review additional payment option</Button>:!offer.deposit_verified&&offer.financing_guide?.stage==="deposit"&&offer.financing_guide?.all_reviewed?<Button className="w-full" disabled={!!paying||!offer.pathways?.deposit_internal?.enabled} onClick={()=>checkout("deposit_card",false)}>Pay required deposit · {formatMoney(offer.deposit_outstanding)}</Button>:<p className="text-sm">Return to your offer to review the next available payment option.</p>}
            </>}
            {(returnModal.saved||returnModal.paid_or_pending)&&<Button variant="outline" onClick={()=>{if(returnModal?.paid_or_pending)try{sessionStorage.removeItem("eed-lender-return:"+offer.id);}catch{}setReturnModal(null);}}>Return to offer</Button>}
           </>}

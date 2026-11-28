@@ -64,23 +64,25 @@ export default async function (req) {
       const liveSettings=availability&&!availability.error?{...settings,financing_methods:availability.methods}:settings;
       const currentPlan=offerPaymentPlan(offer,liveSettings,existing,currentAgreement,identity,identitySettings);
       const guide=guidedFinance(offer,currentPlan,attempts);
-      const option=body.guided===true?guidedAcornOption(offer,liveSettings,existing,currentPlan,guide):acornOption(offer,settings,existing);
+      const guided=body.guided===true||offer.guided_financing_started===true;
+      const option=guided?guidedAcornOption(offer,liveSettings,existing,currentPlan,guide):acornOption(offer,settings,existing);
 
       if (!option.eligible) return Response.json({error:'Acorn is not currently available for this offer.'},{status:409});
       if (body.amount_cents!==cents(option.amount)) return Response.json({error:'The balance changed. Refresh your offer.'},{status:409});
       if (offer.payment_route_claim) return Response.json({error:'Close the previous Stripe checkout before continuing.'},{status:409});
       const now=new Date().toISOString();
-      const previous=offer.acorn_financing?.amount_cents===cents(option.amount)&&(!body.guided||offer.acorn_financing.stage===option.stage||(!offer.acorn_financing.stage&&option.stage!=='deposit'))?offer.acorn_financing:null;
+      const previous=offer.acorn_financing?.amount_cents===cents(option.amount)&&(!guided||offer.acorn_financing.stage===option.stage||(!offer.acorn_financing.stage&&option.stage!=='deposit'))?offer.acorn_financing:null;
       if (option.status==='funded') return Response.json({error:'Acorn funding is already recorded. Pay Elite separately.'},{status:409});
       {
         if (body.consent!==true) return Response.json({error:'Confirm you want to open Acorn.'},{status:400});
-        const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),stage:body.guided===true?option.stage:undefined,started_at:now,status:'opened',status_source:'portal',status_at:now};
+        const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),stage:guided?option.stage:undefined,started_at:now,status:'opened',status_source:'portal',status_at:now};
         if (!previous) {
-          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record,acorn_reference:record.reference,acorn_financing_history:[...(offer.acorn_financing_history||[]),...(offer.acorn_financing?.reference?[offer.acorn_financing]:[])].slice(-30)}});
+          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{...(guided?{guided_financing_started:true}:{}),acorn_financing:record,acorn_reference:record.reference,acorn_financing_history:[...(offer.acorn_financing_history||[]),...(offer.acorn_financing?.reference?[offer.acorn_financing]:[])].slice(-30)}});
         }
         const fresh=rows(await offers.filter({id:offer.id}))[0];
         const saved=fresh?.acorn_financing;
-        if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(option.stage==='deposit'&&body.guided===true?offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).deposit_outstanding:offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).totals.balance_due)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
+        if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(option.stage==='deposit'&&guided?offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).deposit_outstanding:offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).totals.balance_due)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
+        if(guided&&!fresh.guided_financing_started)await offers.update(fresh.id,{guided_financing_started:true});
         if(fresh.acorn_reference!==saved.reference) await offers.updateMany({id:offer.id,acorn_financing:saved},{$set:{acorn_reference:saved.reference}});
         return Response.json({application_url:acornApplicationUrl(option.amount,saved.reference),widget:{dealer_id:'GLDIK',amount:Math.ceil(option.amount),reference:saved.reference}});
       }

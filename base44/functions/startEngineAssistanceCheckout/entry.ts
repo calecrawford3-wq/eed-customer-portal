@@ -69,12 +69,13 @@ export default async function (req) {
     if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
 
 
+    const guided=body.guided===true||offer.guided_financing_started===true;
     if (pathway.lender) {
       const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
       const guide=guidedFinance(offer,plan,attempts);
-      const acorn=body.guided===true?guidedAcornOption(offer,settings,loan,plan,guide):acornOption(offer,settings,loan);
+      const acorn=guided?guidedAcornOption(offer,settings,loan,plan,guide):acornOption(offer,settings,loan);
       if(!(pathwayKey==='remainder_affirm'&&depositContinuation(offer,plan)!==null)&&!acorn.review_complete)return Response.json({error:'Acorn financing review is not complete for this stage.'},{status:409});
-      if(body.guided===true){
+      if(guided){
         const expected=guide.stage==='full'?'finance_full':guide.stage==='deposit'?'deposit_lender':'remainder_affirm';
         if(pathwayKey!==expected||guide.next?.type!==body.lender)return Response.json({error:'Financing options changed. Refresh your offer to continue.'},{status:409});
       }
@@ -232,6 +233,7 @@ export default async function (req) {
     }
 
     await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, {
+      ...(pathway.lender&&guided?{guided_financing_started:true}:{}),
       financing_availability: availability.methods,
       financing_checked_at: availability.checked_at,
       financing_note: note || availability.note,
