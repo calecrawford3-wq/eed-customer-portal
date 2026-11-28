@@ -317,16 +317,23 @@ test('bank retrieval paginates provider transactions, filters cross-account reco
   });
 });
 
-test('pending bank retrieval reports pending and incomplete history without fetching or inventing transactions', async () => {
-  await withHarness({ app: bankApp, reviews: [reviewFixture()], provider: async url => {
+test('pending bank retrieval reports waiting without inventing transactions or premature missing-history warnings', async () => {
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ bank_accounts: [{ ...reviewFixture().bank_accounts[0], owner_names: [], ownership_status: 'pending' }] })], provider: async url => {
     assert.ok(url.pathname.endsWith('/accounts/fca_fixture'));
-    return bankAccount({ transaction_refresh: { id: 'fctxnref_pending', status: 'pending', next_refresh_available_at: null } });
+    return bankAccount({ transaction_refresh: { id: 'fctxnref_pending', status: 'pending', next_refresh_available_at: null }, ownership_refresh: { status: 'pending', next_refresh_available_at: null }, ownership: null });
   } }, async h => {
     const result = await invoke(reviewApi, { action: 'check', application_id: 'applicationA' });
     assert.equal(result.status, 200); assert.equal(result.body.review.status, 'pending');
     assert.equal(result.body.review.transactions.length, 0); assert.equal(result.body.review.summary.monthly.length, 0);
-    assert.ok(result.body.review.summary.flags.some(flag => flag.includes('Observed transactions span 0 days')));
+    assert.equal(result.body.review.summary.availability, 'pending');
+    assert.equal(result.body.review.summary.totals_available, false);
+    assert.equal(result.body.review.summary.coverage.days, null);
+    assert.equal(result.body.review.retrieval.pending, true);
+    assert.equal(result.body.review.retrieval.transactions_pending, true);
+    assert.equal(result.body.review.retrieval.ownership_pending, true);
+    assert.equal(result.body.review.summary.flags.some(flag => /span 0 days|additional statements may be needed|owner.*unavailable/i.test(flag)), false);
     assert.equal(h.providerCalls.length, 1);
+    assert.equal(h.providerCalls[0].method, 'GET');
   });
 });
 
@@ -381,5 +388,172 @@ test('regression: a disconnected account invalidates its previous completed fina
     assert.equal(result.status, 200);
     assert.notEqual(result.body.review.review_status, 'reviewed', 'Disconnected source records must invalidate the prior reviewed state');
     assert.equal(result.body.review.confirmed_monthly_income_cents, null);
+  });
+});
+
+const checkedFiveMinutesAgo = () => new Date(FIXTURE_NOW - 300000).toISOString();
+const importedAccount = extra => ({
+  ...reviewFixture().bank_accounts[0],
+  ownership_snapshot_id: 'fcaowns_fixture',
+  transaction_refresh_id: 'fctxnref_fixture', imported_transaction_refresh_id: 'fctxnref_fixture', has_imported_transactions: true,
+  next_refresh_available_at: Math.floor(FIXTURE_NOW / 1000) + 3600,
+  ownership_next_refresh_available_at: Math.floor(FIXTURE_NOW / 1000) + 3600,
+  ...extra,
+});
+
+test('get checks an old pending snapshot with read-only provider calls and saves a finished retrieval', async () => {
+  const pendingAccount = importedAccount({ transactions_status: 'pending', ownership_status: 'pending', owner_names: [], ownership_snapshot_id: '', imported_transaction_refresh_id: '', has_imported_transactions: false });
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ status: 'pending', last_checked_at: checkedFiveMinutesAgo(), pending_since: checkedFiveMinutesAgo(), bank_accounts: [pendingAccount] })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET');
+    if (url.pathname.endsWith('/accounts/fca_fixture')) return bankAccount();
+    if (url.pathname.endsWith('/transactions')) return { data: [{ id: 'fctxn_finished', account: 'fca_fixture', amount: 500000, currency: 'usd', status: 'posted', transacted_at: Date.parse('2026-10-10T00:00:00Z') / 1000, description: 'Synthetic payroll' }], has_more: false };
+    throw new Error('Unexpected fixture route');
+  } }, async h => {
+    const result = await invoke(reviewApi, { action: 'get', application_id: 'applicationA' });
+    assert.equal(result.status, 200);
+    assert.equal(h.providerCalls.length, 2); assert.ok(h.providerCalls.every(call => call.method === 'GET'));
+    assert.equal(result.body.review.status, 'ready');
+    assert.equal(result.body.review.retrieval.pending, false);
+    assert.equal(result.body.review.retrieval.transactions_ready, true);
+    assert.equal(result.body.review.retrieval.has_transaction_data, true);
+    assert.equal(result.body.review.summary.availability, 'ready'); assert.equal(result.body.review.summary.totals_available, true);
+    assert.equal(result.body.review.transactions[0].id, 'fctxn_finished');
+    assert.equal(h.data.EngineAssistanceFinancialReview[0].transactions[0].id, 'fctxn_finished');
+    assert.equal(Date.parse(h.data.EngineAssistanceFinancialReview[0].last_checked_at), FIXTURE_NOW);
+    assert.equal(h.moneyCalls, 0);
+  });
+});
+
+test('get imports an already-completed prefetch snapshot even when neither provider feature is pending', async () => {
+  const completedButNotImported = importedAccount({ has_imported_transactions: false, imported_transaction_refresh_id: '' });
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ status: 'connected', last_checked_at: checkedFiveMinutesAgo(), bank_accounts: [completedButNotImported] })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET');
+    if (url.pathname.endsWith('/accounts/fca_fixture')) return bankAccount();
+    if (url.pathname.endsWith('/transactions')) return { data: [{ id: 'fctxn_prefetched', account: 'fca_fixture', amount: 500000, currency: 'usd', status: 'posted', transacted_at: Date.parse('2026-10-10T00:00:00Z') / 1000, description: 'Synthetic payroll' }], has_more: false };
+    throw new Error('Unexpected fixture route');
+  } }, async h => {
+    const before = financial.financialRetrievalState(h.data.EngineAssistanceFinancialReview[0]);
+    assert.equal(before.pending, false); assert.equal(before.needs_sync, true);
+    const result = await invoke(reviewApi, { action: 'get', application_id: 'applicationA' });
+    assert.equal(result.status, 200); assert.equal(h.providerCalls.length, 2);
+    assert.ok(h.providerCalls.every(call => call.method === 'GET'));
+    assert.equal(result.body.review.retrieval.pending, false);
+    assert.equal(result.body.review.retrieval.has_transaction_data, true);
+    assert.equal(result.body.review.summary.totals_available, true);
+    assert.equal(result.body.review.transactions[0].id, 'fctxn_prefetched');
+    assert.equal(h.data.EngineAssistanceFinancialReview[0].transactions[0].id, 'fctxn_prefetched');
+    assert.equal(h.data.EngineAssistanceFinancialReview[0].bank_accounts[0].has_imported_transactions, true);
+    assert.equal(h.moneyCalls, 0);
+  });
+});
+
+test('ownership pending keeps polling while an unchanged imported transaction snapshot remains available', async () => {
+  const account = importedAccount({ ownership_status: 'pending', owner_names: [], ownership_snapshot_id: '' });
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ status: 'pending', last_checked_at: checkedFiveMinutesAgo(), bank_accounts: [account], transactions: [normalizedTransaction('fctxn_cached', 500000)], notes: 'Keep these draft review notes.' })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET');
+    assert.ok(url.pathname.endsWith('/accounts/fca_fixture'), 'An unchanged imported transaction snapshot should not be fetched again');
+    return bankAccount({ ownership_refresh: { status: 'pending', next_refresh_available_at: null }, ownership: null });
+  } }, async h => {
+    const result = await invoke(reviewApi, { action: 'get', application_id: 'applicationA' });
+    assert.equal(result.status, 200); assert.equal(h.providerCalls.length, 1);
+    assert.equal(result.body.review.retrieval.pending, true);
+    assert.equal(result.body.review.retrieval.transactions_pending, false);
+    assert.equal(result.body.review.retrieval.ownership_pending, true);
+    assert.equal(result.body.review.retrieval.transactions_ready, true);
+    assert.equal(result.body.review.summary.availability, 'partial');
+    assert.equal(result.body.review.summary.totals_available, true);
+    assert.equal(result.body.review.transactions.length, 1); assert.equal(result.body.review.transactions[0].id, 'fctxn_cached');
+    assert.equal(result.body.review.summary.monthly[0].inflows_cents, 500000);
+    assert.equal(result.body.review.summary.flags.some(flag => /owner.*unavailable|verify ownership manually/i.test(flag)), false);
+    assert.equal(result.body.review.notes, 'Keep these draft review notes.');
+    assert.equal(h.providerCalls.some(call => call.method === 'POST'), false);
+  });
+});
+
+test('get respects the 15-second check interval without turning pending data into missing evidence', async () => {
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ status: 'pending', last_checked_at: new Date(FIXTURE_NOW - 10000).toISOString(), pending_since: checkedFiveMinutesAgo(), bank_accounts: [importedAccount({ transactions_status: 'pending', ownership_status: 'pending', owner_names: [], has_imported_transactions: false, imported_transaction_refresh_id: '', ownership_snapshot_id: '' })] })] }, async h => {
+    const result = await invoke(reviewApi, { action: 'get', application_id: 'applicationA' });
+    assert.equal(result.status, 200); assert.equal(h.providerCalls.length, 0);
+    assert.equal(result.body.review.retrieval.pending, true);
+    assert.equal(result.body.review.summary.availability, 'pending'); assert.equal(result.body.review.summary.totals_available, false);
+    assert.equal(result.body.review.summary.flags.some(flag => /span 0 days|owner.*unavailable/i.test(flag)), false);
+    assert.equal(h.calls.filter(call => call.operation !== 'filter').length, 0);
+  });
+});
+
+test('finished ownership retrieval with no owners is identified as unavailable for manual review', async () => {
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ status: 'ready', bank_accounts: [importedAccount()], transactions: [normalizedTransaction('fctxn_cached', 500000)] })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET'); assert.ok(url.pathname.endsWith('/accounts/fca_fixture'));
+    return bankAccount({ ownership: { id: 'fcaowns_empty', owners: { data: [], has_more: false } } });
+  } }, async h => {
+    const result = await invoke(reviewApi, { action: 'check', application_id: 'applicationA' });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.review.retrieval.pending, false);
+    assert.equal(result.body.review.retrieval.ownership_pending, false);
+    assert.deepEqual(result.body.review.bank_accounts[0].owner_names, [], 'An empty completed snapshot must not reuse names from a prior ownership snapshot');
+    assert.ok(result.body.review.summary.flags.some(flag => /owner.*unavailable|verify ownership manually/i.test(flag)));
+    assert.equal(h.providerCalls.length, 1);
+  });
+});
+
+test('legacy accounts without ownership fields remain readable without inventing a missing-owner result', async () => {
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ bank_accounts: [{ id: 'fca_fixture', status: 'active', context_verified: true }] })] }, async h => {
+    const result = await invoke(reviewApi, { action: 'get', application_id: 'applicationA' });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.review.summary.flags.some(flag => /owner.*unavailable|owner name differs/i.test(flag)), false);
+    assert.equal(h.providerCalls.length, 0);
+  });
+});
+
+test('check never initiates absent refresh jobs; only explicit refresh starts their retrieval', async () => {
+  let requested = false;
+  const unknownAccount = importedAccount({ transactions_status: 'not_requested', ownership_status: 'not_requested', owner_names: [], ownership_snapshot_id: '', transaction_refresh_id: '', imported_transaction_refresh_id: '', has_imported_transactions: false });
+  await withHarness({ app: bankApp, reviews: [reviewFixture({ bank_accounts: [unknownAccount] })], provider: async (url, init) => {
+    if (url.pathname.endsWith('/accounts/fca_fixture/refresh')) {
+      assert.equal(init.method, 'POST');
+      assert.deepEqual(new URLSearchParams(init.body).getAll('features[]'), ['transactions', 'ownership']);
+      requested = true; return bankAccount();
+    }
+    assert.ok(url.pathname.endsWith('/accounts/fca_fixture')); assert.equal(init.method, 'GET');
+    return bankAccount({ transaction_refresh: requested ? { id: 'fctxnref_requested', status: 'pending', next_refresh_available_at: null } : null, ownership_refresh: requested ? { status: 'pending', next_refresh_available_at: null } : null, ownership: null });
+  } }, async h => {
+    const checked = await invoke(reviewApi, { action: 'check', application_id: 'applicationA' });
+    assert.equal(checked.status, 200); assert.equal(requested, false); assert.equal(checked.body.refresh_requested, false);
+    assert.equal(checked.body.review.retrieval.not_requested, true);
+    assert.equal(checked.body.review.summary.availability, 'not_requested'); assert.equal(checked.body.review.summary.totals_available, false);
+    assert.equal(h.providerCalls.length, 1); assert.equal(h.providerCalls[0].method, 'GET');
+    h.data.EngineAssistanceFinancialReview[0].last_checked_at = checkedFiveMinutesAgo();
+    const refreshed = await invoke(reviewApi, { action: 'refresh', application_id: 'applicationA' });
+    assert.equal(refreshed.status, 200); assert.equal(requested, true); assert.equal(refreshed.body.refresh_requested, true);
+    assert.equal(refreshed.body.review.retrieval.pending, true);
+    assert.equal(h.providerCalls.filter(call => call.method === 'POST').length, 1);
+    assert.equal(h.providerCalls.filter(call => call.pathname.endsWith('/transactions')).length, 0);
+  });
+});
+
+test('an unchanged completed snapshot preserves reviewed income and notes without another transaction fetch', async () => {
+  await withHarness({ app: { ...bankApp, income_verification_status: 'reviewed' }, reviews: [reviewFixture({ status: 'ready', review_status: 'reviewed', confirmed_monthly_income_cents: 500000, reviewed_by: 'admin@example.invalid', reviewed_at: checkedFiveMinutesAgo(), notes: 'Staff documented this evidence.', bank_accounts: [importedAccount()], transactions: [normalizedTransaction('fctxn_cached', 500000)] })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET'); assert.ok(url.pathname.endsWith('/accounts/fca_fixture'), 'The same imported refresh ID must use its saved transactions'); return bankAccount();
+  } }, async h => {
+    const result = await invoke(reviewApi, { action: 'check', application_id: 'applicationA' });
+    assert.equal(result.status, 200); assert.equal(h.providerCalls.length, 1);
+    assert.equal(result.body.review.review_status, 'reviewed');
+    assert.equal(result.body.review.confirmed_monthly_income_cents, 500000);
+    assert.equal(result.body.review.notes, 'Staff documented this evidence.');
+    assert.equal(h.data.EngineAssistanceApplication[0].income_verification_status, 'reviewed');
+  });
+});
+
+test('a changed ownership snapshot invalidates the completed review while preserving staff notes', async () => {
+  await withHarness({ app: { ...bankApp, income_verification_status: 'reviewed' }, reviews: [reviewFixture({ status: 'ready', review_status: 'reviewed', confirmed_monthly_income_cents: 500000, notes: 'Keep the original review rationale.', bank_accounts: [importedAccount()], transactions: [normalizedTransaction('fctxn_cached', 500000)] })], provider: async (url, init) => {
+    assert.equal(init.method, 'GET'); assert.ok(url.pathname.endsWith('/accounts/fca_fixture'));
+    return bankAccount({ ownership: { id: 'fcaowns_changed', owners: { data: [{ id: 'fcaowner_changed', name: 'Different Example Owner' }], has_more: false } } });
+  } }, async h => {
+    const result = await invoke(reviewApi, { action: 'check', application_id: 'applicationA' });
+    assert.equal(result.status, 200); assert.equal(h.providerCalls.length, 1);
+    assert.equal(result.body.review.review_status, 'unreviewed');
+    assert.equal(result.body.review.confirmed_monthly_income_cents, null);
+    assert.equal(result.body.review.notes, 'Keep the original review rationale.');
+    assert.equal(h.data.EngineAssistanceApplication[0].income_verification_status, 'requested');
   });
 });
