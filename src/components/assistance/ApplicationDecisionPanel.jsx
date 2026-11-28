@@ -31,6 +31,28 @@ const LABEL = {
   expired: "Expire",
 };
 
+const DECISION_TEMPLATES = {
+  approved: [
+    ["standard", "Assistance approved", "Your application for the Affordable Engine Fund has been approved. Elite will prepare an offer outlining your engine build, assistance award and remaining balance."],
+    ["partial", "Partial assistance approved", "We have approved partial assistance toward your requested engine build. Your offer will outline the award and the remaining customer responsibility."],
+    ["scope", "Approved — revised build scope", "Your application has been approved for assistance toward a revised build package. Please review the proposed scope and pricing when your offer is available."],
+  ],
+  denied: [
+    ["funds", "Insufficient available program funds", "We are unable to provide assistance for this request because the program does not currently have sufficient funds available."],
+    ["scope", "Request outside program scope", "We are unable to approve assistance because the requested work falls outside the current program scope. Specifically: [enter applicable program requirement]."],
+    ["documentation", "Unable to verify required information", "We were unable to verify the following information required for this application: [identify the specific missing or unverifiable information]."],
+    ["custom", "Other specific reason", "We are unable to approve this application for the following reason: [enter the actual reason for this decision]."],
+  ],
+};
+const INFORMATION_TEMPLATES = [
+  ["engine", "Engine details", "Please provide additional details about your current engine, its condition and the work you need completed."],
+  ["rules", "Class rules", "Please provide the applicable class rules so we can confirm the proposed build is suitable."],
+  ["income", "Clarify financial information", "Please clarify the following information in your application: [specify what needs clarification]."],
+  ["references", "References", "Please provide updated contact information for your racing references."],
+  ["scope", "Build scope", "Please confirm your requested build scope and which components you already have available."],
+];
+const hasPlaceholder = text => /\[[^\]]+\]/.test(text);
+
 export default function ApplicationDecisionPanel({ application, onAction, busy }) {
   const [nextStatus, setNextStatus] = useState("");
   const [notes, setNotes] = useState(application.internal_notes || "");
@@ -79,7 +101,7 @@ export default function ApplicationDecisionPanel({ application, onAction, busy }
           {canDecide && (
             <div className="space-y-2 border-t border-slate-100 pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Decision</p>
-              <Select value={decision} onValueChange={setDecision}>
+              <Select value={decision} onValueChange={(value) => { setDecision(value); setSummary(""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="approved">Approve assistance</SelectItem>
@@ -100,10 +122,16 @@ export default function ApplicationDecisionPanel({ application, onAction, busy }
                     : <Input type="number" min="1" step="50" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Award $" />}
                 </div>
               )}
+              <Label className="text-xs">Decision template</Label>
+              <Select key={decision} onValueChange={(value) => { const template = DECISION_TEMPLATES[decision].find(item => item[0] === value); if (template) setSummary(template[2]); }}>
+                <SelectTrigger><SelectValue placeholder="Choose a premade response…" /></SelectTrigger>
+                <SelectContent>{DECISION_TEMPLATES[decision].map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">Edit the response below. Select only a reason that accurately reflects your actual decision.</p>
               <Textarea className="min-h-20" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Decision summary shown to the applicant" />
               <Button
                 size="sm"
-                disabled={busy || !summary.trim()}
+                disabled={busy || !summary.trim() || hasPlaceholder(summary)}
                 onClick={() => onAction("decide", {
                   application_id: application.id,
                   decision,
@@ -164,12 +192,17 @@ export default function ApplicationDecisionPanel({ application, onAction, busy }
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Request information from the applicant</DialogTitle></DialogHeader>
+          <Label className="text-xs">Information request template</Label>
+          <Select onValueChange={(value) => { const template = INFORMATION_TEMPLATES.find(item => item[0] === value); if (template) setInfoMessage(template[2]); }}>
+            <SelectTrigger><SelectValue placeholder="Choose a premade request…" /></SelectTrigger>
+            <SelectContent>{INFORMATION_TEMPLATES.map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+          </Select>
           <Label className="text-xs">What do you need?</Label>
           <Textarea className="min-h-24" value={infoMessage} onChange={(e) => setInfoMessage(e.target.value)} placeholder="For example: a photo of your current engine, or the class rules you race under." />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setInfoOpen(false)}>Cancel</Button>
             <Button
-              disabled={!infoMessage.trim() || busy}
+              disabled={!infoMessage.trim() || hasPlaceholder(infoMessage) || busy}
               onClick={() => { onAction("request_info", { application_id: application.id, message: infoMessage }); setInfoOpen(false); setInfoMessage(""); }}
             >Send request</Button>
           </DialogFooter>
