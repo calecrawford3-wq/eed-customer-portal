@@ -30,6 +30,7 @@ export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,on
       <div className="text-xs flex justify-between"><span>Potential lender payments</span><strong>{formatMoney(guide.split_plan?.reported_total)}</strong></div>
       <div className="text-xs flex justify-between"><span>Estimated balance after funding</span><strong>{formatMoney(guide.split_plan?.estimated_balance)}</strong></div>
       {guide.split_plan?.estimated_deposit_shortfall>0&&<div className="text-xs flex justify-between"><span>Estimated deposit still required</span><strong>{formatMoney(guide.split_plan.estimated_deposit_shortfall)}</strong></div>}
+      {guide.split_plan?.eligible_total<guide.split_plan?.reported_total&&<p className="text-xs text-amber-700">Currently authorized checkout amount: {formatMoney(guide.split_plan.eligible_total)}. The other reported offers are not available for split checkout yet.</p>}
       <p className="text-xs text-slate-500">Reported offers are not confirmed funding. Each authorized checkout must be completed and verified before balances change.</p>
     </div>}
     {next?.partial&&<p className="text-sm text-slate-600">Try {formatMoney(next.amount)} through {next.label}. Estimated outstanding balance after a successful payment: {formatMoney(Math.max(0,offer.balance_due-next.amount))}. No amount is credited until payment is verified.</p>}

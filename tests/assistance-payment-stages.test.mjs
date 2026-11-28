@@ -292,12 +292,15 @@ test('multi-lender checkout offers eligible methods and forbids changing lenders
  assert.equal((await start('afterpay_clearpay')).status,200);
  assert.deepEqual(h.state.requests.at(-1).data.payment_method_types,['afterpay_clearpay']);
 });
-test('Sunbit requires confirmed eligible service but not a prior deposit, and cannot finance an advance deposit',async()=>{
+test('Sunbit requires confirmed eligible service and can fund an eligible service payment counted toward the deposit',async()=>{
  const h=assistance();h.state.lenderConfig={active:true,sunbit:{available:true}};
  const start=(pathway)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,consent:true,lender:'sunbit'});
  assert.equal((await start('finance_full')).status,409);
- h.offer.sunbit_service_confirmed=true;
  assert.equal((await start('deposit_lender')).status,409);
+ h.offer.sunbit_service_confirmed=true;
+ assert.equal((await start('deposit_lender')).status,200);
+ assert.equal(h.state.requests[0].data.line_items[0].price_data.unit_amount,50000);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'close_checkout'})).status,200);
  assert.equal((await start('finance_full')).status,200);
  assert.deepEqual(h.state.requests[0].data.payment_method_types,['sunbit']);
  assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,false);
@@ -585,4 +588,43 @@ test('partial deposit funding recalculates unpaid deposit rather than restarting
  const settings={...h.settings,split_financing_authorizations:{affirm:'fixture',klarna:'fixture'},financing_methods:['affirm','klarna'].map(type=>({type,label:type,available:true}))};
  const plan=h.a.offerPaymentPlan(h.offer,settings),guide=h.a.guidedFinance(h.offer,plan,attempts);
  assert.equal(guide.stage,'deposit');assert.equal(guide.amount,2000);assert.equal(guide.next.type,'klarna');
+});
+
+test('remember $950 Sunbit and Klarna reports across deposit review; larger declines do not erase smaller hints',()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=2794.81;h.offer.sunbit_service_confirmed=true;
+ const methods=['affirm','sunbit','klarna','afterpay_clearpay'].map(type=>({type,label:type,available:true}));
+ const settings={...h.settings,financing_methods:methods};
+ const make=(type,amount,path,outcome,cap,date)=>({payment_pathway:path,amount,offered_methods:[type],stripe_session_id:'cs_'+type+date,status:'expired',customer_reported_lender:type,customer_reported_outcome:outcome,customer_reported_approved_amount:cap,customer_reported_at:date,customer_consent_at:date});
+ const attempts=[make('affirm',2794.81,'finance_full','declined',0,'2026-11-28T12:00:00Z'),make('sunbit',2794.81,'finance_full','insufficient_amount',950,'2026-11-28T12:01:00Z'),make('klarna',2794.81,'finance_full','insufficient_amount',950,'2026-11-28T12:02:00Z'),make('klarna',1397.41,'deposit_lender','declined',0,'2026-11-28T12:03:00Z')];
+ const plan=h.a.offerPaymentPlan(h.offer,settings),guide=h.a.guidedFinance(h.offer,plan,attempts);
+ assert.equal(guide.stage,'deposit');assert.equal(guide.next.type,'affirm');
+ assert.equal(guide.entries.find(x=>x.type==='sunbit').reported_amount,950);
+ assert.equal(guide.entries.find(x=>x.type==='klarna').reported_amount,950);
+ assert.equal(guide.split_plan.reported_total,1900);
+ assert.equal(guide.split_plan.estimated_balance,894.81);
+ assert.equal(guide.split_plan.estimated_deposit_shortfall,0);
+ assert.equal(guide.split_plan.eligible_total,0);
+ const authorized=h.a.offerPaymentPlan(h.offer,{...settings,split_financing_authorizations:{sunbit:'written fixture',klarna:'written fixture'}});
+ const next=h.a.guidedFinance(h.offer,authorized,attempts);
+ assert.equal(next.stage,'full');assert.equal(next.next.partial,true);assert.equal(next.next.amount,950);
+ attempts.push(make('klarna',950,'deposit_lender','declined',0,'2026-11-28T12:04:00Z'));
+ assert.equal(h.a.latestReportedApproval(attempts,'klarna'),null);
+});
+test('payment-only share capability cannot access offer or financing and uses current full balance',async()=>{
+ const h=assistance();
+ const share=await h.call('engineAssistanceFinancing',{token:h.token,action:'share_payment'});
+ assert.equal(share.status,200,JSON.stringify(share.body));
+ const payer_token=share.body.payment_path.split('/').at(-1);
+ assert.match(payer_token,/^[a-f0-9]{64}$/);
+ assert.notEqual(payer_token,h.token);
+ const quote=await h.call('startEngineAssistanceCheckout',{payer_token,action:'quote'});
+ assert.equal(quote.status,200);assert.deepEqual(quote.body,{amount:1000,paid:false,available:true});
+ assert.equal((await h.call('engineAssistanceFinancing',{token:payer_token,action:'share_payment'})).status,404);
+ assert.equal((await h.call('startEngineAssistanceCheckout',{payer_token,pathway:'finance_full',lender:'affirm'})).status,400);
+ const result=await h.call('startEngineAssistanceCheckout',{payer_token,pathway:'pay_in_full'});
+ assert.equal(result.status,200,JSON.stringify(result.body));
+ const checkout=h.state.requests[0].data;
+ assert.match(checkout.success_url,/engine-assistance\/pay\//);assert.ok(!checkout.success_url.includes(h.token));
+ assert.equal(checkout.line_items[0].price_data.unit_amount,100000);
+ assert.ok(!checkout.payment_method_types.includes('affirm'));
 });

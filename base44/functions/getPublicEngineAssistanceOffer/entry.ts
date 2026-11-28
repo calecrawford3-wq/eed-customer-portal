@@ -72,6 +72,7 @@ export default async function (req) {
         payments_test_mode: paymentKey.startsWith('sk_test_'),
         acorn: guidedAcornOption(current,liveSettings,loan,paymentPlan,guide),
         financing_guide:guide,
+        verified_lender_session_ids:(current.payments||[]).filter(p=>p.financed&&p.stripe_session_id).map(p=>p.stripe_session_id).slice(-50),
         pending_lender_return:pendingReturn?{session_id:pendingReturn.stripe_session_id}:null,
         lender_review: {...lenderReviewStatus(current,paymentPlan),availability_error:lenderCheckError},
         remainder_lender_checks: {...checks,availability_error:lenderCheckError},

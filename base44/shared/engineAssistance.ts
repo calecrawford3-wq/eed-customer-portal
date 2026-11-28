@@ -373,10 +373,15 @@ export function partialPayments(offer:any,attempts:any[]){
   return (offer.payments||[]).filter(p=>p.stripe_session_id&&ids.has(p.stripe_session_id));
 }
 export function latestReportedApproval(attempts:any[],type:string){
-  const latest=attempts.filter(a=>a.offered_methods?.length===1&&a.offered_methods[0]===type&&a.customer_reported_lender===type&&a.customer_reported_outcome)
-    .sort((a,b)=>String(b.customer_reported_at||b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_reported_at||a.customer_consent_at||a.created_date||'')))[0];
-  if(latest?.status!=='expired'||latest.customer_reported_outcome!=='insufficient_amount'||!(Number(latest.customer_reported_approved_amount)>0)||cents(latest.customer_reported_approved_amount)>=cents(latest.amount))return null;
-  return latest;
+  const history=attempts.filter(a=>a.offered_methods?.length===1&&a.offered_methods[0]===type&&a.customer_reported_lender===type&&a.customer_reported_outcome)
+    .sort((a,b)=>String(b.customer_reported_at||b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_reported_at||a.customer_consent_at||a.created_date||'')));
+  const index=history.findIndex(a=>a.status==='expired'&&a.customer_reported_outcome==='insufficient_amount'&&Number(a.customer_reported_approved_amount)>0&&cents(a.customer_reported_approved_amount)<cents(a.amount));
+  if(index<0)return null;
+  const reported=history[index];
+  // A decline on a larger request does not establish that a smaller reported
+  // amount is unavailable. A decline at or below the cap does invalidate it.
+  if(history.slice(0,index).some(a=>a.provider_decision==='approved'||a.customer_reported_outcome==='approved_not_accepted'||(a.customer_reported_outcome==='declined'&&cents(a.amount)<=cents(reported.customer_reported_approved_amount))))return null;
+  return reported;
 }
 export function partialSuggestions(offer:any,plan:any,attempts:any[],stage:string){
   // Use the reported amount across stages; even a deposit-stage report can
@@ -407,8 +412,8 @@ export function proposedSplit(offer:any,plan:any,suggestions:any[]){
     return {type:s.type,label:s.label,amount:amount/100,enabled:s.enabled};
   }).filter(s=>s.amount>0);
   const total=round2(rows.reduce((n,r)=>n+r.amount,0));
-  const enabledTotal=round2(rows.filter(r=>r.enabled).reduce((n,r)=>n+r.amount,0));
-  return {rows,reported_total:total,eligible_total:enabledTotal,estimated_balance:round2(Math.max(0,plan.totals.balance_due-total)),estimated_deposit_shortfall:round2(Math.max(0,plan.deposit_outstanding-total)),verified_balance:plan.totals.balance_due,verified_deposit_shortfall:plan.deposit_outstanding};
+  const enabledTotal=round2(Math.min(plan.totals.balance_due,suggestions.filter(r=>r.enabled).reduce((n,r)=>n+r.amount,0)));
+  return {rows,reported_total:total,eligible_total:enabledTotal,estimated_balance:round2(Math.max(0,plan.totals.balance_due-total)),estimated_deposit_shortfall:round2(Math.max(0,plan.deposit_outstanding-total)),authorized_estimated_deposit_shortfall:round2(Math.max(0,plan.deposit_outstanding-enabledTotal)),authorized_estimated_balance:round2(Math.max(0,plan.totals.balance_due-enabledTotal)),verified_balance:plan.totals.balance_due,verified_deposit_shortfall:plan.deposit_outstanding};
 }
 export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const balance=plan.totals.balance_due,deposit=plan.deposit_outstanding;
@@ -422,18 +427,18 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
     const a=attempts.filter(a=>a.payment_pathway===path&&cents(a.amount)===cents(amount)&&a.offered_methods?.length===1&&a.offered_methods[0]===m.type)
       .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')))[0];
     const carried=path!=='finance_full'?latestReportedApproval(attempts,m.type):null;
-    const known=(!a&&carried)?carried:a;
+    const known=carried&&(!a?.customer_reported_outcome||(a.customer_reported_outcome==="declined"&&cents(a.amount)>cents(carried.customer_reported_approved_amount)))?carried:a;
     const outcome=known?.customer_reported_lender===m.type?known.customer_reported_outcome:'';
     const reviewed=!!known?.stripe_session_id&&known.status==='expired'&&!!outcome;
     const noApproval=reviewed&&known.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
-    return {type:m.type,label:m.label,reviewed,no_approval:noApproval,outcome:outcome||'',attempted:!!a?.stripe_session_id,carried:!!(!a&&carried),reported_amount:outcome==='insufficient_amount'?known.customer_reported_approved_amount||0:0};
+    return {type:m.type,label:m.label,reviewed,no_approval:noApproval,outcome:outcome||'',attempted:!!a?.stripe_session_id,carried:!!(carried&&known===carried&&known!==a),reported_amount:outcome==='insufficient_amount'?known.customer_reported_approved_amount||0:0};
   });
   const full=entries(plan.pathways.finance_full.enabled?plan.pathways.finance_full.lenders:[],'finance_full',balance);
   const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
   const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
   const fullPartials=partialSuggestions(offer,plan,attempts,'full');
   const partialDepositPaid=splitPaid.some(p=>attempts.some(a=>a.stripe_session_id===p.stripe_session_id&&a.payment_pathway==='deposit_lender'));
-  const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled&&x.amount>=plan.deposit_outstanding)?'deposit':'full';
+  const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&fullPartials.filter(x=>x.enabled).reduce((n,x)=>n+cents(x.amount),0)<cents(plan.deposit_outstanding)?'deposit':'full';
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
   const suggestions=stage==='full'?fullPartials:partialSuggestions(offer,plan,attempts,stage);
   const normal=list.find(x=>!x.reviewed)||null;
