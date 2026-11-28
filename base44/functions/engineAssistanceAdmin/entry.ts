@@ -205,6 +205,15 @@ export default async function (req) {
         console.log('[AEF] deleting local application with financial connection reference', app.id);
       }
       for (const email of emailRows) await svc.EngineAssistanceEmailDelivery.delete(email.id);
+      const [financialReviews, bankStatements] = await Promise.all([
+        svc.EngineAssistanceFinancialReview.filter({ application_id: app.id }, '-created_date', 100),
+        svc.EngineAssistanceBankStatement.filter({ application_id: app.id }, '-created_date', 100),
+      ]);
+      // Remove all local financial records, including replaced statement metadata.
+      // This revokes capability access; it does not claim deletion at Stripe or
+      // from the private file-storage provider, which has a separate lifecycle.
+      for (const statement of rows(bankStatements)) await svc.EngineAssistanceBankStatement.delete(statement.id);
+      for (const financialReview of rows(financialReviews)) await svc.EngineAssistanceFinancialReview.delete(financialReview.id);
       await apps.delete(app.id);
       return Response.json({ deleted: true, application_number: app.application_number });
     }
