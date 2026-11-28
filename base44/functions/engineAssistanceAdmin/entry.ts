@@ -195,6 +195,16 @@ export default async function (req) {
       return Response.json({ settings: updated });
     }
 
+    if(action==='archive_test_application'||action==='restore_test_application'){
+      const app=await loadApp(str(data.application_id,60));
+      if(!app)return Response.json({error:'Application not found.'},{status:404});
+      if(data.confirmation!==app.application_number)return Response.json({error:'Confirm the exact application number.'},{status:400});
+      const archived=action==='archive_test_application';
+      if((app.test_archived===true)===archived)return Response.json({archived,application_number:app.application_number});
+      await apps.update(app.id,{test_archived:archived,test_archived_at:archived?new Date().toISOString():null,test_archived_by:archived?str(user.email||user.id,200):'',audit_trail:appendAudit(app,user,archived?'test_archived':'test_restored',archived?'Archived test application from active queue; linked records and payment links retained.':'Restored test application to active queue.')});
+      return Response.json({archived,application_number:app.application_number});
+    }
+
     if (action === 'delete_application') {
       const app = await loadApp(str(data.application_id, 60));
       if (!app) return Response.json({ error: 'Application not found.' }, { status: 404 });

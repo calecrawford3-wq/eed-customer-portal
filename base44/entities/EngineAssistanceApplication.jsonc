@@ -2,6 +2,9 @@
   "name": "EngineAssistanceApplication",
   "type": "object",
   "properties": {
+    "test_archived":{"type":"boolean","default":false,"description":"Hide a confirmed test application from the active queue; retain all linked records."},
+    "test_archived_at":{"type":"string","format":"date-time"},
+    "test_archived_by":{"type":"string"},
     "application_number": {
       "type": "string",
       "description": "Staff-facing identifier (EAF-YYYY-####)"

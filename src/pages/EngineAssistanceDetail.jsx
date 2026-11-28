@@ -29,6 +29,8 @@ export default function EngineAssistanceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen,setArchiveOpen]=useState(false);
+  const [archiveConfirmation,setArchiveConfirmation]=useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const qc = useQueryClient();
   const [busy, setBusy] = useState("");
@@ -104,6 +106,10 @@ export default function EngineAssistanceDetail() {
       const res = await base44.functions.invoke("engineAssistanceAdmin", { action, data: payload });
       if (res.data?.error) throw new Error(res.data.error);
       if (action === "delete_application") { if (!res.data?.deleted) throw new Error("Deletion was not confirmed"); toast.success("Application permanently deleted"); refresh(); navigate("/EngineAssistance"); return; }
+      if(action==="archive_test_application"||action==="restore_test_application"){
+        if(res.data?.archived!==(action==="archive_test_application"))throw new Error("Archive action was not confirmed");
+        toast.success(res.data.archived?"Test application archived":"Test application restored");setArchiveOpen(false);setArchiveConfirmation("");refresh();if(res.data.archived)navigate("/EngineAssistance");return;
+      }
       const email = res.data?.email;
 
       // A send is only reported as successful when the provider accepted it.
@@ -183,10 +189,13 @@ export default function EngineAssistanceDetail() {
         <div className="flex items-center gap-2">
           <StatusBadge status={application.status} />
           {offer && <StatusBadge status={offer.status} />}
+          <Button variant="outline" disabled={!!busy} onClick={()=>setArchiveOpen(true)}>{application.test_archived?"Restore test application":"Archive as test application"}</Button>
           <Button variant="outline" className="text-red-700 border-red-200" disabled={!!busy} onClick={() => setDeleteOpen(true)}>Delete application</Button>
         </div>
       </div>
 
+      {application.test_archived&&<div className="rounded-lg border bg-slate-50 p-3 text-sm">Archived test application. Linked offers, financing attempts and payment records are preserved. Existing payment links are not revoked by archiving.</div>}
+      {archiveOpen&&<Card><CardContent className="p-4 space-y-3"><h3 className="font-semibold">{application.test_archived?"Restore test application":"Archive as test application"}</h3><p className="text-sm text-slate-600">{application.test_archived?"Return this application to the active queue.":"Hide this test from the active queue and award totals. This is not a cancellation or refund; existing payment links and actual financial records remain."}</p><label className="block text-sm">Type {application.application_number} to confirm<input className="block w-full border rounded p-2 mt-1" value={archiveConfirmation} onChange={e=>setArchiveConfirmation(e.target.value)}/></label><div className="flex gap-2"><Button disabled={!!busy||archiveConfirmation!==application.application_number} onClick={()=>run(application.test_archived?"restore_test_application":"archive_test_application",{application_id:id,confirmation:archiveConfirmation})}>{application.test_archived?"Restore":"Archive test"}</Button><Button variant="outline" onClick={()=>{setArchiveOpen(false);setArchiveConfirmation("")}}>Cancel</Button></div></CardContent></Card>}
       {deleteOpen && <Card><CardContent className="p-4 space-y-3"><h3 className="font-bold text-red-700">Permanently delete application</h3><p className="text-sm">This removes the local application, financial review, statement metadata and invitation delivery records. Linked offers, payments, customer records or shop work block deletion. Stripe records and uploaded files remain in provider storage.</p><label className="block text-sm">Type {application.application_number} to confirm<input className="block w-full border rounded p-2 mt-1" value={deleteConfirmation} onChange={e=>setDeleteConfirmation(e.target.value)} /></label><div className="flex gap-2"><Button variant="destructive" disabled={!!busy || deleteConfirmation !== application.application_number} onClick={()=>run("delete_application",{application_id:id,confirmation:deleteConfirmation})}>Permanently delete</Button><Button variant="outline" onClick={()=>{setDeleteOpen(false);setDeleteConfirmation("")}}>Cancel</Button></div></CardContent></Card>}
       <ApplicationProgress stages={stage.stages} action={stage.action} />
 

@@ -23,6 +23,7 @@ const FILTERS = [
   ["approved", "Approved"],
   ["funded", "Funded"],
   ["denied", "Denied"],
+  ["archived_test", "Archived tests"],
 ];
 
 function Stat({ label, value, tone = "text-slate-900" }) {
@@ -116,33 +117,38 @@ export default function EngineAssistance() {
     verification: verificationFor(application),
   });
 
+  const archivedIds = useMemo(()=>new Set(applications.filter(a=>a.test_archived===true).map(a=>a.id)),[applications]);
+  const activeApplications=useMemo(()=>applications.filter(a=>!archivedIds.has(a.id)),[applications,archivedIds]);
+  const archivedOfferIds=useMemo(()=>new Set(offers.filter(o=>archivedIds.has(o.application_id)).map(o=>o.id)),[offers,archivedIds]);
   const counts = useMemo(() => ({
-    needsReview: applications.filter((a) => ["submitted", "under_review"].includes(a.status)).length,
-    info: applications.filter((a) => a.status === "info_requested").length,
-    approved: applications.filter((a) => a.status === "approved").length,
-    funded: applications.filter((a) => a.status === "funded").length,
-  }), [applications]);
+    needsReview: activeApplications.filter((a) => ["submitted", "under_review"].includes(a.status)).length,
+    info: activeApplications.filter((a) => a.status === "info_requested").length,
+    approved: activeApplications.filter((a) => a.status === "approved").length,
+    funded: activeApplications.filter((a) => a.status === "funded").length,
+  }), [activeApplications]);
 
   const fund = useMemo(() => {
     let awarded = 0, paid = 0;
     ledger.forEach((entry) => {
       const amount = Number(entry.amount) || 0;
-      if (entry.entry_type === "award") awarded += entry.direction === "debit" ? -amount : amount;
+      const archived=archivedIds.has(entry.application_id)||archivedOfferIds.has(entry.offer_id);
+      if (!archived && entry.entry_type === "award") awarded += entry.direction === "debit" ? -amount : amount;
       if (entry.entry_type === "payment") paid += entry.direction === "debit" ? -amount : amount;
       if (entry.entry_type === "refund") paid -= amount;
-      if (entry.entry_type === "adjustment") {
+      if (!archived && entry.entry_type === "adjustment") {
         if (entry.direction === "debit") awarded -= amount; else awarded += amount;
       }
     });
     return { awarded, paid };
-  }, [ledger]);
+  }, [ledger,archivedIds,archivedOfferIds]);
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return applications.filter((app) => {
+      if (filter==="archived_test" ? app.test_archived!==true : app.test_archived===true) return false;
       if (filter === "action" && stageFor(app).action.level !== "urgent") return false;
       if (filter === "open" && !["submitted", "under_review"].includes(app.status)) return false;
-      if (!["all", "action", "open"].includes(filter) && app.status !== filter) return false;
+      if (!["all", "action", "open", "archived_test"].includes(filter) && app.status !== filter) return false;
       if (!query) return true;
       return [app.application_number, app.first_name, app.last_name, app.email, app.engine_platform_text]
         .filter(Boolean).join(" ").toLowerCase().includes(query);
@@ -202,7 +208,7 @@ export default function EngineAssistance() {
         <Card>
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Wallet className="h-3.5 w-3.5" /> Assistance awarded</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Wallet className="h-3.5 w-3.5" /> Assistance awarded (excluding archived tests)</p>
               <p className="text-xl font-bold text-slate-900 tabular-nums">{formatMoney(fund.awarded)}</p>
             </div>
           </CardContent>
