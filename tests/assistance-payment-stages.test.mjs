@@ -420,3 +420,20 @@ test('Acorn Zoho evidence matches only the intended mailbox and current referral
  for(const patch of [{from_email:'notify@acornfinance.com.example.invalid'},{account_address:'other@example.invalid'},{direction:'outbound'},{received_at:'2026-11-27T07:05:00Z'},{subject:'Fwd: Financing update'},{body_text:'other borrower@example.invalid'}])assert.equal(a.matchAcornEmail({...mail,...patch},offer,app),null);
  assert.equal(a.matchAcornEmail(mail,offer,app).status,undefined);
 });
+test('Acorn no-offers template requires exact borrower, amount, trusted header and date',()=>{
+ const h=assistance(),a=h.load(path.resolve('base44/shared/acornEmail.ts'));
+ const offer={acorn_financing:{reference:'eed-current-ref',amount_cents:279482,started_at:'2026-11-28T07:00:00Z'}};
+ const app={email:'borrower@example.invalid',first_name:'Test',last_name:'Borrower',phone:'555-010-1234'};
+ const mail={id:'m2',direction:'inbound',account_address:'cale@eedpower.com',from_email:'support@acornfinance.com',received_at:'2026-11-28T07:05:00Z',subject:'Financing update',body_text:'We received an application from your customer, unfortunately we were unable to find any offers from our partners at this time. Customer: Test Borrower Email: borrower@example.invalid Phone: (555) 010-1234 Requested Loan Amount: $2,795 Thank you for using Acorn Finance!'};
+ assert.equal(a.parseAcornNoOffers(mail).amount,2795);
+ assert.equal(a.exactAcornNoOffersMatch(mail,offer,app),true);
+ assert.equal(a.matchAcornEmail(mail,offer,app).suggested_status,'no_offers');
+ assert.equal(a.exactAcornNoOffersMatch(mail,{acorn_financing:{...offer.acorn_financing,amount_cents:279600}},app),false);
+ assert.equal(a.exactAcornNoOffersMatch(mail,offer,{...app,phone:'5550109999'}),false);
+ assert.equal(a.parseAcornNoOffers({...mail,body_text:'An offer may be available'}),null);
+ const header='Authentication-Results: mx.zoho.com; dkim=pass header.d=acornfinance.com; dmarc=pass header.from=acornfinance.com';
+ assert.equal(a.acornHeaderAuthenticated(header),true);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('mx.zoho.com','attacker.example.invalid')),false);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('dmarc=pass','dmarc=fail')),false);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('header.d=acornfinance.com','header.d=example.invalid')),false);
+});
