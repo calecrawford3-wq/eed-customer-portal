@@ -362,11 +362,12 @@ export function depositContinuation(offer:any,plan:any){
       (offer.payments||[]).some(p=>p.amount_option==='deposit'&&p.stripe_session_id&&cents(p.amount)>=cents(plan.deposit_amount)))return -1;
   return null;
 }
-// Split payments are only suggested for providers whose written merchant
-// permission was recorded. Never use a reported credit limit as authorization.
+// Separate partial checkouts are merchant-configured, with optional provider
+// documentation. A reported credit limit is never a payment authorization.
 export function splitFinancingMethods(settings:any){
   const authorization=settings?.split_financing_authorizations||{};
-  return ['affirm','sunbit','klarna','afterpay_clearpay'].filter(m=>typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
+  const enabled=settings?.split_financing_enabled_methods;
+  return ['affirm','sunbit','klarna','afterpay_clearpay'].filter(m=>Array.isArray(enabled)?enabled.includes(m):typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
 }
 export function partialPayments(offer:any,attempts:any[]){
   const ids=new Set(attempts.filter(a=>a.partial_source_session_id||a.planned_partial===true).map(a=>a.stripe_session_id));

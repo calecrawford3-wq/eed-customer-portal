@@ -155,6 +155,10 @@ export default async function (req) {
     if (action === 'update_settings') {
       const settings = await ensureSettings(base44);
       const patch: any = {};
+      if (data.split_financing_enabled_methods !== undefined) {
+        const requested=Array.isArray(data.split_financing_enabled_methods)?data.split_financing_enabled_methods:[];
+        patch.split_financing_enabled_methods=[...new Set(requested.filter(type=>["affirm","sunbit","klarna","afterpay_clearpay"].includes(type)))];
+      }
       if (data.split_financing_authorizations !== undefined) {
         const value=data.split_financing_authorizations||{};
         patch.split_financing_authorizations=Object.fromEntries(['affirm','sunbit','klarna','afterpay_clearpay'].map(type=>[type,str(value[type],300)]).filter(([,ref])=>ref.length>=5));

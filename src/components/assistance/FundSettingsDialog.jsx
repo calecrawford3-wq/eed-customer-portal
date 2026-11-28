@@ -22,6 +22,7 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
     setApplyUrl(bootstrap?.apply_url || "");
     setForm({
       acorn_enabled: settings?.acorn_enabled === true,
+      split_financing_enabled_methods: settings?.split_financing_enabled_methods || Object.keys(settings?.split_financing_authorizations || {}).filter(type=>(settings.split_financing_authorizations[type]||"").trim().length>=5),
       split_financing_authorizations: settings?.split_financing_authorizations || {},
       fund_name: settings?.fund_name || "Affordable Engine Fund",
       fund_public_intro: settings?.fund_public_intro || "",
@@ -438,9 +439,12 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
             <div className="mt-2 space-y-1">
               <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={form.acorn_enabled===true} onChange={e=>setForm(f=>({...f,acorn_enabled:e.target.checked}))}/><span>Enable Acorn Finance (GLDIK)<br/><span className="text-xs text-slate-500">Enable only after Acorn confirms your engine-build business is eligible. Status sync is manual until authorized integration is configured.</span></span></label>
               <div className="border rounded-lg p-3 space-y-2 mt-2">
-                <Label>Authorized split financing</Label>
-                <p className="text-xs text-slate-500">Only enter a written provider authorization reference if it explicitly permits multiple payments for the same build. Leave blank to disable. For Sunbit, authorization must also cover mixed payments; only eligible services already provided may be financed.</p>
-                {[["affirm","Affirm"],["sunbit","Sunbit"],["klarna","Klarna"],["afterpay_clearpay","Afterpay"]].map(([type,label])=><label key={type} className="block text-xs">{label}<Input value={form.split_financing_authorizations?.[type]||""} placeholder="Authorization reference (optional)" onChange={e=>setForm(f=>({...f,split_financing_authorizations:{...f.split_financing_authorizations,[type]:e.target.value}}))}/></label>)}
+                <Label>Split financing</Label>
+                <p className="text-xs text-slate-500">Enable separate customer-approved checkouts for eligible lenders. Use only where your merchant terms permit; an optional provider authorization reference can be retained for your records. Sunbit is limited to eligible goods or services already provided.</p>
+                {[["affirm","Affirm"],["sunbit","Sunbit"],["klarna","Klarna"],["afterpay_clearpay","Afterpay"]].map(([type,label])=><div key={type} className="space-y-1">
+                  <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form.split_financing_enabled_methods?.includes(type)||false} onChange={e=>setForm(f=>({...f,split_financing_enabled_methods:e.target.checked?[...new Set([...(f.split_financing_enabled_methods||[]),type])]:(f.split_financing_enabled_methods||[]).filter(m=>m!==type)}))}/>{label}</label>
+                  <Input aria-label={label+" provider documentation"} value={form.split_financing_authorizations?.[type]||""} placeholder="Provider reference (optional)" onChange={e=>setForm(f=>({...f,split_financing_authorizations:{...f.split_financing_authorizations,[type]:e.target.value}}))}/>
+                </div>)}
               </div>
               {(settings?.financing_methods || []).map((method) => (
                 <div key={method.type} className="flex items-center justify-between text-xs">

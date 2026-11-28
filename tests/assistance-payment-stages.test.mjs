@@ -655,3 +655,10 @@ test('direct smaller checkout is unavailable without provider permission',async(
  const r=await h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'finance_full',lender:'affirm',consent:true,guided:true,smaller_amount_cents:25000});
  assert.equal(r.status,409);assert.equal(h.state.requests.length,0);
 });
+test('merchant can enable all four split methods without falsely recording provider authorization; explicit disable wins',()=>{
+ const h=assistance();
+ const methods=['affirm','sunbit','klarna','afterpay_clearpay'];
+ assert.deepEqual(h.a.splitFinancingMethods({split_financing_enabled_methods:methods}),methods);
+ assert.deepEqual(h.a.splitFinancingMethods({split_financing_enabled_methods:[],split_financing_authorizations:{affirm:'prior reference'}}),[]);
+ assert.deepEqual(h.a.splitFinancingMethods({split_financing_enabled_methods:['sunbit','invalid','klarna']}),['sunbit','klarna']);
+});
