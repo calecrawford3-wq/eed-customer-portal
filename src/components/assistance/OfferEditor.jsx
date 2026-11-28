@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Save } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import { base44 } from "@/api/base44Client";
+import CannedJobPicker from "@/components/estimates/CannedJobPicker";
+import { toast } from "sonner";
 
 const blank = (kind) => (kind === "part"
   ? { item_name: "", description: "", quantity: 1, unit_price: 0 }
@@ -78,6 +81,44 @@ export default function OfferEditor({ offer, onSave, busy }) {
   const [expiresOn, setExpiresOn] = useState("");
   const [terms, setTerms] = useState("");
   const [depositPercent, setDepositPercent] = useState(50);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importJob = async (job) => {
+    if (locked || busy || importing) return;
+    setImporting(true);
+    try {
+      const lookup = async (entity, id, name) => {
+        const found = id ? await entity.filter({id}, "-created_date", 1) : await entity.filter({name}, "-created_date", 2);
+        return found.length === 1 ? found[0] : null;
+      };
+      const price = (record, key, name) => {
+        if (!record || record[key] == null || record[key] === "" || !Number.isFinite(Number(record[key])) || Number(record[key]) < 0) throw new Error("Missing catalog price for " + name + ". Update the canned job or catalog before importing.");
+        return Number(record[key]);
+      };
+      const [parts, labor, machining] = await Promise.all([
+        Promise.all((job.line_items || []).map(async item => {
+          const record = await lookup(base44.entities.Part, item.part_id, item.item_name);
+          const name = item.item_name || record?.item_name || item.part_number;
+          return {part_id: record?.id || "", item_name: name, description: item.description || "", quantity: Number(item.quantity) || 1, unit_price: price(record,"sell_price",name)};
+        })),
+        Promise.all((job.labor_items || []).map(async item => {
+          const record = await lookup(base44.entities.LaborItem,item.labor_item_id,item.name);
+          return {item_name:item.name || record?.name,description:item.description || "",price:price(record,"price",item.name)};
+        })),
+        Promise.all((job.machining_items || []).map(async item => {
+          const record = await lookup(base44.entities.MachiningItem,item.machining_item_id,item.name);
+          return {item_name:item.name || record?.name,description:item.description || "",quantity:Number(item.quantity)||1,price:price(record,"price",item.name)};
+        })),
+      ]);
+      if (![...parts,...labor,...machining].length) throw new Error("This canned job has no line items.");
+      if ([lineItems.length+parts.length,laborItems.length+labor.length,machiningItems.length+machining.length].some(n=>n>100)) throw new Error("Offer limit is 100 lines per item type.");
+      setLineItems(prev=>[...prev.filter(i=>i.item_name),...parts]);
+      setLaborItems(prev=>[...prev.filter(i=>i.item_name),...labor]);
+      setMachiningItems(prev=>[...prev.filter(i=>i.item_name),...machining]);
+      toast.success(job.name + " imported with current catalog prices. Save the offer to keep changes.");
+    } catch(error) { toast.error(error.message || "Canned job import failed."); }
+    finally {setImporting(false);}
+  };
 
   useEffect(() => {
     setLineItems(offer.line_items || []);
@@ -100,6 +141,8 @@ export default function OfferEditor({ offer, onSave, busy }) {
 
   return (
     <div className="space-y-5">
+      <Button type="button" variant="outline" disabled={locked || busy || importing} onClick={()=>setPickerOpen(true)}>{importing ? "Importing…" : "Import canned job"}</Button>
+      <CannedJobPicker open={pickerOpen} onClose={()=>setPickerOpen(false)} onSelect={importJob} />
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">Parts</h4>
         <ItemRows kind="part" items={lineItems} setItems={setLineItems} disabled={locked} />
@@ -166,7 +209,7 @@ export default function OfferEditor({ offer, onSave, busy }) {
         <p className="text-xs text-slate-500">This offer has been sent and can no longer be edited. Revoke it to issue a new one.</p>
       ) : (
         <Button
-          disabled={busy}
+          disabled={busy || importing}
           onClick={() => onSave({
             offer_id: offer.id,
             line_items: lineItems,
