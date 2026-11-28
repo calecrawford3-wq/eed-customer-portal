@@ -1,3 +1,4 @@
+import {SUBMISSION_FEE_SOURCE,applyVerifiedSubmissionFee} from '../../shared/assistanceSubmissionFee.ts';
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { PORTAL_STRIPE_SOURCE, verifiedPaymentFacts, recordPortalStripePayment } from '../../shared/stripePayments.ts';
@@ -39,6 +40,14 @@ export default async function (req) {
       }
       return Response.json({received:true,card_saved:true,automatic_charging_active:false});
     } catch(e) {return Response.json({error:'Card setup needs verification/retry'},{status:503});}
+  }
+  if(event.data.object.metadata?.source===SUBMISSION_FEE_SOURCE){
+    if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type))return Response.json({received:true,ignored:true});
+    try{
+      const session=await stripe.checkout.sessions.retrieve(event.data.object.id);
+      const result=await applyVerifiedSubmissionFee(createClientFromRequest(req),session,key.startsWith('sk_live_'));
+      return Response.json({received:true,...result});
+    }catch{ return Response.json({error:'Submission deposit confirmation needs retry'},503); }
   }
   // --- Affordable Engine Fund identity verification ----------------------
   // Only a session fetched from Stripe is applied. The event body never decides

@@ -304,6 +304,7 @@
     "submission_fee_paid_at": {
       "type": "string"
     },
+    "submission_fee_policy_accepted_at":{"type":"string","format":"date-time"},
     "submission_fee_policy_version": {
       "type": "string"
     },

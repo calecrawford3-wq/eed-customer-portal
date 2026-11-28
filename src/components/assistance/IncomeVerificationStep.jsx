@@ -23,6 +23,7 @@ export default function IncomeVerificationStep({ statusToken, onSubmitted, onSta
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
   const [saved, setSaved] = useState(false);
+  const [feeConsent,setFeeConsent]=useState(false);
   const queryKey = ["aef-income-status", statusToken];
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey,
@@ -101,10 +102,13 @@ export default function IncomeVerificationStep({ statusToken, onSubmitted, onSta
     });
   };
   const finish = () => run("submit", async () => {
-    const { data: result } = await base44.functions.invoke("engineAssistanceApply", { action: "finish_without_fee", status_token: statusToken });
-    if (!result?.ok) throw new Error(result?.error || "The application was not submitted.");
-    onSubmitted?.(result);
-    toast.success("Application received. No payment was collected.");
+    const {data:result}=await base44.functions.invoke("engineAssistanceApply",{action:"pay_fee",status_token:statusToken,fee_policy_accepted:feeConsent});
+    if(result?.paid){onSubmitted?.(result);toast.success("Submission deposit verified. Application received.");return;}
+    if(result?.pending){throw Error("Payment is awaiting confirmation. Refresh your private status link shortly.");}
+    if(!result?.checkout_url)throw Error(result?.error||"Secure payment could not be opened.");
+    const url=new URL(result.checkout_url);
+    if(url.protocol!=="https:"||url.hostname!=="checkout.stripe.com")throw Error("Invalid payment destination.");
+    window.location.assign(url.href);
   });
 
   if (isLoading) return <Card><CardContent className="p-6 flex items-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" /> Loading your income verification step…</CardContent></Card>;
@@ -138,7 +142,13 @@ export default function IncomeVerificationStep({ statusToken, onSubmitted, onSta
         {statements.some((statement) => statement.status === "needs_review") && <p className="text-xs text-slate-600">If a valid statement cannot be read automatically, Elite can review the uploaded file. You can return to this private link after the review.</p>}
       </div>}
       {error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><AlertTriangle className="h-4 w-4 flex-none mt-0.5" /><span className="break-words">{error}</span></div>}
-      {showSubmit && pendingSubmission && <div className="border-t border-slate-200 pt-4 space-y-2"><p className="text-sm font-medium text-slate-900">Application submission deposit temporarily waived.</p><p className="text-xs text-slate-600">No payment is required. Complete one income verification option to submit.</p><Button disabled={!canSubmit || !!busy} onClick={finish}>{busy === "submit" && <Loader2 className="h-4 w-4 animate-spin" />}{busy === "submit" ? "Submitting…" : "Submit application — no payment"}</Button></div>}
+      {showSubmit && pendingSubmission && <div className="border-t border-slate-200 pt-4 space-y-3">
+        <p className="text-sm font-semibold text-slate-900">Required application submission deposit: $20.00</p>
+        <p className="text-xs text-slate-600">Tier 1 (under $35,000): refundable if denied or withdrawn before review; if approved and purchased, credited to your engine deposit. Tier 2 ($35,000–$75,000) and Tier 3 (over $75,000): nonrefundable unless required by law; credited toward your engine purchase if approved and purchased. No charitable tax deduction is represented. Applying does not guarantee assistance or financing.</p>
+        <label className="flex items-start gap-2 text-sm"><Checkbox checked={feeConsent} onCheckedChange={v=>setFeeConsent(v===true)} disabled={!!busy}/><span>I accept the $20 submission deposit and refund/credit terms.</span></label>
+        <p className="text-xs text-slate-500">Your application enters review only after income verification and payment confirmation.</p>
+        <Button disabled={!canSubmit||!feeConsent||!!busy} onClick={finish}>{busy==="submit"&&<Loader2 className="h-4 w-4 animate-spin"/>}{busy==="submit"?"Opening Stripe…":"Pay $20 and submit application"}</Button>
+      </div>}
       {!pendingSubmission && data.can_submit && <p className="text-sm text-emerald-800">Your income records are attached to this application for Elite&apos;s review.</p>}
     </CardContent></Card>
     <Card><CardContent className="p-4 space-y-2"><h3 className="text-sm font-semibold text-slate-900">Save your place</h3><p className="text-xs text-slate-600">Your uploaded records are saved privately. Keep this private link to finish later; anyone with this link can access your application status.</p><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(statusLink); setSaved(true); } catch { setError("Copy failed. Save the private link shown below."); } }}><Copy className="h-4 w-4" />{saved ? "Private link copied" : "Copy private status link"}</Button><Button variant="ghost" size="sm" disabled={!!busy || isFetching} onClick={() => refetch()}>Refresh saved progress</Button></div><a href={statusLink} className="block text-xs text-slate-500 underline break-all">{statusLink}</a></CardContent></Card>

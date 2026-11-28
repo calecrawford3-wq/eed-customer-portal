@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +13,7 @@ import StatusBadge from "@/components/assistance/StatusBadge";
 import IncomeVerificationStep from "@/components/assistance/IncomeVerificationStep";
 
 const COPY = {
-  pending_payment: "Your application answers are saved. Complete income verification below to submit. The application deposit is temporarily waived.",
+  pending_payment: "Your application answers are saved. Complete income verification and pay the required $20 submission deposit to submit.",
   submitted: "Your application is in the review queue. We look at every application by hand — no decision has been made yet.",
   under_review: "A person at Elite is reviewing your application. We may reach out with a question.",
   info_requested: "We need a little more information before we can decide. Reply below and your application goes back into review.",

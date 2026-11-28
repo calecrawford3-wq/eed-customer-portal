@@ -1,3 +1,4 @@
+import {SUBMISSION_FEE_CENTS,SUBMISSION_FEE_SOURCE,applyVerifiedSubmissionFee} from '../../shared/assistanceSubmissionFee.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
 import { rows, ensureGenericTemplate, nextApplicationNumber, newToken, publicApplicationStatus, appendAudit } from '../../shared/engineAssistance.ts';
@@ -51,59 +52,55 @@ export default async function (req) {
 
     // Stripe-hosted submission deposit. Server verifies the exact Checkout session;
     // returning from Checkout never counts as proof of payment.
-    // Temporary AEF application fee pause; existing paid sessions may still reconcile.
-    if (action === 'pay_fee') return Response.json({ error: 'Application deposit collection is temporarily paused.' }, { status: 409 });
-    if (action === 'finish_without_fee') {
-      if (!publicCapability(body.status_token)) return Response.json({ error: 'Valid application token required.' }, { status: 400 });
-      const app = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: body.status_token }))[0];
-      if (!app) return incomeResponse({ error: 'Application not found.' }, 404);
-      if (['submitted', 'under_review'].includes(app.status) && app.submission_fee_status === 'not_required') return incomeResponse({ ok: true, application_number: app.application_number, status_token: body.status_token });
-      if (app.status !== 'pending_payment' || app.submission_fee_session_id || app.submission_fee_status === 'paid') return incomeResponse({ error: 'Application requires payment reconciliation or is already submitted.' }, 409);
-      await requireIncomeEvidence(base44, app);
-      const now = new Date().toISOString();
-      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { status: 'submitted', income_request_pending: false, submission_fee_status: 'not_required', submission_fee_cents: 0, submitted_at: now, audit_trail: [...(app.audit_trail || []), { at: now, by: 'System', action: 'fee_waived', note: 'Temporary application fee pause; no payment collected.' }] });
-      return incomeResponse({ ok: true, application_number: app.application_number, status_token: body.status_token });
-    }
+    if (action === 'finish_without_fee') return incomeResponse({error:'The $20 application submission deposit is required.'},409);
     if (action === 'confirm_fee' || action === 'pay_fee') {
-      const statusToken = body.status_token;
-      if (!publicCapability(statusToken)) return Response.json({ error: 'A valid application status token is required.' }, { status: 400 });
-      const found = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: statusToken }))[0];
-      if (!found) return Response.json({ error: 'Application not found.' }, { status: 404 });
-      if (found.submission_fee_status === 'paid') return Response.json({ paid: true, application_number: found.application_number, status_token: statusToken });
-      if (found.status !== 'pending_payment') return Response.json({ error: 'Application is not awaiting a submission deposit.' }, { status: 409 });
-      const secret = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
-      if (!/^sk_(test|live)_/.test(secret)) return Response.json({ error: 'Secure checkout is not available yet.' }, { status: 503 });
-      const stripe = new Stripe(secret);
-      if (action === 'confirm_fee') {
-        const sessionId = clamps(body.session_id, 150);
-        if (!sessionId || sessionId !== found.submission_fee_session_id) return Response.json({ error: 'Checkout session does not match this application.' }, { status: 403 });
-        const session = await stripe.checkout.sessions.retrieve(sessionId);
-        if (session.metadata?.source !== 'eed_aef_submission_fee' || session.metadata?.application_id !== found.id || session.amount_total !== found.submission_fee_cents || session.currency !== 'usd') return Response.json({ error: 'Checkout could not be verified.' }, { status: 409 });
-        if (session.payment_status !== 'paid') return Response.json({ paid: false, pending: true });
-        const now = new Date().toISOString();
-        await base44.asServiceRole.entities.EngineAssistanceApplication.update(found.id, {
-          status: 'submitted', submission_fee_status: 'paid', submission_fee_paid_at: now,
-          submission_fee_payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || '',
-          submitted_at: now, audit_trail: [...(found.audit_trail || []), { at: now, by: 'Stripe', action: 'submission_deposit_verified', note: 'Submission deposit payment verified through Stripe Checkout.' }],
-        });
-        return Response.json({ paid: true, application_number: found.application_number, status_token: statusToken });
+      const statusToken=body.status_token;
+      if(!publicCapability(statusToken))return incomeResponse({error:'A valid application status token is required.'},400);
+      const apps=base44.asServiceRole.entities.EngineAssistanceApplication;
+      let found=rows(await apps.filter({status_token:statusToken}))[0];
+      if(!found)return incomeResponse({error:'Application not found.'},404);
+      if(found.submission_fee_status==='paid')return incomeResponse({paid:true,application_number:found.application_number,status_token:statusToken});
+      if(found.status!=='pending_payment')return incomeResponse({error:'Application is not awaiting a submission deposit.'},409);
+      if(action==='pay_fee'){
+        if(body.fee_policy_accepted!==true)return incomeResponse({error:'Accept the $20 submission deposit policy before continuing.'},400);
+        await requireIncomeEvidence(base44,found);
       }
-      if (found.submission_fee_session_id) {
-        const previous = await stripe.checkout.sessions.retrieve(found.submission_fee_session_id).catch(() => null);
-        if (previous?.status === 'open' && previous.url) return Response.json({ checkout_url: previous.url, status_token: statusToken });
+      const secret=Deno.env.get('PORTAL_STRIPE_SECRET_KEY')||'';
+      if(!/^sk_(test|live)_/.test(secret))return incomeResponse({error:'Secure checkout is not available yet.'},503);
+      const stripe=new Stripe(secret),live=secret.startsWith('sk_live_');
+      const finish=async(session:any)=>incomeResponse({...await applyVerifiedSubmissionFee(base44,session,live),status_token:statusToken});
+      if(action==='confirm_fee'){
+        const id=clamps(body.session_id,150);
+        if(!id||id!==found.submission_fee_session_id)return incomeResponse({error:'Checkout session does not match this application.'},403);
+        return await finish(await stripe.checkout.sessions.retrieve(id));
       }
-      const origin = 'https://portal.eedpower.com';
-      const { template } = await ensureGenericTemplate(base44);
-      const path = origin + '/engine-assistance/apply/' + encodeURIComponent(template.apply_token);
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment', customer_email: found.email,
-        line_items: [{ price_data: { currency: 'usd', unit_amount: found.submission_fee_cents, product_data: { name: 'Affordable Engine Fund application submission deposit' } }, quantity: 1 }],
-        success_url: path + '?fee_session={CHECKOUT_SESSION_ID}&application_status_token=' + encodeURIComponent(statusToken),
-        cancel_url: path + '?application_status_token=' + encodeURIComponent(statusToken) + '&fee_cancelled=1',
-        metadata: { source: 'eed_aef_submission_fee', application_id: found.id, policy_version: found.submission_fee_policy_version || 'aef-deposit-v1' },
-      }, { idempotencyKey: 'aef-fee-' + found.id + '-v1' });
-      await base44.asServiceRole.entities.EngineAssistanceApplication.update(found.id, { submission_fee_session_id: session.id });
-      return Response.json({ checkout_url: session.url, status_token: statusToken });
+      // Pending drafts created during the waiver are upgraded only when the
+      // applicant explicitly accepts the fee. Never charge submitted applications.
+      if(found.submission_fee_cents!==SUBMISSION_FEE_CENTS){
+        if(found.submission_fee_session_id)return incomeResponse({error:'An older payment needs reconciliation. Contact Elite.'},409);
+        await apps.updateMany({id:found.id,status:'pending_payment',submission_fee_cents:found.submission_fee_cents??0},{$set:{submission_fee_cents:SUBMISSION_FEE_CENTS,submission_fee_status:'pending'}});
+        found=rows(await apps.filter({id:found.id}))[0];
+        if(found?.status!=='pending_payment'||found.submission_fee_cents!==SUBMISSION_FEE_CENTS)return incomeResponse({error:'Application changed. Refresh to continue.'},409);
+      }
+      const oldId=found.submission_fee_session_id;
+      if(oldId){
+        const previous=await stripe.checkout.sessions.retrieve(oldId);
+        if(previous.payment_status==='paid')return await finish(previous);
+        if(previous.metadata?.source!==SUBMISSION_FEE_SOURCE||previous.metadata?.application_id!==found.id||previous.amount_total!==SUBMISSION_FEE_CENTS||previous.currency!=='usd'||previous.livemode!==live)return incomeResponse({error:'Existing checkout needs verification.'},409);
+        if(previous.status==='open'&&previous.url)return incomeResponse({checkout_url:previous.url,status_token:statusToken});
+        if(previous.status!=='expired'||previous.payment_status!=='unpaid')return incomeResponse({pending:true,status_token:statusToken});
+      }
+      const path='https://portal.eedpower.com/engine-assistance/status/'+encodeURIComponent(statusToken);
+      const session=await stripe.checkout.sessions.create({
+        mode:'payment',payment_method_types:['card'],customer_email:found.email,
+        line_items:[{price_data:{currency:'usd',unit_amount:SUBMISSION_FEE_CENTS,product_data:{name:'Affordable Engine Fund application submission deposit'}},quantity:1}],
+        success_url:path+'?fee_session={CHECKOUT_SESSION_ID}',cancel_url:path+'?fee_cancelled=1',
+        metadata:{source:SUBMISSION_FEE_SOURCE,application_id:found.id,policy_version:'aef-deposit-v1'},
+      },{idempotencyKey:'aef-fee-'+found.id+'-'+(oldId||'initial-v2')});
+      await apps.updateMany({id:found.id,status:'pending_payment',submission_fee_session_id:oldId===undefined?{$exists:false}:oldId},{$set:{submission_fee_session_id:session.id,submission_fee_policy_version:'aef-deposit-v1',submission_fee_policy_accepted_at:new Date().toISOString()}});
+      const saved=rows(await apps.filter({id:found.id}))[0];
+      if(saved?.submission_fee_session_id!==session.id)return incomeResponse({error:'Checkout could not be saved. Retry the same application.'},409);
+      return incomeResponse({checkout_url:session.url,status_token:statusToken});
     }
 
     // The applicant's private status page carries only its own long random
@@ -182,7 +179,7 @@ export default async function (req) {
     const created = await base44.asServiceRole.entities.EngineAssistanceApplication.create({
       application_number: await nextApplicationNumber(base44),
       status: 'pending_payment',
-      submission_fee_cents: 0,
+      submission_fee_cents: SUBMISSION_FEE_CENTS,
       submission_fee_status: 'pending',
       submission_fee_policy_version: 'aef-deposit-v1',
       submission_fee_credit_cents: 0,
@@ -219,7 +216,7 @@ export default async function (req) {
       consent_version: `${template.key}-v${template.version_number}`,
       documents: safeDocs,
       status_token: statusToken,
-      audit_trail: [{ at: now, by: 'Applicant', action: 'application_prepared', note: 'Application saved, awaiting a bank connection or complete monthly statements. Application payment is paused.' }],
+      audit_trail: [{ at: now, by: 'Applicant', action: 'application_prepared', note: 'Application saved, awaiting income verification and the required $20 submission deposit.' }],
     });
 
     return Response.json({ ok: true, pending_payment: true, application_number: created.application_number, status_token: statusToken, status_url: `/engine-assistance/status/${statusToken}` });

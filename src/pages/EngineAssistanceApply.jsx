@@ -152,7 +152,7 @@ export default function EngineAssistanceApply() {
   }
 
   if (pendingFee) return (
-    <PublicAssistanceShell title="Income verification & submission" subtitle="Complete your bank connection or upload the required bank statements. No application payment is required.">
+    <PublicAssistanceShell title="Income verification & submission" subtitle="Complete income verification, then pay the required $20 submission deposit.">
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
           <p className="text-sm font-bold text-slate-900">Step {totalSteps} of {totalSteps}: Income verification</p>
@@ -225,7 +225,7 @@ export default function EngineAssistanceApply() {
 
         {currentStep === totalSteps - 2 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <h3 className="text-base font-bold text-slate-900">Review and acknowledgements</h3>
-          <p className="rounded-lg border p-3 text-sm">The application submission deposit is temporarily waived. No payment is required.</p>
+          <p className="rounded-lg border p-3 text-sm">A $20 submission deposit is required after income verification. You will review and accept the deposit terms before payment.</p>
           <p className="text-sm text-slate-600">Review your answers before continuing to income verification. Use Back to make changes.</p>
           <div className="max-h-64 overflow-auto rounded-lg border p-3 space-y-2">{fields.filter(f => String(answers[f.key] ?? "").trim()).map(f => <div key={f.key} className="border-b pb-1 text-xs"><strong className="block text-slate-700">{f.label}</strong><span className="whitespace-pre-wrap break-words text-slate-600">{String(answers[f.key])}</span></div>)}</div>
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.template?.consent_text}</p>
