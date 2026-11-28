@@ -475,3 +475,11 @@ test('Acorn verified status customer notice is generic, sent once and never reco
  assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
  assert.equal(h.a.acornOption(h.offer,{...h.settings,acorn_enabled:true}).review_complete,false);
 });
+test('Zoho receiver authentication accepts aligned address notation, not foreign receivers or explicit failures',()=>{
+ const h=assistance(),a=h.load(path.resolve('base44/shared/acornEmail.ts'));
+ const header='Authentication-Results: mx.zohomail.com; dkim=pass; spf=pass smtp.mailfrom=bounce@acornfinance.com; dmarc=pass header.from=<support@acornfinance.com>';
+ assert.equal(a.acornHeaderAuthenticated(header),true);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('dmarc=pass','dmarc=fail')),false);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('support@acornfinance.com','support@other.example')),false);
+ assert.equal(a.acornHeaderAuthenticated(header.replace('mx.zohomail.com','other.example')),false);
+});
