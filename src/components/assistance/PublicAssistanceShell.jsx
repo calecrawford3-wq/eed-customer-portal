@@ -22,7 +22,7 @@ export default function PublicAssistanceShell({ title, subtitle, children }) {
       <footer className="mx-auto max-w-3xl px-4 pb-10 pt-2">
         <p className="flex items-start gap-1.5 text-[11px] text-slate-500">
           <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-none" />
-          Elite Engine Development never asks for a Social Security number, bank account number or card number in this form. Links are private and contain no personal information.
+          Elite does not receive your online banking password. Share bank records only through the secure bank connection or private document upload. Do not type Social Security numbers or card details in the form. Keep your application status link private.
         </p>
       </footer>
     </div>
