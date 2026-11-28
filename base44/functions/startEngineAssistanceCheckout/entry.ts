@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
   ASSISTANCE_STRIPE_SOURCE, rows, cents, round2, computeOfferTotals, offerExpired,
-  ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability,
+  ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability, acornOption,
 } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
@@ -69,6 +69,9 @@ export default async function (req) {
     if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
 
 
+    if (pathway.lender && !acornOption(offer,settings,loan).review_complete) {
+      return Response.json({error:'Elite must confirm that Acorn financing is unavailable or unsuitable before other lenders can be used.'},{status:409});
+    }
     if (pathway.lender && body.consent !== true) {
       return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
     }

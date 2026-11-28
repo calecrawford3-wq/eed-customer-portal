@@ -25,7 +25,10 @@
  script.onload=async()=>{
   await customElements.whenDefined("acorn-standard-widget");
   const widget=document.createElement("acorn-standard-widget");
-  Object.assign(widget,{dealerId:"GLDIK",companyName:"Elite Engine Development",env:"Prod",loanAmount:amount,utm_content:reference,utm_medium:"elite_portal",kind:"page",popupType:"apply",pageType:"calculator",theme:"no-border",alignment:"center",lineOption:"1line",learnHowLabel:"See options",acornCtaStyle:"font-size:13px;color:#b91c1c;font-weight:600;text-decoration:underline;",acornCtaHoverStyle:"font-size:13px;color:#991b1b;font-weight:600;text-decoration:underline;",showPromoText:true,showStandardWidget:true,logging:true});
+  Object.assign(widget,{dealerId:"GLDIK",companyName:"Elite Engine Development",env:"Prod",loanAmount:amount,utm_content:reference,utm_medium:"elite_portal",kind:"popup",popupType:"apply",pageType:"apply",theme:"no-border",alignment:"center",lineOption:"1line",learnHowLabel:"See options",acornCtaStyle:"font-size:13px;color:#b91c1c;font-weight:600;text-decoration:underline;",acornCtaHoverStyle:"font-size:13px;color:#991b1b;font-weight:600;text-decoration:underline;",showPromoText:true,showStandardWidget:true,logging:true});
+  widget.addEventListener("click",event=>{
+    if(event.isTrusted) window.parent.postMessage({type:"eed-acorn-preview-open"},"*");
+  },true);
   document.getElementById("widget").append(widget);
   await widget.updateComplete;
   clearTimeout(timer);

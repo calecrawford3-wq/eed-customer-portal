@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import OfferPaymentStages from "@/components/assistance/OfferPaymentStages";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -29,6 +29,15 @@ export default function EngineAssistanceOffer() {
   const [actionBusy, setActionBusy] = useState("");
   const [banner, setBanner] = useState("");
   const [acornModal,setAcornModal]=useState(null);
+  const [acornExpanded,setAcornExpanded]=useState(false);
+  const acornFrame=useRef(null);
+  useEffect(()=>{
+    const receive=event=>{
+      if(event.source===acornFrame.current?.contentWindow&&event.data?.type==="eed-acorn-preview-open")setAcornExpanded(true);
+    };
+    window.addEventListener("message",receive);
+    return ()=>window.removeEventListener("message",receive);
+  },[]);
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -136,6 +145,7 @@ export default function EngineAssistanceOffer() {
       if(url.origin!=="https://www.acornfinance.com")throw new Error("Invalid financing link");
       const {amount,reference}=res.data.widget||{};
       if(!Number.isInteger(amount)||!/^eed-[a-f0-9-]{36}$/.test(reference))throw new Error("Invalid widget configuration");
+      setAcornExpanded(false);
       setAcornModal({amount,url:url.href,frame:"/acorn-paw.html?"+new URLSearchParams({amount:String(amount),reference})});
       await refetch();
     } catch(error){toast.error(error?.response?.data?.error||error.message||"Unable to open Acorn");}
@@ -329,18 +339,18 @@ export default function EngineAssistanceOffer() {
           </JourneyErrorBoundary>
         )}
 
-        <Dialog open={!!acornModal} onOpenChange={open=>{if(!open){setAcornModal(null);refetch();}}}>
-          <DialogContent className="w-[calc(100%-24px)] max-w-[440px] max-h-[90dvh] rounded-2xl flex flex-col overflow-y-auto p-5 gap-4 bg-white text-slate-900" onInteractOutside={e=>e.preventDefault()}>
+        <Dialog open={!!acornModal} onOpenChange={open=>{if(!open){setAcornModal(null);setAcornExpanded(false);refetch();}}}>
+          <DialogContent className={`w-[calc(100%-24px)] max-h-[90dvh] rounded-2xl flex flex-col overflow-y-auto p-4 gap-3 bg-white text-slate-900 ${acornExpanded?"max-w-[740px] h-[88dvh]":"max-w-[440px]"}`} onInteractOutside={e=>e.preventDefault()}>
             <DialogHeader className="pr-6 text-left"><DialogTitle className="text-xl font-semibold tracking-tight">Financing options</DialogTitle><DialogDescription>Powered by Acorn Finance</DialogDescription></DialogHeader>
             {acornModal&&<>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+              {!acornExpanded&&<div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p className="text-xs font-medium text-slate-500">Requested loan amount</p>
                 <p className="text-3xl font-bold tracking-tight mt-1">{formatMoney(acornModal.amount)}</p>
                 <p className="text-xs text-slate-500 mt-1">Compare offers from multiple lenders with one application.</p>
-              </div>
-              <iframe title="Acorn estimated monthly payment" className="w-full h-[120px] shrink-0 rounded-lg border-0" src={acornModal.frame} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"/>
-              <Button className="w-full min-h-12 bg-[#c91620] hover:bg-[#a71019] text-white" asChild><a href={acornModal.url} target="_blank" rel="noopener noreferrer">Check my financing options</a></Button>
-              <div className="flex gap-2 items-start text-xs text-slate-500 leading-relaxed"><ShieldCheck className="w-4 h-4 shrink-0 mt-0.5"/><p>Acorn handles your application. Actual rates and terms depend on lender approval. Return here when finished to check your status.</p></div>
+              </div>}
+              <iframe ref={acornFrame} title="Acorn financing options" className={`w-full rounded-lg border-0 ${acornExpanded?"flex-1 min-h-[240px]":"h-[120px] shrink-0"}`} src={acornModal.frame} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"/>
+              <a className="text-xs text-center text-slate-500 underline underline-offset-2 shrink-0" href={acornModal.url} target="_blank" rel="noopener noreferrer">Trouble with the widget? Open Acorn directly</a>
+              {!acornExpanded&&<div className="flex gap-2 items-start text-xs text-slate-500 leading-relaxed"><ShieldCheck className="w-4 h-4 shrink-0 mt-0.5"/><p>Acorn handles your application. Actual rates and terms depend on lender approval. Return here when finished to check your status.</p></div>}
             </>}
           </DialogContent>
         </Dialog>
