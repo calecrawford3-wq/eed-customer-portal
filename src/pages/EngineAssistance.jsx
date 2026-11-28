@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { HeartHandshake, Settings2, Copy, Search, Loader2, AlertTriangle, Wallet, BadgeCheck, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/money";
+import CustomerSearchSelect from "@/components/CustomerSearchSelect";
 import ApplicationQueueCard from "@/components/assistance/ApplicationQueueCard";
 import FundSettingsDialog from "@/components/assistance/FundSettingsDialog";
 import { applicationStage } from "@/components/assistance/admin/applicationStage";
@@ -41,18 +42,37 @@ export default function EngineAssistance() {
   const [search, setSearch] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emailPanelOpen, setEmailPanelOpen] = useState(false);
+  const [inviteMode,setInviteMode]=useState("customer");
+  const [inviteCustomerId,setInviteCustomerId]=useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
+  const {data:inviteCustomers=[],isLoading:loadingInviteCustomers,isError:customerLoadError}=useQuery({
+    queryKey:["assistance-invitation-customers"],
+    enabled:emailPanelOpen&&inviteMode==="customer",
+    queryFn:async()=>{
+      const all=[];
+      for(let skip=0;skip<20000;skip+=500){
+        const response=await base44.entities.Customer.list("first_name",500,skip);
+        const batch=Array.isArray(response)?response:response?.items||[];
+        all.push(...batch);
+        if(batch.length<500)break;
+      }
+      return [...new Map(all.map(c=>[c.id,c])).values()];
+    },
+  });
+  const selectedInviteCustomer=inviteCustomers.find(c=>c.id===inviteCustomerId);
+  const recipientEmail=inviteMode==="customer"?selectedInviteCustomer?.email||"":inviteEmail;
+  const validRecipient=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipientEmail.trim());
   const sendInvitation = async () => {
-    if (!inviteEmail.trim()) { toast.error("Enter a recipient email"); return; }
+    if (!validRecipient) { toast.error("Select a customer with a valid email or enter an email manually"); return; }
     setSendingInvite(true);
     try {
-      const response = await base44.functions.invoke("engineAssistanceAdmin", { action: "email_application_link", data: { email: inviteEmail.trim(), name: inviteName.trim() } });
+      const response = await base44.functions.invoke("engineAssistanceAdmin", { action: "email_application_link", data: inviteMode==="customer"?{customer_id:inviteCustomerId}:{email:inviteEmail.trim(),name:inviteName.trim()} });
       const result = response.data || response;
       if (!result.sent) throw new Error(result.error || "The email was not accepted");
       toast.success(`Application invitation accepted for ${result.recipient}`);
-      setEmailPanelOpen(false); setInviteEmail(""); setInviteName("");
+      setEmailPanelOpen(false); setInviteEmail(""); setInviteName(""); setInviteCustomerId("");
     } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Could not send invitation"); }
     finally { setSendingInvite(false); }
   };
@@ -188,7 +208,26 @@ export default function EngineAssistance() {
         </div>
       </div>
 
-      {emailPanelOpen && <Card><CardContent className="p-4 sm:p-5 space-y-3"><h3 className="font-bold text-slate-900">Send Affordable Engine Fund application</h3><p className="text-sm text-slate-600">Email the secure application link using Elite’s connected mail account. No application is created until the recipient submits it.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input placeholder="Recipient name (optional)" value={inviteName} onChange={e => setInviteName(e.target.value)} /><Input type="email" placeholder="Recipient email address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div><div className="flex flex-wrap gap-2"><Button disabled={sendingInvite || !inviteEmail.trim()} onClick={sendInvitation}>{sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Send application email</Button><Button variant="outline" onClick={() => setEmailPanelOpen(false)}>Cancel</Button></div></CardContent></Card>}
+      {emailPanelOpen && <Card><CardContent className="p-4 sm:p-5 space-y-4">
+        <h3 className="font-bold text-slate-900">Send Affordable Engine Fund application</h3>
+        <p className="text-sm text-slate-600">Send the secure application link using Elite’s connected mail account. No application is created until the recipient starts submitting it.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant={inviteMode==="customer"?"default":"outline"} disabled={sendingInvite} onClick={()=>setInviteMode("customer")}>Existing customer</Button>
+          <Button variant={inviteMode==="manual"?"default":"outline"} disabled={sendingInvite} onClick={()=>setInviteMode("manual")}>Enter email manually</Button>
+        </div>
+        {inviteMode==="customer"?<div className="space-y-2">
+          <p className="text-sm font-medium">Search customer</p>
+          {loadingInviteCustomers?<p className="text-sm text-slate-500">Loading customers…</p>:customerLoadError?<p className="text-sm text-red-700">Unable to load customers. Try manual email entry.</p>:<CustomerSearchSelect customers={inviteCustomers} value={inviteCustomerId} onValueChange={setInviteCustomerId} placeholder="Search by name, email or phone…"/>}
+          {selectedInviteCustomer&&<div className="rounded-lg border bg-slate-50 p-3 text-sm">
+            <p className="font-medium">{[selectedInviteCustomer.first_name,selectedInviteCustomer.last_name].filter(Boolean).join(" ")||selectedInviteCustomer.company_name||"Customer"}</p>
+            <p className={validRecipient?"text-slate-600 break-all":"text-red-700"}>{validRecipient?recipientEmail:"No valid primary email. Choose manual email entry."}</p>
+          </div>}
+        </div>:<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input aria-label="Recipient name" placeholder="Recipient name (optional)" value={inviteName} disabled={sendingInvite} onChange={e=>setInviteName(e.target.value)}/>
+          <Input aria-label="Recipient email" type="email" placeholder="Recipient email address" value={inviteEmail} disabled={sendingInvite} onChange={e=>setInviteEmail(e.target.value)}/>
+        </div>}
+        <div className="flex flex-wrap gap-2"><Button disabled={sendingInvite||!validRecipient} onClick={sendInvitation}>{sendingInvite?<Loader2 className="h-4 w-4 animate-spin"/>:<Mail className="h-4 w-4"/>} Send application email</Button><Button variant="outline" disabled={sendingInvite} onClick={()=>setEmailPanelOpen(false)}>Cancel</Button></div>
+      </CardContent></Card>}
 
       {bootstrap && bootstrap.settings?.payments_enabled === false && (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">

@@ -239,16 +239,25 @@ export default async function (req) {
     }
 
     if (action === 'email_application_link') {
-      const to = str(data.email, 320).toLowerCase();
+      let recipientEmail=data.email,recipientDisplayName=data.name;
+      if(data.customer_id!==undefined){
+        const customerId=typeof data.customer_id==='string'?data.customer_id.trim():'';
+        if(!customerId||customerId.length>60)return Response.json({error:'Select a valid customer.'},{status:400});
+        const customer=rows(await base44.asServiceRole.entities.Customer.filter({id:customerId}))[0];
+        if(!customer)return Response.json({error:'Customer no longer exists. Select another customer or enter an email.'},{status:404});
+        recipientEmail=customer.email;
+        recipientDisplayName=[customer.first_name,customer.last_name].filter(Boolean).join(' ')||customer.company_name||'';
+      }
+      const to = str(recipientEmail, 320).toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return Response.json({ error: 'Enter a valid recipient email address.' }, { status: 400 });
       const { template, settings } = await ensureGenericTemplate(base44);
       if (!template?.apply_token) return Response.json({ error: 'Application link is not configured.' }, { status: 409 });
       const url = 'https://portal.eedpower.com/engine-assistance/apply/' + encodeURIComponent(template.apply_token);
       const fundName = str(settings?.fund_name || 'Affordable Engine Fund', 120);
-      const recipientName = str(data.name, 80).replace(/[<>&"']/g, '');
+      const recipientName = str(recipientDisplayName, 80).replace(/[<>&"']/g, '');
       const greeting = recipientName ? 'Hello ' + recipientName + ',' : 'Hello,';
       const subject = 'Apply for ' + fundName + ' — Elite Engine Development';
-      const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Elite Engine Development</h2><h3>' + fundName.replace(/[<>&"']/g, '') + '</h3><p>' + greeting + '</p><p>You are invited to complete an Engine Assistance application. Tell us about your racing program and the engine support you need.</p><p><a href="' + url + '" style="display:inline-block;background:#c91620;color:white;padding:14px 22px;text-decoration:none;border-radius:6px">Start your application</a></p><p>You can save a draft on your device and return before submitting.</p><p>Applying does not guarantee assistance or financing, and no payment is required to apply.</p><p style="font-size:12px;color:#64748b">If you did not request this invitation, you can disregard this message.</p></div>';
+      const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Elite Engine Development</h2><h3>' + fundName.replace(/[<>&"']/g, '') + '</h3><p>' + greeting + '</p><p>You are invited to complete an Engine Assistance application. Tell us about your racing program and the engine support you need.</p><p><a href="' + url + '" style="display:inline-block;background:#c91620;color:white;padding:14px 22px;text-decoration:none;border-radius:6px">Start your application</a></p><p>You can save a draft on your device and return before submitting.</p><p>A $20 submission deposit is required after income verification. Applying does not guarantee assistance or financing.</p><p style="font-size:12px;color:#64748b">If you did not request this invitation, you can disregard this message.</p></div>';
       const delivery = await sendAssistanceEmail(base44, { to, subject, html });
       if (!delivery.ok) return Response.json({ sent: false, error: delivery.error || 'Email was not accepted by the provider.' }, { status: 502 });
       console.log('[engineAssistanceAdmin] Application invitation accepted by provider for', to);
