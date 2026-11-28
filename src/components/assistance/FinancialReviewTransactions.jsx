@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { adaptiveCategories } from "../../../base44/shared/assistanceFinancialMath.ts";
+import { adaptiveCategories } from "@/lib/assistanceCategories";
 
 const money = (value, currency = "usd") => new Intl.NumberFormat("en-US", { style: "currency", currency: /^[a-z]{3}$/i.test(currency) ? currency.toUpperCase() : "USD" }).format(Number(value || 0) / 100);
 const categories = Object.entries({unreviewed:"Unclassified",income:"Income (general)",employment_income:"Employment income",business_income:"Business income",other_income:"Other income",transfer:"Transfer / funding",debt_payment:"Debt payment",housing:"Housing",utilities:"Utilities",insurance:"Insurance",groceries:"Groceries",fuel:"Fuel",dining:"Dining",shopping:"Shopping",entertainment:"Entertainment",refund:"Refund / reversal",fees:"Bank fees",other:"Other"}).map(([value,label])=>({value,label}));
