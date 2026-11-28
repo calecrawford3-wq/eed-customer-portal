@@ -103,7 +103,7 @@ export default function EngineAssistanceOffer() {
   const checkout = async (pathway, consent, lender) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, replace_existing: offer?.checkout_open === true });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, replace_existing: true });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) window.location.href = res.data.checkout_url;
       else throw new Error("Checkout could not be started");

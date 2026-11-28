@@ -293,3 +293,25 @@ test('Sunbit is restricted to confirmed service after the deposit, and actual Su
  h.offer.sunbit_service_confirmed=true;assert.equal((await start()).status,200);
  assert.deepEqual(h.state.requests[0].data.payment_method_types,['sunbit']);
 });
+
+test('explicit payment switch expires unpaid lender checkout before opening another',async()=>{
+ const h=assistance();h.state.lenderConfig={active:true,affirm:{available:true},klarna:{available:true}};
+ const start=(pathway,lender)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,lender,consent:true,replace_existing:true});
+ const first=await start('deposit_lender','affirm');assert.equal(first.status,200);
+ const retry=await start('deposit_lender','affirm');assert.equal(retry.body.session_id,first.body.session_id);
+ const next=await start('deposit_lender','klarna');assert.equal(next.status,200);
+ assert.equal(h.state.sessions[first.body.session_id].status,'expired');
+ assert.deepEqual(h.state.requests.at(-1).data.payment_method_types,['klarna']);
+ const card=await start('deposit_card');assert.equal(card.status,200);
+ assert.equal(h.state.sessions[next.body.session_id].status,'expired');
+ assert.equal(Object.values(h.state.sessions).filter(s=>s.status==='open').length,1);
+});
+test('automatic switch blocks completed, processing and ambiguous provider checkouts',async()=>{
+ for(const kind of ['complete','paid','timeout']){
+  const h=assistance();if(kind==='timeout')h.state.timeout=true;
+  const first=await h.checkout('deposit_card');
+  if(kind!=='timeout'){const s=h.state.sessions[first.body.session_id];if(kind==='complete')s.status='complete';else s.payment_status='paid';}
+  const next=await h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'deposit_lender',lender:'affirm',consent:true,replace_existing:true});
+  assert.equal(next.status,409);assert.equal(Object.keys(h.state.sessions).length,1);
+ }
+});
