@@ -289,18 +289,15 @@ export default function EngineAssistanceOffer() {
               <p className="text-sm text-slate-600 mt-1">Contact Elite Engine Development and we will confirm whether the award can be extended.</p>
             </div>
           </CardContent></Card>
-        ) : !["pending_approval", "approved"].includes(loan?.status) && !requestRemainder ? (
+        ) : !["pending_approval", "approved"].includes(loan?.status) && (!requestRemainder || !offer.internal_financing_unlocked) ? (
           <OfferPaymentStages offer={offer} paying={paying} onCheckout={checkout}
             onRequest={async () => {
+              if (!offer.internal_financing_unlocked) return;
               if (offer.checkout_open && !await runFinancing("close_checkout")) return;
               setRequestRemainder(true);
             }}
             onAcornLaunch={openAcorn}
             onAcornRefresh={refetch}
-            onSaveReview={async (entries,amount_cents)=>{
-              if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
-              return runFinancing("save_lender_review",{entries,amount_cents},"Financing options reviewed");
-            }}
             onReport={async (lender,outcome)=>{
               if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
               return runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded");

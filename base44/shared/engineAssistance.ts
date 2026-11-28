@@ -293,9 +293,8 @@ export function acornOption(offer:any, settings:any, loan:any=null) {
   const amount = computeOfferTotals(offer).balance_due;
   const eligible = settings?.acorn_enabled===true && amount>=1000 && amount<=100000 && !offerExpired(offer) && !['draft','void','declined','expired','paid'].includes(offer.status) && offer.installments_enabled!==false && !['pending_approval','approved','active','completed'].includes(loan?.status) && offer.payment_route!=='internal';
   const existing=offer.acorn_financing;
-  // A staff-reviewed full-balance attempt can remain valid after a deposit
-  // reduces the balance. Never infer that the lender declined a smaller amount.
-  const current=existing?.amount_cents>=cents(amount)?existing:null;
+  // Every distinct outstanding balance requires its own review.
+  const current=existing?.amount_cents===cents(amount)?existing:null;
   const verified=['staff_verified','acorn_postback','zoho_verified'].includes(current?.status_source);
   return {eligible,amount,reference:current?.reference||'',requested_amount:current?current.amount_cents/100:null,status:current?.status||'not_started',status_source:current?.status_source||'',review_complete:!eligible||(verified&&ACORN_FALLBACK_STATUSES.includes(current?.status))};
 }
@@ -317,6 +316,28 @@ export function lenderReviewStatus(offer: any, plan: any) {
   const entries = saved?.amount_cents === cents(amount) && Array.isArray(saved.entries) ? saved.entries : [];
   const complete = required.every(m=>entries.some(e=>e.lender===m.type && LENDER_REVIEW_OUTCOMES.includes(e.outcome)));
   return {required:required.map(m=>({type:m.type,label:m.label})),amount,entries,complete,reviewed_at:saved?.amount_cents===cents(amount)?saved.reviewed_at:null};
+}
+// A fresh, closed remainder checkout and a reported unsuccessful outcome are
+// required for each eligible lender. A closed checkout alone is not a denial.
+export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
+  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders:[];
+  const amount=plan.totals.balance_due;
+  const afterDeposit=Date.parse(offer.deposit_verified_at||'');
+  const eligibleAttempts=attempts.filter(a=>a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(amount)&&
+    (!Number.isFinite(afterDeposit)||Date.parse(a.customer_consent_at||a.created_date||'')>=afterDeposit));
+  const entries=required.map(m=>{
+    const matches=eligibleAttempts.filter(a=>a.offered_methods?.length===1&&a.offered_methods[0]===m.type)
+      .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')));
+    const latest=matches[0];
+    const outcome=latest?.customer_reported_lender===m.type?latest.customer_reported_outcome:'';
+    const complete=!!latest?.stripe_session_id&&latest.status==='expired'&&latest.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
+    return {type:m.type,label:m.label,complete,attempted:!!latest?.stripe_session_id,outcome:outcome||''};
+  });
+  return {amount,entries,complete:plan.deposit_verified&&entries.every(e=>e.complete)};
+}
+export function acornNoAdequateApproval(offer:any,settings:any,loan:any=null){
+  const option=acornOption(offer,settings,loan);
+  return !option.eligible||(['staff_verified','acorn_postback','zoho_verified'].includes(option.status_source)&&['no_offers','insufficient_amount'].includes(option.status));
 }
 export function validateLenderReview(required: any[], submitted: any) {
   if (!Array.isArray(submitted) || submitted.length !== required.length) return null;

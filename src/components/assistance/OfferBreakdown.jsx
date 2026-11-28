@@ -91,7 +91,7 @@ export default function OfferBreakdown({ offer, showPayments = true }) {
         {Number(offer.deposit_amount) > 0 && (
           <>
             <Row label={`Upfront deposit (${Number(offer.deposit_percent) || 50}%)`} value={formatMoney(offer.deposit_amount)} muted />
-            <Row label="Elite in-house financing" value={formatMoney(offer.internal_amount ?? offer.internal_financed_amount ?? 0)} muted />
+            {(offer.internal_financing_unlocked || offer.internal_loan || offer.internal_loan_id) && <Row label="Elite in-house financing" value={formatMoney(offer.internal_amount ?? offer.internal_financed_amount ?? 0)} muted />}
             <Row label="Deposit verified" value={offer.deposit_verified ? "Yes" : "Not yet"} muted />
             <Row label="Payment plan" value={PLAN_LABELS[offer.payment_plan_mode || offer.payment_plan] || PLAN_LABELS.none} muted />
           </>

@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } f
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -69,7 +69,7 @@ export default async function (req) {
         if (body.consent!==true) return Response.json({error:'Confirm you want to open Acorn.'},{status:400});
         const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),started_at:now,status:'opened',status_source:'portal',status_at:now};
         if (!previous) {
-          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record,acorn_reference:record.reference}});
+          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record,acorn_reference:record.reference,acorn_financing_history:[...(offer.acorn_financing_history||[]),...(offer.acorn_financing?.reference?[offer.acorn_financing]:[])].slice(-30)}});
         }
         const fresh=rows(await offers.filter({id:offer.id}))[0];
         const saved=fresh?.acorn_financing;
@@ -96,7 +96,8 @@ export default async function (req) {
       if (!FINANCING_METHODS.some(m=>m.type===lender && m.type!=='us_bank_account') || !['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed'].includes(outcome)) return Response.json({error:'Choose a lender and outcome.'},{status:400});
       if (offer.payment_route_claim || ['paid','expired'].includes(offer.status)) return Response.json({error:'Close the outstanding checkout before recording an outcome.'},{status:409});
       const attempts = base44.asServiceRole.entities.EngineAssistanceFinancingAttempt;
-      const matches = rows(await attempts.filter({offer_id:offer.id},'-created_date',100)).filter(a=>a.stripe_session_id && a.status!=='completed' && !a.customer_reported_outcome && a.offered_methods?.includes(lender));
+      const matches = rows(await attempts.filter({offer_id:offer.id},'-created_date',100)).filter(a=>a.stripe_session_id && a.status!=='completed' && !a.customer_reported_outcome && a.offered_methods?.includes(lender) && (!plan.deposit_verified || (a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(plan.totals.balance_due)&&a.offered_methods.length===1&&(!offer.deposit_verified_at||Date.parse(a.customer_consent_at||a.created_date||'')>=Date.parse(offer.deposit_verified_at)))));
+
       if (!matches.length) return Response.json({error:'No unreported attempt for this lender.'},{status:409});
       const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
       if (!key) return Response.json({error:'Stripe verification unavailable.'},{status:503});
@@ -113,7 +114,8 @@ export default async function (req) {
       const availability = await readFinancingAvailability(new Stripe(key));
       if (availability.error) throw new Error('Lender availability cannot be checked right now. Retry before requesting Elite financing.');
       const freshPlan = offerPaymentPlan(offer,{...settings,financing_methods:availability.methods},existing,currentAgreement,identity,identitySettings);
-      return lenderReviewStatus(offer,freshPlan);
+      const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
+      return {...lenderReviewStatus(offer,freshPlan),checks:remainderLenderChecks(offer,freshPlan,attempts)};
     };
     if (action === 'save_lender_review') {
       if (!plan.deposit_verified || !plan.pathways.deposit_internal.can_request || offer.payment_route_claim) return Response.json({error:'A verified deposit and closed checkout are required.'},{status:409});
@@ -144,9 +146,9 @@ export default async function (req) {
       }
       try {
         const review=await currentLenderReview();
-        if (!review.complete) return Response.json({error:'Review all available third-party financing options for the current balance before requesting Elite financing.'},{status:409});
+        if (!review.checks.complete) return Response.json({error:'Check every eligible lender for the current remaining balance and record an unsuccessful outcome before continuing.'},{status:409});
       } catch(e) {return Response.json({error:e.message},{status:409});}
-      if (!acornOption(offer,settings,existing).review_complete) return Response.json({error:'Elite must review the Acorn financing outcome before you can request Elite financing.'},{status:409});
+      if (!acornNoAdequateApproval(offer,settings,existing)) return Response.json({error:'A confirmed unsuccessful Acorn result for this balance is required before continuing.'},{status:409});
       // The financing application is validated here, not in the browser. Only
       // the allowlisted fields are stored, and no SSN or ID number is accepted.
       const applied = validateFinancingApplication(body.application);

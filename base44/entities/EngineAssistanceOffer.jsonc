@@ -5,6 +5,7 @@
     "acorn_notice_claim":{"type":"string","description":"Atomic claim for the latest Acorn status notification."},
     "acorn_status_notice_claims":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"claim":{"type":"string"}}}},
     "acorn_reference":{"type":"string","description":"Opaque Acorn postback correlation reference"},
+    "acorn_financing_history":{"type":"array","items":{"type":"object"},"description":"Prior Acorn financing requests for earlier balances; staff audit only."},
     "acorn_financing":{"type":"object","properties":{
       "reference":{"type":"string"},"amount_cents":{"type":"number"},"started_at":{"type":"string"},
       "status":{"type":"string","enum":["opened","offers_received","approved","no_offers","funded","pending","no_suitable_offers","insufficient_amount","not_completed","technical_issue"]},
