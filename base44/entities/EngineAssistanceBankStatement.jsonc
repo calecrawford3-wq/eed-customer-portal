@@ -1,0 +1,149 @@
+{
+  "name": "EngineAssistanceBankStatement",
+  "type": "object",
+  "description": "Private bank statement metadata and extracted observations, scoped to one AEF application. Source documents stay in private storage; extraction never establishes authenticity or verified income.",
+  "properties": {
+    "application_id": {
+      "type": "string"
+    },
+    "file_uri": {
+      "type": "string",
+      "description": "Private storage reference, never exposed by public status responses."
+    },
+    "filename": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": "string"
+    },
+    "byte_size": {
+      "type": "integer"
+    },
+    "page_count": {
+      "type": "integer"
+    },
+    "reported_page_count": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "uploaded",
+        "processing",
+        "ready",
+        "needs_review",
+        "rejected",
+        "removed"
+      ]
+    },
+    "period_start": {
+      "type": "string"
+    },
+    "period_end": {
+      "type": "string"
+    },
+    "institution_name": {
+      "type": "string"
+    },
+    "account_holder_name": {
+      "type": "string"
+    },
+    "account_last4": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "all_pages_present": {
+      "type": "boolean"
+    },
+    "transactions_complete": {
+      "type": "boolean"
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "opening_balance_cents": {
+      "type": "number"
+    },
+    "closing_balance_cents": {
+      "type": "number"
+    },
+    "total_deposits_cents": {
+      "type": "number"
+    },
+    "total_withdrawals_cents": {
+      "type": "number"
+    },
+    "uploaded_at": {
+      "type": "string"
+    },
+    "processed_at": {
+      "type": "string"
+    },
+    "processing_started_at": {
+      "type": "string"
+    },
+    "removed_at": {
+      "type": "string"
+    },
+    "all_pages_attested_at": {
+      "type": "string"
+    },
+    "extraction_attempts": {
+      "type": "integer",
+      "default": 0
+    },
+    "extraction_method": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "review_note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "application_id",
+    "file_uri",
+    "filename",
+    "sha256",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
