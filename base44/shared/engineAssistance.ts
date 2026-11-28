@@ -414,7 +414,8 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
   const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
   const fullPartials=partialSuggestions(offer,plan,attempts,'full');
-  let stage=plan.deposit_verified?'remainder':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled)?'deposit':'full';
+  const partialDepositPaid=splitPaid.some(p=>attempts.some(a=>a.stripe_session_id===p.stripe_session_id&&a.payment_pathway==='deposit_lender'));
+  const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled)?'deposit':'full';
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
   const suggestions=stage==='full'?fullPartials:partialSuggestions(offer,plan,attempts,stage);
   const normal=list.find(x=>!x.reviewed)||null;

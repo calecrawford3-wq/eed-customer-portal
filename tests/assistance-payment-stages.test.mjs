@@ -554,3 +554,35 @@ test('Acorn full and deposit reviews have separate references even when remainin
  const p=h.a.offerPaymentPlan(h.offer,h.settings),g=h.a.guidedFinance(h.offer,p,[]);
  assert.equal(h.a.guidedAcornOption(h.offer,h.settings,null,p,g).review_complete,false);
 });
+test('partial reported amounts are validated, authorization gates use, and actual payment recalculates balance',async()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=6000;
+ h.state.lenderConfig={active:true,affirm:{available:true},klarna:{available:true}};
+ const go=(pathway,lender,partial_source_session_id)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,lender,consent:true,guided:true,replace_existing:true,partial_source_session_id});
+ const report=(session_id,outcome,approved_amount_cents)=>h.call('engineAssistanceFinancing',{token:h.token,action:'report_lender_outcome',session_id,outcome,approved_amount_cents});
+ const first=await go('finance_full','affirm');assert.equal(first.status,200);
+ assert.equal((await report(first.body.session_id,'insufficient_amount',600000)).status,400);
+ assert.equal((await report(first.body.session_id,'insufficient_amount',400000)).status,200);
+ assert.equal(h.state.rows.EngineAssistanceFinancingAttempt[0].customer_reported_approved_amount,4000);
+ assert.equal(h.offer.paid_amount,0);
+ const second=await go('finance_full','klarna');assert.equal(second.status,200);
+ assert.equal((await report(second.body.session_id,'declined')).status,200);
+ assert.equal((await go('finance_full','affirm',first.body.session_id)).status,409);
+ h.settings.split_financing_authorizations={affirm:'fixture approved split',klarna:'fixture approved split'};
+ const partial=await go('finance_full','affirm',first.body.session_id);assert.equal(partial.status,200,JSON.stringify(partial.body));
+ assert.equal(h.state.sessions[partial.body.session_id].amount_total,400000);
+ assert.equal(h.offer.paid_amount,0);
+ Object.assign(h.state.sessions[partial.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_'+partial.body.session_id,latest_charge:{payment_method_details:{type:'affirm'}}}});
+ assert.equal((await h.deliver(partial.body.session_id)).status,200);
+ assert.equal(h.a.computeOfferTotals(h.offer).balance_due,2000);
+ assert.equal((await go('remainder_affirm','affirm',first.body.session_id)).status,409);
+ const last=await go('remainder_affirm','klarna');assert.equal(last.status,200,JSON.stringify(last.body));
+ assert.equal(h.state.sessions[last.body.session_id].amount_total,200000);
+});
+test('partial deposit funding recalculates unpaid deposit rather than restarting full amount',()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=6000;
+ h.offer.paid_amount=1000;h.offer.payments=[{amount:1000,method:'affirm',financed:true,amount_option:'deposit_lender',stripe_session_id:'cs_test_partial'}];
+ const attempts=[{payment_pathway:'deposit_lender',stripe_session_id:'cs_test_partial',partial_source_session_id:'cs_test_original',status:'completed',offered_methods:['affirm'],amount:1000}];
+ const settings={...h.settings,split_financing_authorizations:{affirm:'fixture',klarna:'fixture'},financing_methods:['affirm','klarna'].map(type=>({type,label:type,available:true}))};
+ const plan=h.a.offerPaymentPlan(h.offer,settings),guide=h.a.guidedFinance(h.offer,plan,attempts);
+ assert.equal(guide.stage,'deposit');assert.equal(guide.amount,2000);assert.equal(guide.next.type,'klarna');
+});
