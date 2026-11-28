@@ -317,3 +317,19 @@ test('automatic switch blocks completed, processing and ambiguous provider check
   assert.equal(next.status,409);assert.equal(Object.keys(h.state.sessions).length,1);
  }
 });
+
+test('lender review requires every eligible option for the exact remainder, not a credit application',async()=>{
+ const h=assistance();h.deposit();h.state.lenderConfig={active:true,affirm:{available:true},klarna:{available:true},afterpay_clearpay:{available:true},sunbit:{available:true}};
+ const save=(entries,amount_cents=50000)=>h.call('engineAssistanceFinancing',{token:h.token,action:'save_lender_review',entries,amount_cents});
+ const entries=[{lender:'affirm',outcome:'reviewed_not_applied'},{lender:'klarna',outcome:'unsuitable_terms',apr:19.99,payment_amount:85,term_months:6},{lender:'afterpay_clearpay',outcome:'declined'}];
+ assert.equal((await save(entries.slice(0,2))).status,400);
+ assert.equal((await save(entries,40000)).status,409);
+ assert.equal((await save([...entries,{lender:'sunbit',outcome:'declined'}])).status,400);
+ assert.equal((await save(entries)).status,200);
+ assert.equal(h.offer.lender_option_review.entries[1].apr,19.99);
+ const fresh={...h.settings,financing_methods:['affirm','klarna','afterpay_clearpay','sunbit'].map(type=>({type,available:true,label:type}))};
+ let plan=h.a.offerPaymentPlan(h.offer,fresh);assert.equal(h.a.lenderReviewStatus(h.offer,plan).complete,true);
+ h.offer.sunbit_service_confirmed=true;plan=h.a.offerPaymentPlan(h.offer,fresh);assert.equal(h.a.lenderReviewStatus(h.offer,plan).complete,false);
+ h.offer.sunbit_service_confirmed=false;h.offer.payments.push({amount:50,method:'card'});h.offer.paid_amount=550;
+ plan=h.a.offerPaymentPlan(h.offer,fresh);assert.equal(h.a.lenderReviewStatus(h.offer,plan).complete,false);
+});
