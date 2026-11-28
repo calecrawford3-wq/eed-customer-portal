@@ -31,6 +31,8 @@ export default function EngineAssistanceOffer() {
   const [returnModal,setReturnModal]=useState(null);
   const [returnOutcome,setReturnOutcome]=useState("");
   const [approvedAmount,setApprovedAmount]=useState("");
+  const [payerUrl,setPayerUrl]=useState("");
+  const [sharing,setSharing]=useState(false);
   const [returnSaving,setReturnSaving]=useState(false);
   const checkedReturns=useRef(new Set());
   const [acornModal,setAcornModal]=useState(null);
@@ -133,6 +135,13 @@ export default function EngineAssistanceOffer() {
     } finally {
       setPaying("");
     }
+  };
+
+  const sharePayment=async()=>{
+    setSharing(true);
+    try{const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"share_payment"});if(res.data?.error)throw Error(res.data.error);const url=new URL(res.data.payment_path,window.location.origin);if(url.origin!==window.location.origin||!/^\/engine-assistance\/pay\/[a-f0-9]{64}$/.test(url.pathname))throw Error("Invalid payment link");setPayerUrl(url.href);}
+    catch(e){toast.error(e?.response?.data?.error||e.message||"Unable to create payment link");}
+    finally{setSharing(false);}
   };
 
   const reviewCheckoutReturn=async(sessionId,force=false)=>{
@@ -341,6 +350,7 @@ export default function EngineAssistanceOffer() {
               if (offer.checkout_open && !await runFinancing("close_checkout")) return;
               setRequestRemainder(true);
             }}
+            onSharePayment={sharePayment} sharing={sharing}
             onReviewReturn={()=>reviewCheckoutReturn(offer.pending_lender_return?.session_id,true)}
             onAcornLaunch={openAcorn}
             onAcornRefresh={refetch}
@@ -370,6 +380,14 @@ export default function EngineAssistanceOffer() {
           </JourneyErrorBoundary>
         )}
 
+        <Dialog open={!!payerUrl} onOpenChange={open=>{if(!open)setPayerUrl("");}}>
+         <DialogContent className="max-w-md w-[calc(100%-24px)]"><DialogHeader><DialogTitle>Send payment request</DialogTitle><DialogDescription>Share a payment-only link for the current outstanding balance. It does not share your private application or financing results.</DialogDescription></DialogHeader>
+          <input readOnly aria-label="Payment link" value={payerUrl} className="border rounded p-2 w-full text-sm"/>
+          <Button onClick={async()=>{try{await navigator.clipboard.writeText(payerUrl);toast.success("Payment link copied");}catch{toast.error("Select and copy the link above");}}}>Copy payment link</Button>
+          <Button variant="outline" onClick={()=>{window.location.href="mailto:?subject="+encodeURIComponent("Elite Engine Development payment request")+"&body="+encodeURIComponent("Please use this secure link to pay the outstanding balance: "+payerUrl);}}>Send by email</Button>
+          {typeof navigator.share==="function"&&<Button variant="outline" onClick={()=>navigator.share({title:"Payment request",url:payerUrl}).catch(()=>{})}>Share link</Button>}
+         </DialogContent>
+        </Dialog>
         <Dialog open={!!returnModal} onOpenChange={open=>{if(!open&&(returnModal?.saved||returnModal?.paid_or_pending)){if(returnModal?.paid_or_pending)try{sessionStorage.removeItem("eed-lender-return:"+offer.id);}catch{}setReturnModal(null);}}}>
          <DialogContent className="w-[calc(100%-24px)] max-w-md max-h-[90dvh] overflow-y-auto rounded-xl" onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(!returnModal?.saved&&!returnModal?.paid_or_pending)e.preventDefault();}}>
           {returnModal&&<>

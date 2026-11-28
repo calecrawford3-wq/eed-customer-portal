@@ -2,7 +2,7 @@ import AcornFinancingOption from "./AcornFinancingOption";
 import React,{useState} from "react";
 import {Button} from "@/components/ui/button";
 import {formatMoney} from "@/lib/money";
-export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,onCancel,onAcornLaunch,onAcornRefresh,onReviewReturn}){
+export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,onCancel,onAcornLaunch,onAcornRefresh,onReviewReturn,onSharePayment,sharing}){
  const [selectedChoice,setChoice]=useState("");
  const choice=selectedChoice||(offer.acorn?.reference||offer.deposit_verified||offer.pending_lender_return?"finance":"");
  const guide=offer.financing_guide||{};
@@ -17,6 +17,7 @@ export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,on
   <h2 className="font-semibold text-lg">How would you like to pay?</h2>
   <p className="text-sm text-slate-600">Outstanding balance: <strong className="text-slate-900">{formatMoney(offer.balance_due)}</strong></p>
   <div className="grid grid-cols-2 gap-2"><Button className="min-h-12" variant={choice==="pay"?"default":"outline"} disabled={busy||!offer.pathways?.pay_in_full?.enabled} onClick={()=>setChoice("pay")}>Pay in full</Button><Button className="min-h-12" variant={choice==="finance"?"default":"outline"} disabled={busy} onClick={()=>setChoice("finance")}>Finance</Button></div>
+  {offer.pathways?.pay_in_full?.enabled&&<Button variant="outline" className="w-full" disabled={sharing||busy} onClick={onSharePayment}>{sharing?"Creating link…":"Send payment link to someone else"}</Button>}
   {choice==="pay"&&<Button className="w-full min-h-11" disabled={busy||!offer.pathways?.pay_in_full?.enabled} onClick={()=>onCheckout("pay_in_full",false)}>Pay {formatMoney(offer.balance_due)}</Button>}
   {choice==="finance"&&<>
    {!continuation&&offer.acorn?.eligible&&<AcornFinancingOption key={offer.acorn.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onRefresh={onAcornRefresh} onPay={()=>onCheckout(offer.acorn.stage==="deposit"?"deposit_card":"pay_in_full",false)} payEnabled={offer.acorn.stage==="deposit"?deposit.enabled:offer.pathways?.pay_in_full?.enabled}/>}

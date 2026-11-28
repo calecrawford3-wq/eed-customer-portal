@@ -56,6 +56,19 @@ export default async function (req) {
     const identity = existing ? await loadVerificationForLoan(base44, existing.id) : null;
     const plan = offerPaymentPlan(offer, settings, existing, currentAgreement, identity, identitySettings);
 
+    if(action==='share_payment'){
+      if(!plan.pathways.pay_in_full.enabled)return Response.json({error:'This balance is not available for payment.'},{status:409});
+      let payer=offer.payer_token;
+      if(!/^[a-f0-9]{64}$/.test(String(payer||''))){
+        const bytes=crypto.getRandomValues(new Uint8Array(32));
+        const generated=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+        await offers.updateMany({id:offer.id,payer_token:offer.payer_token===undefined?{$exists:false}:offer.payer_token},{$set:{payer_token:generated}});
+        payer=rows(await offers.filter({id:offer.id}))[0]?.payer_token;
+      }
+      if(!/^[a-f0-9]{64}$/.test(String(payer||'')))return Response.json({error:'Payment link unavailable. Retry.'},{status:409});
+      return Response.json({payment_path:'/engine-assistance/pay/'+payer},{headers:{'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
+    }
+
     if (action === 'review_acorn') return Response.json({error:'Only Elite staff can record Acorn outcomes.'},{status:403});
     if (action === 'start_acorn') {
       const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));

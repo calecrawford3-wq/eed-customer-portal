@@ -98,6 +98,7 @@ import EngineAssistance from './pages/EngineAssistance';
 import EngineAssistanceDetail from './pages/EngineAssistanceDetail';
 import EngineAssistanceApply from './pages/EngineAssistanceApply';
 import EngineAssistanceOffer from './pages/EngineAssistanceOffer';
+import AssistanceGuestPayment from './pages/AssistanceGuestPayment';
 import EngineAssistanceStatus from './pages/EngineAssistanceStatus';
 import EngineAssistanceAgreement from './pages/EngineAssistanceAgreement';
 import EngineAssistanceDemo from './pages/EngineAssistanceDemo';
@@ -282,6 +283,7 @@ const routes = createRoutesFromElements(
     <Route path="/legal/:token" element={<PublicLegalViewer />} />
     <Route path="/engine-assistance/apply/:token" element={<EngineAssistanceApply />} />
     <Route path="/engine-assistance/offer/:token" element={<EngineAssistanceOffer />} />
+    <Route path="/engine-assistance/pay/:token" element={<AssistanceGuestPayment />} />
     <Route path="/engine-assistance/status/:token" element={<EngineAssistanceStatus />} />
     <Route path="/engine-assistance/agreement/:token" element={<EngineAssistanceAgreement />} />
     <Route path="/engine-assistance/demo/:token" element={<EngineAssistanceDemo />} />

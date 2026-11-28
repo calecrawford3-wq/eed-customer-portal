@@ -36,10 +36,13 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
-    const token = body.token;
+    const payerOnly=body.payer_token!==undefined;
+    const token = payerOnly?body.payer_token:body.token;
+    if (payerOnly&&!/^[a-f0-9]{64}$/.test(typeof token==='string'?token:''))return Response.json({error:'Invalid payment link'},{status:400});
     if (!publicCapability(token)) return Response.json({ error: 'A valid offer link is required' }, { status: 400 });
 
-    const pathwayKey = String(body.pathway || (body.amountOption === 'installment' ? 'finance_full' : 'pay_in_full'));
+    if(payerOnly&&(body.pathway&&body.pathway!=='pay_in_full'||body.lender||body.partial_source_session_id||body.replace_existing))return Response.json({error:'Payment-only link supports full outstanding balance only.'},{status:400});
+    const pathwayKey = payerOnly?'pay_in_full':String(body.pathway || (body.amountOption === 'installment' ? 'finance_full' : 'pay_in_full'));
     const pathway = PATHWAYS[pathwayKey];
     if (!pathway) return Response.json({ error: 'Choose a payment option' }, { status: 400 });
 
@@ -47,8 +50,14 @@ export default async function (req) {
     const secret = Deno.env.get('PORTAL_STRIPE_WEBHOOK_SECRET');
     if (!key || !secret) return Response.json({ error: 'Online payment is not configured yet. Contact Elite Engine Development to arrange payment.' }, { status: 503 });
 
-    const offer = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({ share_token: token }))[0];
+    const offer = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter(payerOnly?{payer_token:token}:{share_token:token}))[0];
     if (!offer) return Response.json({ error: 'This offer is no longer available.' }, { status: 404 });
+    if(payerOnly&&body.action==='quote'){
+      if(['draft','void','declined','expired'].includes(offer.status)||offerExpired(offer))return Response.json({error:'Payment link expired or unavailable.'},{status:404});
+      const loan=rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({offer_id:offer.id}))[0];
+      const amount=computeOfferTotals(offer).balance_due;
+      return Response.json({amount,paid:amount<=0,available:amount>0&&offer.pay_in_full_enabled!==false&&offer.payment_route!=='internal'&&!['pending_approval','approved','active','completed'].includes(loan?.status)},{headers:{'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
+    }
     if (offer.status === 'paid') return Response.json({ error: 'This offer is already paid in full.' }, { status: 409 });
     if (offer.status === 'void' || offer.status === 'declined') return Response.json({ error: 'This offer is no longer payable.' }, { status: 409 });
     if (offerExpired(offer)) return Response.json({ error: 'This offer has expired. Contact Elite Engine Development for an updated offer.' }, { status: 409 });
@@ -135,7 +144,7 @@ export default async function (req) {
     }
 
     const origin = appOrigin(req);
-    const returnPath = `/engine-assistance/offer/${token}`;
+    const returnPath = payerOnly?`/engine-assistance/pay/${token}`:`/engine-assistance/offer/${token}`;
     let held;
     try {
       if (body.replace_existing === true && offer.payment_route_claim && offer.payment_route !== 'internal') {
@@ -143,9 +152,11 @@ export default async function (req) {
         const sameMethod = !pathway.lender || !body.lender || (Array.isArray(previousMethods) && previousMethods.length === 1 && previousMethods[0] === body.lender);
         if (offer.payment_route !== pathwayKey || !sameMethod) await closeKnownCheckout(base44,stripe,offer);
       }
+      if(payerOnly&&offer.payment_route_claim){const old=offer.payment_route_options?JSON.parse(offer.payment_route_options):null;if(offer.payment_route!=='pay_in_full'||old?.metadata?.payer_only!=='1')throw new Error('Another payment is in progress. Ask the account holder to finish or close it.');}
       held = await reserveRoute(base44, offer, pathwayKey);
     }
     catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+    if (held.payment_route_options){const prior=JSON.parse(held.payment_route_options);if((prior.metadata?.payer_only==='1')!==payerOnly)return Response.json({error:'Another payment is in progress. Finish or close it first.'},{status:409});}
     if (held.payment_route_session) {
       const prior = await stripe.checkout.sessions.retrieve(held.payment_route_session);
       if (prior.status === 'open' && prior.url) {
@@ -190,6 +201,7 @@ export default async function (req) {
         amount_option: pathway.option,
         payment_pathway: pathwayKey,
         expected_cents: String(amountCents),
+        ...(payerOnly?{payer_only:'1'}:{}),
         ...(partial?{partial_source_session_id:partial.source_session_id}:{}),
         financing_type: pathway.lender ? 'lender_selected_at_checkout' : 'none',
         internal_loan_id: pathway.kind === 'deposit' ? (loan?.id || '') : '',
@@ -202,6 +214,7 @@ export default async function (req) {
     const persisted = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({ id: offer.id }))[0];
     if (persisted.payment_route_claim !== held.payment_route_claim || persisted.payment_route !== pathwayKey) return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
     const requestOptions = JSON.parse(persisted.payment_route_options);
+    if((requestOptions.metadata?.payer_only==='1')!==payerOnly)return Response.json({error:'Another payment is in progress.'},{status:409});
     if(Number(requestOptions.metadata?.expected_cents)!==amountCents)return Response.json({error:'Existing checkout amount changed. Close it before continuing.'},{status:409});
     if (pathway.lender && body.lender && (requestOptions.payment_method_types?.length !== 1 || requestOptions.payment_method_types[0] !== body.lender)) return Response.json({error:'Retry or close the existing lender checkout before changing lenders.'},{status:409});
     let session;
