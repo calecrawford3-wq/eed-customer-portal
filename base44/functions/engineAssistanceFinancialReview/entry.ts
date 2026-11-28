@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { adminFinancialView, financialState, IncomeError, incomeAudit, incomeFailure, incomeResponse, listRows, processStatement, saveFinancialRecord, syncBankData, textValue } from '../../shared/assistanceFinancial.ts';
+import { adminFinancialView, financialState, financialRetrievalState, IncomeError, incomeAudit, incomeFailure, incomeResponse, listRows, processStatement, saveFinancialRecord, syncBankData, textValue } from '../../shared/assistanceFinancial.ts';
 import { validateStatementMetadata } from '../../shared/assistanceFinancialMath.ts';
 
 export default async function (req) {
@@ -21,7 +21,14 @@ export default async function (req) {
     if (!app) throw new IncomeError('Application not found.', 404);
     const action = textValue(body.action, 40) || 'get';
     if (!['get', 'refresh', 'check', 'save_review', 'signed_document', 'process_statement', 'review_statement'].includes(action)) throw new IncomeError('Unsupported action.');
-    if (action === 'get') return incomeResponse(await adminFinancialView(base44, app));
+    if (action === 'get') {
+      const state = await financialState(base44, app);
+      const retrieval = financialRetrievalState(state.review || {});
+      // Reopening a pending review must not indefinitely return a stale cache.
+      // This checks existing Stripe snapshots only; it never requests a refresh.
+      if ((retrieval.pending || retrieval.needs_sync) && app.income_method !== 'statements' && Date.now() - (Date.parse(state.review?.last_checked_at || '') || 0) >= 15000) return incomeResponse(await syncBankData(base44, app, false, state));
+      return incomeResponse(await adminFinancialView(base44, app, state));
+    }
     if (action === 'refresh' || action === 'check') return incomeResponse(await syncBankData(base44, app, action === 'refresh'));
     const state = await financialState(base44, app);
     const actor = textValue(user.email || user.full_name || user.id, 160);
