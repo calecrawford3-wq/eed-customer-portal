@@ -252,14 +252,33 @@ export async function notifyAcornStatusChange(base44:any, offer:any, previousSta
   if(!current||current.acorn_financing?.reference!==record.reference||current.acorn_financing?.status!==status||
      ['void','declined','expired','paid'].includes(current.status))return null;
   const key=record.reference+':'+status;
-  const old=current.acorn_status_notice_claims;
-  const claims=Array.isArray(old)?old:[];
-  if(claims.some(c=>c.key===key))return null;
-  const claim=crypto.randomUUID();
-  await entities.EngineAssistanceOffer.updateMany({id:offer.id,acorn_financing:current.acorn_financing,acorn_status_notice_claims:old===undefined?{$exists:false}:old},{$set:{acorn_status_notice_claims:[...claims,{key,claim}]}});
+  // A scalar compare-and-set avoids array equality differences between
+  // the database and local mocks. A delivery record also protects older events.
+  const old=current.acorn_notice_claim;
+  const deliveryKey='acorn_status_update:'+offer.id+':'+key;
+  const prior=(await entities.EngineAssistanceEmailDelivery.filter({idempotency_key:deliveryKey}))?.[0];
+  if(prior || String(old||'').startsWith(key+'|') || current.acorn_status_notice_claims?.some(c=>c.key===key))return null;
+  const claim=key+'|'+crypto.randomUUID();
+  await entities.EngineAssistanceOffer.updateMany({id:offer.id,acorn_financing:current.acorn_financing,acorn_notice_claim:old===undefined?{$exists:false}:old},{$set:{acorn_notice_claim:claim}});
   const saved=(await entities.EngineAssistanceOffer.filter({id:offer.id}))?.[0];
-  if(!saved?.acorn_status_notice_claims?.some(c=>c.key===key&&c.claim===claim))return null;
+  if(saved?.acorn_notice_claim!==claim)return null;
   return deliver(base44,{kind:'acorn_status_update',offer:saved,application:app,variant:key,actor:'Automatic'});
+}
+
+export async function reconcileAcornStatusNotices(base44:any) {
+  const e=base44.asServiceRole.entities.EngineAssistanceOffer;
+  const list=await e.filter({status:{$in:['sent','viewed','accepted','partially_paid']},acorn_reference:{$exists:true}},'-updated_date',100);
+  const results={checked:0,sent:0,failed:0};
+  for(const offer of (Array.isArray(list)?list:list?.items||[])){
+    if(results.checked>=25)break;
+    const r=offer.acorn_financing;
+    if(!r?.reference||!['staff_verified','acorn_postback','zoho_verified'].includes(r.status_source))continue;
+    if(!['offers_received','approved','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(r.status))continue;
+    if(String(offer.acorn_notice_claim||'').startsWith(r.reference+':'+r.status+'|'))continue;
+    results.checked++;
+    try{const result=await notifyAcornStatusChange(base44,offer,'');if(result?.status==='sent')results.sent++;else if(result?.status==='failed')results.failed++;}catch{results.failed++;}
+  }
+  return results;
 }
 
 function buildContent(kind: string, context: any) {

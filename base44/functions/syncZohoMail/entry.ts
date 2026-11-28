@@ -1,3 +1,4 @@
+import { reconcileAcornStatusNotices } from '../../shared/assistanceEmail.ts';
 import { retryAcornNotifications } from '../../shared/acornEmail.ts';
 import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
@@ -310,6 +311,8 @@ export default async function(req) {
     try {
       acornResults=await retryAcornNotifications(base44,mail=>getMessageHeaders(token,mail.account_id,mail.folder_id,mail.message_id));
     }catch{errors.push('Acorn notification reconciliation needs retry.');}
+
+    try { await reconcileAcornStatusNotices(base44); }catch{errors.push('Acorn customer notification reconciliation needs retry.');}
 
     // --- Apply inbound read/unread state changes (Zoho -> app) ---
     if (readUpdates.length) {

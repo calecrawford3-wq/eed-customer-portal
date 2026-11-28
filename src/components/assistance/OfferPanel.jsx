@@ -139,6 +139,7 @@ export default function OfferPanel({ application, offer, onAction, busy, loan, d
               <Input placeholder="Acorn application reference" value={acornRef} onChange={e=>setAcornRef(e.target.value)}/>
               <Input placeholder="Verification source / date (no sensitive data)" value={acornEvidence} onChange={e=>setAcornEvidence(e.target.value)}/>
               <Button size="sm" variant="outline" disabled={busy||(!acornRef.trim()&&!["not_completed","technical_issue"].includes(acornStatus))||acornEvidence.trim().length<10} onClick={()=>onAction("record_acorn_status",{offer_id:offer.id,status:acornStatus,application_reference:acornRef,evidence:acornEvidence,email_id:acornEmailId})}>Record verified status</Button>
+              {["zoho_verified","acorn_postback"].includes(offer.acorn_financing.status_source)&&<p className="text-xs text-emerald-700">Automatically confirmed by {offer.acorn_financing.status_source==="zoho_verified"?"Zoho email":"Acorn"}</p>}
               {offer.acorn_financing.status_source==="staff_verified"&&<p className="text-xs">Staff verified · {offer.acorn_financing.application_reference}</p>}
             </div>}
             {offer.lender_option_review?.reviewed_at && <div className="rounded-lg border p-3 space-y-2">

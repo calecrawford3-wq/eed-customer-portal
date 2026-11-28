@@ -2,6 +2,7 @@
   "name": "EngineAssistanceOffer",
   "type": "object",
   "properties": {
+    "acorn_notice_claim":{"type":"string","description":"Atomic claim for the latest Acorn status notification."},
     "acorn_status_notice_claims":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"claim":{"type":"string"}}}},
     "acorn_reference":{"type":"string","description":"Opaque Acorn postback correlation reference"},
     "acorn_financing":{"type":"object","properties":{

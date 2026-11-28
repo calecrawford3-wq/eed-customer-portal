@@ -35,6 +35,8 @@ export default function EngineAssistanceDetail() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["engine-assistance-application", id],
+    refetchInterval: query => !busy && query.state.data?.offer?.acorn_financing?.reference && ["opened","pending","offers_received","approved"].includes(query.state.data?.offer?.acorn_financing?.status) ? 30000 : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const found = await base44.entities.EngineAssistanceApplication.filter({ id });
       const application = (Array.isArray(found) ? found : found?.items || [])[0];

@@ -1,11 +1,12 @@
-import React,{useState} from "react";
-import {useQuery} from "@tanstack/react-query";
+import React,{useState,useEffect} from "react";
+import {useQuery,useQueryClient} from "@tanstack/react-query";
 import {base44} from "@/api/base44Client";
 import {Button} from "@/components/ui/button";
 import {Mail,RefreshCw} from "lucide-react";
 import {toast} from "sonner";
 
 export default function AcornEmailReview({offer,onSelect,busy}){
+ const qc=useQueryClient();
  const [syncing,setSyncing]=useState(false);
  const [expanded,setExpanded]=useState("");
  const q=useQuery({queryKey:["acorn-mail-review",offer.id,offer.acorn_financing?.reference],queryFn:async()=>{
@@ -13,9 +14,13 @@ export default function AcornEmailReview({offer,onSelect,busy}){
   if(res.data?.error)throw new Error(res.data.error);
   return res.data;
  },enabled:!!offer.acorn_financing?.reference,refetchInterval:30000,refetchIntervalInBackground:false});
+ const applied=!!q.data?.candidates?.some(e=>e.verification_status==="applied");
+ useEffect(()=>{
+  if(applied && ["opened","pending"].includes(offer.acorn_financing?.status))qc.invalidateQueries({queryKey:["engine-assistance-application",offer.application_id]});
+ },[applied,offer.acorn_financing?.status,offer.application_id,qc]);
  const sync=async()=>{
   setSyncing(true);
-  try{const r=await base44.functions.invoke("syncZohoMail",{});if(r.data?.error)throw new Error(r.data.error);await q.refetch();}
+  try{const r=await base44.functions.invoke("syncZohoMail",{});if(r.data?.error)throw new Error(r.data.error);await q.refetch();await qc.invalidateQueries({queryKey:["engine-assistance-application",offer.application_id]});}
   catch(e){toast.error(e?.response?.data?.error||e.message||"Zoho sync unavailable");}
   finally{setSyncing(false);}
  };
