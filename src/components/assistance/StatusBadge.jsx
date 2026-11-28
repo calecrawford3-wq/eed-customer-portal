@@ -42,6 +42,7 @@ const TONES = {
 };
 
 const LABELS = {
+  pending_payment: "Application incomplete",
   under_review: "Under review",
   info_requested: "Info requested",
   partially_paid: "Partially paid",
