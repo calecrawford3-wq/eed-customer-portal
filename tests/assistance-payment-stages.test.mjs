@@ -628,3 +628,30 @@ test('payment-only share capability cannot access offer or financing and uses cu
  assert.equal(checkout.line_items[0].price_data.unit_amount,100000);
  assert.ok(!checkout.payment_method_types.includes('affirm'));
 });
+test('authorized smaller first checkout records verified payment on return and recalculates next lender amount',async()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=2794.81;h.offer.sunbit_service_confirmed=true;
+ h.state.lenderConfig={active:true,sunbit:{available:true},klarna:{available:true}};
+ h.settings.split_financing_authorizations={sunbit:'written test authorization',klarna:'written test authorization'};
+ const go=(pathway,lender,smaller_amount_cents)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,lender,consent:true,guided:true,replace_existing:true,smaller_amount_cents});
+ assert.equal((await go('finance_full','sunbit',300000)).status,409);
+ const s=await go('finance_full','sunbit',95000);assert.equal(s.status,200,JSON.stringify(s.body));
+ assert.equal(h.state.sessions[s.body.session_id].amount_total,95000);
+ assert.equal(h.offer.paid_amount,0);
+ Object.assign(h.state.sessions[s.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_'+s.body.session_id,latest_charge:{payment_method_details:{type:'sunbit'}}}});
+ const returned=await h.call('engineAssistanceFinancing',{token:h.token,action:'checkout_return',session_id:s.body.session_id});
+ assert.equal(returned.status,200,JSON.stringify(returned.body));assert.equal(returned.body.payment_verified,true);
+ assert.equal(h.offer.paid_amount,950);assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1844.81);
+ assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_outstanding,447.41);
+ assert.equal((await h.deliver(s.body.session_id)).status,200);assert.equal(h.offer.payments.length,1);
+ const k=await go('finance_full','klarna',95000);assert.equal(k.status,200,JSON.stringify(k.body));
+ assert.equal(h.state.sessions[k.body.session_id].amount_total,95000);
+ Object.assign(h.state.sessions[k.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_'+k.body.session_id,latest_charge:{payment_method_details:{type:'klarna'}}}});
+ assert.equal((await h.deliver(k.body.session_id)).status,200);
+ assert.equal(h.a.computeOfferTotals(h.offer).balance_due,894.81);
+ assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,true);
+});
+test('direct smaller checkout is unavailable without provider permission',async()=>{
+ const h=assistance();h.state.lenderConfig={active:true,affirm:{available:true}};
+ const r=await h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'finance_full',lender:'affirm',consent:true,guided:true,smaller_amount_cents:25000});
+ assert.equal(r.status,409);assert.equal(h.state.requests.length,0);
+});
