@@ -434,8 +434,8 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
   const internalReserved = ['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus) || offer.payment_route === 'internal';
   const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !internalReserved;
 
-  // Sunbit requires service initiation; never offer it for an advance deposit.
-  const eligibleSettings = { ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit' || (depositVerified && offer.sunbit_service_confirmed === true)) };
+  // Sunbit is available for eligible work confirmed by staff; no Elite deposit prerequisite. Never offer it as an advance deposit.
+  const eligibleSettings = { ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit' || offer.sunbit_service_confirmed === true) };
   const fullLenders = lendersForAmount(eligibleSettings, totals.balance_due);
   const depositLenders = lendersForAmount({ ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit') }, depositOutstanding);
   const depositPossible = cents(depositTarget) > 0 && cents(depositTarget) < cents(totals.total);

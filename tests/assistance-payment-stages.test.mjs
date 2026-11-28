@@ -288,12 +288,18 @@ test('multi-lender checkout offers eligible methods and forbids changing lenders
  assert.equal((await start('afterpay_clearpay')).status,200);
  assert.deepEqual(h.state.requests.at(-1).data.payment_method_types,['afterpay_clearpay']);
 });
-test('Sunbit is restricted to confirmed service after the deposit, and actual Sunbit charge is financing',async()=>{
+test('Sunbit requires confirmed eligible service but not a prior deposit, and cannot finance an advance deposit',async()=>{
  const h=assistance();h.state.lenderConfig={active:true,sunbit:{available:true}};
- const start=()=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'remainder_affirm',consent:true,lender:'sunbit'});
- assert.equal((await start()).status,409);h.deposit();assert.equal((await start()).status,409);
- h.offer.sunbit_service_confirmed=true;assert.equal((await start()).status,200);
+ const start=(pathway)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,consent:true,lender:'sunbit'});
+ assert.equal((await start('finance_full')).status,409);
+ h.offer.sunbit_service_confirmed=true;
+ assert.equal((await start('deposit_lender')).status,409);
+ assert.equal((await start('finance_full')).status,200);
  assert.deepEqual(h.state.requests[0].data.payment_method_types,['sunbit']);
+ assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,false);
+ const remainder=assistance();remainder.state.lenderConfig={active:true,sunbit:{available:true}};remainder.deposit();remainder.offer.sunbit_service_confirmed=true;
+ assert.equal((await remainder.call('startEngineAssistanceCheckout',{token:remainder.token,pathway:'remainder_affirm',consent:true,lender:'sunbit'})).status,200);
+ assert.deepEqual(remainder.state.requests[0].data.payment_method_types,['sunbit']);
 });
 
 test('explicit payment switch expires unpaid lender checkout before opening another',async()=>{
