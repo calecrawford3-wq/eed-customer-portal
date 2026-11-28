@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { adminFinancialView, financialState, financialRetrievalState, IncomeError, incomeAudit, incomeFailure, incomeResponse, listRows, processStatement, saveFinancialRecord, syncBankData, textValue } from '../../shared/assistanceFinancial.ts';
-import { validateStatementMetadata } from '../../shared/assistanceFinancialMath.ts';
+import { CATEGORIES, validateStatementMetadata } from '../../shared/assistanceFinancialMath.ts';
 
 export default async function (req) {
   if (req.method !== 'POST') return incomeResponse({ error: 'Method not allowed.' }, 405);
@@ -79,7 +79,7 @@ export default async function (req) {
       const validIds = new Set(current.review.transactions.map(t => t.id));
       if (!Array.isArray(body.corrections) || body.corrections.length > 4000) throw new IncomeError('Transaction corrections are invalid.');
       const corrections = body.corrections.map(c => {
-        if (!validIds.has(c?.transaction_id) || !['income', 'transfer', 'debt_payment', 'other', 'unreviewed'].includes(c?.category)) throw new IncomeError('A transaction correction does not match this application. Refresh the review before saving.');
+        if (!validIds.has(c?.transaction_id) || !CATEGORIES.has(c?.category)) throw new IncomeError('A transaction correction does not match this application. Refresh the review before saving.');
         return { transaction_id: c.transaction_id, category: c.category, note: textValue(c.note, 400) };
       });
       const requesting = status === 'needs_information' || required > (app.income_statement_months === 6 ? 6 : 3);

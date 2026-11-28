@@ -1,5 +1,5 @@
 import { secrets } from 'base44:runtime';
-import { evaluateStatementSet, summarizeTransactions, validateStatementMetadata } from './assistanceFinancialMath.ts';
+import { inferredCategory, evaluateStatementSet, summarizeTransactions, validateStatementMetadata } from './assistanceFinancialMath.ts';
 
 // Financial records are separate admin-only entities. Public callers receive an
 // explicit status allowlist; never transactions, ownership details or file URIs.
@@ -419,7 +419,7 @@ export async function adminFinancialView(base44, app, initialState = null) {
   const review = {
     source: method === 'bank' ? 'stripe' : 'statements', status: record.status || 'not_started', last_synced_at: record.last_synced_at || '',
     bank_accounts: record.bank_accounts || [], errors: record.errors || [], retrieval,
-    transactions: transactions.map(t => ({ ...t, category: corrected.get(t.id)?.category || t.category || 'unreviewed' })), summary,
+    transactions: transactions.map(t => ({ ...t, suggested_category: inferredCategory(t.description, t.amount_cents), category: corrected.get(t.id)?.category || (t.category && t.category !== 'unreviewed' ? t.category : inferredCategory(t.description, t.amount_cents)) })), summary,
     review_status: record.review_status || 'unreviewed', notes: record.notes || '',
     confirmed_monthly_income_cents: record.confirmed_monthly_income_cents ?? null,
     reviewed_by: record.reviewed_by || '', reviewed_at: record.reviewed_at || '', corrections,

@@ -1,7 +1,7 @@
 // Pure financial-review checks. No provider calls, authorization or funding decisions.
 // Amounts are integer cents; positive amounts add to the account balance.
 const DAY = 86400000;
-const CATEGORIES = new Set(['income', 'transfer', 'debt_payment', 'other', 'unreviewed']);
+export const CATEGORIES = new Set(['income', 'employment_income', 'business_income', 'other_income', 'transfer', 'debt_payment', 'housing', 'utilities', 'insurance', 'groceries', 'fuel', 'dining', 'shopping', 'entertainment', 'refund', 'fees', 'other', 'unreviewed']);
 
 function text(value, max = 180) {
   return typeof value === 'string'
@@ -200,10 +200,27 @@ export function evaluateStatementSet(statements, requiredMonths = 3, now = Date.
   };
 }
 
-function inferredCategory(description, amount) {
-  if (/\b(transfer|zelle|venmo|cash ?app|paypal|refund|reversal|loan proceeds|loan advance|disbursement)\b/i.test(description)) return 'transfer';
-  if (amount > 0 && /\b(payroll|salary|wages|pension|social security|ssa treas|retirement|paycheck)\b/i.test(description)) return 'income';
-  if (amount < 0 && /\b(loan payment|auto loan|auto payment|mortgage|credit card payment|credit card pmt|card payment|student loan|installment|affirm|klarna|afterpay)\b/i.test(description)) return 'debt_payment';
+export function inferredCategory(description, amount) {
+  const d = String(description || '').toLowerCase();
+  if (/\b(refund|reversal|returned purchase)\b/.test(d)) return 'refund';
+  if (/\b(transfer|zelle|venmo|cash ?app|paypal|loan proceeds|loan advance|disbursement)\b/.test(d)) return 'transfer';
+  if (amount > 0) {
+    if (/\b(payroll|salary|wages|paycheck)\b/.test(d)) return 'employment_income';
+    if (/\b(stripe payout|square payout|merchant settlement|merchant payout)\b/.test(d)) return 'business_income';
+    if (/\b(pension|social security|ssa treas|retirement benefit|interest paid)\b/.test(d)) return 'other_income';
+    return 'unreviewed';
+  }
+  if (amount >= 0) return 'unreviewed';
+  if (/\b(loan payment|auto loan|auto payment|mortgage|credit card payment|credit card pmt|card payment|student loan|installment|affirm|klarna|afterpay)\b/.test(d)) return 'debt_payment';
+  if (/\b(rent payment|apartment rent|rent)\b/.test(d)) return 'housing';
+  if (/\b(electric|utility|utilities|water bill|internet|comcast|spectrum|at&t)\b/.test(d)) return 'utilities';
+  if (/\b(insurance|geico|progressive|state farm)\b/.test(d)) return 'insurance';
+  if (/\b(grocery|groceries|aldi|kroger|safeway|whole foods)\b/.test(d)) return 'groceries';
+  if (/\b(fuel|gas station|quiktrip|chevron|exxon|shell oil)\b/.test(d)) return 'fuel';
+  if (/\b(restaurant|coffee|pizza|mcdonald|doordash|starbucks|taco bell)\b/.test(d)) return 'dining';
+  if (/\b(netflix|cinema|movie theater|spotify|hulu)\b/.test(d)) return 'entertainment';
+  if (/\b(amazon|walmart|target|ebay|retail)\b/.test(d)) return 'shopping';
+  if (/\b(overdraft|service fee|maintenance fee|atm fee)\b/.test(d)) return 'fees';
   return 'unreviewed';
 }
 
@@ -244,7 +261,7 @@ export function summarizeTransactions(transactions, corrections = [], now = Date
     monthly.inflows_cents += Math.max(0, row.amount_cents);
     monthly.outflows_cents += Math.max(0, -row.amount_cents);
     monthly.net_cents += row.amount_cents;
-    if (category === 'income' && row.amount_cents > 0) monthly.income_candidates_cents += row.amount_cents;
+    if (['income','employment_income','business_income','other_income'].includes(category) && row.amount_cents > 0) monthly.income_candidates_cents += row.amount_cents;
     if (category === 'debt_payment' && row.amount_cents < 0) monthly.debt_payments_cents += -row.amount_cents;
     monthly.count++;
     months.set(key, monthly);
@@ -259,6 +276,11 @@ export function summarizeTransactions(transactions, corrections = [], now = Date
     const key = String(row.account_id || '') + '|' + direction + '|' + merchant;
     const group = groups.get(key) || [];
     group.push(row); groups.set(key, group);
+  }
+  const categoryTotals = {};
+  for (const row of usable) {
+    const total = categoryTotals[row.category] ||= { category: row.category, inflows_cents: 0, outflows_cents: 0, count: 0 };
+    total.inflows_cents += Math.max(0,row.amount_cents); total.outflows_cents += Math.max(0,-row.amount_cents); total.count++;
   }
   const recurring = [];
   for (const group of groups.values()) {
@@ -294,6 +316,7 @@ export function summarizeTransactions(transactions, corrections = [], now = Date
   return {
     monthly: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)),
     recurring: recurring.slice(0, 30),
+    category_totals: Object.values(categoryTotals),
     flags,
     coverage: { earliest, latest, days, requested_days: requestedDays, truncated: options.truncated === true },
   };
