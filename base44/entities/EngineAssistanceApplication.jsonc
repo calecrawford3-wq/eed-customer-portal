@@ -363,6 +363,38 @@
           }
         }
       }
+    },
+    "income_method": {
+      "type": "string",
+      "enum": [
+        "bank",
+        "statements"
+      ]
+    },
+    "income_statement_months": {
+      "type": "integer",
+      "enum": [
+        3,
+        6
+      ],
+      "default": 3
+    },
+    "income_request_pending": {
+      "type": "boolean",
+      "default": false
+    },
+    "income_consent_at": {
+      "type": "string"
+    },
+    "income_consent_version": {
+      "type": "string"
+    },
+    "income_bank_connected_at": {
+      "type": "string"
+    },
+    "income_upload_count": {
+      "type": "integer",
+      "default": 0
     }
   },
   "required": [
