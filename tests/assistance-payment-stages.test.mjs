@@ -364,3 +364,12 @@ test('Acorn opens the server-calculated unpaid balance with opaque referral, nev
  assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
  assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,false);
 });
+
+test('Acorn amount uses whole dollars without decimal punctuation',()=>{
+ const h=assistance();
+ for(const [amount,expected] of [[2798.41,'2799'],[2798,'2798'],[99999.99,'100000'],[1000.01,'1001']]){
+  const url=new URL(h.a.acornApplicationUrl(amount,'eed-test'));
+  assert.equal(url.searchParams.get('loanAmount'),expected);
+  assert.equal(url.searchParams.get('d'),'GLDIK');
+ }
+});

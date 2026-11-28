@@ -7,7 +7,7 @@ export default function AcornFinancingOption({option,busy,onLaunch,onRefresh}){
  if(!option?.eligible)return null;
  return <div className="rounded-xl border p-4 space-y-3 bg-slate-50">
  <h3 className="font-semibold">Acorn Finance · Check multiple lenders</h3>
- <p className="text-sm">Start by checking financing for your entire unpaid build balance: <strong>{formatMoney(option.amount)}</strong>. Complete the application yourself in Acorn's secure window.</p>
+ <p className="text-sm">Start by checking financing for your entire unpaid build balance: <strong>{formatMoney(option.amount)}</strong>. Acorn uses whole-dollar amounts, so the initial request is rounded up to the next dollar when needed. Complete the application yourself in Acorn's secure window.</p>
  {option.status!=="not_started"&&<div className="text-xs space-y-1"><p className="font-medium">Status: {labels[option.status]||"Pending"}{option.status_source==="staff_verified"?" · Confirmed by Elite":""}</p>{option.requested_amount!==null&&<p>Prior requested amount: {formatMoney(option.requested_amount)}</p>}</div>}
  <Button disabled={busy||working||option.status==="funded"} onClick={async()=>{setWorking(true);try{await onLaunch();}finally{setWorking(false);}}}>{option.reference?"Open Acorn financing":"Check Acorn financing options"}</Button>
  {option.reference&&<Button className="ml-2" variant="outline" disabled={busy||working} onClick={onRefresh}>Refresh status</Button>}

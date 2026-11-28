@@ -303,7 +303,8 @@ export function acornApplicationUrl(amount:number,reference:string) {
   const url=new URL('https://www.acornfinance.com/pre-qualify/');
   url.searchParams.set('d',ACORN_DEALER_ID);
   url.searchParams.set('utm_medium','web_pre_qual_link_copy_welcome');
-  url.searchParams.set('loanAmount',String(round2(amount)));
+  // Acorn's loan field strips decimal punctuation; use whole dollars, rounded up to cover the balance.
+  url.searchParams.set('loanAmount',String(Math.ceil(round2(amount))));
   url.searchParams.set('utm_content',reference);
   return url.toString();
 }
