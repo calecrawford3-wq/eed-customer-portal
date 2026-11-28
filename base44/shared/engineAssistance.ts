@@ -285,6 +285,35 @@ export function lendersForAmount(settings: any, amount: number) {
   };
 }
 
+// Reviews are customer attestations, never credit decisions. The exact unpaid
+// balance and enabled lender set must match before an in-house request.
+export const LENDER_REVIEW_OUTCOMES = ['declined','insufficient_amount','unsuitable_terms','technical_issue','reviewed_not_applied'];
+export function lenderReviewStatus(offer: any, plan: any) {
+  const required = plan.pathways.remainder_affirm.enabled ? plan.pathways.finance_full.lenders : [];
+  const amount = plan.totals.balance_due;
+  const saved = offer.lender_option_review;
+  const entries = saved?.amount_cents === cents(amount) && Array.isArray(saved.entries) ? saved.entries : [];
+  const complete = required.every(m=>entries.some(e=>e.lender===m.type && LENDER_REVIEW_OUTCOMES.includes(e.outcome)));
+  return {required:required.map(m=>({type:m.type,label:m.label})),amount,entries,complete,reviewed_at:saved?.amount_cents===cents(amount)?saved.reviewed_at:null};
+}
+export function validateLenderReview(required: any[], submitted: any) {
+  if (!Array.isArray(submitted) || submitted.length !== required.length) return null;
+  const clean = [];
+  for (const m of required) {
+    const matches = submitted.filter(e=>e?.lender===m.type);
+    if (matches.length!==1 || !LENDER_REVIEW_OUTCOMES.includes(matches[0].outcome)) return null;
+    const e=matches[0], entry:any={lender:m.type,outcome:e.outcome};
+    for (const [key,max] of [['approved_amount',100000],['apr',100],['payment_amount',100000],['term_months',120]] as const) {
+      if (e[key]===undefined || e[key]===null || e[key]==='') continue;
+      const n=Number(e[key]);
+      if (!Number.isFinite(n)||n<0||n>max||(key==='term_months'&&(!Number.isInteger(n)||n<1))) return null;
+      entry[key]=round2(n);
+    }
+    clean.push(entry);
+  }
+  return clean;
+}
+
 // ---------------------------------------------------------------------------
 // Deposit + in-house financing (all amounts calculated here, never in browser)
 // ---------------------------------------------------------------------------

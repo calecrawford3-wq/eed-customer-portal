@@ -2,6 +2,18 @@
   "name": "EngineAssistanceOffer",
   "type": "object",
   "properties": {
+    "lender_option_review": {
+      "type":"object",
+      "properties":{
+        "amount_cents":{"type":"number"},
+        "reviewed_at":{"type":"string"},
+        "entries":{"type":"array","items":{"type":"object","properties":{
+          "lender":{"type":"string"},"outcome":{"type":"string"},
+          "approved_amount":{"type":"number"},"apr":{"type":"number"},
+          "payment_amount":{"type":"number"},"term_months":{"type":"number"}
+        }}}
+      }
+    },
     "offer_number": {
       "type": "string",
       "description": "Staff-facing offer identifier (EAO-YYYY-####)"

@@ -244,6 +244,8 @@ test('in-house application after outright deposit finances only remainder, dupli
  const h=assistance();h.deposit();
  const application={legal_name:'Test Customer',address_line1:'123 Main St',city:'Tulsa',state:'OK',postal_code:'74101',date_of_birth:'1990-01-01',employment_status:'employed_full_time',monthly_income:3000,consent:true};
  const request=()=>h.call('engineAssistanceFinancing',{token:h.token,action:'request_internal',application,requested_term_months:3});
+ assert.equal((await request()).status,409);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'save_lender_review',amount_cents:50000,entries:[{lender:'affirm',outcome:'reviewed_not_applied'}]})).status,200);
  const r=await request();assert.equal(r.status,200,JSON.stringify(r.body));
  assert.equal(h.state.rows.EngineAssistanceInternalLoan[0].principal,500);
  assert.equal((await request()).status,200);assert.equal(h.state.rows.EngineAssistanceInternalLoan.length,1);

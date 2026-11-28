@@ -120,8 +120,13 @@ export default function OfferPanel({ application, offer, onAction, busy, loan, d
 
             {!["draft","void","paid","declined","expired"].includes(offer.status) && <div className="rounded-lg border p-3 space-y-2">
               <p className="text-xs font-semibold">Sunbit service eligibility</p>
-              <p className="text-xs text-slate-500">Only confirm after eligible services have actually begun. Not for advance deposits, vehicle purchases or insured/warranty-covered work.</p>
+              <p className="text-xs text-slate-500">Only confirm after eligible services have actually begun and the purchase amount is supported by eligible goods or work delivered/rendered. Not for advance deposits, vehicle purchases, existing financing or insured/warranty-covered work.</p>
               <Button size="sm" variant="outline" disabled={busy} onClick={()=>{if(offer.sunbit_service_confirmed || window.confirm("Confirm eligible services have begun and Sunbit's service restrictions are satisfied?")) onAction("set_sunbit_service",{offer_id:offer.id,confirmed:!offer.sunbit_service_confirmed});}}>{offer.sunbit_service_confirmed ? "Remove service confirmation" : "Confirm services started"}</Button>
+            </div>}
+            {offer.lender_option_review?.reviewed_at && <div className="rounded-lg border p-3 space-y-2">
+              <p className="text-xs font-semibold">Customer lender review · {formatMoney(offer.lender_option_review.amount_cents/100)}</p>
+              <p className="text-xs text-slate-500">Self-reported, not verified lender decisions or terms.</p>
+              {(offer.lender_option_review.entries||[]).map(e=><div key={e.lender} className="text-xs border-t pt-2"><strong>{e.lender}</strong> — {e.outcome.replace(/_/g," ")}{e.approved_amount!=null&&<p>Offered: {formatMoney(e.approved_amount)}</p>}{e.apr!=null&&<p>APR: {e.apr}%</p>}{e.payment_amount!=null&&<p>Payment: {formatMoney(e.payment_amount)} (frequency not verified)</p>}{e.term_months!=null&&<p>Term: {e.term_months} months</p>}</div>)}
             </div>}
             {offer.status === "draft" && (
               <Button size="sm" disabled={busy || !(offer.line_items || []).length && !(offer.labor_items || []).length && !(offer.machining_items || []).length} onClick={() => onAction("send_offer", { offer_id: offer.id })}>

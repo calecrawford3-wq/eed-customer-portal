@@ -260,6 +260,10 @@ export default function EngineAssistanceOffer() {
               if (offer.checkout_open && !await runFinancing("close_checkout")) return;
               setRequestRemainder(true);
             }}
+            onSaveReview={async (entries,amount_cents)=>{
+              if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
+              return runFinancing("save_lender_review",{entries,amount_cents},"Financing options reviewed");
+            }}
             onReport={async (lender,outcome)=>{
               if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
               return runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded");

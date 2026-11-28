@@ -1,7 +1,8 @@
+import LenderReviewChecklist from "./LenderReviewChecklist";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
-export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel, onReport }) {
+export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel, onReport, onSaveReview }) {
   const [consent, setConsent] = useState(false);
   const [closing, setClosing] = useState(false);
   const [lender, setLender] = useState("");
@@ -33,7 +34,8 @@ export default function OfferPaymentStages({ offer, paying, onCheckout, onClose,
     {offer.internal_loan?.status === "declined" && <Button variant="outline" disabled={busy} onClick={onCancel}>Withdraw declined request to choose another payment option</Button>}
     {remainder ? <div className="border-t pt-3 space-y-2">
       <p className="text-sm">If third-party financing is unavailable or unsuitable, request Elite financing for the remainder. Your deposit is verified. Elite approval, identity verification and a signed agreement are required.</p>
-      <Button variant="outline" disabled={busy || !deposit.can_request} onClick={request}>Request Elite financing for remainder</Button>
+      {offer.lender_review && <LenderReviewChecklist key={String(offer.lender_review.amount)+":"+offer.lender_review.required.map(m=>m.type).join(",")} review={offer.lender_review} busy={busy} onSave={onSaveReview}/>}
+      <Button variant="outline" disabled={busy || !deposit.can_request || !offer.lender_review?.complete || offer.lender_review?.availability_error} onClick={request}>Request Elite financing for remainder</Button>
       {!deposit.available && <p className="text-sm text-slate-600">{deposit.reason}</p>}
     </div> : <p className="text-sm text-slate-600">If no lender works for you, pay the required deposit outright. Elite financing unlocks only after payment is verified.</p>}
     <p className="text-xs text-slate-500">Unfinished checkout is not proof of denial. Payment is recorded only after provider confirmation.</p>

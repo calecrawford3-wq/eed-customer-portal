@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } f
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  FINANCING_METHODS, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, readFinancingAvailability, lenderReviewStatus, validateLenderReview, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -83,6 +83,25 @@ export default async function (req) {
       return Response.json({recorded:true});
     }
 
+    const currentLenderReview = async () => {
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if (!key) throw new Error('Lender availability cannot be checked right now.');
+      const availability = await readFinancingAvailability(new Stripe(key));
+      if (availability.error) throw new Error('Lender availability cannot be checked right now. Retry before requesting Elite financing.');
+      const freshPlan = offerPaymentPlan(offer,{...settings,financing_methods:availability.methods},existing,currentAgreement,identity,identitySettings);
+      return lenderReviewStatus(offer,freshPlan);
+    };
+    if (action === 'save_lender_review') {
+      if (!plan.deposit_verified || !plan.pathways.deposit_internal.can_request || offer.payment_route_claim) return Response.json({error:'A verified deposit and closed checkout are required.'},{status:409});
+      let review;
+      try { review=await currentLenderReview(); } catch(e) {return Response.json({error:e.message},{status:409});}
+      if (body.amount_cents !== cents(review.amount)) return Response.json({error:'The balance changed. Reload your offer.'},{status:409});
+      const entries=validateLenderReview(review.required,body.entries);
+      if (!entries) return Response.json({error:'Review every available lender and enter valid optional terms.'},{status:400});
+      await offers.update(offer.id,{lender_option_review:{amount_cents:cents(review.amount),entries,reviewed_at:new Date().toISOString()}});
+      return Response.json({saved:true});
+    }
+
     if (action === 'request_internal') {
       if (!plan.deposit_verified) return Response.json({ error: 'Pay the 50% deposit and wait for provider confirmation before requesting financing for the remainder.' }, { status: 409 });
 
@@ -99,6 +118,10 @@ export default async function (req) {
       if (existing && existing.status === 'pending_approval') {
         return Response.json({ loan: publicLoan(existing), already_requested: true });
       }
+      try {
+        const review=await currentLenderReview();
+        if (!review.complete) return Response.json({error:'Review all available third-party financing options for the current balance before requesting Elite financing.'},{status:409});
+      } catch(e) {return Response.json({error:e.message},{status:409});}
       // The financing application is validated here, not in the browser. Only
       // the allowlisted fields are stored, and no SSN or ID number is accepted.
       const applied = validateFinancingApplication(body.application);
