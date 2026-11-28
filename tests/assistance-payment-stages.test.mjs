@@ -82,7 +82,7 @@ function setup() {
     if (cache.has(file)) return cache.get(file);
     const exports = {}; cache.set(file, exports);
     const require = name => name.startsWith('npm:@base44/sdk') ? { createClientFromRequest: () => base44 } :
-      name.startsWith('npm:stripe') ? { default: Stripe } : load(path.resolve(path.dirname(file), name));
+      name.startsWith('npm:stripe') ? { default: Stripe } : name==='base44:runtime'?{secrets:env}:load(path.resolve(path.dirname(file), name));
     new Function('require', 'exports', 'Deno', ts.transpile(readFileSync(file, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(require, exports, { env });
     return exports;
   }

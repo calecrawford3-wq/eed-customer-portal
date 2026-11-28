@@ -40,6 +40,18 @@ export default function EngineAssistanceStatus() {
     retry: false,
   });
 
+  useEffect(()=>{
+    const session=new URLSearchParams(window.location.search).get("fee_session");
+    if(!session||data?.status!=="pending_payment")return;
+    let canceled=false;
+    base44.functions.invoke("engineAssistanceApply",{action:"confirm_fee",status_token:token,session_id:session}).then(({data:result})=>{
+      if(canceled)return;
+      if(result?.paid){toast.success("Submission deposit verified. Application received.");refetch();}
+      else toast.error(result?.error||"Stripe has not confirmed payment yet. Return to your saved application to check again.");
+    }).catch(e=>{if(!canceled)toast.error(e?.response?.data?.error||"Payment confirmation is pending. Refresh this page to retry.");});
+    return ()=>{canceled=true;};
+  },[token,data?.status,refetch]);
+
   const reply = async () => {
     if (!message.trim() || (data?.income_request_pending && !incomeState?.can_submit)) return;
     setSending(true);

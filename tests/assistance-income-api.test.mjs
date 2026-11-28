@@ -17,7 +17,11 @@ const transpile = source => ts ? ts.transpileModule(source, { compilerOptions: {
 const sdkUrl = toUrl('export const createClientFromRequest = () => globalThis.__aefIncomeHarness.client;');
 const runtimeUrl = toUrl('export const secrets = { get: key => globalThis.__aefIncomeHarness.secrets[key] };');
 const pdfUrl = toUrl('export const PDFDocument = { load: (...args) => globalThis.__aefIncomeHarness.pdfLoad(...args) };');
-const stripeUrl = toUrl('export default class Stripe { constructor() { globalThis.__aefIncomeHarness.moneyCalls++; throw new Error("Unexpected payment provider use in income tests"); } }');
+const stripeUrl = toUrl(`export default class Stripe { constructor() {
+ const h=globalThis.__aefIncomeHarness;h.moneyCalls++;
+ if(!h.feeStripe)throw new Error("Unexpected payment provider use in income tests");
+ this.checkout={sessions:h.feeStripe};
+} }`);
 const assistanceUrl = toUrl(`
 export const rows = value => Array.isArray(value) ? value : value?.items || [];
 export const ensureGenericTemplate = async () => { throw new Error('Template use is outside these tests'); };
@@ -92,7 +96,7 @@ function makeHarness(options = {}) {
   };
   const calls = [];
   const h = {
-    data, calls, moneyCalls: 0, uploads: [], signed: [], extractions: [], providerCalls: [], logs: [],
+    data, calls, moneyCalls: 0, feeStripe:options.feeStripe, uploads: [], signed: [], extractions: [], providerCalls: [], logs: [],
     secrets: { PORTAL_STRIPE_SECRET_KEY: 'sk_test_dummy', PORTAL_STRIPE_PUBLISHABLE_KEY: 'pk_test_dummy' },
     pdfLoad: async bytes => { assert.equal(new TextDecoder().decode(bytes.subarray(0, 5)), '%PDF-'); return { getPageCount: () => 2 }; },
   };
@@ -116,6 +120,11 @@ function makeHarness(options = {}) {
         if (index < 0) throw Object.assign(new Error('Synthetic record missing'), { status: 404 });
         data[name][index] = { ...data[name][index], ...clone(value) }; return clone(data[name][index]);
       },
+      updateMany:async(query,operation)=>{
+        let updated=0;for(const row of data[name])if(Object.entries(query).every(([k,v])=>v&&typeof v==='object'&&'$exists' in v?(row[k]!==undefined)===v.$exists:row[k]===v)){
+          Object.assign(row,clone(operation.$set||{}));updated++;calls.push({operation:'update',entity:name,id:row.id});
+        }return {updated};
+      },
       delete: async id => { calls.push({ operation: 'delete', entity: name, id }); data[name] = data[name].filter(row => row.id !== id); },
     };
   } });
@@ -136,8 +145,9 @@ function makeHarness(options = {}) {
 
 async function withHarness(options, run) {
   const h = makeHarness(options);
-  const old = { fetch: globalThis.fetch, Date: globalThis.Date, error: console.error };
+  const old = { fetch: globalThis.fetch, Date: globalThis.Date, error: console.error, Deno:globalThis.Deno };
   globalThis.__aefIncomeHarness = h;
+  globalThis.Deno={env:{get:key=>key==='PORTAL_STRIPE_SECRET_KEY'?'sk_test_fixture':h.secrets[key]}};
   globalThis.Date = class extends old.Date { constructor(...args) { super(...(args.length ? args : [FIXTURE_NOW])); } static now() { return FIXTURE_NOW; } };
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(String(input));
@@ -149,7 +159,7 @@ async function withHarness(options, run) {
   };
   console.error = (...args) => h.logs.push(args.map(value => String(value)));
   try { await run(h); }
-  finally { globalThis.fetch = old.fetch; globalThis.Date = old.Date; console.error = old.error; delete globalThis.__aefIncomeHarness; }
+  finally { globalThis.fetch = old.fetch; globalThis.Date = old.Date; console.error = old.error; delete globalThis.__aefIncomeHarness;globalThis.Deno=old.Deno; }
 }
 const request = body => new Request('https://app.example.invalid/functions/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 async function invoke(handler, body) { const response = await handler(request(body)); return { status: response.status, body: await response.json(), headers: response.headers }; }
@@ -198,28 +208,38 @@ test('public status exposes only completeness metadata, without private files or
   });
 });
 
-test('finish_without_fee rejects a connected flag or client-supplied evidence without server records', async () => {
-  await withHarness({ app: { income_verification_status: 'connected', income_verification_account_count: 1 } }, async h => {
-    const result = await invoke(applyApi, { action: 'finish_without_fee', status_token: TOKEN, bank_connected: true, documents: readyStatements() });
-    assert.equal(result.status, 422); assert.equal(h.data.EngineAssistanceApplication[0].status, 'pending_payment');
-    assert.equal(h.moneyCalls, 0); assert.equal(h.providerCalls.length, 0);
+test('waiver bypass is disabled, income and fee consent are required before creating Stripe checkout',async()=>{
+  await withHarness({},async h=>{
+    assert.equal((await invoke(applyApi,{action:'finish_without_fee',status_token:TOKEN})).status,409);
+    assert.equal((await invoke(applyApi,{action:'pay_fee',status_token:TOKEN})).status,400);
+    assert.equal((await invoke(applyApi,{action:'pay_fee',status_token:TOKEN,fee_policy_accepted:true})).status,422);
+    assert.equal(h.data.EngineAssistanceApplication[0].status,'pending_payment');assert.equal(h.moneyCalls,0);
   });
 });
-
-test('submission requires consent and all three accepted statements, then remains payment-free and idempotent', async () => {
-  await withHarness({ statements: readyStatements(), app: { income_consent_at: '' } }, async h => {
-    assert.equal((await invoke(applyApi, { action: 'finish_without_fee', status_token: TOKEN })).status, 422);
-    h.data.EngineAssistanceApplication[0].income_consent_at = '2026-11-27T10:00:00Z';
-    const result = await invoke(applyApi, { action: 'finish_without_fee', status_token: TOKEN });
-    assert.equal(result.status, 200); assert.equal(result.body.ok, true);
-    assert.equal(h.data.EngineAssistanceApplication[0].status, 'submitted');
-    assert.equal(h.data.EngineAssistanceApplication[0].submission_fee_cents, 0);
-    assert.equal(h.data.EngineAssistanceApplication[0].submission_fee_status, 'not_required');
-    const writes = h.calls.filter(call => call.operation === 'update').length;
-    assert.equal((await invoke(applyApi, { action: 'finish_without_fee', status_token: TOKEN })).status, 200);
-    assert.equal(h.calls.filter(call => call.operation === 'update').length, writes);
-    assert.equal((await invoke(applyApi, { action: 'pay_fee', status_token: TOKEN })).status, 409);
-    assert.equal(h.moneyCalls, 0); assert.equal(h.providerCalls.length, 0);
+test('required $20 fee upgrades unpaid draft, resumes checkout, then verifies and submits exactly once',async()=>{
+  const session={id:'cs_test_fee',status:'open',url:'https://checkout.stripe.com/c/test_fixture',mode:'payment',currency:'usd',livemode:false,payment_status:'unpaid',amount_total:2000,metadata:{source:'eed_aef_submission_fee',application_id:'applicationA'}};
+  let creates=0;
+  const feeStripe={create:async(opts)=>{creates++;assert.equal(opts.line_items[0].price_data.unit_amount,2000);assert.deepEqual(opts.payment_method_types,['card']);return clone(session);},retrieve:async id=>{assert.equal(id,session.id);return clone(session);}};
+  await withHarness({statements:readyStatements(),feeStripe},async h=>{
+    const request={action:'pay_fee',status_token:TOKEN,fee_policy_accepted:true};
+    assert.equal((await invoke(applyApi,request)).status,200);
+    const app=h.data.EngineAssistanceApplication[0];assert.equal(app.submission_fee_cents,2000);assert.equal(app.status,'pending_payment');assert.ok(app.submission_fee_policy_accepted_at);
+    assert.equal((await invoke(applyApi,request)).status,200);assert.equal(creates,1);
+    const confirm={action:'confirm_fee',status_token:TOKEN,session_id:session.id};
+    assert.equal((await invoke(applyApi,{...confirm,session_id:'cs_test_other'})).status,403);
+    assert.equal((await invoke(applyApi,confirm)).body.paid,false);
+    session.payment_status='paid';session.status='complete';session.payment_intent='pi_test_fee';session.amount_total=100;
+    assert.equal((await invoke(applyApi,confirm)).status,409);
+    session.amount_total=2000;
+    assert.equal((await invoke(applyApi,confirm)).body.paid,true);
+    assert.equal(app.status,'submitted');assert.equal(app.submission_fee_status,'paid');
+    assert.equal((await invoke(applyApi,confirm)).body.paid,true);assert.equal(creates,1);
+  });
+});
+test('already submitted fee-waived application is not charged retroactively',async()=>{
+  await withHarness({app:{status:'submitted',submission_fee_status:'not_required'}},async h=>{
+    assert.equal((await invoke(applyApi,{action:'pay_fee',status_token:TOKEN,fee_policy_accepted:true})).status,409);
+    assert.equal(h.moneyCalls,0);
   });
 });
 
