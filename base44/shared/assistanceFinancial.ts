@@ -1,5 +1,5 @@
 import { secrets } from 'base44:runtime';
-import { inferredCategory, evaluateStatementSet, summarizeTransactions, validateStatementMetadata } from './assistanceFinancialMath.ts';
+import { adaptiveCategories, evaluateStatementSet, summarizeTransactions, validateStatementMetadata } from './assistanceFinancialMath.ts';
 
 // Financial records are separate admin-only entities. Public callers receive an
 // explicit status allowlist; never transactions, ownership details or file URIs.
@@ -388,8 +388,8 @@ export async function adminFinancialView(base44, app, initialState = null) {
   const transactions = method === 'bank' ? record.transactions || [] : selectedStatements.flatMap(s => s.transactions || []);
   const transactionIds = new Set(transactions.map(t => t.id));
   const corrections = (record.corrections || []).filter(c => transactionIds.has(c.transaction_id));
-  const corrected = new Map(corrections.map(c => [c.transaction_id, c]));
-  const summary = summarizeTransactions(transactions, corrections, Date.now(), { truncated: method === 'bank' ? !!record.truncated : selectedStatements.some(s => !s.transactions_complete), requestedDays: app.income_statement_months === 6 ? 180 : 90 });
+  const classified = adaptiveCategories(transactions, corrections);
+  const summary = summarizeTransactions(classified, corrections, Date.now(), { truncated: method === 'bank' ? !!record.truncated : selectedStatements.some(s => !s.transactions_complete), requestedDays: app.income_statement_months === 6 ? 180 : 90 });
   const retrieval = financialRetrievalState(record);
   if (method === 'bank') {
     summary.totals_available = retrieval.has_transaction_data;
@@ -419,7 +419,7 @@ export async function adminFinancialView(base44, app, initialState = null) {
   const review = {
     source: method === 'bank' ? 'stripe' : 'statements', status: record.status || 'not_started', last_synced_at: record.last_synced_at || '',
     bank_accounts: record.bank_accounts || [], errors: record.errors || [], retrieval,
-    transactions: transactions.map(t => ({ ...t, suggested_category: inferredCategory(t.description, t.amount_cents), category: corrected.get(t.id)?.category || (t.category && t.category !== 'unreviewed' ? t.category : inferredCategory(t.description, t.amount_cents)) })), summary,
+    transactions: classified, summary,
     review_status: record.review_status || 'unreviewed', notes: record.notes || '',
     confirmed_monthly_income_cents: record.confirmed_monthly_income_cents ?? null,
     reviewed_by: record.reviewed_by || '', reviewed_at: record.reviewed_at || '', corrections,

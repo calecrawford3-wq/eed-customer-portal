@@ -224,6 +224,32 @@ export function inferredCategory(description, amount) {
   return 'unreviewed';
 }
 
+// Learn only from explicit reviews within the same application and direction.
+export function merchantKey(row) {
+  if (!row || !Number.isFinite(row.amount_cents) || !row.amount_cents) return '';
+  let d = String(row.description || '').toLowerCase().replace(/\[redacted\]/g,' ').replace(/\b(?:pos|debit card|card purchase|purchase|recurring payment)\b/g,' ').replace(/[^a-z0-9]+/g,' ').replace(/\b\d{4,}\b/g,' ').trim().replace(/\s+/g,' ');
+  if (/^apple com bill(?: |$)/.test(d)) d = 'apple com bill';
+  if (d.length < 5 || /^(transfer|payment|deposit|withdrawal|check|ach|debit|credit|online payment|unknown)(?: \d+)?$/.test(d)) return '';
+  return (row.amount_cents > 0 ? 'in:' : 'out:') + d;
+}
+export function adaptiveCategories(transactions, corrections = []) {
+  const byId = new Map(transactions.map(t=>[t.id,t]));
+  const rules = new Map();
+  for (const c of corrections) {
+    const key = merchantKey(byId.get(c.transaction_id));
+    if (!key || !CATEGORIES.has(c.category)) continue;
+    const set = rules.get(key) || new Set();
+    set.add(c.category); rules.set(key,set);
+  }
+  const reviewed = new Map(corrections.map(c=>[c.transaction_id,c.category]));
+  return transactions.map(t=>{
+    const rule=rules.get(merchantKey(t));
+    const learned=rule?.size===1 && !rule.has('unreviewed') ? [...rule][0] : null;
+    const base=inferredCategory(t.description,t.amount_cents);
+    return {...t, suggested_category: learned || base, category: reviewed.get(t.id) ?? learned ?? base, learned_category: !reviewed.has(t.id) && !!learned, classification_conflict: !!rule && rule.size>1};
+  });
+}
+
 /** Cash-flow observations, with explicitly provisional income/debt classification. */
 export function summarizeTransactions(transactions, corrections = [], now = Date.now(), options = {}) {
   const today = todayValue(now);
