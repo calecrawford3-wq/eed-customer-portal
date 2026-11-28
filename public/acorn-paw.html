@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Acorn Finance</title>
+<style>
+body{font:15px system-ui,sans-serif;margin:0;padding:24px 12px;color:#172033;background:#fff;text-align:center}main{max-width:620px;margin:auto}#status{color:#64748b;font-size:14px}acorn-standard-widget{display:block;margin:24px auto}a{color:#075985}
+</style>
+</head>
+<body><main><p id="status" role="status">Loading Acorn financing options…</p><div id="widget"></div></main>
+<script>
+(() => {
+ const q=new URLSearchParams(location.search);
+ const amount=Number(q.get("amount")), reference=q.get("reference")||"";
+ const status=document.getElementById("status");
+ if(!Number.isInteger(amount)||amount<1000||amount>100000||!/^eed-[a-f0-9-]{36}$/.test(reference)){status.textContent="Unable to load this financing quote.";return;}
+ const script=document.createElement("script");
+ script.type="module";script.crossOrigin="anonymous";
+ script.integrity="sha384-pn2Y+Ywz9biPm5DoE3+NrMJER9NG0OV0bNIwlITbGsj5wlRk8gzDOsPDUI6qFoey";
+ script.src="https://widgets-cdn.acornfinance.com/paw/v5/versions/5.7.1/af-standard.min.js";
+ script.onerror=()=>{status.textContent="The widget is unavailable. Use the secure application link in the Elite dialog.";};
+ const timer=setTimeout(()=>{status.textContent="The widget is taking longer than expected. You can use the secure application link below the widget.";},12000);
+ script.onload=async()=>{
+  await customElements.whenDefined("acorn-standard-widget");
+  const widget=document.createElement("acorn-standard-widget");
+  Object.assign(widget,{dealerId:"GLDIK",companyName:"Elite Engine Development",env:"Prod",loanAmount:amount,utm_content:reference,utm_medium:"elite_portal",kind:"popup",popupType:"apply",pageType:"apply",theme:"light",alignment:"center",learnHowLabel:"Get started",showStandardWidget:true,logging:true});
+  document.getElementById("widget").append(widget);
+  await widget.updateComplete;
+  clearTimeout(timer);
+  status.textContent="Select Get started to view financing information. Acorn handles your application securely.";
+ };
+ document.head.append(script);
+})();
+</script>
+</body></html>

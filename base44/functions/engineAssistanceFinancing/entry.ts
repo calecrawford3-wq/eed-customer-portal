@@ -69,12 +69,13 @@ export default async function (req) {
         if (body.consent!==true) return Response.json({error:'Confirm you want to open Acorn.'},{status:400});
         const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),started_at:now,status:'opened',status_source:'portal',status_at:now};
         if (!previous) {
-          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record}});
+          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record,acorn_reference:record.reference}});
         }
         const fresh=rows(await offers.filter({id:offer.id}))[0];
         const saved=fresh?.acorn_financing;
         if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(acornOption(fresh,settings,existing).amount)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
-        return Response.json({application_url:acornApplicationUrl(option.amount,saved.reference)});
+        if(fresh.acorn_reference!==saved.reference) await offers.updateMany({id:offer.id,acorn_financing:saved},{$set:{acorn_reference:saved.reference}});
+        return Response.json({application_url:acornApplicationUrl(option.amount,saved.reference),widget:{dealer_id:'GLDIK',amount:Math.ceil(option.amount),reference:saved.reference}});
       }
 
     }

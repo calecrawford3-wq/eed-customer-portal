@@ -1,3 +1,5 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import OfferPaymentStages from "@/components/assistance/OfferPaymentStages";
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -26,6 +28,7 @@ export default function EngineAssistanceOffer() {
   const [paying, setPaying] = useState("");
   const [actionBusy, setActionBusy] = useState("");
   const [banner, setBanner] = useState("");
+  const [acornModal,setAcornModal]=useState(null);
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -116,19 +119,17 @@ export default function EngineAssistanceOffer() {
   };
 
   const openAcorn = async () => {
-    // Open synchronously to avoid popup blocking; never give the external site an opener.
-    const popup=window.open("about:blank","_blank");
-    if(!popup){toast.error("Allow popups for this portal and try again.");return;}
-    popup.opener=null;
     try {
-      if(offer.checkout_open && !await runFinancing("close_checkout")) {popup.close();return;}
+      if(offer.checkout_open && !await runFinancing("close_checkout")) return;
       const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"start_acorn",amount_cents:Math.round(offer.acorn.amount*100),consent:true});
       if(res.data?.error)throw new Error(res.data.error);
       const url=new URL(res.data.application_url);
       if(url.origin!=="https://www.acornfinance.com")throw new Error("Invalid financing link");
-      popup.location.replace(url.href);
+      const {amount,reference}=res.data.widget||{};
+      if(!Number.isInteger(amount)||!/^eed-[a-f0-9-]{36}$/.test(reference))throw new Error("Invalid widget configuration");
+      setAcornModal({url:url.href,frame:"/acorn-paw.html?"+new URLSearchParams({amount:String(amount),reference})});
       await refetch();
-    } catch(error){popup.close();toast.error(error?.response?.data?.error||error.message||"Unable to open Acorn");}
+    } catch(error){toast.error(error?.response?.data?.error||error.message||"Unable to open Acorn");}
   };
 
   const runFinancing = async (action, payload = {}, successMessage) => {
@@ -319,6 +320,13 @@ export default function EngineAssistanceOffer() {
           </JourneyErrorBoundary>
         )}
 
+        <Dialog open={!!acornModal} onOpenChange={open=>{if(!open){setAcornModal(null);refetch();}}}>
+          <DialogContent className="w-[96vw] max-w-[760px] h-[90dvh] sm:h-[82dvh] rounded-xl flex flex-col overflow-hidden p-4 gap-3 bg-white text-slate-900">
+            <DialogHeader className="pr-8"><DialogTitle>Acorn financing</DialogTitle><DialogDescription>Review financing information here. Acorn may open its secure application separately.</DialogDescription></DialogHeader>
+            {acornModal&&<iframe title="Acorn financing widget" className="w-full flex-1 min-h-0 rounded-lg border" src={acornModal.frame} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"/>}
+            {acornModal&&<Button variant="outline" asChild><a href={acornModal.url} target="_blank" rel="noopener noreferrer">Open secure Acorn application directly</a></Button>}
+          </DialogContent>
+        </Dialog>
         <PaymentsHistory payments={offer.payments || []} />
 
         {offer.financing_note && (
