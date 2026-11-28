@@ -2,6 +2,8 @@
   "name": "Email",
   "type": "object",
   "properties": {
+    "acorn_verification_status":{"type":"string","enum":["applied","unverified_sender","headers_unavailable","unmatched_or_already_resolved","retry_needed"]},
+    "acorn_verified_checked_at":{"type":"string","format":"date-time"},
     "message_id": {
       "type": "string",
       "description": "Zoho Mail message ID \u2014 used to dedupe during sync"

@@ -1,4 +1,4 @@
-import { parseAcornNoOffers, applyAcornNoOffersEmail } from '../../shared/acornEmail.ts';
+import { retryAcornNotifications } from '../../shared/acornEmail.ts';
 import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import {
@@ -271,15 +271,6 @@ export default async function(req) {
               link_number: '',
               is_linked: false,
             });
-            if(direction==='inbound' && msgMs>0) {
-              const mail={id:created?.id,message_id:messageId,account_address:accountAddress,direction,from_email:fromParsed.email,subject,body_text:bodyText,received_at:receivedAt};
-              if(parseAcornNoOffers(mail)){
-                try {
-                  const headers=await getMessageHeaders(token,accountId,folderId,messageId);
-                  await applyAcornNoOffersEmail(base44,mail,headers);
-                }catch(_){errors.push('Acorn email verification unavailable; staff review required.');}
-              }
-            }
             newCount++;
             if (msgMs > folderMaxMs) folderMaxMs = msgMs;
             newEmails.push({
@@ -312,6 +303,13 @@ export default async function(req) {
         }
       }
     }
+
+    // Reconcile existing and newly imported Acorn notices, independently of
+    // the per-folder incremental checkpoint. Never treat missing mail as denial.
+    let acornResults=null;
+    try {
+      acornResults=await retryAcornNotifications(base44,mail=>getMessageHeaders(token,mail.account_id,mail.folder_id,mail.message_id));
+    }catch{errors.push('Acorn notification reconciliation needs retry.');}
 
     // --- Apply inbound read/unread state changes (Zoho -> app) ---
     if (readUpdates.length) {
@@ -518,6 +516,7 @@ export default async function(req) {
       threadsUpdated,
       linksCreated,
       readStateUpdates,
+      acorn:acornResults,
       errors: errors.slice(0, 20),
     });
   } catch (error) {

@@ -20,7 +20,7 @@ export function matchAcornEmail(email:any, offer:any, application:any) {
   const emailMatches=(text.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi)||[]).map(address);
   const match=exact(offer.acorn_financing.reference)?'referral_reference':borrower&&emailMatches.includes(borrower)?'borrower_email':null;
   if(!match)return null;
-  return {suggested_status:exactAcornNoOffersMatch(email,offer,application)?'no_offers':null,id:email.id,received_at:email.received_at,from_email:email.from_email,subject:String(email.subject||'').slice(0,250),match,preview:String(email.body_text||'').slice(0,1500)};
+  return {suggested_status:exactAcornNoOffersMatch(email,offer,application)?'no_offers':null,verification_status:email.acorn_verification_status||'pending',id:email.id,received_at:email.received_at,from_email:email.from_email,subject:String(email.subject||'').slice(0,250),match,preview:String(email.body_text||'').slice(0,1500)};
 }
 
 // Recognize only the no-offers template supplied by the merchant. Unknown
@@ -83,5 +83,32 @@ export async function applyAcornNoOffersEmail(base44:any,email:any,headers:strin
   if(!['opened','pending'].includes(old.status)||!['portal',''].includes(old.status_source||''))return false;
   const next={...old,status:'no_offers',status_source:'zoho_verified',status_at:email.received_at,evidence:'Authenticated Acorn no-offers email; Zoho message '+String(email.id||email.message_id).slice(0,100)};
   await entities.EngineAssistanceOffer.updateMany({id:offer.id,acorn_financing:old},{$set:{acorn_financing:next}});
-  return true;
+  const fresh=await entities.EngineAssistanceOffer.filter({id:offer.id});
+  return fresh?.[0]?.acorn_financing?.status_source==='zoho_verified' &&
+    fresh[0].acorn_financing.evidence===next.evidence;
+}
+
+// Retry the actual stored message, not just new messages since the sync cursor.
+// Do not fetch or retain raw headers for unrelated mail.
+export async function retryAcornNotifications(base44:any, readHeaders:(email:any)=>Promise<string>, now=Date.now()){
+  const entities=base44.asServiceRole.entities;
+  const emails=await entities.Email.filter({account_address:ACORN_MAILBOX,direction:'inbound',from_email:'support@acornfinance.com',received_at:{$gte:new Date(now-30*86400000).toISOString()}},'-received_at',100);
+  const results={checked:0,applied:0,unverified:0,retry_needed:0};
+  for(const email of (Array.isArray(emails)?emails:emails?.items||[])){
+    if(results.checked>=20)break;
+    if(!parseAcornNoOffers(email)||email.acorn_verification_status==='applied')continue;
+    const previous=Date.parse(email.acorn_verified_checked_at||'');
+    if(Number.isFinite(previous)&&now-previous<5*60000)continue;
+    results.checked++;
+    let status='retry_needed';
+    try{
+      const header=await readHeaders(email);
+      if(!header){status='headers_unavailable';results.unverified++;}
+      else if(!acornHeaderAuthenticated(header)){status='unverified_sender';results.unverified++;}
+      else if(await applyAcornNoOffersEmail(base44,email,header)){status='applied';results.applied++;}
+      else {status='unmatched_or_already_resolved';results.unverified++;}
+    }catch{results.retry_needed++;}
+    try{await entities.Email.update(email.id,{acorn_verification_status:status,acorn_verified_checked_at:new Date(now).toISOString()});}catch{results.retry_needed++;}
+  }
+  return results;
 }

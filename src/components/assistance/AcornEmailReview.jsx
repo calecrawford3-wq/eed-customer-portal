@@ -21,10 +21,11 @@ export default function AcornEmailReview({offer,onSelect,busy}){
  };
  return <div className="border rounded-lg p-3 space-y-2 bg-slate-50">
  <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold flex gap-1 items-center"><Mail className="w-4 h-4"/>Acorn notifications · Zoho</p><Button variant="outline" size="sm" disabled={busy||syncing||q.isFetching} onClick={sync}><RefreshCw className={"w-3 h-3 "+(syncing?"animate-spin":"")}/>{syncing?"Syncing…":"Sync mail"}</Button></div>
- <p className="text-xs text-slate-600">Checks synced notifications in cale@eedpower.com. Confirm the application and outcome before recording a decision.</p>
+ <p className="text-xs text-slate-600">Checks synced notifications in cale@eedpower.com. Matching, authenticated no-offers notifications are processed automatically. Only exceptions need staff review.</p>
  {q.isError?<p className="text-xs text-amber-700">Notifications could not be checked.</p>:q.isLoading?<p className="text-xs">Checking mail…</p>:!q.data?.candidates?.length?<p className="text-xs text-slate-500">No matching Acorn notifications found yet.</p>:q.data.candidates.map(e=><div key={e.id} className="border rounded-md bg-white p-2 space-y-1">
  <p className="text-xs font-medium break-words">{e.subject}</p>
  <p className="text-[11px] text-slate-500">{e.match==="referral_reference"?"Referral reference matched":"Possible borrower email match"} · {new Date(e.received_at).toLocaleString()}</p>
+ <p className="text-[11px] text-slate-600">Verification: {({applied:"Automatically recorded",unverified_sender:"Sender authentication not verified",headers_unavailable:"Waiting for message headers",unmatched_or_already_resolved:"No unique pending match or already resolved",retry_needed:"Will retry",pending:"Awaiting automatic check"})[e.verification_status]||"Awaiting automatic check"}</p>
  <Button size="sm" variant="ghost" onClick={()=>setExpanded(expanded===e.id?"":e.id)}>{expanded===e.id?"Hide message":"Review message"}</Button>
  {expanded===e.id&&<><p className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-auto">{e.preview}</p><Button size="sm" variant="outline" disabled={busy} onClick={()=>onSelect(e)}>Use as verification evidence</Button></>}
  </div>)}
