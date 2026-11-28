@@ -103,7 +103,7 @@ export default function EngineAssistanceOffer() {
   const checkout = async (pathway, consent, lender) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, replace_existing: offer?.checkout_open === true });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) window.location.href = res.data.checkout_url;
       else throw new Error("Checkout could not be started");
@@ -256,8 +256,14 @@ export default function EngineAssistanceOffer() {
           </CardContent></Card>
         ) : !["pending_approval", "approved"].includes(loan?.status) && !requestRemainder ? (
           <OfferPaymentStages offer={offer} paying={paying} onCheckout={checkout}
-            onRequest={() => setRequestRemainder(true)}
-            onReport={(lender,outcome)=>runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded")}
+            onRequest={async () => {
+              if (offer.checkout_open && !await runFinancing("close_checkout")) return;
+              setRequestRemainder(true);
+            }}
+            onReport={async (lender,outcome)=>{
+              if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
+              return runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded");
+            }}
             onCancel={() => runFinancing("cancel_request", {}, "Request withdrawn")}
             onClose={async () => {
               try {

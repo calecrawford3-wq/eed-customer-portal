@@ -1,4 +1,4 @@
-import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
+import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } from '../../shared/assistancePaymentRoute.ts';
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
@@ -57,17 +57,12 @@ export default async function (req) {
     const plan = offerPaymentPlan(offer, settings, existing, currentAgreement, identity, identitySettings);
 
     if (action === 'close_checkout') {
-      if (!offer.payment_route_claim) return Response.json({ closed: true });
-      if (offer.payment_route === 'internal') return Response.json({ error: 'Withdraw your in-house request first.' }, { status: 409 });
-      if (!offer.payment_route_session) return Response.json({ error: 'Retry the existing checkout option first so its status can be verified.' }, { status: 409 });
-      await offers.updateMany({ id: offer.id, payment_route_claim: offer.payment_route_claim, payment_route: offer.payment_route }, { $set: { payment_route: 'closing' } });
-      const closing = rows(await offers.filter({ id: offer.id }))[0];
-      if (closing.payment_route !== 'closing') return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
       try {
-        const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
-        if (!key) throw new Error('Stripe verification is unavailable.');
-        await retireOfferSessions(base44, new Stripe(key), closing);
-        await releaseRoute(base44, closing);
+        if (offer.payment_route_claim) {
+          const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+          if (!key) throw new Error('Stripe verification is unavailable.');
+          await closeKnownCheckout(base44,new Stripe(key),offer);
+        }
         return Response.json({ closed: true });
       } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
     }

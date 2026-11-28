@@ -1,4 +1,4 @@
-import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
+import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } from '../../shared/assistancePaymentRoute.ts';
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
@@ -120,7 +120,14 @@ export default async function (req) {
     const origin = appOrigin(req);
     const returnPath = `/engine-assistance/offer/${token}`;
     let held;
-    try { held = await reserveRoute(base44, offer, pathwayKey); }
+    try {
+      if (body.replace_existing === true && offer.payment_route_claim && offer.payment_route !== 'internal') {
+        const previousMethods = offer.payment_route_options ? JSON.parse(offer.payment_route_options).payment_method_types : null;
+        const sameMethod = !pathway.lender || !body.lender || (Array.isArray(previousMethods) && previousMethods.length === 1 && previousMethods[0] === body.lender);
+        if (offer.payment_route !== pathwayKey || !sameMethod) await closeKnownCheckout(base44,stripe,offer);
+      }
+      held = await reserveRoute(base44, offer, pathwayKey);
+    }
     catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
     if (held.payment_route_session) {
       const prior = await stripe.checkout.sessions.retrieve(held.payment_route_session);
@@ -184,7 +191,9 @@ export default async function (req) {
       // Network/5xx/idempotency ambiguity always keeps the reservation.
       if (error?.type === 'StripeInvalidRequestError' && error?.statusCode === 400) await releaseRoute(base44, held);
       return Response.json({ error: 'Checkout could not be confirmed. Retry this same option or contact Elite; no alternative payment was started.' }, { status: 409 }); }
-    await base44.asServiceRole.entities.EngineAssistanceOffer.update(offer.id, { payment_route_session: session.id });
+    await base44.asServiceRole.entities.EngineAssistanceOffer.updateMany({id:offer.id,payment_route_claim:held.payment_route_claim,payment_route:pathwayKey},{$set:{payment_route_session:session.id}});
+    const recordedRoute = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({id:offer.id}))[0];
+    if (recordedRoute?.payment_route_claim !== held.payment_route_claim || recordedRoute.payment_route !== pathwayKey) return Response.json({error:'Checkout changed. Reload your offer.'},{status:409});
     if (!session?.url || session.status === 'expired') return Response.json({ error: 'Checkout has closed. Reload your offer.' }, { status: 409 });
     const offeredMethods = requestOptions.payment_method_types;
     const note = '';

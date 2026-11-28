@@ -49,3 +49,25 @@ export async function retireOfferSessions(b: any, stripe: any, offer: any) {
   }
   throw new Error('Payment history needs staff verification.');
 }
+
+// Switch only a known checkout, never an ambiguous in-flight provider request.
+// Lock the old route before contacting Stripe and retain it if verification fails.
+export async function closeKnownCheckout(b: any, stripe: any, offer: any) {
+  if (!offer.payment_route_claim) return;
+  if (offer.payment_route === 'internal') throw new Error('Withdraw your in-house request first.');
+  if (!offer.payment_route_session) throw new Error('The existing checkout is still being verified. Retry the same option before switching.');
+  const current = rows(await entity(b).filter({id:offer.id}))[0];
+  if (!current || current.payment_route_claim !== offer.payment_route_claim || current.payment_route_session !== offer.payment_route_session) throw new Error('Payment option changed. Reload your offer.');
+  if (current.payment_route !== 'closing') {
+    await entity(b).updateMany({id:offer.id,payment_route_claim:current.payment_route_claim,payment_route:current.payment_route,payment_route_session:current.payment_route_session},{$set:{payment_route:'closing'}});
+  }
+  const closing = rows(await entity(b).filter({id:offer.id}))[0];
+  if (closing?.payment_route_claim !== current.payment_route_claim || closing.payment_route !== 'closing') throw new Error('Payment option changed. Reload your offer.');
+  // Verify the specific known session even if the provider list is delayed.
+  let session = await stripe.checkout.sessions.retrieve(closing.payment_route_session);
+  if (session.metadata?.source !== 'eed_engine_assistance_v1' || session.metadata?.offer_id !== offer.id) throw new Error('Existing checkout requires staff verification.');
+  if (session.status === 'open' && session.payment_status === 'unpaid') session = await stripe.checkout.sessions.expire(session.id);
+  if (session.status !== 'expired' || session.payment_status !== 'unpaid') throw new Error('Stripe is confirming an existing payment. Wait for confirmation before choosing another option.');
+  await retireOfferSessions(b,stripe,closing);
+  await releaseRoute(b,closing);
+}
