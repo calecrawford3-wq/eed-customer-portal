@@ -2,6 +2,7 @@
   "name": "Email",
   "type": "object",
   "properties": {
+    "acorn_auth_diagnostics":{"type":"object","description":"Non-sensitive receiver authentication summary; no raw headers."},
     "acorn_verification_status":{"type":"string","enum":["applied","unverified_sender","headers_unavailable","unmatched_or_already_resolved","retry_needed"]},
     "acorn_verified_checked_at":{"type":"string","format":"date-time"},
     "message_id": {

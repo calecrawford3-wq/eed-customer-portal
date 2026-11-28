@@ -53,14 +53,35 @@ export function exactAcornNoOffersMatch(email:any,offer:any,application:any) {
 // Trust only the receiving mail server's first Authentication-Results
 // header, requiring explicit aligned Acorn DMARC and DKIM passes.
 // Missing/ambiguous authentication stays in the staff review queue.
-export function acornHeaderAuthenticated(raw:any) {
-  if(typeof raw!=='string'||raw.length>120000)return false;
-  const first=raw.replace(/\r?\n[ \t]+/g,' ').split(/\r?\n/).find(line=>/^Authentication-Results:/i.test(line));
-  if(!first)return false;
+export function acornHeaderDiagnostics(raw:any) {
+  const empty={header_found:false,receiver:'',dkim:'',spf:'',dmarc:'',aligned_dkim:false,aligned_spf:false,aligned_from:false,verified:false};
+  if(typeof raw!=='string'||raw.length>120000)return empty;
+  const lines=raw.replace(/\r?\n[ \t]+/g,' ').split(/\r?\n/);
+  const first=lines.find(line=>/^Authentication-Results:/i.test(line));
+  if(!first)return empty;
   const result=first.replace(/^Authentication-Results:\s*/i,'');
-  return /^mx\.(?:zoho|zohomail)\.com\s*;/i.test(result)&&
-    /\bdkim=pass\b/i.test(result)&&/\bdmarc=pass\b[^;]*\bheader\.from=acornfinance\.com(?=\s|;|$)/i.test(result)&&
-    /\bheader\.d=acornfinance\.com(?=\s|;|$)/i.test(result);
+  const receiver=result.split(';')[0].trim().toLowerCase();
+  const trusted=/^mx\.(?:zoho|zohomail)\.com$/.test(receiver);
+  const parts=result.split(';').slice(1);
+  const method=(name:string)=>parts.filter(x=>new RegExp('^\\s*'+name+'=','i').test(x));
+  const value=(name:string)=>method(name)[0]?.match(/=([a-z_]+)/i)?.[1]?.toLowerCase()||'';
+  const aligned=(part:string,field:string)=>{
+    const match=part.match(new RegExp('\\b'+field.replace('.','\\.')+'\\s*=\\s*(?:"([^"]+)"|<([^>]+)>|([^\\s;()]+))','i'));
+    const ident=(match?.[1]||match?.[2]||match?.[3]||'').toLowerCase();
+    const domain=ident.split('@').at(-1)||'';
+    return domain==='acornfinance.com'||domain.endsWith('.acornfinance.com');
+  };
+  const dkim=method('dkim'), spf=method('spf'), dmarc=method('dmarc');
+  const alignedDkim=dkim.some(p=>/^\s*dkim=pass\b/i.test(p)&&(aligned(p,'header.d')||aligned(p,'header.i')));
+  const alignedSpf=spf.some(p=>/^\s*spf=pass\b/i.test(p)&&aligned(p,'smtp.mailfrom'));
+  const alignedFrom=dmarc.some(p=>/^\s*dmarc=pass\b/i.test(p)&&aligned(p,'header.from'));
+  // DMARC pass from the trusted receiving server establishes alignment even
+  // when Zoho omits header.d on its DKIM verdict. Explicit fail never passes.
+  const verified=trusted&&alignedFrom&&dmarc.length===1&&(alignedDkim||alignedSpf||(!dkim.some(p=>/header\.[di]\s*=/i.test(p))&&value("dkim")==="pass"));
+  return {header_found:true,receiver:trusted?receiver:'unrecognized',dkim:value('dkim'),spf:value('spf'),dmarc:value('dmarc'),aligned_dkim:alignedDkim,aligned_spf:alignedSpf,aligned_from:alignedFrom,verified};
+}
+export function acornHeaderAuthenticated(raw:any) {
+  return acornHeaderDiagnostics(raw).verified;
 }
 
 // Only an authenticated, uniquely matched notification can unlock fallback.
@@ -101,17 +122,19 @@ export async function retryAcornNotifications(base44:any, readHeaders:(email:any
     if(results.checked>=20)break;
     if(!parseAcornNoOffers(email)||email.acorn_verification_status==='applied')continue;
     const previous=Date.parse(email.acorn_verified_checked_at||'');
-    if(Number.isFinite(previous)&&now-previous<5*60000)continue;
+    if(Number.isFinite(previous)&&now-previous<5*60000&&email.acorn_auth_diagnostics)continue;
     results.checked++;
     let status='retry_needed';
+    let diagnostics=null;
     try{
       const header=await readHeaders(email);
+      diagnostics=acornHeaderDiagnostics(header);
       if(!header){status='headers_unavailable';results.unverified++;}
       else if(!acornHeaderAuthenticated(header)){status='unverified_sender';results.unverified++;}
       else if(await applyAcornNoOffersEmail(base44,email,header)){status='applied';results.applied++;}
       else {status='unmatched_or_already_resolved';results.unverified++;}
     }catch{results.retry_needed++;}
-    try{await entities.Email.update(email.id,{acorn_verification_status:status,acorn_verified_checked_at:new Date(now).toISOString()});}catch{results.retry_needed++;}
+    try{await entities.Email.update(email.id,{acorn_verification_status:status,acorn_verified_checked_at:new Date(now).toISOString(),acorn_auth_diagnostics:diagnostics});}catch{results.retry_needed++;}
   }
   return results;
 }
