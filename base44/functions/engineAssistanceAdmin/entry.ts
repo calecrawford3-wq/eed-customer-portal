@@ -157,7 +157,7 @@ export default async function (req) {
       const patch: any = {};
       if (data.split_financing_authorizations !== undefined) {
         const value=data.split_financing_authorizations||{};
-        patch.split_financing_authorizations=Object.fromEntries(['affirm','klarna','afterpay_clearpay'].map(type=>[type,str(value[type],300)]).filter(([,ref])=>ref.length>=5));
+        patch.split_financing_authorizations=Object.fromEntries(['affirm','sunbit','klarna','afterpay_clearpay'].map(type=>[type,str(value[type],300)]).filter(([,ref])=>ref.length>=5));
       }
       if (data.acorn_enabled !== undefined) patch.acorn_enabled = data.acorn_enabled === true;
       if (data.fund_name !== undefined) patch.fund_name = str(data.fund_name, 120);

@@ -166,7 +166,7 @@ export default async function (req) {
     catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
     const idempotencyKey = 'eed-eaf-' + held.payment_route_claim;
 
-    const descriptor = pathway.kind === 'deposit' ? 'Assistance offer deposit' : 'Engine assistance offer';
+    const descriptor = body.lender==='sunbit' ? 'Eligible engine services performed' : partial ? 'Partial engine assistance payment' : pathway.kind === 'deposit' ? 'Assistance offer deposit' : 'Engine assistance offer';
     const baseOptions: any = {
       mode: 'payment',
       payment_method_types: methods,

@@ -333,7 +333,9 @@ export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
       .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')));
     const latest=matches[0];
     const outcome=latest?.customer_reported_lender===m.type?latest.customer_reported_outcome:'';
-    const complete=!!latest?.stripe_session_id&&latest.status==='expired'&&latest.provider_decision!=='approved'&&(['declined','insufficient_amount'].includes(outcome)||latest.review_status==='denied');
+    const carried=latestReportedApproval(attempts,m.type);
+    const known=latest||carried;
+    const complete=!!known?.stripe_session_id&&known.status==='expired'&&known.provider_decision!=='approved'&&(['declined','insufficient_amount'].includes(known.customer_reported_outcome)||known.review_status==='denied');
     return {type:m.type,label:m.label,complete,attempted:!!latest?.stripe_session_id,outcome:outcome||''};
   });
   // A non-disclosed or approved-but-unused prior deposit attempt does not
@@ -364,35 +366,49 @@ export function depositContinuation(offer:any,plan:any){
 // permission was recorded. Never use a reported credit limit as authorization.
 export function splitFinancingMethods(settings:any){
   const authorization=settings?.split_financing_authorizations||{};
-  return ['affirm','klarna','afterpay_clearpay'].filter(m=>typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
+  return ['affirm','sunbit','klarna','afterpay_clearpay'].filter(m=>typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
 }
 export function partialPayments(offer:any,attempts:any[]){
   const ids=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.stripe_session_id));
   return (offer.payments||[]).filter(p=>p.stripe_session_id&&ids.has(p.stripe_session_id));
 }
+export function latestReportedApproval(attempts:any[],type:string){
+  const latest=attempts.filter(a=>a.offered_methods?.length===1&&a.offered_methods[0]===type&&a.customer_reported_lender===type&&a.customer_reported_outcome)
+    .sort((a,b)=>String(b.customer_reported_at||b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_reported_at||a.customer_consent_at||a.created_date||'')))[0];
+  if(latest?.status!=='expired'||latest.customer_reported_outcome!=='insufficient_amount'||!(Number(latest.customer_reported_approved_amount)>0)||cents(latest.customer_reported_approved_amount)>=cents(latest.amount))return null;
+  return latest;
+}
 export function partialSuggestions(offer:any,plan:any,attempts:any[],stage:string){
-  const max=stage==='deposit'?plan.deposit_outstanding:plan.totals.balance_due;
+  // Use the reported amount across stages; even a deposit-stage report can
+  // be larger than the remaining unpaid deposit but never exceed the balance.
+  const max=plan.totals.balance_due;
   const authorized=plan.split_financing_methods||[];
   const methods=plan.partial_available_methods||[];
   const consumed=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.partial_source_session_id));
-  const paid=(offer.payments||[]);
-  const originalPath=stage==='deposit'?'deposit_lender':stage==='remainder'?'remainder_affirm':'finance_full';
-  const splitActive=partialPayments(offer,attempts).length>0;
-  return attempts.filter(a=>a.status==='expired'&&a.customer_reported_outcome==='insufficient_amount'&&
-     a.offered_methods?.length===1&&a.customer_reported_lender===a.offered_methods[0]&&
-     (a.payment_pathway===originalPath||(splitActive&&stage==='remainder'&&['finance_full','deposit_lender'].includes(a.payment_pathway)))&&a.stripe_session_id&&!consumed.has(a.stripe_session_id)&&
-     Number.isFinite(a.customer_reported_approved_amount)&&a.customer_reported_approved_amount>0&&cents(a.customer_reported_approved_amount)<cents(a.amount))
-    .map(a=>{
-      const type=a.offered_methods[0];
-      // One report can be used once; never stack repeated payments on one provider's reported limit.
-      const amount=round2(Math.min(max,a.customer_reported_approved_amount));
-      const available=methods.some(m=>m.type===type&&m.available);
-      const alreadyPaid=paid.some(p=>p.method===type&&p.financed);
-      const limits=LENDER_LIMITS[type];
-      const enabled=authorized.includes(type)&&available&&!alreadyPaid&&!!limits&&amount>=limits.min&&amount<=limits.max;
-      return {type,label:FINANCING_METHODS.find(m=>m.type===type)?.label||type,amount,reported_amount:a.customer_reported_approved_amount,source_session_id:a.stripe_session_id,partial:true,enabled};
-    }).filter(x=>x.amount>0)
+  const paid=offer.payments||[];
+  return FINANCE_ORDER.map(type=>{
+    const a=latestReportedApproval(attempts,type);
+    if(!a?.stripe_session_id||consumed.has(a.stripe_session_id))return null;
+    const amount=round2(Math.min(max,Number(a.customer_reported_approved_amount)));
+    const available=methods.some(m=>m.type===type&&m.available);
+    const alreadyPaid=paid.some(p=>p.method===type&&p.financed);
+    const limits=LENDER_LIMITS[type];
+    const eligibleService=type!=='sunbit'||offer.sunbit_service_confirmed===true;
+    const enabled=authorized.includes(type)&&available&&!alreadyPaid&&eligibleService&&!!limits&&amount>=limits.min&&amount<=limits.max;
+    return {type,label:FINANCING_METHODS.find(m=>m.type===type)?.label||type,amount,reported_amount:a.customer_reported_approved_amount,source_session_id:a.stripe_session_id,partial:true,enabled,original_stage:a.payment_pathway};
+  }).filter(x=>x&&x.amount>0)
     .sort((a,b)=>b.amount-a.amount||FINANCE_ORDER.indexOf(a.type)-FINANCE_ORDER.indexOf(b.type));
+}
+export function proposedSplit(offer:any,plan:any,suggestions:any[]){
+  let balance=cents(plan.totals.balance_due);
+  const rows=suggestions.map(s=>{
+    const amount=Math.min(balance,cents(s.amount));
+    balance-=amount;
+    return {type:s.type,label:s.label,amount:amount/100,enabled:s.enabled};
+  }).filter(s=>s.amount>0);
+  const total=round2(rows.reduce((n,r)=>n+r.amount,0));
+  const enabledTotal=round2(rows.filter(r=>r.enabled).reduce((n,r)=>n+r.amount,0));
+  return {rows,reported_total:total,eligible_total:enabledTotal,estimated_balance:round2(Math.max(0,plan.totals.balance_due-total)),estimated_deposit_shortfall:round2(Math.max(0,plan.deposit_outstanding-total)),verified_balance:plan.totals.balance_due,verified_deposit_shortfall:plan.deposit_outstanding};
 }
 export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const balance=plan.totals.balance_due,deposit=plan.deposit_outstanding;
@@ -405,17 +421,19 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const entries=(list:any[],path:string,amount:number)=>ordered(allowed(list)).map(m=>{
     const a=attempts.filter(a=>a.payment_pathway===path&&cents(a.amount)===cents(amount)&&a.offered_methods?.length===1&&a.offered_methods[0]===m.type)
       .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')))[0];
-    const outcome=a?.customer_reported_lender===m.type?a.customer_reported_outcome:'';
-    const reviewed=!!a?.stripe_session_id&&a.status==='expired'&&!!outcome;
-    const noApproval=reviewed&&a.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
-    return {type:m.type,label:m.label,reviewed,no_approval:noApproval,outcome:outcome||'',attempted:!!a?.stripe_session_id};
+    const carried=path!=='finance_full'?latestReportedApproval(attempts,m.type):null;
+    const known=(!a&&carried)?carried:a;
+    const outcome=known?.customer_reported_lender===m.type?known.customer_reported_outcome:'';
+    const reviewed=!!known?.stripe_session_id&&known.status==='expired'&&!!outcome;
+    const noApproval=reviewed&&known.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
+    return {type:m.type,label:m.label,reviewed,no_approval:noApproval,outcome:outcome||'',attempted:!!a?.stripe_session_id,carried:!!(!a&&carried),reported_amount:outcome==='insufficient_amount'?known.customer_reported_approved_amount||0:0};
   });
   const full=entries(plan.pathways.finance_full.enabled?plan.pathways.finance_full.lenders:[],'finance_full',balance);
   const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
   const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
   const fullPartials=partialSuggestions(offer,plan,attempts,'full');
   const partialDepositPaid=splitPaid.some(p=>attempts.some(a=>a.stripe_session_id===p.stripe_session_id&&a.payment_pathway==='deposit_lender'));
-  const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled)?'deposit':'full';
+  const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled&&x.amount>=plan.deposit_outstanding)?'deposit':'full';
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
   const suggestions=stage==='full'?fullPartials:partialSuggestions(offer,plan,attempts,stage);
   const normal=list.find(x=>!x.reviewed)||null;
@@ -423,7 +441,7 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   // Complete the original check sequence first, then use the best disclosed amount.
   // Following a verified partial payment, recalculate before offering another checkout.
   const next=splitActive?partial||normal:normal||partial;
-  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,all_reviewed:!next};
+  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,split_plan:proposedSplit(offer,plan,suggestions),all_reviewed:!next};
 }
 export function guidedAcornOption(offer:any,settings:any,loan:any,plan:any,guide:any){
   if(guide.split_active){
@@ -564,7 +582,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
   // Sunbit is available for eligible work confirmed by staff; no Elite deposit prerequisite. Never offer it as an advance deposit.
   const eligibleSettings = { ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit' || offer.sunbit_service_confirmed === true) };
   const fullLenders = lendersForAmount(eligibleSettings, totals.balance_due);
-  const depositLenders = lendersForAmount({ ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit') }, depositOutstanding);
+  const depositLenders = lendersForAmount(eligibleSettings, depositOutstanding);
   const depositPossible = cents(depositTarget) > 0 && cents(depositTarget) < cents(totals.total);
 
   const payInFull = {
