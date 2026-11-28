@@ -118,6 +118,11 @@ export default function OfferPanel({ application, offer, onAction, busy, loan, d
               </div>
             )}
 
+            {!["draft","void","paid","declined","expired"].includes(offer.status) && <div className="rounded-lg border p-3 space-y-2">
+              <p className="text-xs font-semibold">Sunbit service eligibility</p>
+              <p className="text-xs text-slate-500">Only confirm after eligible services have actually begun. Not for advance deposits, vehicle purchases or insured/warranty-covered work.</p>
+              <Button size="sm" variant="outline" disabled={busy} onClick={()=>{if(offer.sunbit_service_confirmed || window.confirm("Confirm eligible services have begun and Sunbit's service restrictions are satisfied?")) onAction("set_sunbit_service",{offer_id:offer.id,confirmed:!offer.sunbit_service_confirmed});}}>{offer.sunbit_service_confirmed ? "Remove service confirmation" : "Confirm services started"}</Button>
+            </div>}
             {offer.status === "draft" && (
               <Button size="sm" disabled={busy || !(offer.line_items || []).length && !(offer.labor_items || []).length && !(offer.machining_items || []).length} onClick={() => onAction("send_offer", { offer_id: offer.id })}>
                 <Send className="h-4 w-4" /> Send offer to customer

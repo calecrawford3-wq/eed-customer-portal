@@ -64,7 +64,7 @@ export default async function (req) {
     const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
     const options = plan.pathways;
     if (loan && ['pending_approval', 'approved', 'active', 'completed'].includes(loan.status)) return Response.json({ error: 'Withdraw the in-house request before paying this balance through Stripe.' }, { status: 409 });
-    if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Affirm is not available for the remainder yet.' }, { status: 409 });
+    if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
 
 
     if (pathway.lender && body.consent !== true) {
@@ -107,11 +107,13 @@ export default async function (req) {
       // Only lenders that are configured in Stripe and cover this exact amount.
       const candidates = (pathway.kind === 'deposit'
         ? options.deposit_internal.deposit_lenders.eligible
-        : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => t === 'affirm' && liveEnabled.includes(t));
+        : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => liveEnabled.includes(t));
       if (!candidates.length) {
         return Response.json({ error: 'No lender is currently enabled for this amount. You can pay by card instead, or contact Elite Engine Development.' }, { status: 409 });
       }
-      methods = candidates;
+      const lender = typeof body.lender === 'string' ? body.lender : '';
+      if (lender && !candidates.includes(lender)) return Response.json({ error: 'This lender is not available for this payment amount.' }, { status: 409 });
+      methods = lender ? [lender] : candidates;
     } else {
       methods = ['card', ...(bankEnabled ? ['us_bank_account'] : [])];
     }
@@ -123,7 +125,11 @@ export default async function (req) {
     catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
     if (held.payment_route_session) {
       const prior = await stripe.checkout.sessions.retrieve(held.payment_route_session);
-      if (prior.status === 'open' && prior.url) return Response.json({ checkout_url: prior.url, session_id: prior.id });
+      if (prior.status === 'open' && prior.url) {
+        const previousMethods = held.payment_route_options ? JSON.parse(held.payment_route_options).payment_method_types : prior.payment_method_types;
+        if (pathway.lender && body.lender && (!Array.isArray(previousMethods) || previousMethods.length !== 1 || previousMethods[0] !== body.lender)) return Response.json({error:'Close the existing checkout before changing lenders.'},{status:409});
+        return Response.json({ checkout_url: prior.url, session_id: prior.id });
+      }
       if (prior.status === 'expired' || (offer.payments || []).some(p => p.stripe_session_id === prior.id)) {
         await releaseRoute(base44, held);
         return Response.json({ error: 'Checkout is closed. Reload your offer before trying again.' }, { status: 409 });
@@ -171,6 +177,7 @@ export default async function (req) {
     const persisted = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({ id: offer.id }))[0];
     if (persisted.payment_route_claim !== held.payment_route_claim || persisted.payment_route !== pathwayKey) return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
     const requestOptions = JSON.parse(persisted.payment_route_options);
+    if (pathway.lender && body.lender && (requestOptions.payment_method_types?.length !== 1 || requestOptions.payment_method_types[0] !== body.lender)) return Response.json({error:'Retry or close the existing lender checkout before changing lenders.'},{status:409});
     let session;
     try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
     catch (error) {
@@ -200,7 +207,7 @@ export default async function (req) {
         source: 'customer_checkout',
         customer_consent_at: now,
         customer_consent_text: pathway.kind === 'deposit'
-          ? 'Customer agreed to be directed to a third-party lender for the required deposit only. The remainder is separate and may be paid with Stripe/Affirm or requested from Elite subject to approval and a signed agreement.'
+          ? 'Customer agreed to be directed to a third-party lender for the required deposit only. The remainder is separate and may be paid with Stripe or another eligible lender or requested from Elite subject to approval and a signed agreement.'
           : 'Customer agreed to be directed to a third-party lender at Stripe Checkout. Elite does not submit a credit application and does not decide approval or terms.',
         audit_trail: [{ at: now, by: 'Customer', action: 'checkout_started', note: `${pathwayKey} checkout for ${amountCents / 100}` }],
       });

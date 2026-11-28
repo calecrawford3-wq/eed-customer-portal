@@ -12,8 +12,9 @@ import { financingOptions, financingTermLimits, loanTerms } from './financingTer
 export const ASSISTANCE_STRIPE_SOURCE = 'eed_engine_assistance_v1';
 export const FINANCING_METHODS = [
   { type: 'affirm', label: 'Affirm' },
+  { type: 'sunbit', label: 'Sunbit' },
   { type: 'klarna', label: 'Klarna' },
-  { type: 'afterpay_clearpay', label: 'Afterpay / Clearpay' },
+  { type: 'afterpay_clearpay', label: 'Cash App Afterpay' },
   { type: 'us_bank_account', label: 'ACH bank transfer' },
 ];
 
@@ -22,6 +23,7 @@ export const FINANCING_METHODS = [
 // honestly rather than promised in advance.
 export const LENDER_LIMITS: Record<string, { min: number; max: number }> = {
   affirm: { min: 50, max: 17500 },
+  sunbit: { min: 1, max: 20000 },
   klarna: { min: 1, max: 10000 },
   afterpay_clearpay: { min: 1, max: 2000 },
 };
@@ -381,8 +383,10 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
   const internalReserved = ['pending_approval', 'approved', 'active', 'completed'].includes(loanStatus) || offer.payment_route === 'internal';
   const gatewayOpen = paymentsEnabled && !expired && !fullyPaid && statusOpen && !internalReserved;
 
-  const fullLenders = lendersForAmount(settings, totals.balance_due);
-  const depositLenders = lendersForAmount(settings, depositOutstanding);
+  // Sunbit requires service initiation; never offer it for an advance deposit.
+  const eligibleSettings = { ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit' || (depositVerified && offer.sunbit_service_confirmed === true)) };
+  const fullLenders = lendersForAmount(eligibleSettings, totals.balance_due);
+  const depositLenders = lendersForAmount({ ...settings, financing_methods: (settings?.financing_methods || []).filter(m => m.type !== 'sunbit') }, depositOutstanding);
   const depositPossible = cents(depositTarget) > 0 && cents(depositTarget) < cents(totals.total);
 
   const payInFull = {
@@ -508,7 +512,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
                 ? identityStatus.reason
                 : ''),
     deposit_lenders: depositLenders,
-    finance_deposit_enabled: gatewayOpen && !depositVerified && depositPossible && depositLenders.eligible.some((m: any) => m.type === 'affirm'),
+    finance_deposit_enabled: gatewayOpen && !depositVerified && depositPossible && offer?.installments_enabled !== false && depositLenders.eligible.length > 0,
     finance_deposit_reason: depositLenders.eligible.length
       ? ''
       : (depositLenders.blocked[0]?.reason
@@ -535,7 +539,7 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
     lending_allowed: lending.allowed,
     payment_plan: paymentPlan,
     identity: { ...identityStatus, settings_available: identitySettings?.available === true },
-    pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath, remainder_affirm: { enabled: gatewayOpen && depositVerified && fullLenders.eligible.some((m: any) => m.type === 'affirm'), amount: totals.balance_due } },
+    pathways: { pay_in_full: payInFull, finance_full: financeFull, deposit_internal: depositPath, remainder_affirm: { enabled: depositVerified && financeFull.enabled, amount: totals.balance_due } },
   };
 }
 
@@ -804,7 +808,7 @@ export function verifiedAssistanceFacts(session: any, appId: string, live: boole
   // of methods that were offered. Fall back to a neutral label, not a guess.
   const charge = intentObj?.latest_charge && typeof intentObj.latest_charge === 'object' ? intentObj.latest_charge : null;
   const detailType = charge?.payment_method_details?.type;
-  const allowed = ['card', 'affirm', 'klarna', 'afterpay_clearpay', 'us_bank_account'];
+  const allowed = ['card', 'affirm', 'sunbit', 'klarna', 'afterpay_clearpay', 'us_bank_account'];
   const method = allowed.includes(detailType)
     ? detailType
     : 'other';
@@ -814,7 +818,7 @@ export function verifiedAssistanceFacts(session: any, appId: string, live: boole
     session_id: session.id,
     intent,
     method,
-    financed: ['affirm', 'klarna', 'afterpay_clearpay', 'financing'].includes(method),
+    financed: ['affirm', 'sunbit', 'klarna', 'afterpay_clearpay', 'financing'].includes(method),
     amount_option: session.metadata.amount_option || 'pay_in_full',
     live: session.livemode,
     date: new Date((Number(session.created) || Date.now() / 1000) * 1000).toISOString().slice(0, 10),

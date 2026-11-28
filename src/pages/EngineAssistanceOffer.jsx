@@ -100,10 +100,10 @@ export default function EngineAssistanceOffer() {
   const loan = offer?.internal_loan;
   const loanActive = !!loan && ["active", "completed"].includes(loan.status);
 
-  const checkout = async (pathway, consent) => {
+  const checkout = async (pathway, consent, lender) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) window.location.href = res.data.checkout_url;
       else throw new Error("Checkout could not be started");

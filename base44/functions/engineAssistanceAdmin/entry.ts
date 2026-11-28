@@ -567,6 +567,14 @@ export default async function (req) {
       return Response.json({ offer, application: updatedApp, customer });
     }
 
+    if (action === 'set_sunbit_service') {
+      const offer = await loadOffer(str(data.offer_id,60));
+      if (!offer || ['void','declined','paid','expired'].includes(offer.status) || offer.payment_route_claim) return Response.json({error:'Offer unavailable or checkout active. Close the checkout before changing Sunbit eligibility.'},{status:409});
+      const enabled = data.confirmed === true;
+      const updated = await offers.update(offer.id, {sunbit_service_confirmed: enabled, audit_trail:appendAudit(offer,user,'sunbit_service_eligibility',enabled?'Staff confirmed eligible services have commenced; not a vehicle purchase or advance deposit.':'Sunbit service confirmation removed.')});
+      return Response.json({offer:updated});
+    }
+
     if (action === 'update_offer') {
       const offer = await loadOffer(str(data.offer_id, 60));
       if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });

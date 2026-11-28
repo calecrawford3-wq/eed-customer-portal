@@ -48,6 +48,7 @@
         "gray"
       ]
     },
+    "sunbit_service_confirmed": {"type":"boolean","default":false,"description":"Staff confirmed eligible services have commenced; not for advance deposits or vehicle purchases."},
     "line_items": {
       "type": "array",
       "description": "Parts and kit lines on the assisted build",
@@ -278,6 +279,7 @@
               "card",
               "us_bank_account",
               "affirm",
+              "sunbit",
               "klarna",
               "afterpay_clearpay",
               "financing",
