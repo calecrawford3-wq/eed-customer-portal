@@ -10,8 +10,10 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import PublicAssistanceShell from "@/components/assistance/PublicAssistanceShell";
 import StatusBadge from "@/components/assistance/StatusBadge";
+import IncomeVerificationStep from "@/components/assistance/IncomeVerificationStep";
 
 const COPY = {
+  pending_payment: "Your application answers are saved. Complete income verification below to submit. The application deposit is temporarily waived.",
   submitted: "Your application is in the review queue. We look at every application by hand — no decision has been made yet.",
   under_review: "A person at Elite is reviewing your application. We may reach out with a question.",
   info_requested: "We need a little more information before we can decide. Reply below and your application goes back into review.",
@@ -26,6 +28,7 @@ export default function EngineAssistanceStatus() {
   const { token } = useParams();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [incomeState, setIncomeState] = useState(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["engine-assistance-status", token],
@@ -38,7 +41,7 @@ export default function EngineAssistanceStatus() {
   });
 
   const reply = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || (data?.income_request_pending && !incomeState?.can_submit)) return;
     setSending(true);
     try {
       const res = await base44.functions.invoke("engineAssistanceApply", { action: "respond_info", statusToken: token, message });
@@ -47,7 +50,7 @@ export default function EngineAssistanceStatus() {
       setMessage("");
       refetch();
     } catch (error) {
-      toast.error(error?.message || "Your reply could not be sent");
+      toast.error(error?.response?.data?.error || error?.message || "Your reply could not be sent");
     } finally {
       setSending(false);
     }
@@ -88,6 +91,13 @@ export default function EngineAssistanceStatus() {
           )}
         </CardContent></Card>
 
+        {["pending_payment", "info_requested"].includes(data.status) && <IncomeVerificationStep
+          statusToken={token}
+          showSubmit={data.status === "pending_payment"}
+          onSubmitted={() => refetch()}
+          onStateChange={setIncomeState}
+        />}
+
         {data.status === "info_requested" && (
           <Card><CardContent className="p-4 sm:p-6 space-y-3">
             <div className="flex items-start gap-2">
@@ -98,7 +108,8 @@ export default function EngineAssistanceStatus() {
               </div>
             </div>
             <Textarea className="min-h-28" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type your answer here" />
-            <Button disabled={sending || !message.trim()} onClick={reply}>
+            {data.income_request_pending && !incomeState?.can_submit && <p className="text-xs text-amber-800">Complete the requested income documents above before sending your reply.</p>}
+            <Button disabled={sending || !message.trim() || (data.income_request_pending && !incomeState?.can_submit)} onClick={reply}>
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Send reply
             </Button>
           </CardContent></Card>
