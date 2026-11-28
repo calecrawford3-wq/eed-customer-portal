@@ -54,7 +54,9 @@ export default async function (req) {
     if (offerExpired(offer)) return Response.json({ error: 'This offer has expired. Contact Elite Engine Development for an updated offer.' }, { status: 409 });
 
     if (offer.status === 'draft') return Response.json({ error: 'This offer has not been issued.' }, { status: 409 });
-    const settings = await ensureSettings(base44);
+    const stripe = new Stripe(key);
+    const availability = await readFinancingAvailability(stripe);
+    const settings = {...await ensureSettings(base44), financing_methods: availability.methods};
     const loan = rows(await base44.asServiceRole.entities.EngineAssistanceInternalLoan.filter({ offer_id: offer.id }))[0] || null;
     const agreement = await latestAgreement(base44, offer.id);
     // The deposit pathway re-checks the same identity gate the plan shows, so a
@@ -96,9 +98,6 @@ export default async function (req) {
     const appId = Deno.env.get('BASE44_APP_ID');
     if (!appId) return Response.json({ error: 'App configuration is missing' }, { status: 503 });
 
-    const stripe = new Stripe(key);
-    const live = key.startsWith('sk_live_');
-    const availability = await readFinancingAvailability(stripe);
     const liveEnabled = availability.methods.filter((m: any) => m.available).map((m: any) => m.type);
     const bankEnabled = liveEnabled.includes('us_bank_account');
 

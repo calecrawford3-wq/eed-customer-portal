@@ -257,6 +257,7 @@ export default function EngineAssistanceOffer() {
         ) : !["pending_approval", "approved"].includes(loan?.status) && !requestRemainder ? (
           <OfferPaymentStages offer={offer} paying={paying} onCheckout={checkout}
             onRequest={() => setRequestRemainder(true)}
+            onReport={(lender,outcome)=>runFinancing("report_lender_outcome",{lender,outcome},"Customer-reported outcome recorded")}
             onCancel={() => runFinancing("cancel_request", {}, "Request withdrawn")}
             onClose={async () => {
               try {

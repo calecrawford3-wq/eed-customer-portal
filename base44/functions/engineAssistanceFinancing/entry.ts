@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/as
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -70,6 +70,22 @@ export default async function (req) {
         await releaseRoute(base44, closing);
         return Response.json({ closed: true });
       } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+    }
+
+    if (action === 'report_lender_outcome') {
+      const lender = str(body.lender,40), outcome = str(body.outcome,40);
+      if (!FINANCING_METHODS.some(m=>m.type===lender && m.type!=='us_bank_account') || !['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed'].includes(outcome)) return Response.json({error:'Choose a lender and outcome.'},{status:400});
+      if (offer.payment_route_claim || ['paid','expired'].includes(offer.status)) return Response.json({error:'Close the outstanding checkout before recording an outcome.'},{status:409});
+      const attempts = base44.asServiceRole.entities.EngineAssistanceFinancingAttempt;
+      const matches = rows(await attempts.filter({offer_id:offer.id},'-created_date',100)).filter(a=>a.stripe_session_id && a.status!=='completed' && !a.customer_reported_outcome && a.offered_methods?.includes(lender));
+      if (!matches.length) return Response.json({error:'No unreported attempt for this lender.'},{status:409});
+      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if (!key) return Response.json({error:'Stripe verification unavailable.'},{status:503});
+      const attempt = matches[0];
+      const session = await new Stripe(key).checkout.sessions.retrieve(attempt.stripe_session_id);
+      if (session.metadata?.source !== 'eed_engine_assistance_v1' || session.metadata?.offer_id !== offer.id || session.metadata?.base44_app_id !== Deno.env.get('BASE44_APP_ID') || session.livemode !== key.startsWith('sk_live_') || session.status !== 'expired' || session.payment_status !== 'unpaid') return Response.json({error:'Only a closed, unpaid checkout can be reported.'},{status:409});
+      await attempts.updateMany({id:attempt.id, status:attempt.status, customer_reported_outcome:attempt.customer_reported_outcome===undefined?{$exists:false}:attempt.customer_reported_outcome},{$set:{customer_reported_lender:lender,customer_reported_outcome:outcome,customer_reported_at:new Date().toISOString(),status:'expired',audit_trail:appendAudit(attempt,'Customer','reported_lender_outcome','Customer-reported outcome; not a verified credit decision: '+outcome)}});
+      return Response.json({recorded:true});
     }
 
     if (action === 'request_internal') {

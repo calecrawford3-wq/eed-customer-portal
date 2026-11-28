@@ -27,6 +27,9 @@
         "type": "string"
       }
     },
+    "customer_reported_outcome": {"type":"string","enum":["declined","insufficient_amount","unsuitable_terms","technical_issue","not_completed"]},
+    "customer_reported_lender": {"type":"string"},
+    "customer_reported_at": {"type":"string"},
     "selected_method": {
       "type": "string",
       "description": "Lender reported by the provider for the completed payment, when supplied"

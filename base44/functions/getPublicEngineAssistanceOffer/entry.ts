@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { rows, publicOffer, offerExpired, ensureSettings } from '../../shared/engineAssistance.ts';
+import Stripe from 'npm:stripe@13.11.0';
+import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
@@ -48,12 +49,20 @@ export default async function (req) {
     };
 
     const paymentKey = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
+    if (paymentKey && liveSettings.payments_enabled) {
+      const availability = await readFinancingAvailability(new Stripe(paymentKey));
+      liveSettings.financing_methods = availability.methods;
+    }
+    const attempts = rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id}));
+    const reportable = FINANCING_METHODS.filter(m=>m.type !== 'us_bank_account' && attempts.some(a=>a.stripe_session_id && a.status !== 'completed' && !a.customer_reported_outcome && a.offered_methods?.includes(m.type)));
+
     return Response.json({
       offer: {
         ...publicOffer(current, application, liveSettings, loan, agreement, identity, identitySettings),
         // Lets the page say plainly whether checkout is a Stripe test. No key is
         // ever returned, only which mode the configured key runs in.
         payments_test_mode: paymentKey.startsWith('sk_test_'),
+        reportable_lenders: reportable.map(m=>({type:m.type,label:m.label})),
       },
     }, { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
   } catch (error: any) {

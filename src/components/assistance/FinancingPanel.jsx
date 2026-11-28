@@ -64,10 +64,11 @@ export default function FinancingPanel({ attempts = [], onReview, onRefresh, bus
             {!!(attempt.offered_methods || []).length && (
               <p className="text-[11px] text-slate-500">Offered: {attempt.offered_methods.join(", ")}</p>
             )}
-            {attempt.provider_decision === "not_reported" && <p className="text-[11px] text-slate-600">Lender credit decision not reported. A completed Affirm payment confirms funding of this amount only.</p>}
+            {attempt.provider_decision === "not_reported" && <p className="text-[11px] text-slate-600">Lender credit decision not reported. A completed lender payment confirms funding of this amount only.</p>}
+            {attempt.customer_reported_outcome && <p className="text-xs text-amber-800">Customer reported ({attempt.customer_reported_lender}): {attempt.customer_reported_outcome.replace(/_/g," ")} — not provider verified</p>}
             {attempt.selected_method && <p className="text-[11px] text-slate-600">Stripe payment method: {attempt.selected_method}</p>}
             {attempt.stripe_session_id && <p className="text-[11px] text-slate-500 break-all">Stripe session: {attempt.stripe_session_id}</p>}
-            {attempt.provider_decision_source === "stripe_verified_payment" && <p className="text-[11px] font-medium text-emerald-700">Affirm payment verified by Stripe</p>}
+            {attempt.provider_decision_source === "stripe_verified_payment" && <p className="text-[11px] font-medium text-emerald-700">Lender payment verified by Stripe</p>}
             {Number(attempt.verified_amount) > 0 && <p className="text-[11px] text-emerald-700">Verified {formatMoney(attempt.verified_amount)}</p>}
             {attempt.error_message && <p className="text-[11px] text-amber-700">{attempt.error_message}</p>}
             {attempt.review_evidence && <p className="text-[11px] text-slate-600">Evidence: {attempt.review_evidence}</p>}
