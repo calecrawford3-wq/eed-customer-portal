@@ -17,6 +17,9 @@ import OfferEditor from "./OfferEditor";
 import EmailDeliveryList from "./EmailDeliveryList";
 
 export default function OfferPanel({ application, offer, onAction, busy, loan, deliveries = [] }) {
+  const [acornStatus,setAcornStatus]=useState("pending");
+  const [acornRef,setAcornRef]=useState("");
+  const [acornEvidence,setAcornEvidence]=useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("check");
@@ -122,6 +125,17 @@ export default function OfferPanel({ application, offer, onAction, busy, loan, d
               <p className="text-xs font-semibold">Sunbit service eligibility</p>
               <p className="text-xs text-slate-500">Only confirm after eligible services have actually begun and the purchase amount is supported by eligible goods or work delivered/rendered. Not for advance deposits, vehicle purchases, existing financing or insured/warranty-covered work.</p>
               <Button size="sm" variant="outline" disabled={busy} onClick={()=>{if(offer.sunbit_service_confirmed || window.confirm("Confirm eligible services have begun and Sunbit's service restrictions are satisfied?")) onAction("set_sunbit_service",{offer_id:offer.id,confirmed:!offer.sunbit_service_confirmed});}}>{offer.sunbit_service_confirmed ? "Remove service confirmation" : "Confirm services started"}</Button>
+            </div>}
+            {offer.acorn_financing?.reference && <div className="rounded-lg border p-3 space-y-2">
+              <p className="text-sm font-semibold">Acorn Finance</p><p className="text-xs">Requested: {formatMoney(offer.acorn_financing.amount_cents/100)} · {offer.acorn_financing.status?.replace(/_/g," ")}</p>
+              <p className="text-xs break-all">Referral: {offer.acorn_financing.reference}</p>
+              {offer.acorn_financing.customer_review&&<p className="text-xs">Customer reported: {offer.acorn_financing.customer_review.replace(/_/g," ")}</p>}
+              <p className="text-xs text-slate-500">Confirm against Acorn's merchant dashboard or notification. This never records payment to Elite.</p>
+              <select className="w-full border rounded p-2 text-sm" value={acornStatus} onChange={e=>setAcornStatus(e.target.value)}>{["pending","offers_received","no_offers","funded"].map(x=><option key={x} value={x}>{x.replace(/_/g," ")}</option>)}</select>
+              <Input placeholder="Acorn application reference" value={acornRef} onChange={e=>setAcornRef(e.target.value)}/>
+              <Input placeholder="Verification source / date (no sensitive data)" value={acornEvidence} onChange={e=>setAcornEvidence(e.target.value)}/>
+              <Button size="sm" variant="outline" disabled={busy||!acornRef.trim()||acornEvidence.trim().length<10} onClick={()=>onAction("record_acorn_status",{offer_id:offer.id,status:acornStatus,application_reference:acornRef,evidence:acornEvidence})}>Record verified status</Button>
+              {offer.acorn_financing.status_source==="staff_verified"&&<p className="text-xs">Staff verified · {offer.acorn_financing.application_reference}</p>}
             </div>}
             {offer.lender_option_review?.reviewed_at && <div className="rounded-lg border p-3 space-y-2">
               <p className="text-xs font-semibold">Customer lender review · {formatMoney(offer.lender_option_review.amount_cents/100)}</p>

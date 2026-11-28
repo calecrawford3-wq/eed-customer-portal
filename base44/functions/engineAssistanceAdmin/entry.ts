@@ -154,6 +154,7 @@ export default async function (req) {
     if (action === 'update_settings') {
       const settings = await ensureSettings(base44);
       const patch: any = {};
+      if (data.acorn_enabled !== undefined) patch.acorn_enabled = data.acorn_enabled === true;
       if (data.fund_name !== undefined) patch.fund_name = str(data.fund_name, 120);
       if (data.fund_public_intro !== undefined) patch.fund_public_intro = str(data.fund_public_intro, 1200);
       if (data.default_offer_expiry_days !== undefined) patch.default_offer_expiry_days = Math.min(180, Math.max(1, num(data.default_offer_expiry_days) || 21));
@@ -565,6 +566,17 @@ export default async function (req) {
         audit_trail: appendAudit(app, user, 'offer_created', `Offer ${offer.offer_number} created`),
       });
       return Response.json({ offer, application: updatedApp, customer });
+    }
+
+    if (action === 'record_acorn_status') {
+      const offer=await loadOffer(str(data.offer_id,60));
+      const record=offer?.acorn_financing;
+      const status=str(data.status,40), evidence=str(data.evidence,500), applicationReference=str(data.application_reference,100);
+      if (!record?.reference || !['pending','offers_received','no_offers','funded'].includes(status)||evidence.length<10||!applicationReference) return Response.json({error:'An existing Acorn referral, application reference and verified evidence are required.'},{status:400});
+      if (record.status==='funded' && status!=='funded') return Response.json({error:'Funded status cannot be downgraded here.'},{status:409});
+      const next={...record,status,status_source:'staff_verified',status_at:new Date().toISOString(),application_reference:applicationReference,evidence};
+      await offers.updateMany({id:offer.id,acorn_financing:record},{$set:{acorn_financing:next,audit_trail:appendAudit(offer,user,'acorn_status_recorded','Acorn '+status+' (staff verified); not an Elite payment.')}});
+      return Response.json({offer:rows(await offers.filter({id:offer.id}))[0]});
     }
 
     if (action === 'set_sunbit_service') {

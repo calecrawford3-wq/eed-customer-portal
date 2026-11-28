@@ -2,6 +2,7 @@
   "name": "EngineAssistanceSettings",
   "type": "object",
   "properties": {
+    "acorn_enabled": {"type":"boolean","default":false,"description":"Enable after Acorn confirms merchant eligibility for racing engine builds."},
     "key": {
       "type": "string",
       "description": "Always 'global'"

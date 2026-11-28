@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
-import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus } from '../../shared/engineAssistance.ts';
+import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus, acornOption } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
@@ -64,6 +64,7 @@ export default async function (req) {
         // Lets the page say plainly whether checkout is a Stripe test. No key is
         // ever returned, only which mode the configured key runs in.
         payments_test_mode: paymentKey.startsWith('sk_test_'),
+        acorn: acornOption(current,liveSettings,loan),
         lender_review: {...lenderReviewStatus(current,offerPaymentPlan(current,liveSettings,loan,agreement,identity,identitySettings)),availability_error:lenderCheckError},
         sunbit_service_confirmed: current.sunbit_service_confirmed === true,
         reportable_lenders: reportable.map(m=>({type:m.type,label:m.label})),

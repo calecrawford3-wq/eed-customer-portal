@@ -115,6 +115,22 @@ export default function EngineAssistanceOffer() {
     }
   };
 
+  const openAcorn = async () => {
+    // Open synchronously to avoid popup blocking; never give the external site an opener.
+    const popup=window.open("about:blank","_blank");
+    if(!popup){toast.error("Allow popups for this portal and try again.");return;}
+    popup.opener=null;
+    try {
+      if(offer.checkout_open && !await runFinancing("close_checkout")) {popup.close();return;}
+      const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"start_acorn",amount_cents:Math.round(offer.acorn.amount*100),consent:true});
+      if(res.data?.error)throw new Error(res.data.error);
+      const url=new URL(res.data.application_url);
+      if(url.origin!=="https://www.acornfinance.com")throw new Error("Invalid financing link");
+      popup.location.replace(url.href);
+      await refetch();
+    } catch(error){popup.close();toast.error(error?.response?.data?.error||error.message||"Unable to open Acorn");}
+  };
+
   const runFinancing = async (action, payload = {}, successMessage) => {
     if (actionBusy) return;
     setActionBusy(
@@ -260,6 +276,9 @@ export default function EngineAssistanceOffer() {
               if (offer.checkout_open && !await runFinancing("close_checkout")) return;
               setRequestRemainder(true);
             }}
+            onAcornLaunch={openAcorn}
+            onAcornReview={outcome=>runFinancing("review_acorn",{outcome,amount_cents:Math.round(offer.acorn.amount*100)},"Acorn review saved")}
+            onAcornRefresh={refetch}
             onSaveReview={async (entries,amount_cents)=>{
               if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
               return runFinancing("save_lender_review",{entries,amount_cents},"Financing options reviewed");

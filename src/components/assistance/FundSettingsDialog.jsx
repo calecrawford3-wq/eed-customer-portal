@@ -21,6 +21,7 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
   useEffect(() => {
     setApplyUrl(bootstrap?.apply_url || "");
     setForm({
+      acorn_enabled: settings?.acorn_enabled === true,
       fund_name: settings?.fund_name || "Affordable Engine Fund",
       fund_public_intro: settings?.fund_public_intro || "",
       default_offer_expiry_days: settings?.default_offer_expiry_days || 21,
@@ -434,6 +435,7 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
               </Button>
             </div>
             <div className="mt-2 space-y-1">
+              <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={form.acorn_enabled===true} onChange={e=>setForm(f=>({...f,acorn_enabled:e.target.checked}))}/><span>Enable Acorn Finance (GLDIK)<br/><span className="text-xs text-slate-500">Enable only after Acorn confirms your engine-build business is eligible. Status sync is manual until authorized integration is configured.</span></span></label>
               {(settings?.financing_methods || []).map((method) => (
                 <div key={method.type} className="flex items-center justify-between text-xs">
                   <span className="text-slate-700">{method.label}</span>

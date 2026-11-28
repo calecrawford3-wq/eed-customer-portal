@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } f
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  FINANCING_METHODS, readFinancingAvailability, lenderReviewStatus, validateLenderReview, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, acornOption, acornApplicationUrl, ACORN_REVIEW_OUTCOMES, readFinancingAvailability, lenderReviewStatus, validateLenderReview, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -55,6 +55,32 @@ export default async function (req) {
     const identitySettings = await ensureIdentitySettings(base44);
     const identity = existing ? await loadVerificationForLoan(base44, existing.id) : null;
     const plan = offerPaymentPlan(offer, settings, existing, currentAgreement, identity, identitySettings);
+
+    if (action === 'start_acorn' || action === 'review_acorn') {
+      const option=acornOption(offer,settings,existing);
+      if (!option.eligible) return Response.json({error:'Acorn is not currently available for this offer.'},{status:409});
+      if (body.amount_cents!==cents(option.amount)) return Response.json({error:'The balance changed. Refresh your offer.'},{status:409});
+      if (offer.payment_route_claim) return Response.json({error:'Close the previous Stripe checkout before continuing.'},{status:409});
+      const now=new Date().toISOString();
+      const previous=offer.acorn_financing?.amount_cents===cents(option.amount)?offer.acorn_financing:null;
+      if (action==='start_acorn') {
+        if (body.consent!==true) return Response.json({error:'Confirm you want to open Acorn.'},{status:400});
+        const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),started_at:now,status:'opened',status_source:'portal',status_at:now};
+        if (!previous) {
+          await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record}});
+        }
+        const fresh=rows(await offers.filter({id:offer.id}))[0];
+        const saved=fresh?.acorn_financing;
+        if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(acornOption(fresh,settings,existing).amount)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
+        return Response.json({application_url:acornApplicationUrl(option.amount,saved.reference)});
+      }
+      const outcome=str(body.outcome,40);
+      if (!ACORN_REVIEW_OUTCOMES.includes(outcome)) return Response.json({error:'Choose your actual review outcome.'},{status:400});
+      if (!previous && outcome!=='reviewed_not_applied' && outcome!=='technical_issue') return Response.json({error:'Open Acorn before recording an application outcome.'},{status:409});
+      const next={...(previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),status:'pending',status_source:'portal',status_at:now}),customer_review:outcome,customer_review_at:now};
+      await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:next}});
+      return Response.json({saved:true});
+    }
 
     if (action === 'close_checkout') {
       try {
@@ -122,6 +148,7 @@ export default async function (req) {
         const review=await currentLenderReview();
         if (!review.complete) return Response.json({error:'Review all available third-party financing options for the current balance before requesting Elite financing.'},{status:409});
       } catch(e) {return Response.json({error:e.message},{status:409});}
+      if (!acornOption(offer,settings,existing).review_complete) return Response.json({error:'Review Acorn financing before requesting Elite financing.'},{status:409});
       // The financing application is validated here, not in the browser. Only
       // the allowlisted fields are stored, and no SSN or ID number is accepted.
       const applied = validateFinancingApplication(body.application);

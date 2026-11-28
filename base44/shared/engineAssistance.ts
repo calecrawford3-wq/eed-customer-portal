@@ -287,6 +287,25 @@ export function lendersForAmount(settings: any, amount: number) {
 
 // Reviews are customer attestations, never credit decisions. The exact unpaid
 // balance and enabled lender set must match before an in-house request.
+export const ACORN_DEALER_ID = 'GLDIK';
+export const ACORN_REVIEW_OUTCOMES = ['reviewed_not_applied','no_suitable_offers','insufficient_amount','technical_issue','waiting_for_funding'];
+export function acornOption(offer:any, settings:any, loan:any=null) {
+  const amount = computeOfferTotals(offer).balance_due;
+  const eligible = settings?.acorn_enabled===true && amount>=1000 && amount<=100000 && !offerExpired(offer) && !['draft','void','declined','expired','paid'].includes(offer.status) && offer.installments_enabled!==false && !['pending_approval','approved','active','completed'].includes(loan?.status) && offer.payment_route!=='internal';
+  const existing=offer.acorn_financing;
+  const current=existing?.amount_cents===cents(amount)?existing:null;
+  // A review is only an attestation, not proof of approval or a credit denial.
+  return {eligible,amount,reference:current?.reference||'',status:current?.status||'not_started',status_source:current?.status_source||'',customer_review:current?.customer_review||'',review_complete:!eligible||current?.status==='no_offers'||ACORN_REVIEW_OUTCOMES.includes(current?.customer_review)&&current?.customer_review!=='waiting_for_funding'};
+}
+export function acornApplicationUrl(amount:number,reference:string) {
+  const url=new URL('https://www.acornfinance.com/pre-qualify/');
+  url.searchParams.set('d',ACORN_DEALER_ID);
+  url.searchParams.set('utm_medium','web_pre_qual_link_copy_welcome');
+  url.searchParams.set('loanAmount',String(round2(amount)));
+  url.searchParams.set('utm_content',reference);
+  return url.toString();
+}
+
 export const LENDER_REVIEW_OUTCOMES = ['declined','insufficient_amount','unsuitable_terms','technical_issue','reviewed_not_applied'];
 export function lenderReviewStatus(offer: any, plan: any) {
   const required = plan.pathways.remainder_affirm.enabled ? plan.pathways.finance_full.lenders : [];
