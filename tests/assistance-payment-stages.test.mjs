@@ -54,7 +54,7 @@ function setup() {
         retrieve: async id => { if (!state.sessions[id]) throw new Error('Unknown session'); return clone(state.sessions[id]); },
         create: async (data, opts) => { state.requests.push({ data, opts }); return { id: 'cs_test_created', url: 'https://checkout.stripe.com/mock' }; },
       } };
-      this.paymentMethodConfigurations = { list: async () => ({data:[{active:true,affirm:{available:true}}]}) };
+      this.paymentMethodConfigurations = { list: async () => ({data:[state.lenderConfig || {active:true,affirm:{available:true}}]}) };
       const sessions = this.checkout.sessions;
       sessions.list = async () => ({data:Object.values(clone(state.sessions)),has_more:false});
       sessions.expire = async id => {
@@ -268,4 +268,28 @@ test('expired checkout is never a lender denial and stale failed event cannot ov
  Object.assign(h.state.sessions[d.body.session_id],{status:'complete',payment_status:'paid',payment_intent:{id:'pi_late',latest_charge:{payment_method_details:{type:'affirm'}}}});
  assert.equal((await h.deliver(d.body.session_id,'checkout.session.async_payment_failed')).status,200);
  assert.equal(h.state.rows.EngineAssistanceFinancingAttempt[0].status,'completed');
+});
+
+test('multi-lender checkout offers eligible methods and forbids changing lenders in an open checkout',async()=>{
+ const h=assistance();h.state.lenderConfig={active:true,affirm:{available:true},klarna:{available:true},afterpay_clearpay:{available:true},sunbit:{available:true}};
+ const start=lender=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'deposit_lender',consent:true,lender});
+ assert.equal((await start('sunbit')).status,409);
+ const k=await start('klarna');assert.equal(k.status,200);
+ assert.deepEqual(h.state.requests[0].data.payment_method_types,['klarna']);
+ assert.equal((await start('affirm')).status,409);
+ assert.equal(Object.keys(h.state.sessions).length,1);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'close_checkout'})).status,200);
+ const result=await h.call('engineAssistanceFinancing',{token:h.token,action:'report_lender_outcome',lender:'klarna',outcome:'declined'});
+ assert.equal(result.status,200);
+ const attempt=h.state.rows.EngineAssistanceFinancingAttempt[0];
+ assert.equal(attempt.customer_reported_outcome,'declined');assert.equal(attempt.provider_decision,'not_reported');
+ assert.equal((await start('afterpay_clearpay')).status,200);
+ assert.deepEqual(h.state.requests.at(-1).data.payment_method_types,['afterpay_clearpay']);
+});
+test('Sunbit is restricted to confirmed service after the deposit, and actual Sunbit charge is financing',async()=>{
+ const h=assistance();h.state.lenderConfig={active:true,sunbit:{available:true}};
+ const start=()=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway:'remainder_affirm',consent:true,lender:'sunbit'});
+ assert.equal((await start()).status,409);h.deposit();assert.equal((await start()).status,409);
+ h.offer.sunbit_service_confirmed=true;assert.equal((await start()).status,200);
+ assert.deepEqual(h.state.requests[0].data.payment_method_types,['sunbit']);
 });
