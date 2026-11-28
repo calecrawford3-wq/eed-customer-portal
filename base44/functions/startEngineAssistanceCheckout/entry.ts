@@ -41,7 +41,7 @@ export default async function (req) {
     if (payerOnly&&!/^[a-f0-9]{64}$/.test(typeof token==='string'?token:''))return Response.json({error:'Invalid payment link'},{status:400});
     if (!publicCapability(token)) return Response.json({ error: 'A valid offer link is required' }, { status: 400 });
 
-    if(payerOnly&&(body.pathway&&body.pathway!=='pay_in_full'||body.lender||body.partial_source_session_id||body.replace_existing))return Response.json({error:'Payment-only link supports full outstanding balance only.'},{status:400});
+    if(payerOnly&&(body.pathway&&body.pathway!=='pay_in_full'||body.lender||body.partial_source_session_id||body.smaller_amount_cents!==undefined||body.replace_existing))return Response.json({error:'Payment-only link supports full outstanding balance only.'},{status:400});
     const pathwayKey = payerOnly?'pay_in_full':String(body.pathway || (body.amountOption === 'installment' ? 'finance_full' : 'pay_in_full'));
     const pathway = PATHWAYS[pathwayKey];
     if (!pathway) return Response.json({ error: 'Choose a payment option' }, { status: 400 });
@@ -80,6 +80,7 @@ export default async function (req) {
 
     const guided=body.guided===true||offer.guided_financing_started===true;
     let partial:any=null;
+    let plannedPartial=false;
     if (pathway.lender) {
       const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
       const guide=guidedFinance(offer,plan,attempts);
@@ -87,14 +88,24 @@ export default async function (req) {
       if(!(pathwayKey==='remainder_affirm'&&depositContinuation(offer,plan)!==null)&&!acorn.review_complete)return Response.json({error:'Acorn financing review is not complete for this stage.'},{status:409});
       if(guided){
         const expected=guide.stage==='full'?'finance_full':guide.stage==='deposit'?'deposit_lender':'remainder_affirm';
-        if(pathwayKey!==expected||guide.next?.type!==body.lender)return Response.json({error:'Financing options changed. Refresh your offer to continue.'},{status:409});
-        if(guide.next?.partial){
-          if(body.partial_source_session_id!==guide.next.source_session_id)return Response.json({error:'Confirm the new partial payment amount before continuing.'},{status:409});
-          partial=guide.next;
-        }else if(body.partial_source_session_id)return Response.json({error:'The reported financing amount is no longer available. Refresh.'},{status:409});
+        if(pathwayKey!==expected)return Response.json({error:'Financing options changed. Refresh your offer to continue.'},{status:409});
+        if(body.partial_source_session_id){
+          if(body.smaller_amount_cents!==undefined)return Response.json({error:'Choose one payment amount.'},{status:400});
+          const selected=guide.ready_partials.find(p=>p.type===body.lender&&p.source_session_id===body.partial_source_session_id);
+          if(!selected)return Response.json({error:'This smaller checkout is not currently eligible. Refresh your offer.'},{status:409});
+          partial=selected;plannedPartial=true;
+        }else if(body.smaller_amount_cents!==undefined){
+          const smaller=guide.smaller_checkout;
+          const amount=body.smaller_amount_cents;
+          if(!smaller||smaller.type!==body.lender||typeof amount!=='number'||!Number.isSafeInteger(amount)||amount<cents(smaller.min_amount)||amount>cents(smaller.max_amount))return Response.json({error:'Choose an eligible smaller amount within the displayed range.'},{status:409});
+          partial={type:smaller.type,amount:amount/100};plannedPartial=true;
+        }else{
+          if(guide.next?.type!==body.lender||guide.next?.partial)return Response.json({error:'Confirm the displayed financing option and amount before continuing.'},{status:409});
+        }
 
       }
     }
+    if((body.partial_source_session_id||body.smaller_amount_cents!==undefined)&&!plannedPartial)return Response.json({error:'Smaller payments must use the guided financing flow.'},{status:409});
     if (pathway.lender && body.consent !== true) {
       return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
     }
@@ -202,7 +213,8 @@ export default async function (req) {
         payment_pathway: pathwayKey,
         expected_cents: String(amountCents),
         ...(payerOnly?{payer_only:'1'}:{}),
-        ...(partial?{partial_source_session_id:partial.source_session_id}:{}),
+        ...(plannedPartial?{planned_partial:'1'}:{}),
+        ...(partial?.source_session_id?{partial_source_session_id:partial.source_session_id}:{}),
         financing_type: pathway.lender ? 'lender_selected_at_checkout' : 'none',
         internal_loan_id: pathway.kind === 'deposit' ? (loan?.id || '') : '',
       },
@@ -215,7 +227,7 @@ export default async function (req) {
     if (persisted.payment_route_claim !== held.payment_route_claim || persisted.payment_route !== pathwayKey) return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
     const requestOptions = JSON.parse(persisted.payment_route_options);
     if((requestOptions.metadata?.payer_only==='1')!==payerOnly)return Response.json({error:'Another payment is in progress.'},{status:409});
-    if(Number(requestOptions.metadata?.expected_cents)!==amountCents)return Response.json({error:'Existing checkout amount changed. Close it before continuing.'},{status:409});
+    if((requestOptions.metadata?.planned_partial==='1')!==plannedPartial||String(requestOptions.metadata?.partial_source_session_id||'')!==String(partial?.source_session_id||'')||Number(requestOptions.metadata?.expected_cents)!==amountCents)return Response.json({error:'Existing checkout amount changed. Close it before continuing.'},{status:409});
     if (pathway.lender && body.lender && (requestOptions.payment_method_types?.length !== 1 || requestOptions.payment_method_types[0] !== body.lender)) return Response.json({error:'Retry or close the existing lender checkout before changing lenders.'},{status:409});
     let session;
     try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
@@ -239,7 +251,8 @@ export default async function (req) {
         application_id: offer.application_id || '',
         customer_id: offer.customer_id || '',
         amount: round2(amountCents / 100),
-        ...(partial?{partial_source_session_id:partial.source_session_id}:{}),
+        ...(plannedPartial?{planned_partial:true}:{}),
+        ...(partial?.source_session_id?{partial_source_session_id:partial.source_session_id}:{}),
         provider: 'stripe',
         offered_methods: offeredMethods,
         status: 'initiated',

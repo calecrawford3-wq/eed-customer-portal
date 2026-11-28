@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
   FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, guidedFinance, guidedAcornOption, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
-  buildLoanSchedule, shiftMonths, today, syncDepositState,
+  buildLoanSchedule, shiftMonths, today, syncDepositState, verifiedAssistanceFacts, recordAssistancePayment,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
 import {
@@ -125,10 +125,19 @@ export default async function (req) {
       const key=Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
       if(!key)return Response.json({error:'Stripe verification unavailable.'},{status:503});
       const stripe=new Stripe(key);
-      let session=await stripe.checkout.sessions.retrieve(attempt.stripe_session_id);
+      let session=await stripe.checkout.sessions.retrieve(attempt.stripe_session_id,{expand:['payment_intent.latest_charge']});
       if(session.metadata?.source!=='eed_engine_assistance_v1'||session.metadata?.offer_id!==offer.id||session.metadata?.base44_app_id!==Deno.env.get('BASE44_APP_ID')||session.livemode!==key.startsWith('sk_live_')||session.amount_total!==cents(attempt.amount))return Response.json({error:'Checkout verification failed.'},{status:409});
       const paid=session.payment_status==='paid'||session.status==='complete'||attempt.status==='completed';
-      if(action==='checkout_return')return Response.json({lender:type,label:FINANCING_METHODS.find(m=>m.type===type)?.label,amount:attempt.amount,pathway:attempt.payment_pathway,session_id:attempt.stripe_session_id,paid_or_pending:paid,payment_verified:(offer.payments||[]).some(p=>p.stripe_session_id===attempt.stripe_session_id),reported:!!attempt.customer_reported_outcome});
+      if(action==='checkout_return'){
+        let verified=(offer.payments||[]).some(p=>p.stripe_session_id===attempt.stripe_session_id);
+        if(session.payment_status==='paid'&&!verified){
+          try{
+            const facts=verifiedAssistanceFacts(session,Deno.env.get('BASE44_APP_ID'),key.startsWith('sk_live_'));
+            if(facts){await recordAssistancePayment(base44,facts);const fresh=rows(await offers.filter({id:offer.id}))[0];verified=!!fresh?.payments?.some(p=>p.stripe_session_id===attempt.stripe_session_id);}
+          }catch{ /* provider webhook can retry; do not report unverified payment */ }
+        }
+        return Response.json({lender:type,label:FINANCING_METHODS.find(m=>m.type===type)?.label,amount:attempt.amount,pathway:attempt.payment_pathway,session_id:attempt.stripe_session_id,paid_or_pending:paid,payment_verified:verified,reported:!!attempt.customer_reported_outcome});
+      }
       if(!['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed','prefer_not_to_say','approved_not_accepted'].includes(outcome))return Response.json({error:'Choose your actual outcome.'},{status:400});
       const approvedCents=outcome==='insufficient_amount'?Number(body.approved_amount_cents):0;
       if(outcome==='insufficient_amount'&&(!Number.isSafeInteger(approvedCents)||approvedCents<=0||approvedCents>=cents(attempt.amount)))return Response.json({error:'Enter an approved amount greater than zero and smaller than the requested amount.'},{status:400});

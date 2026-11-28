@@ -369,8 +369,8 @@ export function splitFinancingMethods(settings:any){
   return ['affirm','sunbit','klarna','afterpay_clearpay'].filter(m=>typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
 }
 export function partialPayments(offer:any,attempts:any[]){
-  const ids=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.stripe_session_id));
-  return (offer.payments||[]).filter(p=>p.stripe_session_id&&ids.has(p.stripe_session_id));
+  const ids=new Set(attempts.filter(a=>a.partial_source_session_id||a.planned_partial===true).map(a=>a.stripe_session_id));
+  return (offer.payments||[]).filter(p=>p.stripe_session_id&&p.financed===true&&(p.planned_partial===true||ids.has(p.stripe_session_id)));
 }
 export function latestReportedApproval(attempts:any[],type:string){
   const history=attempts.filter(a=>a.offered_methods?.length===1&&a.offered_methods[0]===type&&a.customer_reported_lender===type&&a.customer_reported_outcome)
@@ -437,7 +437,7 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
   const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
   const fullPartials=partialSuggestions(offer,plan,attempts,'full');
-  const partialDepositPaid=splitPaid.some(p=>attempts.some(a=>a.stripe_session_id===p.stripe_session_id&&a.payment_pathway==='deposit_lender'));
+  const partialDepositPaid=splitPaid.some(p=>p.payment_pathway==='deposit_lender'||p.amount_option==='deposit_lender'||attempts.some(a=>a.stripe_session_id===p.stripe_session_id&&a.payment_pathway==='deposit_lender'));
   const stage=plan.deposit_verified?'remainder':partialDepositPaid?'deposit':full.every(x=>x.reviewed)&&fullPartials.filter(x=>x.enabled).reduce((n,x)=>n+cents(x.amount),0)<cents(plan.deposit_outstanding)?'deposit':'full';
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
   const suggestions=stage==='full'?fullPartials:partialSuggestions(offer,plan,attempts,stage);
@@ -446,7 +446,13 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   // Complete the original check sequence first, then use the best disclosed amount.
   // Following a verified partial payment, recalculate before offering another checkout.
   const next=splitActive?partial||normal:normal||partial;
-  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,split_plan:proposedSplit(offer,plan,suggestions),all_reviewed:!next};
+  // A shopper may explicitly choose a smaller checkout before learning a
+  // lender result. This is a fresh request, never a presumed credit approval.
+  const smaller=normal&&plan.split_financing_methods?.includes(normal.type)&&!offer.payments?.some(p=>p.financed&&p.method===normal.type)
+    ?{type:normal.type,min_amount:LENDER_LIMITS[normal.type].min,max_amount:round2(Math.min(stage==='deposit'?deposit:balance,LENDER_LIMITS[normal.type].max)-0.01)}
+    :null;
+  const readyPartials=(!normal||splitActive)?suggestions.filter(s=>s.enabled):[];
+  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,ready_partials:readyPartials,smaller_checkout:smaller&&smaller.max_amount>=smaller.min_amount?smaller:null,split_plan:proposedSplit(offer,plan,suggestions),all_reviewed:!next};
 }
 export function guidedAcornOption(offer:any,settings:any,loan:any,plan:any,guide:any){
   if(guide.split_active){
@@ -1022,6 +1028,8 @@ export function verifiedAssistanceFacts(session: any, appId: string, live: boole
     intent,
     method,
     financed: ['affirm', 'sunbit', 'klarna', 'afterpay_clearpay', 'financing'].includes(method),
+    planned_partial:session.metadata.planned_partial==='1'||!!session.metadata.partial_source_session_id,
+    payment_pathway:session.metadata.payment_pathway||'',
     amount_option: session.metadata.amount_option || 'pay_in_full',
     live: session.livemode,
     date: new Date((Number(session.created) || Date.now() / 1000) * 1000).toISOString().slice(0, 10),
@@ -1050,6 +1058,8 @@ export async function recordAssistancePayment(base44: any, facts: any) {
     provider: 'stripe',
     financed: !!facts.financed,
     financed_amount: facts.financed ? round2(facts.amount / 100) : 0,
+    planned_partial: facts.planned_partial===true,
+    payment_pathway: facts.payment_pathway||'',
     amount_option: facts.amount_option || 'pay_in_full',
     stripe_session_id: facts.session_id,
     stripe_payment_intent: facts.intent,

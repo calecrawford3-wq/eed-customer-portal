@@ -118,12 +118,12 @@ export default function EngineAssistanceOffer() {
   const offer = data?.offer;
   const loan = offer?.internal_loan;
   const loanActive = !!loan && ["active", "completed"].includes(loan.status);
-  const returnVerified=!!(returnModal?.payment_verified||offer?.verified_lender_session_ids?.includes(returnModal?.session_id));
+  const returnVerified=!!offer?.verified_lender_session_ids?.includes(returnModal?.session_id);
 
-  const checkout = async (pathway, consent, lender, partialSource) => {
+  const checkout = async (pathway, consent, lender, partialSource, smallerAmountCents) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, partial_source_session_id:partialSource||undefined, guided: !!lender, replace_existing: true });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, partial_source_session_id:partialSource||undefined, smaller_amount_cents:smallerAmountCents, guided: !!lender, replace_existing: true });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) {
         if(lender&&res.data?.session_id&&offer?.id)try{sessionStorage.setItem("eed-lender-return:"+offer.id,res.data.session_id);}catch{}
@@ -155,6 +155,7 @@ export default function EngineAssistanceOffer() {
       setReturnOutcome("");
       setApprovedAmount("");
       setReturnModal({...res.data,saved:false});
+      if(res.data?.payment_verified)await refetch();
     }catch(error){
       checkedReturns.current.delete(sessionId);
       if(force)toast.error(error?.response?.data?.error||error.message);

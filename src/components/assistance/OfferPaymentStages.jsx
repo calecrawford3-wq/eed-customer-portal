@@ -4,6 +4,7 @@ import {Button} from "@/components/ui/button";
 import {formatMoney} from "@/lib/money";
 export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,onCancel,onAcornLaunch,onAcornRefresh,onReviewReturn,onSharePayment,sharing}){
  const [selectedChoice,setChoice]=useState("");
+ const [smallerAmount,setSmallerAmount]=useState("");
  const choice=selectedChoice||(offer.acorn?.reference||offer.deposit_verified||offer.pending_lender_return?"finance":"");
  const guide=offer.financing_guide||{};
  const deposit=offer.pathways?.deposit_internal||{};
@@ -33,8 +34,15 @@ export default function OfferPaymentStages({offer,paying,onCheckout,onRequest,on
       {guide.split_plan?.eligible_total<guide.split_plan?.reported_total&&<p className="text-xs text-amber-700">Currently authorized checkout amount: {formatMoney(guide.split_plan.eligible_total)}. The other reported offers are not available for split checkout yet.</p>}
       <p className="text-xs text-slate-500">Reported offers are not confirmed funding. Each authorized checkout must be completed and verified before balances change.</p>
     </div>}
+    {!!guide.ready_partials?.length&&!offer.pending_lender_return&&<div className="space-y-2"><p className="text-sm font-medium">Continue with a reported approval</p>{guide.ready_partials.map(e=><Button key={e.source_session_id} className="w-full min-h-11" variant="outline" disabled={busy} onClick={()=>onCheckout(pathway,true,e.type,e.source_session_id)}>Check out with {e.label} · {formatMoney(e.amount)}</Button>)}</div>}
     {next?.partial&&<p className="text-sm text-slate-600">Try {formatMoney(next.amount)} through {next.label}. Estimated outstanding balance after a successful payment: {formatMoney(Math.max(0,offer.balance_due-next.amount))}. No amount is credited until payment is verified.</p>}
     {offer.pending_lender_return?<Button className="w-full" disabled={busy} onClick={onReviewReturn}>Review previous checkout</Button>:next?<Button className="w-full min-h-11" disabled={busy} onClick={()=>onCheckout(pathway,true,next.type,next.source_session_id)}>Continue to {next.label}{next.partial?" · "+formatMoney(next.amount):""}</Button>:<p className="text-sm text-slate-600">All currently eligible options in this step have been reviewed.</p>}
+    {guide.smaller_checkout&&!offer.pending_lender_return&&<div className="border rounded-lg p-3 space-y-2">
+      <p className="text-sm font-medium">Request a smaller amount from {next?.label}</p>
+      <p className="text-xs text-slate-500">Choose an amount for a new lender checkout. Your outstanding balance only changes after a verified payment.</p>
+      <input aria-label="Smaller financing amount" type="number" inputMode="decimal" min={guide.smaller_checkout.min_amount} max={guide.smaller_checkout.max_amount} step="0.01" className="w-full border rounded p-2" placeholder="Amount ($)" value={smallerAmount} onChange={e=>setSmallerAmount(e.target.value)}/>
+      <Button variant="outline" className="w-full" disabled={busy||!Number.isFinite(Number(smallerAmount))||Number(smallerAmount)<guide.smaller_checkout.min_amount||Number(smallerAmount)>guide.smaller_checkout.max_amount} onClick={()=>onCheckout(pathway,true,guide.smaller_checkout.type,undefined,Math.round(Number(smallerAmount)*100))}>Continue with smaller amount</Button>
+    </div>}
     {!offer.deposit_verified&&stage==="deposit"&&guide.all_reviewed&&<Button className="w-full" variant="outline" disabled={busy||!deposit.enabled} onClick={()=>onCheckout("deposit_card",false)}>Pay remaining required deposit · {formatMoney(deposit.deposit_outstanding)}</Button>}
     {offer.internal_loan?.status==="declined"&&<Button variant="outline" disabled={busy} onClick={onCancel}>Withdraw declined request</Button>}
     {offer.internal_financing_unlocked&&<div className="border-t pt-3 space-y-2"><p className="text-sm font-medium">An additional payment option is available.</p><Button className="w-full" variant="outline" disabled={busy} onClick={onRequest}>Request Elite financing for remainder</Button></div>}

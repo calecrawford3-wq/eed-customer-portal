@@ -324,6 +324,8 @@
             "type": "number",
             "default": 0
           },
+          "planned_partial":{"type":"boolean","description":"Verified payment of a separately consented smaller checkout."},
+          "payment_pathway":{"type":"string"},
           "amount_option": {
             "type": "string",
             "description": "pay_in_full, installment, deposit, deposit_lender or manual"
