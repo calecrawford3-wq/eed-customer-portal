@@ -11,12 +11,14 @@
       "enum": [
         "offer",
         "application_approval",
-        "payment_confirmation"
+        "payment_confirmation",
+        "acorn_status_update"
       ],
       "enumColors": [
         "blue",
         "purple",
-        "green"
+        "green",
+        "blue"
       ],
       "description": "Which customer email this record tracks"
     },

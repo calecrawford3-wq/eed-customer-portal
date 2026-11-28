@@ -7,6 +7,7 @@ const KIND_LABELS = {
   offer: "Offer email",
   application_approval: "Approval email",
   payment_confirmation: "Payment confirmation",
+  acorn_status_update: "Financing status update",
 };
 
 const STATUS_STYLES = {

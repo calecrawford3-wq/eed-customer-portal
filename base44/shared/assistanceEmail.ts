@@ -223,7 +223,47 @@ export async function sendAssistanceEmail(base44: any, { to, subject, html, text
   };
 }
 
+export function acornStatusEmailContent({ application, offer }: any) {
+  return {
+    subject: 'Your Elite financing status has been updated',
+    html: layout({
+      heading: 'Your financing status has been updated',
+      intro: 'We have received an update to your financing request. Please return to your secure Elite offer to view your current status and available next steps.',
+      rows: [{label:'Offer number',value:offer?.offer_number||''}],
+      cta: {label:'View financing status',url:offerLink(offer?.share_token||'')},
+      note: 'This notification is not a payment confirmation or an offer of credit. Your private offer link shows the current status.'
+    }),
+  };
+}
+
+// One customer notice per meaningful status per Acorn referral. Reserve the
+// notice atomically before delivery; existing failed records can be retried
+// explicitly in the admin email history.
+export async function notifyAcornStatusChange(base44:any, offer:any, previousStatus:string, deliver=deliverAssistanceEmail) {
+  const record=offer?.acorn_financing;
+  const status=record?.status;
+  if(!record?.reference||!offer?.share_token||!offer?.application_id||status===previousStatus||
+    !['offers_received','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||
+    !['staff_verified','acorn_postback','zoho_verified'].includes(record.status_source)) return null;
+  const entities=base44.asServiceRole.entities;
+  const app=(await entities.EngineAssistanceApplication.filter({id:offer.application_id}))?.[0];
+  if(!app)return null;
+  const current=(await entities.EngineAssistanceOffer.filter({id:offer.id}))?.[0];
+  if(!current||current.acorn_financing?.reference!==record.reference||current.acorn_financing?.status!==status||
+     ['void','declined','expired','paid'].includes(current.status))return null;
+  const key=record.reference+':'+status;
+  const old=current.acorn_status_notice_claims;
+  const claims=Array.isArray(old)?old:[];
+  if(claims.some(c=>c.key===key))return null;
+  const claim=crypto.randomUUID();
+  await entities.EngineAssistanceOffer.updateMany({id:offer.id,acorn_financing:current.acorn_financing,acorn_status_notice_claims:old===undefined?{$exists:false}:old},{$set:{acorn_status_notice_claims:[...claims,{key,claim}]}});
+  const saved=(await entities.EngineAssistanceOffer.filter({id:offer.id}))?.[0];
+  if(!saved?.acorn_status_notice_claims?.some(c=>c.key===key&&c.claim===claim))return null;
+  return deliver(base44,{kind:'acorn_status_update',offer:saved,application:app,variant:key,actor:'Automatic'});
+}
+
 function buildContent(kind: string, context: any) {
+  if (kind === 'acorn_status_update') return acornStatusEmailContent(context);
   if (kind === 'offer') return offerEmailContent(context);
   if (kind === 'application_approval') return approvalEmailContent(context);
   if (kind === 'payment_confirmation') return paymentEmailContent(context);

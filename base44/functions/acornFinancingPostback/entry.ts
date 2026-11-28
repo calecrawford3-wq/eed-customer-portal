@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import { notifyAcornStatusChange } from '../../shared/assistanceEmail.ts';
 import { rows, ACORN_DEALER_ID } from '../../shared/engineAssistance.ts';
 
 // Acorn's documented partner postback uses an X-Authorization shared secret.
@@ -34,8 +35,10 @@ export default async function(req:Request){
     if(status!=='funded'&&old.status_source==='staff_verified'&&['no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(old.status))return Response.json({sendEmail:true,overRideRepInfo:false});
     const next={...old,status,status_source:'acorn_postback',status_at:new Date().toISOString(),application_reference:id,evidence:'Authenticated Acorn status notification; not payment to Elite.'};
     await offers.updateMany({id:offer.id,acorn_reference:ref,acorn_financing:old},{$set:{acorn_financing:next}});
-    const latest=rows(await offers.filter({id:offer.id}))[0]?.acorn_financing;
+    const updatedOffer=rows(await offers.filter({id:offer.id}))[0];
+    const latest=updatedOffer?.acorn_financing;
     if(latest?.status!==status||latest?.application_reference!==id)return Response.json({error:'Concurrent status update; retry'},{status:409});
+    try{await notifyAcornStatusChange(b,updatedOffer,old.status);}catch{console.warn('Acorn status recorded; customer email needs staff review.');}
     return Response.json({sendEmail:true,overRideRepInfo:false});
   } catch {return Response.json({error:'Notification could not be processed'},{status:400});}
 }

@@ -1,3 +1,4 @@
+import { notifyAcornStatusChange } from './assistanceEmail.ts';
 // Match only Acorn notifications already imported by the authorized Zoho sync.
 // Sender addresses alone are not authenticated proof of a credit decision.
 export const ACORN_MAILBOX = 'cale@eedpower.com';
@@ -84,8 +85,10 @@ export async function applyAcornNoOffersEmail(base44:any,email:any,headers:strin
   const next={...old,status:'no_offers',status_source:'zoho_verified',status_at:email.received_at,evidence:'Authenticated Acorn no-offers email; Zoho message '+String(email.id||email.message_id).slice(0,100)};
   await entities.EngineAssistanceOffer.updateMany({id:offer.id,acorn_financing:old},{$set:{acorn_financing:next}});
   const fresh=await entities.EngineAssistanceOffer.filter({id:offer.id});
-  return fresh?.[0]?.acorn_financing?.status_source==='zoho_verified' &&
+  const applied=fresh?.[0]?.acorn_financing?.status_source==='zoho_verified' &&
     fresh[0].acorn_financing.evidence===next.evidence;
+  if(applied)try{await notifyAcornStatusChange(base44,fresh[0],old.status);}catch{console.warn('Acorn status recorded; customer email needs staff review.');}
+  return applied;
 }
 
 // Retry the actual stored message, not just new messages since the sync cursor.

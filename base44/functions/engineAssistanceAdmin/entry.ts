@@ -16,7 +16,7 @@ import {
   applyIdentitySession, checkIdentityAvailability, ensureIdentitySettings, ensureVerificationRecord,
   identityAdminSummary, identityGate, loadVerificationForLoan, readIdentitySession,
 } from '../../shared/identityVerification.ts';
-import { deliverAssistanceEmail, retryAssistanceEmail, sendAssistanceEmail } from '../../shared/assistanceEmail.ts';
+import { deliverAssistanceEmail, retryAssistanceEmail, sendAssistanceEmail, notifyAcornStatusChange } from '../../shared/assistanceEmail.ts';
 import { financingOptions, financingTermLimits } from '../../shared/financingTerms.ts';
 
 // Admin-only Engine Assistance Center API. Every action re-checks the admin
@@ -597,7 +597,10 @@ export default async function (req) {
       if (record.status==='funded' && status!=='funded') return Response.json({error:'Funded status cannot be downgraded here.'},{status:409});
       const next={...record,status,status_source:'staff_verified',status_at:new Date().toISOString(),application_reference:applicationReference||record.reference,evidence:verifiedEvidence};
       await offers.updateMany({id:offer.id,acorn_financing:record},{$set:{acorn_financing:next,audit_trail:appendAudit(offer,user,'acorn_status_recorded','Acorn '+status+' (staff verified); not an Elite payment.')}});
-      return Response.json({offer:rows(await offers.filter({id:offer.id}))[0]});
+      const updatedOffer=rows(await offers.filter({id:offer.id}))[0];
+      let email=null;
+      try{email=await notifyAcornStatusChange(base44,updatedOffer,record.status);}catch{console.warn('Acorn status recorded; customer email needs staff review.');}
+      return Response.json({offer:updatedOffer,email});
     }
 
     if (action === 'set_sunbit_service') {

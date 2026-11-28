@@ -31,7 +31,7 @@ export default function OfferPaymentStages({ offer, paying, onCheckout, onClose,
     </div>}
     {choice==="finance" && <>
       {offer.acorn?.eligible && <AcornFinancingOption key={offer.acorn?.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onRefresh={onAcornRefresh}/>}
-      {!showAlternatives && <p className="text-sm text-slate-600">Other financing options become available after Elite confirms Acorn cannot provide suitable financing for your build. You can refresh the status above.</p>}
+      {!showAlternatives && <p className="text-sm text-slate-600">Other financing options become available if Acorn cannot provide suitable financing for your build. Your status will update once confirmation is received.</p>}
       {showAlternatives && <>
     <div className="border-t pt-3 space-y-2">
       <h3 className="font-semibold text-sm">Third-party financing</h3>
