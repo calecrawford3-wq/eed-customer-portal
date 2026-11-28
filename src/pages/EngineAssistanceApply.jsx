@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,11 @@ import { Loader2, Paperclip, CheckCircle2, Copy, AlertTriangle, X } from "lucide
 import { toast } from "sonner";
 import PublicAssistanceShell from "@/components/assistance/PublicAssistanceShell";
 import ApplicationFormFields from "@/components/assistance/ApplicationFormFields";
+import IncomeVerificationStep from "@/components/assistance/IncomeVerificationStep";
 
 export default function EngineAssistanceApply() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [answers, setAnswers] = useState({});
   const [consents, setConsents] = useState({ truthful: false, privacy: false, contact: true });
   const [documents, setDocuments] = useState([]);
@@ -20,27 +22,8 @@ export default function EngineAssistanceApply() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
-  const [feeConsent, setFeeConsent] = useState(false);
   const [pendingFee, setPendingFee] = useState(null);
-  const [bankConnected, setBankConnected] = useState(false);
-  const [bankBusy, setBankBusy] = useState(false);
-  const [bankSkipped, setBankSkipped] = useState(false);
-  const connectBank = async () => {
-    if (!pendingFee?.status_token) return;
-    setBankBusy(true);
-    try {
-      const { data } = await base44.functions.invoke("engineAssistanceApply", { action: "start_bank_link", status_token: pendingFee.status_token });
-      if (!data?.client_secret || !data?.publishable_key) throw new Error(data?.error || "Bank connection is not available");
-      if (!window.Stripe) await new Promise((resolve, reject) => { const script = document.createElement("script"); script.src = "https://js.stripe.com/v3/"; script.onload = resolve; script.onerror = () => reject(new Error("Could not load Stripe")); document.head.appendChild(script); });
-      const stripe = window.Stripe(data.publishable_key);
-      const response = await stripe.collectFinancialConnectionsAccounts({ clientSecret: data.client_secret });
-      if (response.error) throw new Error(response.error.message || "Bank connection cancelled");
-      const verified = await base44.functions.invoke("engineAssistanceApply", { action: "confirm_bank_link", status_token: pendingFee.status_token });
-      if (!verified.data?.connected) throw new Error("Bank connection was not confirmed");
-      setBankConnected(true); toast.success("Bank connected. Elite will review income information after submission.");
-    } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Unable to connect bank"); }
-    finally { setBankBusy(false); }
-  };
+  const [pendingIncomeStatus, setPendingIncomeStatus] = useState(null);
   const [step, setStep] = useState(0);
   const [draftSaved, setDraftSaved] = useState(false);
   const draftKey = `elite-assistance-draft:${token}`;
@@ -53,19 +36,16 @@ export default function EngineAssistanceApply() {
     if (!sessionId) return;
     base44.functions.invoke("engineAssistanceApply", { action: "confirm_fee", status_token: statusToken, session_id: sessionId })
       .then(({ data }) => { if (data?.paid) { setResult(data); setPendingFee(null); localStorage.removeItem(draftKey); toast.success("Submission deposit verified. Application received."); } else toast.error("Stripe has not confirmed the payment yet."); })
-      .catch(() => toast.error("Payment confirmation is pending. Use Retry payment verification."));
+      .catch((error) => toast.error(error?.response?.data?.error || "Payment confirmation is pending. Reload this return page to check again, or contact Elite."));
   }, [draftKey]);
-  const payFee = async (statusToken) => {
-    setSubmitting(true);
-    try { const { data } = await base44.functions.invoke("engineAssistanceApply", { action: "pay_fee", status_token: statusToken });
-      if (!data?.checkout_url) throw new Error(data?.error || "Checkout unavailable");
-      window.location.assign(data.checkout_url);
-    } catch (error) { toast.error(error?.response?.data?.error || error?.message || "Unable to start secure checkout"); }
-    finally { setSubmitting(false); }
-  };
   useEffect(() => {
-    try { const saved = JSON.parse(localStorage.getItem(draftKey) || "null"); if (saved) { setAnswers(saved.answers || {}); setDocuments(saved.documents || []); setStep(Math.max(0, Number(saved.step) || 0)); setDraftSaved(true); } } catch { /* unavailable storage */ }
+    try { const saved = JSON.parse(localStorage.getItem(draftKey) || "null"); if (saved?.status_token && !new URLSearchParams(window.location.search).get("application_status_token")) { setPendingFee({ status_token: saved.status_token, application_number: saved.application_number }); setDraftSaved(true); } else if (saved && !saved.status_token) { setAnswers(saved.answers || {}); setDocuments(saved.documents || []); setStep(Math.max(0, Number(saved.step) || 0)); setDraftSaved(true); } } catch { /* unavailable storage */ }
   }, [draftKey]);
+  useEffect(() => {
+    if (!pendingFee?.status_token || !pendingIncomeStatus?.application_status || pendingIncomeStatus.application_status === "pending_payment") return;
+    try { localStorage.removeItem(draftKey); } catch { /* storage unavailable */ }
+    navigate(`/engine-assistance/status/${encodeURIComponent(pendingFee.status_token)}`, { replace: true });
+  }, [pendingFee?.status_token, pendingIncomeStatus?.application_status, navigate, draftKey]);
   const saveDraft = (nextStep = step) => {
     try { localStorage.setItem(draftKey, JSON.stringify({ answers, documents, step: nextStep, saved_at: new Date().toISOString() })); setDraftSaved(true); return true; }
     catch { toast.error("Could not save on this device. Check browser storage settings."); return false; }
@@ -83,8 +63,8 @@ export default function EngineAssistanceApply() {
 
   const sections = data?.template?.sections || [];
   const fields = useMemo(() => sections.flatMap((s) => s.fields || []), [data]);
-  const totalSteps = sections.length + 2;
-  const currentStep = Math.min(step, totalSteps - 1);
+  const totalSteps = sections.length + 3;
+  const currentStep = Math.min(step, totalSteps - 2);
   const nextStep = () => {
     const missing = {};
     if (currentStep < sections.length) (sections[currentStep].fields || []).forEach(f => { if (f.required && !String(answers[f.key] ?? "").trim()) missing[f.key] = "Required"; });
@@ -132,16 +112,22 @@ export default function EngineAssistanceApply() {
         token,
         answers,
         consents,
-        fee_policy_accepted: feeConsent,
         documents,
       });
       if (res.data?.error) throw new Error(res.data.error);
-      if (res.data?.pending_payment) { setPendingFee({ status_token: res.data.status_token }); return; }
+      if (res.data?.pending_payment) {
+        const savedApplication = { status_token: res.data.status_token, application_number: res.data.application_number };
+        setPendingFee(savedApplication);
+        try { localStorage.setItem(draftKey, JSON.stringify({ ...savedApplication, saved_at: new Date().toISOString() })); }
+        catch { toast.message("Save your private status link to return to the income step."); }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       setResult(res.data);
       try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      toast.error(error?.message || "The application could not be submitted");
+      toast.error(error?.response?.data?.error || error?.message || "The application could not be submitted");
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +151,22 @@ export default function EngineAssistanceApply() {
     );
   }
 
-  if (pendingFee) return <PublicAssistanceShell title="Verify income & finish application" subtitle="Connect your bank securely before submitting. No application payment is required."><Card><CardContent className="p-6 space-y-4"><div className="space-y-2"><h3 className="font-bold">Income verification</h3><p className="text-sm text-slate-600">Connect the bank account where you receive income using Stripe Financial Connections. Stripe handles bank sign-in; Elite never receives your online banking password. Elite may review authorized transaction data to assess income. Bank connection is not a credit approval.</p><Button variant="outline" disabled={bankBusy || bankConnected} onClick={connectBank}>{bankBusy ? "Connecting…" : bankConnected ? "Bank connected" : "Securely connect bank"}</Button><p className="text-xs text-slate-500">If your bank is unsupported or you prefer not to connect it, you can provide supporting income documents during review.</p><label className="flex gap-2 items-start text-sm"><Checkbox checked={bankSkipped} onCheckedChange={v => setBankSkipped(v === true)} /><span>I will provide income documentation separately instead of linking a bank.</span></label></div><div className="border-t pt-4 space-y-2"><p className="text-sm">Submission deposit temporarily waived.</p><Button disabled={submitting || bankBusy || (!bankConnected && !bankSkipped)} onClick={async () => { setSubmitting(true); try { const {data} = await base44.functions.invoke("engineAssistanceApply", {action:"finish_without_fee",status_token:pendingFee.status_token}); if (!data?.ok) throw new Error(data?.error || "Submission failed"); setResult(data); setPendingFee(null); try {localStorage.removeItem(draftKey)} catch {} } catch(e) {toast.error(e?.response?.data?.error || e.message)} finally {setSubmitting(false)} }}>{submitting ? "Submitting…" : "Submit application — no payment"}</Button></div></CardContent></Card></PublicAssistanceShell>;
+  if (pendingFee) return (
+    <PublicAssistanceShell title="Income verification & submission" subtitle="Complete your bank connection or upload the required bank statements. No application payment is required.">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+          <p className="text-sm font-bold text-slate-900">Step {totalSteps} of {totalSteps}: Income verification</p>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar" aria-label="Application progress" aria-valuenow={totalSteps} aria-valuemin={0} aria-valuemax={totalSteps}><div className="h-full bg-red-600 w-full" /></div>
+          <p className="text-xs text-slate-600">Your application answers are saved. Complete this final step to enter the review queue.</p>
+        </div>
+        <IncomeVerificationStep statusToken={pendingFee.status_token} onStateChange={setPendingIncomeStatus} onSubmitted={(submitted) => {
+          setResult(submitted); setPendingFee(null);
+          try { localStorage.removeItem(draftKey); } catch { /* storage unavailable */ }
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }} />
+      </div>
+    </PublicAssistanceShell>
+  );
 
   if (result) {
     return (
@@ -198,7 +199,7 @@ export default function EngineAssistanceApply() {
     >
       <div className="space-y-5">
         <div className="rounded-xl bg-white border border-slate-200 p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3"><p className="text-sm font-bold text-slate-900">Step {currentStep + 1} of {totalSteps}: {sections[currentStep]?.title || (currentStep === sections.length ? "Supporting documents" : "Review & submit")}</p><span className="text-xs text-slate-600">{Math.round((currentStep + 1) / totalSteps * 100)}%</span></div>
+          <div className="flex items-center justify-between gap-3"><p className="text-sm font-bold text-slate-900">Step {currentStep + 1} of {totalSteps}: {sections[currentStep]?.title || (currentStep === sections.length ? "Supporting documents" : "Review your answers")}</p><span className="text-xs text-slate-600">{Math.round((currentStep + 1) / totalSteps * 100)}%</span></div>
           <div className="h-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={0} aria-valuemax={totalSteps}><div className="h-full bg-red-600 transition-all" style={{ width: `${(currentStep + 1) / totalSteps * 100}%` }} /></div>
           <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={() => saveDraft()}>Save draft on this device</Button>{draftSaved && <span className="text-xs text-emerald-700">Draft saved on this browser</span>}</div>
           <p className="text-xs text-slate-500">You can return using this browser to continue. Drafts are stored on this device, not submitted to Elite. Avoid shared computers.</p>
@@ -208,7 +209,7 @@ export default function EngineAssistanceApply() {
         {currentStep === sections.length && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <div>
             <h3 className="text-base font-bold text-slate-900">Supporting documents (optional)</h3>
-            <p className="text-sm text-slate-500">Photos of your engine, race results or a note from a track. Up to 5 files, stored privately.</p>
+            <p className="text-sm text-slate-500">Photos of your engine, race results or a note from a track. Up to 5 files, stored privately. Bank statements are collected separately in the income verification step.</p>
           </div>
           {documents.map((doc, index) => (
             <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-2 text-sm">
@@ -222,10 +223,10 @@ export default function EngineAssistanceApply() {
           </div>
         </CardContent></Card>}
 
-        {currentStep === totalSteps - 1 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
+        {currentStep === totalSteps - 2 && <Card><CardContent className="p-4 sm:p-6 space-y-3">
           <h3 className="text-base font-bold text-slate-900">Review and acknowledgements</h3>
           <p className="rounded-lg border p-3 text-sm">The application submission deposit is temporarily waived. No payment is required.</p>
-          <p className="text-sm text-slate-600">Review your answers before submitting. Use Back to make changes.</p>
+          <p className="text-sm text-slate-600">Review your answers before continuing to income verification. Use Back to make changes.</p>
           <div className="max-h-64 overflow-auto rounded-lg border p-3 space-y-2">{fields.filter(f => String(answers[f.key] ?? "").trim()).map(f => <div key={f.key} className="border-b pb-1 text-xs"><strong className="block text-slate-700">{f.label}</strong><span className="whitespace-pre-wrap break-words text-slate-600">{String(answers[f.key])}</span></div>)}</div>
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.template?.consent_text}</p>
           <div className="space-y-2.5">
@@ -244,8 +245,8 @@ export default function EngineAssistanceApply() {
           </div>
         </CardContent></Card>}
 
-        <div className="flex flex-wrap gap-3 justify-between"><Button type="button" variant="outline" disabled={currentStep === 0 || submitting} onClick={() => { saveDraft(currentStep - 1); setStep(currentStep - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back</Button>{currentStep < totalSteps - 1 ? <Button type="button" disabled={submitting} onClick={nextStep}>Next step</Button> : <Button size="lg" disabled={submitting} onClick={submit}>
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {submitting ? "Submitting…" : "Submit application"}
+        <div className="flex flex-wrap gap-3 justify-between"><Button type="button" variant="outline" disabled={currentStep === 0 || submitting} onClick={() => { saveDraft(currentStep - 1); setStep(currentStep - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back</Button>{currentStep < totalSteps - 2 ? <Button type="button" disabled={submitting} onClick={nextStep}>Next step</Button> : <Button size="lg" disabled={submitting} onClick={submit}>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {submitting ? "Saving application…" : "Continue to income verification"}
         </Button>}</div>
       </div>
     </PublicAssistanceShell>
