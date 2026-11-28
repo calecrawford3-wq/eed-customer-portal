@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
 import { rows, ensureGenericTemplate, nextApplicationNumber, newToken, publicApplicationStatus, appendAudit } from '../../shared/engineAssistance.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
+import { startBankLink, confirmBankLink, requireIncomeEvidence, IncomeError, incomeFailure, incomeResponse } from '../../shared/assistanceFinancial.ts';
 
 // Public, token-authorized Engine Assistance application endpoint.
 // The long random apply token is the only credential. No application ids,
@@ -38,47 +39,14 @@ export default async function (req) {
     const token = body.token;
 
     // Customer-authorized Stripe Financial Connections for AEF income review.
-    // Store only Stripe IDs and connection status; never bank credentials or raw transactions.
+    // Verify Stripe customer/session ownership; detailed data is held separately
+    // in admin-only financial records and never returned to this public path.
     if (action === 'start_bank_link' || action === 'confirm_bank_link') {
       const statusToken = body.status_token;
       if (!publicCapability(statusToken)) return Response.json({ error: 'Valid application token required.' }, { status: 400 });
       const app = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: statusToken }))[0];
       if (!app || !['pending_payment', 'submitted', 'under_review', 'info_requested'].includes(app.status)) return Response.json({ error: 'Application not available for bank verification.' }, { status: 404 });
-      const secret = Deno.env.get('PORTAL_STRIPE_SECRET_KEY') || '';
-      if (!/^sk_(test|live)_/.test(secret)) return Response.json({ error: 'Stripe is not configured.' }, { status: 503 });
-      const stripe = new Stripe(secret, { httpClient: Stripe.createFetchHttpClient() });
-      if (action === 'start_bank_link') {
-        const publishableKey = Deno.env.get('PORTAL_STRIPE_PUBLISHABLE_KEY') || Deno.env.get('STRIPE_PUBLISHABLE_KEY') || '';
-        if (!/^pk_(test|live)_/.test(publishableKey) || publishableKey.slice(3, 7) !== secret.slice(3, 7)) return Response.json({ error: 'Stripe Financial Connections needs a matching publishable key configured.' }, { status: 503 });
-        bankStage = 'creating Stripe customer';
-        let customerId = app.income_verification_customer_id;
-        if (!customerId) {
-          const customer = await stripe.customers.create({ email: app.email, name: [app.first_name, app.last_name].filter(Boolean).join(' '), metadata: { aef_application_id: app.id } });
-          customerId = customer.id;
-          await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { income_verification_customer_id: customerId });
-        }
-        bankStage = 'creating Financial Connections session';
-        const session = await stripe.financialConnections.sessions.create({
-          account_holder: { type: 'customer', customer: customerId },
-          permissions: ['transactions', 'ownership'],
-          filters: { countries: ['US'] },
-        });
-        bankStage = 'saving Financial Connections session';
-        await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, {
-          income_verification_status: 'requested', income_verification_provider: 'stripe_financial_connections',
-          income_verification_session_id: session.id,
-        });
-        return Response.json({ client_secret: session.client_secret, publishable_key: publishableKey });
-      }
-      if (!app.income_verification_session_id) return Response.json({ error: 'Start a bank connection first.' }, { status: 409 });
-      const session = await stripe.financialConnections.sessions.retrieve(app.income_verification_session_id);
-      const accounts = session.accounts?.data || [];
-      if (!accounts.length) return Response.json({ connected: false, message: 'No bank account connection has been confirmed.' });
-      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, {
-        income_verification_status: 'connected', income_verification_account_count: accounts.length,
-        income_verification_verified_at: new Date().toISOString(),
-      });
-      return Response.json({ connected: true, account_count: accounts.length, note: 'Bank connection confirmed; income has not yet been reviewed.' });
+      return incomeResponse(action === 'start_bank_link' ? await startBankLink(base44, app, body.consent === true) : await confirmBankLink(base44, app));
     }
 
     // Stripe-hosted submission deposit. Server verifies the exact Checkout session;
@@ -88,10 +56,13 @@ export default async function (req) {
     if (action === 'finish_without_fee') {
       if (!publicCapability(body.status_token)) return Response.json({ error: 'Valid application token required.' }, { status: 400 });
       const app = rows(await base44.asServiceRole.entities.EngineAssistanceApplication.filter({ status_token: body.status_token }))[0];
-      if (!app || app.status !== 'pending_payment' || app.submission_fee_session_id || app.submission_fee_status === 'paid') return Response.json({ error: 'Application requires payment reconciliation or is already submitted.' }, { status: 409 });
+      if (!app) return incomeResponse({ error: 'Application not found.' }, 404);
+      if (['submitted', 'under_review'].includes(app.status) && app.submission_fee_status === 'not_required') return incomeResponse({ ok: true, application_number: app.application_number, status_token: body.status_token });
+      if (app.status !== 'pending_payment' || app.submission_fee_session_id || app.submission_fee_status === 'paid') return incomeResponse({ error: 'Application requires payment reconciliation or is already submitted.' }, 409);
+      await requireIncomeEvidence(base44, app);
       const now = new Date().toISOString();
-      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { status: 'submitted', submission_fee_status: 'not_required', submission_fee_cents: 0, submitted_at: now, audit_trail: [...(app.audit_trail || []), { at: now, by: 'System', action: 'fee_waived', note: 'Temporary application fee pause; no payment collected.' }] });
-      return Response.json({ ok: true, application_number: app.application_number, status_token: body.status_token });
+      await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { status: 'submitted', income_request_pending: false, submission_fee_status: 'not_required', submission_fee_cents: 0, submitted_at: now, audit_trail: [...(app.audit_trail || []), { at: now, by: 'System', action: 'fee_waived', note: 'Temporary application fee pause; no payment collected.' }] });
+      return incomeResponse({ ok: true, application_number: app.application_number, status_token: body.status_token });
     }
     if (action === 'confirm_fee' || action === 'pay_fee') {
       const statusToken = body.status_token;
@@ -148,13 +119,15 @@ export default async function (req) {
       const message = clamps(body.message, 2500);
       if (!message) return Response.json({ error: 'Enter the information requested' }, { status: 400 });
       if (found.status !== 'info_requested') return Response.json({ error: 'No information is currently requested on this application' }, { status: 409 });
+      if (found.income_request_pending) await requireIncomeEvidence(base44, found);
       await base44.asServiceRole.entities.EngineAssistanceApplication.update(found.id, {
         info_response: message,
         info_responded_at: new Date().toISOString(),
         status: 'under_review',
+        income_request_pending: false,
         audit_trail: appendAudit(found, 'Applicant', 'info_received', 'Applicant supplied the requested information'),
       });
-      return Response.json({ ok: true, application: publicApplicationStatus({ ...found, status: 'under_review', info_response: message }) });
+      return Response.json({ ok: true, application: publicApplicationStatus({ ...found, status: 'under_review', income_request_pending: false, info_response: message }) });
     }
 
     if (!publicCapability(token)) return Response.json({ error: 'A valid application link is required' }, { status: 400 });
@@ -183,7 +156,7 @@ export default async function (req) {
 
     const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
     const consents = body.consents && typeof body.consents === 'object' ? body.consents : {};
-    if (!consents.truthful || !consents.privacy) return Response.json({ error: 'Certification, privacy notice and submission deposit policy must be accepted.' }, { status: 400 });
+    if (!consents.truthful || !consents.privacy) return Response.json({ error: 'Certification and privacy notice must be accepted.' }, { status: 400 });
 
     const fields = (template.sections || []).flatMap((s: any) => s.fields || []);
     const missing = fields.filter((f: any) => f.required && !clamps(answers[f.key], 40)).map((f: any) => f.label || f.key);
@@ -214,6 +187,8 @@ export default async function (req) {
       submission_fee_policy_version: 'aef-deposit-v1',
       submission_fee_credit_cents: 0,
       income_verification_status: 'not_requested',
+      income_statement_months: 3,
+      income_request_pending: false,
       template_key: template.key,
       template_version: template.version_number,
       source: 'public_form',
@@ -244,11 +219,12 @@ export default async function (req) {
       consent_version: `${template.key}-v${template.version_number}`,
       documents: safeDocs,
       status_token: statusToken,
-      audit_trail: [{ at: now, by: 'Applicant', action: 'application_prepared', note: 'Application prepared, awaiting verified submission deposit.' }],
+      audit_trail: [{ at: now, by: 'Applicant', action: 'application_prepared', note: 'Application saved, awaiting a bank connection or complete monthly statements. Application payment is paused.' }],
     });
 
     return Response.json({ ok: true, pending_payment: true, application_number: created.application_number, status_token: statusToken, status_url: `/engine-assistance/status/${statusToken}` });
   } catch (error: any) {
+    if (error instanceof IncomeError || ['start_bank_link', 'confirm_bank_link', 'finish_without_fee'].includes(requestedAction)) return incomeFailure(error);
     console.error('[engineAssistanceApply]', requestedAction, bankStage, error?.message);
     if (['start_bank_link','confirm_bank_link'].includes(requestedAction)) {
       const code = String(error?.code || error?.type || '').replace(/[^a-zA-Z0-9_]/g,'').slice(0,80);
