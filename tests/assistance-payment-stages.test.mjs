@@ -76,7 +76,7 @@ function setup() {
     }
   }
   const cache = new Map();
-  const env = { get: key => ({ STRIPE_SECRET_KEY: 'sk_test_mock', PORTAL_STRIPE_SECRET_KEY: 'sk_test_mock', PORTAL_STRIPE_TEST_CUSTOMER_ID: 'A', BASE44_APP_ID: 'appA', PORTAL_STRIPE_WEBHOOK_SECRET: 'whsec_mock',
+  const env = { get: key => key==='ACORN_POSTBACK_KEY' ? state.acornKey : ({ STRIPE_SECRET_KEY: 'sk_test_mock', PORTAL_STRIPE_SECRET_KEY: 'sk_test_mock', PORTAL_STRIPE_TEST_CUSTOMER_ID: 'A', BASE44_APP_ID: 'appA', PORTAL_STRIPE_WEBHOOK_SECRET: 'whsec_mock',
     PORTAL_BASE_URL: 'https://portal.eedpower.com', GUEST_CHECKOUT_ENABLED: String(state.enabled), PORTAL_PAYMENTS_ENABLED: String(state.enabled), PORTAL_STRIPE_RECORDING_READY: String(state.enabled) })[key] };
   function load(file) {
     if (cache.has(file)) return cache.get(file);
@@ -86,9 +86,9 @@ function setup() {
     new Function('require', 'exports', 'Deno', ts.transpile(readFileSync(file, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(require, exports, { env });
     return exports;
   }
-  const call = async (name, body, sig = 'valid') => {
+  const call = async (name, body, sig = 'valid', headers = {}) => {
     const fn = load(path.resolve('base44/functions', name, 'entry.ts')).default;
-    const response = await fn(new Request('https://portal.test', { method: 'POST', headers: { 'stripe-signature': sig }, body: JSON.stringify(body) }));
+    const response = await fn(new Request('https://portal.test', { method: 'POST', headers: { 'stripe-signature': sig, ...headers }, body: JSON.stringify(body) }));
     return { status: response.status, body: await response.json() };
   };
   const payment = (id = 'cs_test_first', type = 'invoice', amount = 30000) => {
@@ -372,4 +372,23 @@ test('Acorn amount uses whole dollars without decimal punctuation',()=>{
   assert.equal(url.searchParams.get('loanAmount'),expected);
   assert.equal(url.searchParams.get('d'),'GLDIK');
  }
+});
+
+test('Acorn postback verifies authorization and referral, never credits payment or downgrades funded status',async()=>{
+ const h=assistance();h.settings.acorn_enabled=true;
+ const launch=await h.call('engineAssistanceFinancing',{token:h.token,action:'start_acorn',amount_cents:100000,consent:true});
+ assert.equal(launch.status,200);assert.equal(launch.body.widget.amount,1000);assert.equal(launch.body.widget.dealer_id,'GLDIK');
+ const payload={partnerId:h.offer.acorn_reference,dealerId:'GLDIK',applicationId:'test-acorn-application',processStatus:'NO OFFER',firstName:'Test',email:'test@example.invalid'};
+ const send=(body,auth)=>h.call('acornFinancingPostback',body,'valid',{'X-Authorization':auth});
+ h.state.acornKey='test-secret-for-automated-fixture-only-123';
+ assert.equal((await send(payload,'wrong')).status,401);
+ assert.equal((await send({...payload,dealerId:'OTHER'},h.state.acornKey)).status,400);
+ assert.equal((await send(payload,h.state.acornKey)).status,200);
+ assert.equal(h.offer.acorn_financing.status,'no_offers');assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,true);
+ assert.equal(h.offer.acorn_financing.email,undefined);
+ assert.equal((await send({...payload,processStatus:'FUNDED'},h.state.acornKey)).status,200);
+ assert.equal(h.offer.acorn_financing.status,'funded');assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
+ assert.equal((await send(payload,h.state.acornKey)).status,200);
+ assert.equal(h.offer.acorn_financing.status,'funded');
+ assert.equal((await send({...payload,applicationId:'other'},h.state.acornKey)).status,409);
 });
