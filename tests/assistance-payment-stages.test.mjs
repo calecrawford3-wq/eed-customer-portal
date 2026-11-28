@@ -392,3 +392,21 @@ test('Acorn postback verifies authorization and referral, never credits payment 
  assert.equal(h.offer.acorn_financing.status,'funded');
  assert.equal((await send({...payload,applicationId:'other'},h.state.acornKey)).status,409);
 });
+
+test('Acorn-first financing gate blocks other lenders until verified fallback, but outright payment remains available',async()=>{
+ const h=assistance();h.settings.acorn_enabled=true;
+ h.offer.line_items[0].unit_price=4000;
+ const checkout=(pathway)=>h.call('startEngineAssistanceCheckout',{token:h.token,pathway,lender:'affirm',consent:true,replace_existing:true});
+ assert.equal((await checkout('finance_full')).status,409);
+ assert.equal((await checkout('deposit_lender')).status,409);
+ const acorn=await h.call('engineAssistanceFinancing',{token:h.token,action:'start_acorn',amount_cents:400000,consent:true});
+ assert.equal(acorn.status,200);
+ h.offer.acorn_financing.status='offers_received';h.offer.acorn_financing.status_source='acorn_postback';
+ assert.equal((await checkout('finance_full')).status,409);
+ h.offer.acorn_financing.status='no_offers';h.offer.acorn_financing.status_source='portal';
+ assert.equal((await checkout('finance_full')).status,409);
+ h.offer.acorn_financing.status_source='staff_verified';
+ assert.equal((await checkout('finance_full')).status,200);
+ const other=assistance();other.settings.acorn_enabled=true;
+ assert.equal((await other.checkout('pay_in_full')).status,200);
+});
