@@ -410,3 +410,13 @@ test('Acorn-first financing gate blocks other lenders until verified fallback, b
  const other=assistance();other.settings.acorn_enabled=true;
  assert.equal((await other.checkout('pay_in_full')).status,200);
 });
+test('Acorn Zoho evidence matches only the intended mailbox and current referral or borrower',()=>{
+ const h=assistance(), a=h.load(path.resolve('base44/shared/acornEmail.ts'));
+ const offer={acorn_financing:{reference:'eed-current-ref',started_at:'2026-11-28T07:00:00Z'}};
+ const app={email:'customer@example.invalid'};
+ const mail={id:'m1',direction:'inbound',account_address:'cale@eedpower.com',from_email:'notify@acornfinance.com',received_at:'2026-11-28T07:05:00Z',subject:'Financing update',body_text:'Reference eed-current-ref'};
+ assert.equal(a.matchAcornEmail(mail,offer,app).match,'referral_reference');
+ assert.equal(a.matchAcornEmail({...mail,body_text:'Borrower: customer@example.invalid'},offer,app).match,'borrower_email');
+ for(const patch of [{from_email:'notify@acornfinance.com.example.invalid'},{account_address:'other@example.invalid'},{direction:'outbound'},{received_at:'2026-11-27T07:05:00Z'},{subject:'Fwd: Financing update'},{body_text:'other borrower@example.invalid'}])assert.equal(a.matchAcornEmail({...mail,...patch},offer,app),null);
+ assert.equal(a.matchAcornEmail(mail,offer,app).status,undefined);
+});
