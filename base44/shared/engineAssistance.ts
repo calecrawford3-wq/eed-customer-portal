@@ -153,7 +153,7 @@ const GENERIC_SECTIONS = [
   },
 ];
 
-export const GENERIC_CONSENT_TEXT = 'I confirm the information above is accurate and mine to share. I understand the fund is limited, that applying does not guarantee assistance, and that Elite Engine Development will contact me about this application. I understand I am not asked for a Social Security number, bank account, or card number at any point in this application.';
+export const GENERIC_CONSENT_TEXT = 'I confirm the information above is accurate and mine to share. I understand the fund is limited, that applying does not guarantee assistance, and that Elite Engine Development will contact me about this application. I authorize Elite Engine Development and its service providers to review the financial records I choose to provide through secure bank linking or private document upload for this application. Elite does not receive my online banking password. I will not enter Social Security numbers or card details in this form.';
 
 export async function ensureGenericTemplate(base44: any) {
   const settings = await ensureSettings(base44);
@@ -772,11 +772,13 @@ export function publicApplicationStatus(application: any) {
     application_number: application.application_number,
     status: application.status,
     first_name: application.first_name,
-    submitted_at: application.submitted_at || application.created_date,
+    submitted_at: application.status === 'pending_payment' ? null : application.submitted_at || application.created_date,
     info_request_note: infoRequested ? application.info_request_note || '' : '',
     info_response: application.info_response || '',
     decision_summary: ['approved', 'denied', 'funded'].includes(application.status) ? application.decision_summary || '' : '',
     offer_ready: !!application.offer_id,
+    income_request_pending: !!application.income_request_pending,
+    income_statement_months: application.income_statement_months === 6 ? 6 : 3,
   };
 }
 
