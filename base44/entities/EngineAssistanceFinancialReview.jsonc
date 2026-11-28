@@ -1,0 +1,117 @@
+{
+  "name": "EngineAssistanceFinancialReview",
+  "type": "object",
+  "description": "Private AEF financial evidence and human review. No public entity access. A financial review is not a funding or credit decision.",
+  "properties": {
+    "application_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "stripe",
+        "statements"
+      ]
+    },
+    "status": {
+      "type": "string"
+    },
+    "bank_accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "corrections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "unreviewed",
+        "needs_information",
+        "reviewed"
+      ],
+      "default": "unreviewed"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "confirmed_monthly_income_cents": {
+      "type": "number"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "connection_checked_at": {
+      "type": "string"
+    },
+    "last_checked_at": {
+      "type": "string"
+    },
+    "last_synced_at": {
+      "type": "string"
+    },
+    "required_statement_months": {
+      "type": "integer",
+      "enum": [
+        3,
+        6
+      ],
+      "default": 3
+    },
+    "requested_days": {
+      "type": "integer"
+    },
+    "truncated": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "application_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
