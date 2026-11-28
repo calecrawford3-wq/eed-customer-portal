@@ -437,3 +437,25 @@ test('Acorn no-offers template requires exact borrower, amount, trusted header a
  assert.equal(a.acornHeaderAuthenticated(header.replace('dmarc=pass','dmarc=fail')),false);
  assert.equal(a.acornHeaderAuthenticated(header.replace('header.d=acornfinance.com','header.d=example.invalid')),false);
 });
+test('already imported Acorn email is retried, updates only a unique matched offer, and is idempotent',async()=>{
+ const h=assistance(),a=h.load(path.resolve('base44/shared/acornEmail.ts'));
+ const now=Date.parse('2026-11-28T07:10:00Z');
+ const offer=h.offer;
+ offer.acorn_financing={reference:'eed-current-ref',amount_cents:100000,started_at:'2026-11-28T07:00:00Z',status:'opened',status_source:'portal'};
+ h.state.rows.EngineAssistanceApplication=[{id:offer.application_id,email:'borrower@example.invalid',first_name:'Test',last_name:'Borrower',phone:'5550101234'}];
+ h.state.rows.Email=[{id:'emailA',direction:'inbound',account_address:'cale@eedpower.com',from_email:'support@acornfinance.com',received_at:'2026-11-28T07:05:00Z',subject:'Acorn Finance Application',body_text:'We received an application from your customer, unfortunately we were unable to find any offers from our partners at this time. Customer: Test Borrower Email: borrower@example.invalid Phone: (555) 010-1234 Requested Loan Amount: $1,000 Thank you for using Acorn Finance!'}];
+ const header='Authentication-Results: mx.zoho.com; dkim=pass header.d=acornfinance.com; dmarc=pass header.from=acornfinance.com';
+ // Use realistic filtering for the date selector in this fixture.
+ const original=h.base44.asServiceRole.entities.Email;
+ const emails={...original,filter:async()=>h.state.rows.Email.map(x=>structuredClone(x))};
+ const proxy=new Proxy(h.base44.asServiceRole.entities,{get:(target,key)=>key==='Email'?emails:target[key]});
+ const b={...h.base44,asServiceRole:{entities:proxy}};
+ assert.equal((await a.retryAcornNotifications(b,async()=>'',now)).unverified,1);
+ assert.equal(offer.acorn_financing.status,'opened');
+ assert.equal((await a.retryAcornNotifications(b,async()=>header,now+60000)).checked,0);
+ assert.equal((await a.retryAcornNotifications(b,async()=>header,now+300000)).applied,1);
+ assert.equal(offer.acorn_financing.status,'no_offers');
+ assert.equal(offer.acorn_financing.status_source,'zoho_verified');
+ assert.equal(h.a.computeOfferTotals(offer).balance_due,1000);
+ assert.equal((await a.retryAcornNotifications(b,async()=>header,now+600000)).checked,0);
+});
