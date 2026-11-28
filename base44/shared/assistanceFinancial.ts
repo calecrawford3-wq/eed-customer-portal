@@ -44,7 +44,7 @@ export function incomeStatus(app, state) {
   const accounts = (state.review?.bank_accounts || []).filter(a => a.status === 'active' && a.context_verified && a.permissions?.includes('transactions') && a.permissions?.includes('ownership'));
   const bankConnected = accounts.length > 0;
   const method = app.income_method || (bankConnected ? 'bank' : '');
-  const statementsRequired = !!app.income_request_pending && required === 6;
+  const statementsRequired = !!app.income_request_pending;
   const canSubmit = !!app.income_consent_at && (method === 'statements' ? checklist.complete : method === 'bank' && bankConnected && !statementsRequired);
   return {
     method, bank_connected: bankConnected, bank_account_count: accounts.length,
@@ -112,10 +112,13 @@ function accountSummary(account, previous = {}) {
     ownership_next_refresh_available_at: account.ownership_refresh?.next_refresh_available_at || null,
     next_refresh_available_at: account.transaction_refresh?.next_refresh_available_at || null,
     transaction_refresh_id: account.transaction_refresh?.id || '',
+    imported_transaction_refresh_id: previous.imported_transaction_refresh_id || '',
+    has_imported_transactions: !!previous.has_imported_transactions,
     ownership_snapshot_id: typeof account.ownership === 'string' ? account.ownership : account.ownership?.id || '',
   };
 }
 export async function startBankLink(base44, app, consent = false) {
+  if (app.income_request_pending) throw new IncomeError(`Elite has requested ${app.income_statement_months === 6 ? 6 : 3} monthly bank statements. Upload the requested statements to continue.`, 422);
   if (!app.income_consent_at && consent !== true) throw new IncomeError('Accept the income verification authorization before connecting your bank.', 422);
   const secret = financialSecret();
   const publishableKey = secrets.get('PORTAL_STRIPE_PUBLISHABLE_KEY') || secrets.get('STRIPE_PUBLISHABLE_KEY') || '';
@@ -160,10 +163,14 @@ export async function confirmBankLink(base44, app) {
   const previous = (await financialState(base44, app)).review;
   const previousIds = new Set((previous?.bank_accounts || []).map(a => a.id));
   const activeIds = new Set(active.map(a => a.id));
-  const connectionChanged = active.length !== previousIds.size || active.some(a => !previousIds.has(a.id));
+  const summaries = accounts.map(a => accountSummary(a, previous?.bank_accounts?.find(old => old.id === a.id)));
+  const connectionChanged = active.length !== previousIds.size || active.some(a => !previousIds.has(a.id)) || summaries.some(a => {
+    const old = previous?.bank_accounts?.find(item => item.id === a.id);
+    return !old || a.status !== old.status || a.transaction_refresh_id !== old.transaction_refresh_id || a.ownership_snapshot_id !== old.ownership_snapshot_id || a.transactions_status !== old.transactions_status || a.ownership_status !== old.ownership_status || JSON.stringify(a.permissions) !== JSON.stringify(old.permissions);
+  });
   await saveFinancialRecord(base44, app, {
     source: 'stripe', status: active.length ? 'connected' : 'not_connected',
-    bank_accounts: accounts.map(a => accountSummary(a, previous?.bank_accounts?.find(old => old.id === a.id))),
+    bank_accounts: summaries,
     transactions: (previous?.transactions || []).filter(t => activeIds.has(t.account_id)),
     ...(connectionChanged ? { review_status: 'unreviewed', confirmed_monthly_income_cents: null, reviewed_at: '', reviewed_by: '' } : {}),
     connection_checked_at: new Date().toISOString(),
@@ -172,6 +179,7 @@ export async function confirmBankLink(base44, app) {
     income_verification_status: active.length ? (previous?.review_status === 'reviewed' && !connectionChanged ? 'reviewed' : 'connected') : 'requested',
     income_verification_account_count: active.length,
     income_bank_connected_at: active.length ? new Date().toISOString() : '',
+    ...(connectionChanged ? { income_verification_verified_at: '' } : {}),
   });
   return { connected: active.length > 0, account_count: active.length, note: active.length ? 'Bank connected. Transaction retrieval and income review are separate steps.' : 'No active account with transaction and ownership permissions is confirmed yet.' };
 }
@@ -187,7 +195,10 @@ export async function syncBankData(base44, app, requestRefresh = false) {
     record = (await financialState(base44, app)).review;
   }
   const lastCheck = Date.parse(record.last_checked_at || '') || 0;
-  if (Date.now() - lastCheck < 15000) return adminFinancialView(base44, app);
+  if (Date.now() - lastCheck < 15000) {
+    if (requestRefresh) throw new IncomeError('Bank data was just checked. Wait 15 seconds before requesting another refresh.', 429);
+    return adminFinancialView(base44, app);
+  }
   const now = Date.now();
   const secret = financialSecret();
   const errors = [];
@@ -198,14 +209,16 @@ export async function syncBankData(base44, app, requestRefresh = false) {
   const since = Math.floor((now - requestedDays * 86400000) / 1000);
   let pending = false;
   let sourceChanged = false;
+  let refreshRequests = 0;
   await saveFinancialRecord(base44, app, { last_checked_at: new Date().toISOString() }, record);
   for (const saved of (record.bank_accounts || []).slice(0, MAX_BANK_ACCOUNTS)) {
     if (!/^fca_[A-Za-z0-9]+$/.test(saved.id || '')) continue;
     try {
       let account = await stripeFinancialRequest(secret, `/v1/financial_connections/accounts/${saved.id}`, [['expand[]', 'ownership']]);
       checkStripeContext(account, app, secret);
-      if (account.status !== 'active') {
+      if (account.status !== 'active' || !account.permissions?.includes('transactions') || !account.permissions?.includes('ownership')) {
         accountRows.push(accountSummary(account, saved));
+        sourceChanged = true;
         errors.push(`${saved.institution_name || 'Bank'} is disconnected. Ask the applicant to reconnect or supply statements.`);
         continue;
       }
@@ -218,6 +231,7 @@ export async function syncBankData(base44, app, requestRefresh = false) {
       });
       if (features.length) {
         await stripeFinancialRequest(secret, `/v1/financial_connections/accounts/${saved.id}/refresh`, features.map(feature => ['features[]', feature]), 'POST', `aef-refresh-${app.id}-${saved.id}-${Math.floor(now / 60000)}`);
+        refreshRequests++;
         account = await stripeFinancialRequest(secret, `/v1/financial_connections/accounts/${saved.id}`, [['expand[]', 'ownership']]);
         checkStripeContext(account, app, secret);
       }
@@ -232,42 +246,56 @@ export async function syncBankData(base44, app, requestRefresh = false) {
           ownerCursor = owners.data?.at(-1)?.id;
         }
       }
-      accountRows.push(summary);
+      sourceChanged ||= summary.ownership_snapshot_id !== saved.ownership_snapshot_id || summary.ownership_status !== saved.ownership_status || summary.transactions_status !== saved.transactions_status || JSON.stringify(summary.owner_names) !== JSON.stringify(saved.owner_names || []);
       pending ||= summary.transactions_status === 'pending' || summary.ownership_status === 'pending';
       if (summary.transactions_status === 'failed') errors.push(`${summary.institution_name || 'Bank'} transaction retrieval failed. Retry when Stripe allows a refresh, or request statements.`);
       if (summary.ownership_status === 'failed') errors.push(`${summary.institution_name || 'Bank'} ownership details were not available.`);
       if (summary.transactions_status !== 'succeeded') {
+        accountRows.push(summary);
         transactions.push(...(record.transactions || []).filter(t => t.account_id === saved.id));
         continue;
       }
-      sourceChanged ||= summary.transaction_refresh_id !== saved.transaction_refresh_id;
+      sourceChanged ||= summary.transaction_refresh_id !== saved.imported_transaction_refresh_id;
+      const accountTransactions = [];
+      let accountTruncated = false;
       let cursor = '';
       let pages = 0;
       while (pages++ < 40) {
         const page = await stripeFinancialRequest(secret, '/v1/financial_connections/transactions', [['account', saved.id], ['limit', 100], ['transacted_at[gte]', since], ...(cursor ? [['starting_after', cursor]] : [])]);
         for (const t of page.data || []) {
           if (t.account !== saved.id || !/^fctxn_[A-Za-z0-9]+$/.test(t.id || '') || !Number.isSafeInteger(t.amount) || !Number.isFinite(t.transacted_at)) continue;
-          if (transactions.length >= MAX_TRANSACTIONS) { truncated = true; break; }
-          transactions.push({ id: t.id, account_id: saved.id, date: new Date(t.transacted_at * 1000).toISOString().slice(0, 10), description: redactNumbers(t.description, 250), amount_cents: t.amount, currency: textValue(t.currency, 3).toLowerCase(), status: t.status, source: 'stripe', category: 'unreviewed' });
+          if (transactions.length + accountTransactions.length >= MAX_TRANSACTIONS) { accountTruncated = true; break; }
+          accountTransactions.push({ id: t.id, account_id: saved.id, date: new Date(t.transacted_at * 1000).toISOString().slice(0, 10), description: redactNumbers(t.description, 250), amount_cents: t.amount, currency: textValue(t.currency, 3).toLowerCase(), status: t.status, source: 'stripe', category: 'unreviewed' });
         }
         if (!page.has_more) break;
         cursor = page.data?.at(-1)?.id;
-        if (!cursor || transactions.length >= MAX_TRANSACTIONS || pages >= 40) { truncated = true; break; }
+        if (!cursor || transactions.length + accountTransactions.length >= MAX_TRANSACTIONS || pages >= 40) { accountTruncated = true; break; }
       }
+      truncated ||= accountTruncated;
+      summary.imported_transaction_refresh_id = accountTruncated ? '' : summary.transaction_refresh_id;
+      summary.has_imported_transactions = !accountTruncated;
+      accountRows.push(summary);
+      transactions.push(...accountTransactions);
     } catch (error) {
       errors.push(error instanceof IncomeError ? error.message : 'One bank account could not be checked. Previously saved data may be out of date.');
+      sourceChanged = true;
       accountRows.push({ ...saved, sync_error: true });
       transactions.push(...(record.transactions || []).filter(t => t.account_id === saved.id));
     }
   }
   const unique = [...new Map(transactions.map(t => [t.id, t])).values()].slice(0, MAX_TRANSACTIONS);
+  sourceChanged ||= JSON.stringify(unique) !== JSON.stringify(record.transactions || []) || truncated || pending;
   await saveFinancialRecord(base44, app, {
     bank_accounts: accountRows, transactions: unique, source: 'stripe',
     status: pending ? 'pending' : errors.length ? 'needs_attention' : 'ready', errors: [...new Set(errors)],
     last_synced_at: new Date().toISOString(), truncated, requested_days: requestedDays,
     ...(sourceChanged && record.review_status === 'reviewed' ? { review_status: 'unreviewed', reviewed_at: '', reviewed_by: '', confirmed_monthly_income_cents: null } : {}),
   }, record);
-  return adminFinancialView(base44, app);
+  if (sourceChanged && (record.review_status === 'reviewed' || app.income_verification_status === 'reviewed')) {
+    await base44.asServiceRole.entities.EngineAssistanceApplication.update(app.id, { income_verification_status: 'requested', income_verification_verified_at: '' });
+  }
+  const view = await adminFinancialView(base44, app);
+  return { ...view, refresh_requested: refreshRequests > 0, operation_message: refreshRequests ? 'Bank data retrieval was requested. Check again after Stripe finishes processing.' : pending ? 'Stripe is still retrieving bank records. Check again shortly.' : requestRefresh ? 'Saved bank data was checked. Stripe does not allow a new refresh yet.' : 'Available bank data was checked.' };
 }
 
 export const STATEMENT_EXTRACTION_SCHEMA = {
@@ -320,7 +348,8 @@ export async function adminFinancialView(base44, app) {
   // activity twice when an applicant both connects and uploads statements.
   const selectedStatements = state.statements.filter(s => s.status === 'ready' && statementIds.has(s.id));
   const transactions = method === 'bank' ? record.transactions || [] : selectedStatements.flatMap(s => s.transactions || []);
-  const corrections = record.corrections || [];
+  const transactionIds = new Set(transactions.map(t => t.id));
+  const corrections = (record.corrections || []).filter(c => transactionIds.has(c.transaction_id));
   const corrected = new Map(corrections.map(c => [c.transaction_id, c]));
   const summary = summarizeTransactions(transactions, corrections, Date.now(), { truncated: !!record.truncated || selectedStatements.some(s => !s.transactions_complete), requestedDays: app.income_statement_months === 6 ? 180 : 90 });
   if (method === 'bank') summary.flags = [...(summary.flags || []), 'Bank cash-flow calculations use positive amounts as money in and negative amounts as money out. Confirm against source records before verifying income.'];
