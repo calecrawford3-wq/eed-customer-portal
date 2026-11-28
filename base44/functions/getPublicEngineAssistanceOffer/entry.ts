@@ -61,7 +61,7 @@ export default async function (req) {
     const guide=guidedFinance(current,paymentPlan,attempts);
     const pendingReturn=attempts.filter(a=>a.stripe_session_id&&a.offered_methods?.length===1&&!a.customer_reported_outcome&&a.status!=='completed'&&a.stripe_session_id===current.payment_route_session)[0];
 
-    const internalUnlocked=!lenderCheckError&&paymentPlan.pathways.deposit_internal.can_request&&checks.complete&&!guide.next?.partial&&acornNoAdequateApproval(current,liveSettings,loan);
+    const internalUnlocked=!lenderCheckError&&paymentPlan.pathways.deposit_internal.can_request&&checks.complete&&!guide.next?.partial&&acornNoAdequateApproval(current,liveSettings,loan,attempts);
     const reportable = FINANCING_METHODS.filter(m=>m.type !== 'us_bank_account' && attempts.some(a=>a.stripe_session_id && a.status !== 'completed' && !a.customer_reported_outcome && a.offered_methods?.includes(m.type) && (!paymentPlan.deposit_verified||(a.payment_pathway==="remainder_affirm"&&Math.round(Number(a.amount)*100)===Math.round(paymentPlan.totals.balance_due*100)&&a.offered_methods.length===1&&(!current.deposit_verified_at||Date.parse(a.customer_consent_at||a.created_date||"")>=Date.parse(current.deposit_verified_at))))));
 
     return Response.json({

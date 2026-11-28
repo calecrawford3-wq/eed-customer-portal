@@ -30,6 +30,7 @@ export default function EngineAssistanceOffer() {
   const [banner, setBanner] = useState("");
   const [returnModal,setReturnModal]=useState(null);
   const [returnOutcome,setReturnOutcome]=useState("");
+  const [approvedAmount,setApprovedAmount]=useState("");
   const [returnSaving,setReturnSaving]=useState(false);
   const checkedReturns=useRef(new Set());
   const [acornModal,setAcornModal]=useState(null);
@@ -116,10 +117,10 @@ export default function EngineAssistanceOffer() {
   const loan = offer?.internal_loan;
   const loanActive = !!loan && ["active", "completed"].includes(loan.status);
 
-  const checkout = async (pathway, consent, lender) => {
+  const checkout = async (pathway, consent, lender, partialSource) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, guided: !!lender, replace_existing: true });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, partial_source_session_id:partialSource||undefined, guided: !!lender, replace_existing: true });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) {
         if(lender&&res.data?.session_id&&offer?.id)try{sessionStorage.setItem("eed-lender-return:"+offer.id,res.data.session_id);}catch{}
@@ -142,6 +143,7 @@ export default function EngineAssistanceOffer() {
       if(res.data?.error)throw new Error(res.data.error);
       if(res.data?.reported){try{sessionStorage.removeItem("eed-lender-return:"+offer.id);}catch{}return;}
       setReturnOutcome("");
+      setApprovedAmount("");
       setReturnModal({...res.data,saved:false});
     }catch(error){
       checkedReturns.current.delete(sessionId);
@@ -159,7 +161,7 @@ export default function EngineAssistanceOffer() {
     if(!returnModal||!returnOutcome||returnSaving)return;
     setReturnSaving(true);
     try{
-      const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"report_lender_outcome",session_id:returnModal.session_id,lender:returnModal.lender,outcome:returnOutcome});
+      const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"report_lender_outcome",session_id:returnModal.session_id,lender:returnModal.lender,outcome:returnOutcome,approved_amount_cents:returnOutcome==="insufficient_amount"?Math.round(Number(approvedAmount)*100):undefined});
       if(res.data?.error)throw new Error(res.data.error);
       try{sessionStorage.removeItem("eed-lender-return:"+offer.id);}catch{}
       await refetch();
@@ -375,11 +377,12 @@ export default function EngineAssistanceOffer() {
            {!returnModal.saved&&!returnModal.paid_or_pending&&<>
             <p className="text-sm">Select what happened during your lender checkout. You can choose not to disclose a credit decision.</p>
             <select className="border rounded-lg p-3 w-full text-sm" value={returnOutcome} onChange={e=>setReturnOutcome(e.target.value)}><option value="">Choose outcome</option><option value="declined">Not approved</option><option value="insufficient_amount">Approved for less than requested</option><option value="approved_not_accepted">Approved, but did not accept</option><option value="unsuitable_terms">Terms were unsuitable</option><option value="technical_issue">Technical issue</option><option value="not_completed">Did not complete application</option><option value="prefer_not_to_say">Prefer not to say</option></select>
-            <Button className="w-full" disabled={!returnOutcome||returnSaving} onClick={saveReturnOutcome}>{returnSaving?"Saving…":"Save and continue"}</Button>
+            {returnOutcome==="insufficient_amount"&&<label className="block text-sm space-y-1"><span>Amount the lender offered ($)</span><input className="w-full border rounded-lg p-3" type="number" inputMode="decimal" min="0.01" max={Math.max(0,returnModal.amount-.01)} step="0.01" value={approvedAmount} onChange={e=>setApprovedAmount(e.target.value)}/><span className="block text-xs text-slate-500">This is your reported amount, not a guaranteed approval. A new checkout may require another lender decision.</span></label>}
+            <Button className="w-full" disabled={!returnOutcome||returnSaving||(returnOutcome==="insufficient_amount"&&(!Number.isFinite(Number(approvedAmount))||Number(approvedAmount)<=0||Math.round(Number(approvedAmount)*100)>=Math.round(returnModal.amount*100)))} onClick={saveReturnOutcome}>{returnSaving?"Saving…":"Save and continue"}</Button>
            </>}
            {returnModal.paid_or_pending&&!offer.paid&&!(returnModal.pathway==="deposit_lender"&&offer.deposit_verified)&&<p className="text-sm">Waiting for verified payment confirmation. Do not start another checkout yet.</p>}
            {(returnModal.saved||(returnModal.paid_or_pending&&returnModal.pathway==="deposit_lender"&&offer.deposit_verified))&&<>
-            {offer.financing_guide?.next&&(offer.financing_guide.continuation!=null||offer.acorn?.review_complete!==false)?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">{offer.financing_guide.next.label} · {formatMoney(offer.financing_guide.amount)}</p><Button className="w-full" disabled={!!paying} onClick={()=>checkout(offer.financing_guide.stage==="deposit"?"deposit_lender":offer.financing_guide.stage==="remainder"?"remainder_affirm":"finance_full",true,offer.financing_guide.next.type)}>Continue to {offer.financing_guide.next.label}</Button></div>:offer.acorn?.eligible&&offer.acorn?.review_complete===false&&offer.financing_guide?.continuation==null?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">Acorn Finance · {formatMoney(offer.acorn.amount)}</p><Button className="w-full" onClick={()=>{setReturnModal(null);openAcorn();}}>Continue to Acorn</Button></div>:offer.internal_financing_unlocked?<Button className="w-full" onClick={()=>{setReturnModal(null);setRequestRemainder(true);}}>Review additional payment option</Button>:!offer.deposit_verified&&offer.financing_guide?.stage==="deposit"&&offer.financing_guide?.all_reviewed?<Button className="w-full" disabled={!!paying||!offer.pathways?.deposit_internal?.enabled} onClick={()=>checkout("deposit_card",false)}>Pay required deposit · {formatMoney(offer.deposit_outstanding)}</Button>:<p className="text-sm">Return to your offer to review the next available payment option.</p>}
+            {offer.financing_guide?.next&&(offer.financing_guide.continuation!=null||offer.acorn?.review_complete!==false)?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">{offer.financing_guide.next.label} · {formatMoney(offer.financing_guide.next.amount??offer.financing_guide.amount)}</p>{offer.financing_guide.next.partial&&<p className="text-xs text-slate-500">Based on your reported approval. New lender confirmation required. Estimated balance after payment: {formatMoney(Math.max(0,offer.balance_due-offer.financing_guide.next.amount))}.</p>}<Button className="w-full" disabled={!!paying} onClick={()=>checkout(offer.financing_guide.stage==="deposit"?"deposit_lender":offer.financing_guide.stage==="remainder"?"remainder_affirm":"finance_full",true,offer.financing_guide.next.type,offer.financing_guide.next.source_session_id)}>Continue to {offer.financing_guide.next.label}</Button></div>:offer.acorn?.eligible&&offer.acorn?.review_complete===false&&offer.financing_guide?.continuation==null?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">Acorn Finance · {formatMoney(offer.acorn.amount)}</p><Button className="w-full" onClick={()=>{setReturnModal(null);openAcorn();}}>Continue to Acorn</Button></div>:offer.internal_financing_unlocked?<Button className="w-full" onClick={()=>{setReturnModal(null);setRequestRemainder(true);}}>Review additional payment option</Button>:!offer.deposit_verified&&offer.financing_guide?.stage==="deposit"&&offer.financing_guide?.all_reviewed?<Button className="w-full" disabled={!!paying||!offer.pathways?.deposit_internal?.enabled} onClick={()=>checkout("deposit_card",false)}>Pay required deposit · {formatMoney(offer.deposit_outstanding)}</Button>:<p className="text-sm">Return to your offer to review the next available payment option.</p>}
            </>}
            {(returnModal.saved||returnModal.paid_or_pending)&&<Button variant="outline" onClick={()=>{if(returnModal?.paid_or_pending)try{sessionStorage.removeItem("eed-lender-return:"+offer.id);}catch{}setReturnModal(null);}}>Return to offer</Button>}
           </>}

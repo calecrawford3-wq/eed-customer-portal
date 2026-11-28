@@ -323,7 +323,7 @@ export function lenderReviewStatus(offer: any, plan: any) {
 export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
   const continuation=depositContinuation(offer,plan);
   const splitPaid=partialPayments(offer,attempts);
-  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>(continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation)&&!splitPaid.some(p=>p.method===m.type)):[];
+  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>(continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation)&&!splitPaid.some(p=>p.method===m.type)&&(!splitPaid.length||plan.split_financing_methods?.includes(m.type))):[];
   const amount=plan.totals.balance_due;
   const afterDeposit=Date.parse(offer.deposit_verified_at||'');
   const eligibleAttempts=attempts.filter(a=>a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(amount)&&
@@ -377,9 +377,10 @@ export function partialSuggestions(offer:any,plan:any,attempts:any[],stage:strin
   const consumed=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.partial_source_session_id));
   const paid=(offer.payments||[]);
   const originalPath=stage==='deposit'?'deposit_lender':stage==='remainder'?'remainder_affirm':'finance_full';
+  const splitActive=partialPayments(offer,attempts).length>0;
   return attempts.filter(a=>a.status==='expired'&&a.customer_reported_outcome==='insufficient_amount'&&
      a.offered_methods?.length===1&&a.customer_reported_lender===a.offered_methods[0]&&
-     a.payment_pathway===originalPath&&a.stripe_session_id&&!consumed.has(a.stripe_session_id)&&
+     (a.payment_pathway===originalPath||(splitActive&&stage==='remainder'&&['finance_full','deposit_lender'].includes(a.payment_pathway)))&&a.stripe_session_id&&!consumed.has(a.stripe_session_id)&&
      Number.isFinite(a.customer_reported_approved_amount)&&a.customer_reported_approved_amount>0&&cents(a.customer_reported_approved_amount)<cents(a.amount))
     .map(a=>{
       const type=a.offered_methods[0];
@@ -420,20 +421,24 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const partial=suggestions.find(x=>x.enabled)||null;
   // Complete the original check sequence first, then use the best disclosed amount.
   // Following a verified partial payment, recalculate before offering another checkout.
-  const next=normal||partial;
+  const next=splitActive?partial||normal:normal||partial;
   return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,all_reviewed:!next};
 }
 export function guidedAcornOption(offer:any,settings:any,loan:any,plan:any,guide:any){
+  if(guide.split_active){
+    const original=acornOption(offer,settings,loan,plan.totals.total,'full');
+    if(original.review_complete)return {...original,eligible:false,review_complete:true,continuation:true};
+  }
   if(guide.continuation!==null)return {...acornOption(offer,settings,loan,plan.totals.balance_due,'remainder'),eligible:false,review_complete:true,continuation:true};
   if(plan.deposit_verified)return acornOption(offer,settings,loan,plan.totals.balance_due,'remainder');
   const full=acornOption(offer,settings,loan,plan.totals.balance_due,'full');
   if(guide.stage==='deposit'&&full.review_complete)return acornOption(offer,settings,loan,plan.deposit_outstanding,'deposit');
   return full;
 }
-export function acornNoAdequateApproval(offer:any,settings:any,loan:any=null){
+export function acornNoAdequateApproval(offer:any,settings:any,loan:any=null,attempts:any[]=[]){
   const plan=offerPaymentPlan(offer,settings,loan);
   const option=acornOption(offer,settings,loan,plan.totals.balance_due,'remainder');
-  if(depositContinuation(offer,plan)!==null){
+  if(depositContinuation(offer,plan)!==null||partialPayments(offer,attempts).length>0){
     const full=acornOption(offer,settings,loan,plan.totals.total,'full');
     return !full.eligible||(['staff_verified','acorn_postback','zoho_verified'].includes(full.status_source)&&['no_offers','insufficient_amount'].includes(full.status));
   }

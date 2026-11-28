@@ -22,6 +22,7 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
     setApplyUrl(bootstrap?.apply_url || "");
     setForm({
       acorn_enabled: settings?.acorn_enabled === true,
+      split_financing_authorizations: settings?.split_financing_authorizations || {},
       fund_name: settings?.fund_name || "Affordable Engine Fund",
       fund_public_intro: settings?.fund_public_intro || "",
       default_offer_expiry_days: settings?.default_offer_expiry_days || 21,
@@ -436,6 +437,11 @@ export default function FundSettingsDialog({ open, onOpenChange, bootstrap, onCh
             </div>
             <div className="mt-2 space-y-1">
               <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={form.acorn_enabled===true} onChange={e=>setForm(f=>({...f,acorn_enabled:e.target.checked}))}/><span>Enable Acorn Finance (GLDIK)<br/><span className="text-xs text-slate-500">Enable only after Acorn confirms your engine-build business is eligible. Status sync is manual until authorized integration is configured.</span></span></label>
+              <div className="border rounded-lg p-3 space-y-2 mt-2">
+                <Label>Authorized split financing</Label>
+                <p className="text-xs text-slate-500">Only enter a written provider authorization reference if it explicitly permits multiple payments for the same build. Leave blank to disable. Sunbit is excluded from this feature.</p>
+                {[["affirm","Affirm"],["klarna","Klarna"],["afterpay_clearpay","Afterpay"]].map(([type,label])=><label key={type} className="block text-xs">{label}<Input value={form.split_financing_authorizations?.[type]||""} placeholder="Authorization reference (optional)" onChange={e=>setForm(f=>({...f,split_financing_authorizations:{...f.split_financing_authorizations,[type]:e.target.value}}))}/></label>)}
+              </div>
               {(settings?.financing_methods || []).map((method) => (
                 <div key={method.type} className="flex items-center justify-between text-xs">
                   <span className="text-slate-700">{method.label}</span>

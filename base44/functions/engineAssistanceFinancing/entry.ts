@@ -173,7 +173,7 @@ export default async function (req) {
         const review=await currentLenderReview();
         if (review.guide.next?.partial || !review.checks.complete) return Response.json({error:'Check every eligible lender for the current remaining balance and record an unsuccessful outcome before continuing.'},{status:409});
       } catch(e) {return Response.json({error:e.message},{status:409});}
-      if (!acornNoAdequateApproval(offer,settings,existing)) return Response.json({error:'A confirmed unsuccessful Acorn result for this balance is required before continuing.'},{status:409});
+      if (!acornNoAdequateApproval(offer,settings,existing,rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200)))) return Response.json({error:'A confirmed unsuccessful Acorn result for this balance is required before continuing.'},{status:409});
       // The financing application is validated here, not in the browser. Only
       // the allowlisted fields are stored, and no SSN or ID number is accepted.
       const applied = validateFinancingApplication(body.application);
