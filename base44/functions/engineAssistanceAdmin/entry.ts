@@ -1,3 +1,4 @@
+import { ACORN_MAILBOX, matchAcornEmail } from '../../shared/acornEmail.ts';
 import { reserveRoute, releaseRoute, retireOfferSessions } from '../../shared/assistancePaymentRoute.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
@@ -568,13 +569,33 @@ export default async function (req) {
       return Response.json({ offer, application: updatedApp, customer });
     }
 
+    if (action === 'acorn_email_candidates') {
+      const offer=await loadOffer(str(data.offer_id,60));
+      if(!offer?.acorn_financing?.reference)return Response.json({error:'No Acorn application has been started.'},{status:404});
+      const app=await loadApp(offer.application_id);
+      const emails=rows(await base44.asServiceRole.entities.Email.filter({
+        account_address:ACORN_MAILBOX,direction:'inbound',
+        from_email:{$regex:'@(?:[a-z0-9-]+\\.)*acornfinance\\.com$',$options:'i'},
+        received_at:{$gte:offer.acorn_financing.started_at||offer.created_date}
+      },'-received_at',100));
+      const candidates=emails.map(e=>matchAcornEmail(e,offer,app)).filter(Boolean).slice(0,20);
+      return Response.json({candidates,checked_at:new Date().toISOString(),mailbox:ACORN_MAILBOX,unmatched_count:Math.max(0,emails.length-candidates.length)});
+    }
+
     if (action === 'record_acorn_status') {
       const offer=await loadOffer(str(data.offer_id,60));
       const record=offer?.acorn_financing;
       const status=str(data.status,40), evidence=str(data.evidence,500), applicationReference=str(data.application_reference,100);
       if (!record?.reference || !['pending','offers_received','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||evidence.length<10||(!applicationReference&&!['not_completed','technical_issue'].includes(status))) return Response.json({error:'An existing Acorn referral, application reference and verified evidence are required.'},{status:400});
+      let verifiedEvidence=evidence;
+      if(data.email_id){
+        const email=rows(await base44.asServiceRole.entities.Email.filter({id:str(data.email_id,60)}))[0];
+        const app=await loadApp(offer.application_id);
+        if(!matchAcornEmail(email,offer,app))return Response.json({error:'This email does not match the current Acorn application.'},{status:409});
+        verifiedEvidence=('Staff reviewed Zoho notification '+email.id+'; '+evidence).slice(0,500);
+      }
       if (record.status==='funded' && status!=='funded') return Response.json({error:'Funded status cannot be downgraded here.'},{status:409});
-      const next={...record,status,status_source:'staff_verified',status_at:new Date().toISOString(),application_reference:applicationReference||record.reference,evidence};
+      const next={...record,status,status_source:'staff_verified',status_at:new Date().toISOString(),application_reference:applicationReference||record.reference,evidence:verifiedEvidence};
       await offers.updateMany({id:offer.id,acorn_financing:record},{$set:{acorn_financing:next,audit_trail:appendAudit(offer,user,'acorn_status_recorded','Acorn '+status+' (staff verified); not an Elite payment.')}});
       return Response.json({offer:rows(await offers.filter({id:offer.id}))[0]});
     }
