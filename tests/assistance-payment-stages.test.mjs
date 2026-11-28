@@ -246,6 +246,10 @@ test('in-house application after outright deposit finances only remainder, dupli
  const request=()=>h.call('engineAssistanceFinancing',{token:h.token,action:'request_internal',application,requested_term_months:3});
  assert.equal((await request()).status,409);
  assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'save_lender_review',amount_cents:50000,entries:[{lender:'affirm',outcome:'reviewed_not_applied'}]})).status,200);
+ assert.equal((await request()).status,409);
+ const lender=await h.checkout('remainder_affirm');assert.equal(lender.status,200);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'close_checkout'})).status,200);
+ assert.equal((await h.call('engineAssistanceFinancing',{token:h.token,action:'report_lender_outcome',lender:'affirm',outcome:'declined'})).status,200);
  const r=await request();assert.equal(r.status,200,JSON.stringify(r.body));
  assert.equal(h.state.rows.EngineAssistanceInternalLoan[0].principal,500);
  assert.equal((await request()).status,200);assert.equal(h.state.rows.EngineAssistanceInternalLoan.length,1);
@@ -488,4 +492,22 @@ test('Zoho receiver authentication accepts aligned address notation, not foreign
  assert.equal(a.acornHeaderAuthenticated(header.replace('dmarc=pass','dmarc=fail')),false);
  assert.equal(a.acornHeaderAuthenticated(header.replace('support@acornfinance.com','support@other.example')),false);
  assert.equal(a.acornHeaderAuthenticated(header.replace('mx.zohomail.com','other.example')),false);
+});
+
+test('remaining balance must be checked afresh and unsuccessful outcomes are required for every eligible lender',async()=>{
+ const h=assistance();h.offer.line_items[0].unit_price=4000;h.settings.acorn_enabled=true;
+ h.offer.acorn_financing={reference:'eed-prior',amount_cents:400000,status:'no_offers',status_source:'zoho_verified'};
+ h.offer.payments=[{amount:2000,method:'card'}];h.offer.paid_amount=2000;h.offer.status='partially_paid';
+ assert.equal(h.a.acornOption(h.offer,h.settings).status,'not_started');
+ assert.equal(h.a.acornNoAdequateApproval(h.offer,h.settings),false);
+ h.offer.acorn_financing={reference:'eed-current',amount_cents:200000,status:'no_offers',status_source:'zoho_verified'};
+ assert.equal(h.a.acornNoAdequateApproval(h.offer,h.settings),true);
+ const settings={...h.settings,financing_methods:['affirm','klarna','afterpay_clearpay'].map(type=>({type,label:type,available:true}))};
+ const plan=h.a.offerPaymentPlan(h.offer,settings);
+ const attempt=(type,outcome,patch={})=>({payment_pathway:'remainder_affirm',amount:2000,offered_methods:[type],stripe_session_id:'cs_'+type,status:'expired',provider_decision:'not_reported',customer_reported_lender:type,customer_reported_outcome:outcome,...patch});
+ const checks=items=>h.a.remainderLenderChecks(h.offer,plan,items).complete;
+ assert.equal(checks([attempt('affirm','declined'),attempt('klarna','declined'),attempt('afterpay_clearpay','declined',{payment_pathway:'deposit_lender'})]),false);
+ assert.equal(checks([attempt('affirm','declined'),attempt('klarna','declined'),attempt('afterpay_clearpay','unsuitable_terms')]),false);
+ assert.equal(checks([attempt('affirm','declined'),attempt('klarna','declined'),attempt('afterpay_clearpay','declined',{provider_decision:'approved'})]),false);
+ assert.equal(checks([attempt('affirm','declined'),attempt('klarna','insufficient_amount'),attempt('afterpay_clearpay','declined')]),true);
 });
