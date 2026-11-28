@@ -66,10 +66,11 @@ export default async function (req) {
     const plan = offerPaymentPlan(offer, settings, loan, agreement, identity, identitySettings);
     const options = plan.pathways;
     if (loan && ['pending_approval', 'approved', 'active', 'completed'].includes(loan.status)) return Response.json({ error: 'Withdraw the in-house request before paying this balance through Stripe.' }, { status: 409 });
-    if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
+    if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled && !body.partial_source_session_id) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
 
 
     const guided=body.guided===true||offer.guided_financing_started===true;
+    let partial:any=null;
     if (pathway.lender) {
       const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
       const guide=guidedFinance(offer,plan,attempts);
@@ -78,6 +79,11 @@ export default async function (req) {
       if(guided){
         const expected=guide.stage==='full'?'finance_full':guide.stage==='deposit'?'deposit_lender':'remainder_affirm';
         if(pathwayKey!==expected||guide.next?.type!==body.lender)return Response.json({error:'Financing options changed. Refresh your offer to continue.'},{status:409});
+        if(guide.next?.partial){
+          if(body.partial_source_session_id!==guide.next.source_session_id)return Response.json({error:'Confirm the new partial payment amount before continuing.'},{status:409});
+          partial=guide.next;
+        }else if(body.partial_source_session_id)return Response.json({error:'The reported financing amount is no longer available. Refresh.'},{status:409});
+
       }
     }
     if (pathway.lender && body.consent !== true) {
@@ -88,20 +94,20 @@ export default async function (req) {
     if (pathwayKey === 'pay_in_full' && !options.pay_in_full.enabled) {
       return Response.json({ error: options.pay_in_full.reason || 'Paying in full is not available on this offer.' }, { status: 409 });
     }
-    if (pathwayKey === 'finance_full' && !options.finance_full.enabled) {
+    if (pathwayKey === 'finance_full' && !options.finance_full.enabled && !partial) {
       return Response.json({ error: options.finance_full.reason || 'Lender financing is not available for this balance.' }, { status: 409 });
     }
     if (pathwayKey === 'deposit_card' && !options.deposit_internal.enabled) {
       return Response.json({ error: options.deposit_internal.payment_reason || 'The deposit option is not available yet.' }, { status: 409 });
     }
-    if (pathwayKey === 'deposit_lender' && !options.deposit_internal.finance_deposit_enabled) {
+    if (pathwayKey === 'deposit_lender' && !options.deposit_internal.finance_deposit_enabled && !partial) {
       return Response.json({ error: options.deposit_internal.finance_deposit_reason || 'No lender is available for the deposit amount.' }, { status: 409 });
     }
     if (options.deposit_internal.loan_active && pathway.kind === 'deposit') {
       return Response.json({ error: 'Your deposit is already verified and your in-house agreement is active.' }, { status: 409 });
     }
 
-    const amountCents = pathway.kind === 'deposit'
+    const amountCents = partial ? cents(partial.amount) : pathway.kind === 'deposit'
       ? cents(options.deposit_internal.deposit_outstanding)
       : cents(computeOfferTotals(offer).balance_due);
     if (amountCents <= 0) return Response.json({ error: 'Nothing is due on this offer.' }, { status: 409 });
@@ -115,7 +121,7 @@ export default async function (req) {
     let methods: string[];
     if (pathway.lender) {
       // Only lenders that are configured in Stripe and cover this exact amount.
-      const candidates = (pathway.kind === 'deposit'
+      const candidates = partial ? [partial.type] : (pathway.kind === 'deposit'
         ? options.deposit_internal.deposit_lenders.eligible
         : options.finance_full.lenders).map((m: any) => m.type).filter((t: string) => liveEnabled.includes(t));
       if (!candidates.length) {
@@ -143,6 +149,7 @@ export default async function (req) {
     if (held.payment_route_session) {
       const prior = await stripe.checkout.sessions.retrieve(held.payment_route_session);
       if (prior.status === 'open' && prior.url) {
+        if(prior.amount_total!==amountCents)return Response.json({error:'Existing checkout has a different amount. Close it before continuing.'},{status:409});
         const previousMethods = held.payment_route_options ? JSON.parse(held.payment_route_options).payment_method_types : prior.payment_method_types;
         if (pathway.lender && body.lender && (!Array.isArray(previousMethods) || previousMethods.length !== 1 || previousMethods[0] !== body.lender)) return Response.json({error:'Close the existing checkout before changing lenders.'},{status:409});
         return Response.json({ checkout_url: prior.url, session_id: prior.id });
@@ -183,6 +190,7 @@ export default async function (req) {
         amount_option: pathway.option,
         payment_pathway: pathwayKey,
         expected_cents: String(amountCents),
+        ...(partial?{partial_source_session_id:partial.source_session_id}:{}),
         financing_type: pathway.lender ? 'lender_selected_at_checkout' : 'none',
         internal_loan_id: pathway.kind === 'deposit' ? (loan?.id || '') : '',
       },
@@ -194,6 +202,7 @@ export default async function (req) {
     const persisted = rows(await base44.asServiceRole.entities.EngineAssistanceOffer.filter({ id: offer.id }))[0];
     if (persisted.payment_route_claim !== held.payment_route_claim || persisted.payment_route !== pathwayKey) return Response.json({ error: 'Payment route changed. Reload.' }, { status: 409 });
     const requestOptions = JSON.parse(persisted.payment_route_options);
+    if(Number(requestOptions.metadata?.expected_cents)!==amountCents)return Response.json({error:'Existing checkout amount changed. Close it before continuing.'},{status:409});
     if (pathway.lender && body.lender && (requestOptions.payment_method_types?.length !== 1 || requestOptions.payment_method_types[0] !== body.lender)) return Response.json({error:'Retry or close the existing lender checkout before changing lenders.'},{status:409});
     let session;
     try { session = await stripe.checkout.sessions.create(requestOptions, { idempotencyKey }); }
@@ -217,6 +226,7 @@ export default async function (req) {
         application_id: offer.application_id || '',
         customer_id: offer.customer_id || '',
         amount: round2(amountCents / 100),
+        ...(partial?{partial_source_session_id:partial.source_session_id}:{}),
         provider: 'stripe',
         offered_methods: offeredMethods,
         status: 'initiated',

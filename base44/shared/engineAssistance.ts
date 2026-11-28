@@ -322,7 +322,8 @@ export function lenderReviewStatus(offer: any, plan: any) {
 // required for each eligible lender. A closed checkout alone is not a denial.
 export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
   const continuation=depositContinuation(offer,plan);
-  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[];
+  const splitPaid=partialPayments(offer,attempts);
+  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>(continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation)&&!splitPaid.some(p=>p.method===m.type)):[];
   const amount=plan.totals.balance_due;
   const afterDeposit=Date.parse(offer.deposit_verified_at||'');
   const eligibleAttempts=attempts.filter(a=>a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(amount)&&
@@ -359,11 +360,48 @@ export function depositContinuation(offer:any,plan:any){
       (offer.payments||[]).some(p=>p.amount_option==='deposit'&&p.stripe_session_id&&cents(p.amount)>=cents(plan.deposit_amount)))return -1;
   return null;
 }
+// Split payments are only suggested for providers whose written merchant
+// permission was recorded. Never use a reported credit limit as authorization.
+export function splitFinancingMethods(settings:any){
+  const authorization=settings?.split_financing_authorizations||{};
+  return ['affirm','klarna','afterpay_clearpay'].filter(m=>typeof authorization[m]==='string'&&authorization[m].trim().length>=5);
+}
+export function partialPayments(offer:any,attempts:any[]){
+  const ids=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.stripe_session_id));
+  return (offer.payments||[]).filter(p=>p.stripe_session_id&&ids.has(p.stripe_session_id));
+}
+export function partialSuggestions(offer:any,plan:any,attempts:any[],stage:string){
+  const max=stage==='deposit'?plan.deposit_outstanding:plan.totals.balance_due;
+  const authorized=plan.split_financing_methods||[];
+  const methods=plan.partial_available_methods||[];
+  const consumed=new Set(attempts.filter(a=>a.partial_source_session_id).map(a=>a.partial_source_session_id));
+  const paid=(offer.payments||[]);
+  const originalPath=stage==='deposit'?'deposit_lender':stage==='remainder'?'remainder_affirm':'finance_full';
+  return attempts.filter(a=>a.status==='expired'&&a.customer_reported_outcome==='insufficient_amount'&&
+     a.offered_methods?.length===1&&a.customer_reported_lender===a.offered_methods[0]&&
+     a.payment_pathway===originalPath&&a.stripe_session_id&&!consumed.has(a.stripe_session_id)&&
+     Number.isFinite(a.customer_reported_approved_amount)&&a.customer_reported_approved_amount>0&&cents(a.customer_reported_approved_amount)<cents(a.amount))
+    .map(a=>{
+      const type=a.offered_methods[0];
+      // One report can be used once; never stack repeated payments on one provider's reported limit.
+      const amount=round2(Math.min(max,a.customer_reported_approved_amount));
+      const available=methods.some(m=>m.type===type&&m.available);
+      const alreadyPaid=paid.some(p=>p.method===type&&p.financed);
+      const limits=LENDER_LIMITS[type];
+      const enabled=authorized.includes(type)&&available&&!alreadyPaid&&!!limits&&amount>=limits.min&&amount<=limits.max;
+      return {type,label:FINANCING_METHODS.find(m=>m.type===type)?.label||type,amount,reported_amount:a.customer_reported_approved_amount,source_session_id:a.stripe_session_id,partial:true,enabled};
+    }).filter(x=>x.amount>0)
+    .sort((a,b)=>b.amount-a.amount||FINANCE_ORDER.indexOf(a.type)-FINANCE_ORDER.indexOf(b.type));
+}
 export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const balance=plan.totals.balance_due,deposit=plan.deposit_outstanding;
   const continuation=depositContinuation(offer,plan);
+  const splitPaid=partialPayments(offer,attempts);
+  const used=new Set(splitPaid.map(p=>p.method));
+  const splitActive=splitPaid.length>0;
+  const allowed=(list:any[])=>splitActive?list.filter(m=>plan.split_financing_methods?.includes(m.type)&&!used.has(m.type)):list;
   const ordered=(list:any[])=>FINANCE_ORDER.map(type=>list.find(m=>m.type===type)).filter(Boolean);
-  const entries=(list:any[],path:string,amount:number)=>ordered(list).map(m=>{
+  const entries=(list:any[],path:string,amount:number)=>ordered(allowed(list)).map(m=>{
     const a=attempts.filter(a=>a.payment_pathway===path&&cents(a.amount)===cents(amount)&&a.offered_methods?.length===1&&a.offered_methods[0]===m.type)
       .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')))[0];
     const outcome=a?.customer_reported_lender===m.type?a.customer_reported_outcome:'';
@@ -374,9 +412,16 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const full=entries(plan.pathways.finance_full.enabled?plan.pathways.finance_full.lenders:[],'finance_full',balance);
   const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
   const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
-  const stage=plan.deposit_verified?'remainder':full.every(x=>x.reviewed)?'deposit':'full';
+  const fullPartials=partialSuggestions(offer,plan,attempts,'full');
+  let stage=plan.deposit_verified?'remainder':full.every(x=>x.reviewed)&&!fullPartials.some(x=>x.enabled)?'deposit':'full';
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
-  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next:list.find(x=>!x.reviewed)||null,full,deposit:deposits,remainder,continuation,all_reviewed:list.every(x=>x.reviewed)};
+  const suggestions=stage==='full'?fullPartials:partialSuggestions(offer,plan,attempts,stage);
+  const normal=list.find(x=>!x.reviewed)||null;
+  const partial=suggestions.find(x=>x.enabled)||null;
+  // Complete the original check sequence first, then use the best disclosed amount.
+  // Following a verified partial payment, recalculate before offering another checkout.
+  const next=normal||partial;
+  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next,full,deposit:deposits,remainder,continuation,split_active:splitActive,partial_suggestions:suggestions,all_reviewed:!next};
 }
 export function guidedAcornOption(offer:any,settings:any,loan:any,plan:any,guide:any){
   if(guide.continuation!==null)return {...acornOption(offer,settings,loan,plan.totals.balance_due,'remainder'),eligible:false,review_complete:true,continuation:true};
@@ -653,6 +698,8 @@ export function offerPaymentPlan(offer: any, settings: any, loan: any = null, ag
 
   return {
     totals,
+    split_financing_methods:splitFinancingMethods(settings),
+    partial_available_methods:(settings?.financing_methods||[]).filter(m=>m.available),
     deposit_percent: pct,
     deposit_amount: depositTarget,
     deposit_paid: depositPaid,

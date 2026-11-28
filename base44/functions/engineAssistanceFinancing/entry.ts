@@ -117,6 +117,8 @@ export default async function (req) {
       const paid=session.payment_status==='paid'||session.status==='complete'||attempt.status==='completed';
       if(action==='checkout_return')return Response.json({lender:type,label:FINANCING_METHODS.find(m=>m.type===type)?.label,amount:attempt.amount,pathway:attempt.payment_pathway,session_id:attempt.stripe_session_id,paid_or_pending:paid,reported:!!attempt.customer_reported_outcome});
       if(!['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed','prefer_not_to_say','approved_not_accepted'].includes(outcome))return Response.json({error:'Choose your actual outcome.'},{status:400});
+      const approvedCents=outcome==='insufficient_amount'?Number(body.approved_amount_cents):0;
+      if(outcome==='insufficient_amount'&&(!Number.isSafeInteger(approvedCents)||approvedCents<=0||approvedCents>=cents(attempt.amount)))return Response.json({error:'Enter an approved amount greater than zero and smaller than the requested amount.'},{status:400});
       if(paid)return Response.json({error:'Payment is being confirmed; an unsuccessful outcome cannot be recorded.'},{status:409});
       if(attempt.customer_reported_outcome)return Response.json({recorded:true});
       if(offer.payment_route_claim){
@@ -125,7 +127,7 @@ export default async function (req) {
         session=await stripe.checkout.sessions.retrieve(session.id);
       }
       if(session.status!=='expired'||session.payment_status!=='unpaid')return Response.json({error:'Only closed, unpaid checkouts can be reported.'},{status:409});
-      await attempts.updateMany({id:attempt.id,status:attempt.status,customer_reported_outcome:attempt.customer_reported_outcome===undefined?{$exists:false}:attempt.customer_reported_outcome},{$set:{customer_reported_lender:type,customer_reported_outcome:outcome,customer_reported_at:new Date().toISOString(),status:'expired',audit_trail:appendAudit(attempt,'Customer','reported_lender_outcome','Customer-reported outcome; not a verified credit decision: '+outcome)}});
+      await attempts.updateMany({id:attempt.id,status:attempt.status,customer_reported_outcome:attempt.customer_reported_outcome===undefined?{$exists:false}:attempt.customer_reported_outcome},{$set:{customer_reported_lender:type,customer_reported_outcome:outcome,customer_reported_approved_amount:approvedCents/100,customer_reported_at:new Date().toISOString(),status:'expired',audit_trail:appendAudit(attempt,'Customer','reported_lender_outcome','Customer-reported outcome; not a verified credit decision: '+outcome)}});
       const saved=rows(await attempts.filter({id:attempt.id}))[0];
       if(!saved?.customer_reported_outcome)return Response.json({error:'Outcome could not be saved. Retry.'},{status:409});
       return Response.json({recorded:true});
@@ -138,7 +140,7 @@ export default async function (req) {
       if (availability.error) throw new Error('Lender availability cannot be checked right now. Retry before requesting Elite financing.');
       const freshPlan = offerPaymentPlan(offer,{...settings,financing_methods:availability.methods},existing,currentAgreement,identity,identitySettings);
       const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
-      return {...lenderReviewStatus(offer,freshPlan),checks:remainderLenderChecks(offer,freshPlan,attempts)};
+      return {...lenderReviewStatus(offer,freshPlan),checks:remainderLenderChecks(offer,freshPlan,attempts),guide:guidedFinance(offer,freshPlan,attempts)};
     };
     if (action === 'save_lender_review') {
       if (!plan.deposit_verified || !plan.pathways.deposit_internal.can_request || offer.payment_route_claim) return Response.json({error:'A verified deposit and closed checkout are required.'},{status:409});
@@ -169,7 +171,7 @@ export default async function (req) {
       }
       try {
         const review=await currentLenderReview();
-        if (!review.checks.complete) return Response.json({error:'Check every eligible lender for the current remaining balance and record an unsuccessful outcome before continuing.'},{status:409});
+        if (review.guide.next?.partial || !review.checks.complete) return Response.json({error:'Check every eligible lender for the current remaining balance and record an unsuccessful outcome before continuing.'},{status:409});
       } catch(e) {return Response.json({error:e.message},{status:409});}
       if (!acornNoAdequateApproval(offer,settings,existing)) return Response.json({error:'A confirmed unsuccessful Acorn result for this balance is required before continuing.'},{status:409});
       // The financing application is validated here, not in the browser. Only

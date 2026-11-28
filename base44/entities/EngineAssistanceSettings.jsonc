@@ -2,6 +2,7 @@
   "name": "EngineAssistanceSettings",
   "type": "object",
   "properties": {
+    "split_financing_authorizations":{"type":"object","description":"Per-provider written authorization reference for partial charges on one build. Absent means disabled.","properties":{"affirm":{"type":"string"},"klarna":{"type":"string"},"afterpay_clearpay":{"type":"string"}}},
     "acorn_enabled": {"type":"boolean","default":false,"description":"Enable after Acorn confirms merchant eligibility for racing engine builds."},
     "key": {
       "type": "string",
