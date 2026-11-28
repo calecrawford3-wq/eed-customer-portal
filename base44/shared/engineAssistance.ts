@@ -114,7 +114,7 @@ const GENERIC_SECTIONS = [
       { key: 'city', label: 'City', type: 'text', required: false, max_length: 80 },
       { key: 'state', label: 'State', type: 'text', required: false, max_length: 40 },
       { key: 'household_size', label: 'People in your household', type: 'number', required: false },
-      { key: 'household_income_bracket', label: 'Household income bracket', type: 'select', required: true, options: ['Under $35,000', '$35,000 – $75,000', 'Over $75,000', 'Prefer not to say'], help: 'This helps the fund prioritize need. No tax documents or account numbers are collected here.' },
+      { key: 'household_income_bracket', label: 'Household income bracket', type: 'select', required: true, options: ['Under $35,000', '$35,000 – $75,000', 'Over $75,000', 'Prefer not to say'], help: 'This helps the fund prioritize need. You will connect your bank or upload recent statements in the final income verification step.' },
     ],
   },
   {
