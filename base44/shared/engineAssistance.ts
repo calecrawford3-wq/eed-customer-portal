@@ -320,7 +320,8 @@ export function lenderReviewStatus(offer: any, plan: any) {
 // A fresh, closed remainder checkout and a reported unsuccessful outcome are
 // required for each eligible lender. A closed checkout alone is not a denial.
 export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
-  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders:[];
+  const continuation=depositContinuation(offer,plan);
+  const required=plan.deposit_verified&&plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[];
   const amount=plan.totals.balance_due;
   const afterDeposit=Date.parse(offer.deposit_verified_at||'');
   const eligibleAttempts=attempts.filter(a=>a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(amount)&&
@@ -335,8 +336,40 @@ export function remainderLenderChecks(offer:any,plan:any,attempts:any[]) {
   });
   return {amount,entries,complete:plan.deposit_verified&&entries.every(e=>e.complete)};
 }
+export const FINANCE_ORDER=['affirm','sunbit','klarna','afterpay_clearpay'];
+// A verified deposit lender determines the continuation point, not a browser
+// report. Earlier lenders are not retried in the same guided sequence.
+export function depositContinuation(offer:any,plan:any){
+  if(!plan.deposit_verified)return null;
+  const payment=(offer.payments||[]).find(p=>p.financed===true&&p.amount_option==='deposit_lender'&&p.stripe_session_id&&FINANCE_ORDER.includes(p.method)&&cents(p.amount)>=cents(plan.deposit_amount));
+  return payment?FINANCE_ORDER.indexOf(payment.method):null;
+}
+export function guidedFinance(offer:any,plan:any,attempts:any[]){
+  const balance=plan.totals.balance_due,deposit=plan.deposit_outstanding;
+  const continuation=depositContinuation(offer,plan);
+  const ordered=(list:any[])=>FINANCE_ORDER.map(type=>list.find(m=>m.type===type)).filter(Boolean);
+  const entries=(list:any[],path:string,amount:number)=>ordered(list).map(m=>{
+    const a=attempts.filter(a=>a.payment_pathway===path&&cents(a.amount)===cents(amount)&&a.offered_methods?.length===1&&a.offered_methods[0]===m.type)
+      .sort((a,b)=>String(b.customer_consent_at||b.created_date||'').localeCompare(String(a.customer_consent_at||a.created_date||'')))[0];
+    const outcome=a?.customer_reported_lender===m.type?a.customer_reported_outcome:'';
+    const reviewed=!!a?.stripe_session_id&&a.status==='expired'&&!!outcome;
+    const noApproval=reviewed&&a.provider_decision!=='approved'&&['declined','insufficient_amount'].includes(outcome);
+    return {type:m.type,label:m.label,reviewed,no_approval:noApproval,outcome:outcome||'',attempted:!!a?.stripe_session_id};
+  });
+  const full=entries(plan.pathways.finance_full.enabled?plan.pathways.finance_full.lenders:[],'finance_full',balance);
+  const deposits=entries(plan.pathways.deposit_internal.finance_deposit_enabled?plan.pathways.deposit_internal.deposit_lenders.eligible:[],'deposit_lender',deposit);
+  const remainder=entries(plan.pathways.remainder_affirm.enabled?plan.pathways.finance_full.lenders.filter(m=>continuation===null||FINANCE_ORDER.indexOf(m.type)>continuation):[],'remainder_affirm',balance);
+  const stage=plan.deposit_verified?'remainder':full.every(x=>x.reviewed)?'deposit':'full';
+  const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
+  return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next:list.find(x=>!x.reviewed)||null,full,deposit:deposits,remainder,continuation,all_reviewed:list.every(x=>x.reviewed)};
+}
 export function acornNoAdequateApproval(offer:any,settings:any,loan:any=null){
   const option=acornOption(offer,settings,loan);
+  const plan=offerPaymentPlan(offer,settings,loan);
+  if(depositContinuation(offer,plan)!==null){
+    const original=offer.acorn_financing;
+    return settings?.acorn_enabled!==true||!original?.reference||(['staff_verified','acorn_postback','zoho_verified'].includes(original.status_source)&&['no_offers','insufficient_amount'].includes(original.status));
+  }
   return !option.eligible||(['staff_verified','acorn_postback','zoho_verified'].includes(option.status_source)&&['no_offers','insufficient_amount'].includes(option.status));
 }
 export function validateLenderReview(required: any[], submitted: any) {

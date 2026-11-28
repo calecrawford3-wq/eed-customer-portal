@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
-import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus, acornOption, remainderLenderChecks, acornNoAdequateApproval } from '../../shared/engineAssistance.ts';
+import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus, acornOption, remainderLenderChecks, acornNoAdequateApproval, guidedFinance } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
@@ -58,6 +58,9 @@ export default async function (req) {
     const attempts = rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id}));
     const paymentPlan=offerPaymentPlan(current,liveSettings,loan,agreement,identity,identitySettings);
     const checks=remainderLenderChecks(current,paymentPlan,attempts);
+    const guide=guidedFinance(current,paymentPlan,attempts);
+    const pendingReturn=attempts.filter(a=>a.stripe_session_id&&a.offered_methods?.length===1&&!a.customer_reported_outcome&&a.status!=='completed'&&a.stripe_session_id===current.payment_route_session)[0];
+
     const internalUnlocked=!lenderCheckError&&paymentPlan.pathways.deposit_internal.can_request&&checks.complete&&acornNoAdequateApproval(current,liveSettings,loan);
     const reportable = FINANCING_METHODS.filter(m=>m.type !== 'us_bank_account' && attempts.some(a=>a.stripe_session_id && a.status !== 'completed' && !a.customer_reported_outcome && a.offered_methods?.includes(m.type) && (!paymentPlan.deposit_verified||(a.payment_pathway==="remainder_affirm"&&Math.round(Number(a.amount)*100)===Math.round(paymentPlan.totals.balance_due*100)&&a.offered_methods.length===1&&(!current.deposit_verified_at||Date.parse(a.customer_consent_at||a.created_date||"")>=Date.parse(current.deposit_verified_at))))));
 
@@ -68,6 +71,8 @@ export default async function (req) {
         // ever returned, only which mode the configured key runs in.
         payments_test_mode: paymentKey.startsWith('sk_test_'),
         acorn: acornOption(current,liveSettings,loan),
+        financing_guide:guide,
+        pending_lender_return:pendingReturn?{session_id:pendingReturn.stripe_session_id}:null,
         lender_review: {...lenderReviewStatus(current,paymentPlan),availability_error:lenderCheckError},
         remainder_lender_checks: {...checks,availability_error:lenderCheckError},
         internal_financing_unlocked:internalUnlocked,

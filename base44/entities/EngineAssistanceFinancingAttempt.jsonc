@@ -27,7 +27,7 @@
         "type": "string"
       }
     },
-    "customer_reported_outcome": {"type":"string","enum":["declined","insufficient_amount","unsuitable_terms","technical_issue","not_completed"]},
+    "customer_reported_outcome": {"type":"string","enum":["declined","insufficient_amount","unsuitable_terms","technical_issue","not_completed","prefer_not_to_say","approved_not_accepted"]},
     "customer_reported_lender": {"type":"string"},
     "customer_reported_at": {"type":"string"},
     "selected_method": {

@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } f
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, guidedFinance, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -91,20 +91,34 @@ export default async function (req) {
       } catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
     }
 
-    if (action === 'report_lender_outcome') {
+    if (action === 'report_lender_outcome' || action === 'checkout_return') {
       const lender = str(body.lender,40), outcome = str(body.outcome,40);
-      if (!FINANCING_METHODS.some(m=>m.type===lender && m.type!=='us_bank_account') || !['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed'].includes(outcome)) return Response.json({error:'Choose a lender and outcome.'},{status:400});
-      if (offer.payment_route_claim || ['paid','expired'].includes(offer.status)) return Response.json({error:'Close the outstanding checkout before recording an outcome.'},{status:409});
-      const attempts = base44.asServiceRole.entities.EngineAssistanceFinancingAttempt;
-      const matches = rows(await attempts.filter({offer_id:offer.id},'-created_date',100)).filter(a=>a.stripe_session_id && a.status!=='completed' && !a.customer_reported_outcome && a.offered_methods?.includes(lender) && (!plan.deposit_verified || (a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(plan.totals.balance_due)&&a.offered_methods.length===1&&(!offer.deposit_verified_at||Date.parse(a.customer_consent_at||a.created_date||'')>=Date.parse(offer.deposit_verified_at)))));
-
-      if (!matches.length) return Response.json({error:'No unreported attempt for this lender.'},{status:409});
-      const key = Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
-      if (!key) return Response.json({error:'Stripe verification unavailable.'},{status:503});
-      const attempt = matches[0];
-      const session = await new Stripe(key).checkout.sessions.retrieve(attempt.stripe_session_id);
-      if (session.metadata?.source !== 'eed_engine_assistance_v1' || session.metadata?.offer_id !== offer.id || session.metadata?.base44_app_id !== Deno.env.get('BASE44_APP_ID') || session.livemode !== key.startsWith('sk_live_') || session.status !== 'expired' || session.payment_status !== 'unpaid') return Response.json({error:'Only a closed, unpaid checkout can be reported.'},{status:409});
-      await attempts.updateMany({id:attempt.id, status:attempt.status, customer_reported_outcome:attempt.customer_reported_outcome===undefined?{$exists:false}:attempt.customer_reported_outcome},{$set:{customer_reported_lender:lender,customer_reported_outcome:outcome,customer_reported_at:new Date().toISOString(),status:'expired',audit_trail:appendAudit(attempt,'Customer','reported_lender_outcome','Customer-reported outcome; not a verified credit decision: '+outcome)}});
+      const sessionId=str(body.session_id,160);
+      const attempts=base44.asServiceRole.entities.EngineAssistanceFinancingAttempt;
+      const all=rows(await attempts.filter({offer_id:offer.id},'-created_date',200));
+      const attempt=sessionId?all.find(a=>a.stripe_session_id===sessionId):all.find(a=>a.stripe_session_id&&a.status!=='completed'&&!a.customer_reported_outcome&&a.offered_methods?.includes(lender)&&(!plan.deposit_verified||(a.payment_pathway==='remainder_affirm'&&cents(a.amount)===cents(plan.totals.balance_due))));
+      if(!attempt||attempt.offered_methods?.length!==1)return Response.json({error:'No matching lender checkout.'},{status:404});
+      const type=attempt.offered_methods[0];
+      if(!FINANCING_METHODS.some(m=>m.type===type&&m.type!=='us_bank_account')||(lender&&lender!==type))return Response.json({error:'Invalid lender.'},{status:400});
+      const key=Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      if(!key)return Response.json({error:'Stripe verification unavailable.'},{status:503});
+      const stripe=new Stripe(key);
+      let session=await stripe.checkout.sessions.retrieve(attempt.stripe_session_id);
+      if(session.metadata?.source!=='eed_engine_assistance_v1'||session.metadata?.offer_id!==offer.id||session.metadata?.base44_app_id!==Deno.env.get('BASE44_APP_ID')||session.livemode!==key.startsWith('sk_live_')||session.amount_total!==cents(attempt.amount))return Response.json({error:'Checkout verification failed.'},{status:409});
+      const paid=session.payment_status==='paid'||session.status==='complete'||attempt.status==='completed';
+      if(action==='checkout_return')return Response.json({lender:type,label:FINANCING_METHODS.find(m=>m.type===type)?.label,amount:attempt.amount,pathway:attempt.payment_pathway,session_id:attempt.stripe_session_id,paid_or_pending:paid,reported:!!attempt.customer_reported_outcome});
+      if(!['declined','insufficient_amount','unsuitable_terms','technical_issue','not_completed','prefer_not_to_say','approved_not_accepted'].includes(outcome))return Response.json({error:'Choose your actual outcome.'},{status:400});
+      if(paid)return Response.json({error:'Payment is being confirmed; an unsuccessful outcome cannot be recorded.'},{status:409});
+      if(attempt.customer_reported_outcome)return Response.json({recorded:true});
+      if(offer.payment_route_claim){
+        if(offer.payment_route_session!==session.id)return Response.json({error:'A different checkout is active.'},{status:409});
+        try{await closeKnownCheckout(base44,stripe,offer);}catch(e){return Response.json({error:e.message},{status:409});}
+        session=await stripe.checkout.sessions.retrieve(session.id);
+      }
+      if(session.status!=='expired'||session.payment_status!=='unpaid')return Response.json({error:'Only closed, unpaid checkouts can be reported.'},{status:409});
+      await attempts.updateMany({id:attempt.id,status:attempt.status,customer_reported_outcome:attempt.customer_reported_outcome===undefined?{$exists:false}:attempt.customer_reported_outcome},{$set:{customer_reported_lender:type,customer_reported_outcome:outcome,customer_reported_at:new Date().toISOString(),status:'expired',audit_trail:appendAudit(attempt,'Customer','reported_lender_outcome','Customer-reported outcome; not a verified credit decision: '+outcome)}});
+      const saved=rows(await attempts.filter({id:attempt.id}))[0];
+      if(!saved?.customer_reported_outcome)return Response.json({error:'Outcome could not be saved. Retry.'},{status:409});
       return Response.json({recorded:true});
     }
 

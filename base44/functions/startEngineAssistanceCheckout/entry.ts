@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
   ASSISTANCE_STRIPE_SOURCE, rows, cents, round2, computeOfferTotals, offerExpired,
-  ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability, acornOption,
+  ensureSettings, offerPaymentPlan, appendAudit, readFinancingAvailability, acornOption, depositContinuation, guidedFinance,
 } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
@@ -69,8 +69,14 @@ export default async function (req) {
     if (pathwayKey === 'remainder_affirm' && !options.remainder_affirm.enabled) return Response.json({ error: 'Third-party financing is not available for the remainder yet.' }, { status: 409 });
 
 
-    if (pathway.lender && !acornOption(offer,settings,loan).review_complete) {
+    if (pathway.lender && !(pathwayKey==="remainder_affirm"&&depositContinuation(offer,plan)!==null) && !acornOption(offer,settings,loan).review_complete) {
       return Response.json({error:'Elite must confirm that Acorn financing is unavailable or unsuitable before other lenders can be used.'},{status:409});
+    }
+    if (pathway.lender && body.guided===true) {
+      const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
+      const guide=guidedFinance(offer,plan,attempts);
+      const expected=guide.stage==='full'?'finance_full':guide.stage==='deposit'?'deposit_lender':'remainder_affirm';
+      if(pathwayKey!==expected||guide.next?.type!==body.lender)return Response.json({error:'Financing options changed. Refresh your offer to continue.'},{status:409});
     }
     if (pathway.lender && body.consent !== true) {
       return Response.json({ error: 'Consent is required before continuing to a lender' }, { status: 400 });
@@ -164,7 +170,7 @@ export default async function (req) {
         quantity: 1,
       }],
       success_url: `${origin}${returnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}${returnPath}?payment=canceled`,
+      cancel_url: `${origin}${returnPath}?payment=canceled${pathway.lender?"&lender_return=1":""}`,
       metadata: {
         payment_route_claim: held.payment_route_claim,
         source: ASSISTANCE_STRIPE_SOURCE,
