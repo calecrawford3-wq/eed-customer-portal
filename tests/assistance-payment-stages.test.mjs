@@ -333,3 +333,27 @@ test('lender review requires every eligible option for the exact remainder, not 
  h.offer.sunbit_service_confirmed=false;h.offer.payments.push({amount:50,method:'card'});h.offer.paid_amount=550;
  plan=h.a.offerPaymentPlan(h.offer,fresh);assert.equal(h.a.lenderReviewStatus(h.offer,plan).complete,false);
 });
+test('Acorn opens the server-calculated unpaid balance with opaque referral, never records payment',async()=>{
+ const h=assistance();
+ const launch=(amount_cents=100000)=>h.call('engineAssistanceFinancing',{token:h.token,action:'start_acorn',amount_cents,consent:true});
+ assert.equal((await launch()).status,409);
+ h.settings.acorn_enabled=true;
+ assert.equal((await launch(99999)).status,409);
+ const r=await launch();assert.equal(r.status,200,JSON.stringify(r.body));
+ const url=new URL(r.body.application_url);
+ assert.equal(url.origin,'https://www.acornfinance.com');
+ assert.equal(url.searchParams.get('d'),'GLDIK');
+ assert.equal(url.searchParams.get('loanAmount'),'1000');
+ assert.equal(url.searchParams.get('utm_content'),h.offer.acorn_financing.reference);
+ assert.equal(url.href.includes(h.token),false);
+ assert.equal((await launch()).body.application_url,r.body.application_url);
+ assert.equal(h.offer.paid_amount,0);
+ assert.equal(h.offer.payments.length,0);
+ assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,false);
+ const review=await h.call('engineAssistanceFinancing',{token:h.token,action:'review_acorn',amount_cents:100000,outcome:'no_suitable_offers'});
+ assert.equal(review.status,200);
+ assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,true);
+ h.offer.acorn_financing.status='funded';h.offer.acorn_financing.status_source='staff_verified';
+ assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
+ assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,false);
+});
