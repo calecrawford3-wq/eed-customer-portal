@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import StatusBadge from "@/components/assistance/StatusBadge";
 import ApplicationSummary from "@/components/assistance/ApplicationSummary";
+import FinancialReviewPanel from "@/components/assistance/FinancialReviewPanel";
 import ApplicationDecisionPanel from "@/components/assistance/ApplicationDecisionPanel";
 import ApplicationDocuments from "@/components/assistance/ApplicationDocuments";
 import OfferPanel from "@/components/assistance/OfferPanel";
@@ -184,12 +185,13 @@ export default function EngineAssistanceDetail() {
         </div>
       </div>
 
-      {deleteOpen && <Card><CardContent className="p-4 space-y-3"><h3 className="font-bold text-red-700">Permanently delete application</h3><p className="text-sm">This removes the local application and associated invitation delivery records. Linked offers, payments, customer records or shop work block deletion. Stripe records and uploaded files are not deleted by this action.</p><label className="block text-sm">Type {application.application_number} to confirm<input className="block w-full border rounded p-2 mt-1" value={deleteConfirmation} onChange={e=>setDeleteConfirmation(e.target.value)} /></label><div className="flex gap-2"><Button variant="destructive" disabled={!!busy || deleteConfirmation !== application.application_number} onClick={()=>run("delete_application",{application_id:id,confirmation:deleteConfirmation})}>Permanently delete</Button><Button variant="outline" onClick={()=>{setDeleteOpen(false);setDeleteConfirmation("")}}>Cancel</Button></div></CardContent></Card>}
+      {deleteOpen && <Card><CardContent className="p-4 space-y-3"><h3 className="font-bold text-red-700">Permanently delete application</h3><p className="text-sm">This removes the local application, financial review, statement metadata and invitation delivery records. Linked offers, payments, customer records or shop work block deletion. Stripe records and uploaded files remain in provider storage.</p><label className="block text-sm">Type {application.application_number} to confirm<input className="block w-full border rounded p-2 mt-1" value={deleteConfirmation} onChange={e=>setDeleteConfirmation(e.target.value)} /></label><div className="flex gap-2"><Button variant="destructive" disabled={!!busy || deleteConfirmation !== application.application_number} onClick={()=>run("delete_application",{application_id:id,confirmation:deleteConfirmation})}>Permanently delete</Button><Button variant="outline" onClick={()=>{setDeleteOpen(false);setDeleteConfirmation("")}}>Cancel</Button></div></CardContent></Card>}
       <ApplicationProgress stages={stage.stages} action={stage.action} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           <ApplicationSummary application={application} />
+          <FinancialReviewPanel application={application} onChanged={refresh} />
           <OfferPanel application={application} offer={offer} onAction={run} busy={!!busy} loan={loan} deliveries={deliveries} />
           <DemoSessionPanel offer={offer} application={application} />
           <InternalLoanPanel offer={offer} loan={loan} onAction={run} busy={!!busy} identity={verification} settings={settings} />
