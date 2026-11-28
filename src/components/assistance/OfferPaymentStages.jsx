@@ -3,7 +3,7 @@ import LenderReviewChecklist from "./LenderReviewChecklist";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
-export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel, onReport, onSaveReview, onAcornLaunch, onAcornReview, onAcornRefresh }) {
+export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel, onReport, onSaveReview, onAcornLaunch, onAcornRefresh }) {
   const [consent, setConsent] = useState(false);
   const [closing, setClosing] = useState(false);
   const [lender, setLender] = useState("");
@@ -19,7 +19,7 @@ export default function OfferPaymentStages({ offer, paying, onCheckout, onClose,
   return <div className="rounded-xl border bg-white p-5 space-y-4">
     <h2 className="font-semibold">{remainder ? "2. Choose how to pay the remainder" : "1. Pay your 50% deposit or finance the full balance"}</h2>
     <p>{formatMoney(remainder ? offer.balance_due : deposit.deposit_outstanding)} {remainder ? "remaining after your verified deposit." : "required deposit. Elite financing is only available after the deposit is paid."}</p>
-    <AcornFinancingOption key={offer.acorn?.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onReview={onAcornReview} onRefresh={onAcornRefresh}/>
+    <AcornFinancingOption key={offer.acorn?.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onRefresh={onAcornRefresh}/>
     <Button disabled={busy || !(remainder ? offer.pathways?.pay_in_full?.enabled : deposit.enabled)} onClick={() => onCheckout(remainder ? "pay_in_full" : "deposit_card", false)}>Pay {remainder ? "remainder" : "deposit"} outright</Button>
     {!remainder && offer.pathways?.pay_in_full?.enabled && <Button className="ml-2" variant="outline" disabled={busy} onClick={()=>onCheckout("pay_in_full",false)}>Pay full balance</Button>}
     <div className="border-t pt-3 space-y-2">

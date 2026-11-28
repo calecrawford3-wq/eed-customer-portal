@@ -4,7 +4,7 @@
   "properties": {
     "acorn_financing":{"type":"object","properties":{
       "reference":{"type":"string"},"amount_cents":{"type":"number"},"started_at":{"type":"string"},
-      "status":{"type":"string","enum":["opened","offers_received","no_offers","funded","pending"]},
+      "status":{"type":"string","enum":["opened","offers_received","no_offers","funded","pending","no_suitable_offers","insufficient_amount","not_completed","technical_issue"]},
       "status_source":{"type":"string"},"status_at":{"type":"string"},
       "application_reference":{"type":"string"},"evidence":{"type":"string"},
       "customer_review":{"type":"string"},"customer_review_at":{"type":"string"}

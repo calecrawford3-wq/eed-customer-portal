@@ -288,14 +288,16 @@ export function lendersForAmount(settings: any, amount: number) {
 // Reviews are customer attestations, never credit decisions. The exact unpaid
 // balance and enabled lender set must match before an in-house request.
 export const ACORN_DEALER_ID = 'GLDIK';
-export const ACORN_REVIEW_OUTCOMES = ['reviewed_not_applied','no_suitable_offers','insufficient_amount','technical_issue','waiting_for_funding'];
+export const ACORN_FALLBACK_STATUSES = ['no_offers','no_suitable_offers','insufficient_amount','not_completed','technical_issue'];
 export function acornOption(offer:any, settings:any, loan:any=null) {
   const amount = computeOfferTotals(offer).balance_due;
   const eligible = settings?.acorn_enabled===true && amount>=1000 && amount<=100000 && !offerExpired(offer) && !['draft','void','declined','expired','paid'].includes(offer.status) && offer.installments_enabled!==false && !['pending_approval','approved','active','completed'].includes(loan?.status) && offer.payment_route!=='internal';
   const existing=offer.acorn_financing;
-  const current=existing?.amount_cents===cents(amount)?existing:null;
-  // A review is only an attestation, not proof of approval or a credit denial.
-  return {eligible,amount,reference:current?.reference||'',status:current?.status||'not_started',status_source:current?.status_source||'',customer_review:current?.customer_review||'',review_complete:!eligible||current?.status==='no_offers'||ACORN_REVIEW_OUTCOMES.includes(current?.customer_review)&&current?.customer_review!=='waiting_for_funding'};
+  // A staff-reviewed full-balance attempt can remain valid after a deposit
+  // reduces the balance. Never infer that the lender declined a smaller amount.
+  const current=existing?.amount_cents>=cents(amount)?existing:null;
+  const verified=current?.status_source==='staff_verified';
+  return {eligible,amount,reference:current?.reference||'',requested_amount:current?current.amount_cents/100:null,status:current?.status||'not_started',status_source:verified?'staff_verified':current?.status_source||'',review_complete:!eligible||(verified&&ACORN_FALLBACK_STATUSES.includes(current?.status))};
 }
 export function acornApplicationUrl(amount:number,reference:string) {
   const url=new URL('https://www.acornfinance.com/pre-qualify/');

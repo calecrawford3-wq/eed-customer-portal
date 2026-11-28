@@ -129,12 +129,12 @@ export default function OfferPanel({ application, offer, onAction, busy, loan, d
             {offer.acorn_financing?.reference && <div className="rounded-lg border p-3 space-y-2">
               <p className="text-sm font-semibold">Acorn Finance</p><p className="text-xs">Requested: {formatMoney(offer.acorn_financing.amount_cents/100)} · {offer.acorn_financing.status?.replace(/_/g," ")}</p>
               <p className="text-xs break-all">Referral: {offer.acorn_financing.reference}</p>
-              {offer.acorn_financing.customer_review&&<p className="text-xs">Customer reported: {offer.acorn_financing.customer_review.replace(/_/g," ")}</p>}
+              {offer.acorn_financing.customer_review&&<p className="text-xs">Legacy customer report (not used for eligibility): {offer.acorn_financing.customer_review.replace(/_/g," ")}</p>}
               <p className="text-xs text-slate-500">Confirm against Acorn's merchant dashboard or notification. This never records payment to Elite.</p>
-              <select className="w-full border rounded p-2 text-sm" value={acornStatus} onChange={e=>setAcornStatus(e.target.value)}>{["pending","offers_received","no_offers","funded"].map(x=><option key={x} value={x}>{x.replace(/_/g," ")}</option>)}</select>
+              <select className="w-full border rounded p-2 text-sm" value={acornStatus} onChange={e=>setAcornStatus(e.target.value)}>{["pending","offers_received","no_offers","no_suitable_offers","insufficient_amount","not_completed","technical_issue","funded"].map(x=><option key={x} value={x}>{x.replace(/_/g," ")}</option>)}</select>
               <Input placeholder="Acorn application reference" value={acornRef} onChange={e=>setAcornRef(e.target.value)}/>
               <Input placeholder="Verification source / date (no sensitive data)" value={acornEvidence} onChange={e=>setAcornEvidence(e.target.value)}/>
-              <Button size="sm" variant="outline" disabled={busy||!acornRef.trim()||acornEvidence.trim().length<10} onClick={()=>onAction("record_acorn_status",{offer_id:offer.id,status:acornStatus,application_reference:acornRef,evidence:acornEvidence})}>Record verified status</Button>
+              <Button size="sm" variant="outline" disabled={busy||(!acornRef.trim()&&!["not_completed","technical_issue"].includes(acornStatus))||acornEvidence.trim().length<10} onClick={()=>onAction("record_acorn_status",{offer_id:offer.id,status:acornStatus,application_reference:acornRef,evidence:acornEvidence})}>Record verified status</Button>
               {offer.acorn_financing.status_source==="staff_verified"&&<p className="text-xs">Staff verified · {offer.acorn_financing.application_reference}</p>}
             </div>}
             {offer.lender_option_review?.reviewed_at && <div className="rounded-lg border p-3 space-y-2">

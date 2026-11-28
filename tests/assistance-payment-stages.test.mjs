@@ -351,8 +351,15 @@ test('Acorn opens the server-calculated unpaid balance with opaque referral, nev
  assert.equal(h.offer.payments.length,0);
  assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,false);
  const review=await h.call('engineAssistanceFinancing',{token:h.token,action:'review_acorn',amount_cents:100000,outcome:'no_suitable_offers'});
- assert.equal(review.status,200);
+ assert.equal(review.status,403);
+ h.offer.acorn_financing.customer_review='no_suitable_offers';
+ assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,false);
+ h.offer.acorn_financing.status='no_offers';
+ h.offer.acorn_financing.status_source='staff_verified';
  assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,true);
+ h.deposit();
+ assert.equal(h.a.acornOption(h.offer,h.settings).review_complete,true);
+ h.offer.payments=[];h.offer.paid_amount=0;h.offer.status='sent';
  h.offer.acorn_financing.status='funded';h.offer.acorn_financing.status_source='staff_verified';
  assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
  assert.equal(h.a.offerPaymentPlan(h.offer,h.settings).deposit_verified,false);

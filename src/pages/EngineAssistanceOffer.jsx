@@ -277,7 +277,6 @@ export default function EngineAssistanceOffer() {
               setRequestRemainder(true);
             }}
             onAcornLaunch={openAcorn}
-            onAcornReview={outcome=>runFinancing("review_acorn",{outcome,amount_cents:Math.round(offer.acorn.amount*100)},"Acorn review saved")}
             onAcornRefresh={refetch}
             onSaveReview={async (entries,amount_cents)=>{
               if (offer.checkout_open && !await runFinancing("close_checkout")) return false;
