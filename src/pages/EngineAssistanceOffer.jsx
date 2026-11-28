@@ -322,9 +322,9 @@ export default function EngineAssistanceOffer() {
 
         <Dialog open={!!acornModal} onOpenChange={open=>{if(!open){setAcornModal(null);refetch();}}}>
           <DialogContent className="w-[96vw] max-w-[760px] h-[90dvh] sm:h-[82dvh] rounded-xl flex flex-col overflow-hidden p-4 gap-3 bg-white text-slate-900">
-            <DialogHeader className="pr-8"><DialogTitle>Acorn financing</DialogTitle><DialogDescription>Review financing information here. Acorn may open its secure application separately.</DialogDescription></DialogHeader>
-            {acornModal&&<iframe title="Acorn financing widget" className="w-full flex-1 min-h-0 rounded-lg border" src={acornModal.frame} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"/>}
-            {acornModal&&<Button variant="outline" asChild><a href={acornModal.url} target="_blank" rel="noopener noreferrer">Open secure Acorn application directly</a></Button>}
+            <DialogHeader className="pr-8"><DialogTitle>Find your financing options</DialogTitle><DialogDescription>Powered by Acorn Finance</DialogDescription></DialogHeader>
+            {acornModal&&<iframe title="Acorn financing widget" className="w-full flex-1 min-h-0 rounded-lg border-0" src={acornModal.frame} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"/>}
+            {acornModal&&<Button variant="outline" asChild><a href={acornModal.url} target="_blank" rel="noopener noreferrer">Continue directly to Acorn</a></Button>}
           </DialogContent>
         </Dialog>
         <PaymentsHistory payments={offer.payments || []} />
