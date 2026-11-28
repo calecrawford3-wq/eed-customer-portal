@@ -7,7 +7,7 @@
     "acorn_reference":{"type":"string","description":"Opaque Acorn postback correlation reference"},
     "acorn_financing_history":{"type":"array","items":{"type":"object"},"description":"Prior Acorn financing requests for earlier balances; staff audit only."},
     "acorn_financing":{"type":"object","properties":{
-      "reference":{"type":"string"},"amount_cents":{"type":"number"},"started_at":{"type":"string"},
+      "reference":{"type":"string"},"stage":{"type":"string"},"amount_cents":{"type":"number"},"started_at":{"type":"string"},
       "status":{"type":"string","enum":["opened","offers_received","approved","no_offers","funded","pending","no_suitable_offers","insufficient_amount","not_completed","technical_issue"]},
       "status_source":{"type":"string"},"status_at":{"type":"string"},
       "application_reference":{"type":"string"},"evidence":{"type":"string"},

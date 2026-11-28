@@ -289,14 +289,15 @@ export function lendersForAmount(settings: any, amount: number) {
 // balance and enabled lender set must match before an in-house request.
 export const ACORN_DEALER_ID = 'GLDIK';
 export const ACORN_FALLBACK_STATUSES = ['no_offers','no_suitable_offers','insufficient_amount','not_completed','technical_issue'];
-export function acornOption(offer:any, settings:any, loan:any=null) {
-  const amount = computeOfferTotals(offer).balance_due;
+export function acornOption(offer:any, settings:any, loan:any=null, requestedAmount?:number, stage?:string) {
+  const amount = requestedAmount ?? computeOfferTotals(offer).balance_due;
   const eligible = settings?.acorn_enabled===true && amount>=1000 && amount<=100000 && !offerExpired(offer) && !['draft','void','declined','expired','paid'].includes(offer.status) && offer.installments_enabled!==false && !['pending_approval','approved','active','completed'].includes(loan?.status) && offer.payment_route!=='internal';
   const existing=offer.acorn_financing;
   // Every distinct outstanding balance requires its own review.
-  const current=existing?.amount_cents===cents(amount)?existing:null;
+  const records=stage?[existing,...(offer.acorn_financing_history||[]).slice().reverse()]:[existing];
+  const current=records.find(r=>r?.amount_cents===cents(amount)&&(!stage||r.stage===stage||(!r.stage&&stage!=='deposit'&&!(stage==='remainder'&&r.amount_cents===cents(computeOfferTotals(offer).total)))))||null;
   const verified=['staff_verified','acorn_postback','zoho_verified'].includes(current?.status_source);
-  return {eligible,amount,reference:current?.reference||'',requested_amount:current?current.amount_cents/100:null,status:current?.status||'not_started',status_source:current?.status_source||'',review_complete:!eligible||(verified&&ACORN_FALLBACK_STATUSES.includes(current?.status))};
+  return {eligible,amount,stage:stage||"full",reference:current?.reference||'',requested_amount:current?current.amount_cents/100:null,status:current?.status||'not_started',status_source:current?.status_source||'',review_complete:!eligible||(verified&&ACORN_FALLBACK_STATUSES.includes(current?.status))};
 }
 export function acornApplicationUrl(amount:number,reference:string) {
   const url=new URL('https://www.acornfinance.com/pre-qualify/');
@@ -342,7 +343,11 @@ export const FINANCE_ORDER=['affirm','sunbit','klarna','afterpay_clearpay'];
 export function depositContinuation(offer:any,plan:any){
   if(!plan.deposit_verified)return null;
   const payment=(offer.payments||[]).find(p=>p.financed===true&&p.amount_option==='deposit_lender'&&p.stripe_session_id&&FINANCE_ORDER.includes(p.method)&&cents(p.amount)>=cents(plan.deposit_amount));
-  return payment?FINANCE_ORDER.indexOf(payment.method):null;
+  if(payment)return FINANCE_ORDER.indexOf(payment.method);
+  const acorn=offer.acorn_financing;
+  if(acorn?.stage==='deposit'&&acorn.status==='funded'&&['staff_verified','acorn_postback','zoho_verified'].includes(acorn.status_source)&&
+      (offer.payments||[]).some(p=>p.amount_option==='deposit'&&p.stripe_session_id&&cents(p.amount)>=cents(plan.deposit_amount)))return -1;
+  return null;
 }
 export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const balance=plan.totals.balance_due,deposit=plan.deposit_outstanding;
@@ -363,12 +368,19 @@ export function guidedFinance(offer:any,plan:any,attempts:any[]){
   const list=stage==='remainder'?remainder:stage==='deposit'?deposits:full;
   return {stage,amount:stage==='deposit'?deposit:balance,entries:list,next:list.find(x=>!x.reviewed)||null,full,deposit:deposits,remainder,continuation,all_reviewed:list.every(x=>x.reviewed)};
 }
+export function guidedAcornOption(offer:any,settings:any,loan:any,plan:any,guide:any){
+  if(guide.continuation!==null)return {...acornOption(offer,settings,loan,plan.totals.balance_due,'remainder'),eligible:false,review_complete:true,continuation:true};
+  if(plan.deposit_verified)return acornOption(offer,settings,loan,plan.totals.balance_due,'remainder');
+  const full=acornOption(offer,settings,loan,plan.totals.balance_due,'full');
+  if(guide.stage==='deposit'&&full.review_complete)return acornOption(offer,settings,loan,plan.deposit_outstanding,'deposit');
+  return full;
+}
 export function acornNoAdequateApproval(offer:any,settings:any,loan:any=null){
-  const option=acornOption(offer,settings,loan);
   const plan=offerPaymentPlan(offer,settings,loan);
+  const option=acornOption(offer,settings,loan,plan.totals.balance_due,'remainder');
   if(depositContinuation(offer,plan)!==null){
-    const original=offer.acorn_financing;
-    return settings?.acorn_enabled!==true||!original?.reference||(['staff_verified','acorn_postback','zoho_verified'].includes(original.status_source)&&['no_offers','insufficient_amount'].includes(original.status));
+    const full=acornOption(offer,settings,loan,plan.totals.total,'full');
+    return !full.eligible||(['staff_verified','acorn_postback','zoho_verified'].includes(full.status_source)&&['no_offers','insufficient_amount'].includes(full.status));
   }
   return !option.eligible||(['staff_verified','acorn_postback','zoho_verified'].includes(option.status_source)&&['no_offers','insufficient_amount'].includes(option.status));
 }

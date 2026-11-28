@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import Stripe from 'npm:stripe@13.11.0';
-import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus, acornOption, remainderLenderChecks, acornNoAdequateApproval, guidedFinance } from '../../shared/engineAssistance.ts';
+import { FINANCING_METHODS, rows, publicOffer, offerExpired, ensureSettings, readFinancingAvailability, offerPaymentPlan, lenderReviewStatus, acornOption, remainderLenderChecks, acornNoAdequateApproval, guidedFinance, guidedAcornOption } from '../../shared/engineAssistance.ts';
 import { latestAgreement } from '../../shared/installmentAgreement.ts';
 import { ensureIdentitySettings, loadVerificationForLoan } from '../../shared/identityVerification.ts';
 import { publicCapability } from '../../shared/publicCapability.ts';
@@ -70,7 +70,7 @@ export default async function (req) {
         // Lets the page say plainly whether checkout is a Stripe test. No key is
         // ever returned, only which mode the configured key runs in.
         payments_test_mode: paymentKey.startsWith('sk_test_'),
-        acorn: acornOption(current,liveSettings,loan),
+        acorn: guidedAcornOption(current,liveSettings,loan,paymentPlan,guide),
         financing_guide:guide,
         pending_lender_return:pendingReturn?{session_id:pendingReturn.stripe_session_id}:null,
         lender_review: {...lenderReviewStatus(current,paymentPlan),availability_error:lenderCheckError},

@@ -2,7 +2,7 @@ import { reserveRoute, releaseRoute, retireOfferSessions, closeKnownCheckout } f
 import Stripe from 'npm:stripe@13.11.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import {
-  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, guidedFinance, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
+  FINANCING_METHODS, acornOption, acornApplicationUrl, readFinancingAvailability, lenderReviewStatus, validateLenderReview, remainderLenderChecks, acornNoAdequateApproval, guidedFinance, guidedAcornOption, cents, rows, round2, ensureSettings, offerExpired, appendAudit, offerPaymentPlan, publicLoan,
   buildLoanSchedule, shiftMonths, today, syncDepositState,
   INTERNAL_FINANCING_DISCLOSURE, DISCLOSURE_VERSION,
 } from '../../shared/engineAssistance.ts';
@@ -58,22 +58,29 @@ export default async function (req) {
 
     if (action === 'review_acorn') return Response.json({error:'Only Elite staff can record Acorn outcomes.'},{status:403});
     if (action === 'start_acorn') {
-      const option=acornOption(offer,settings,existing);
+      const attempts=rows(await base44.asServiceRole.entities.EngineAssistanceFinancingAttempt.filter({offer_id:offer.id},'-created_date',200));
+      const key=Deno.env.get('PORTAL_STRIPE_SECRET_KEY');
+      const availability=key?await readFinancingAvailability(new Stripe(key)):null;
+      const liveSettings=availability&&!availability.error?{...settings,financing_methods:availability.methods}:settings;
+      const currentPlan=offerPaymentPlan(offer,liveSettings,existing,currentAgreement,identity,identitySettings);
+      const guide=guidedFinance(offer,currentPlan,attempts);
+      const option=body.guided===true?guidedAcornOption(offer,liveSettings,existing,currentPlan,guide):acornOption(offer,settings,existing);
+
       if (!option.eligible) return Response.json({error:'Acorn is not currently available for this offer.'},{status:409});
       if (body.amount_cents!==cents(option.amount)) return Response.json({error:'The balance changed. Refresh your offer.'},{status:409});
       if (offer.payment_route_claim) return Response.json({error:'Close the previous Stripe checkout before continuing.'},{status:409});
       const now=new Date().toISOString();
-      const previous=offer.acorn_financing?.amount_cents===cents(option.amount)?offer.acorn_financing:null;
+      const previous=offer.acorn_financing?.amount_cents===cents(option.amount)&&(!body.guided||offer.acorn_financing.stage===option.stage||(!offer.acorn_financing.stage&&option.stage!=='deposit'))?offer.acorn_financing:null;
       if (option.status==='funded') return Response.json({error:'Acorn funding is already recorded. Pay Elite separately.'},{status:409});
       {
         if (body.consent!==true) return Response.json({error:'Confirm you want to open Acorn.'},{status:400});
-        const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),started_at:now,status:'opened',status_source:'portal',status_at:now};
+        const record=previous||{reference:'eed-'+crypto.randomUUID(),amount_cents:cents(option.amount),stage:body.guided===true?option.stage:undefined,started_at:now,status:'opened',status_source:'portal',status_at:now};
         if (!previous) {
           await offers.updateMany({id:offer.id,acorn_financing:offer.acorn_financing===undefined?{$exists:false}:offer.acorn_financing},{$set:{acorn_financing:record,acorn_reference:record.reference,acorn_financing_history:[...(offer.acorn_financing_history||[]),...(offer.acorn_financing?.reference?[offer.acorn_financing]:[])].slice(-30)}});
         }
         const fresh=rows(await offers.filter({id:offer.id}))[0];
         const saved=fresh?.acorn_financing;
-        if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(acornOption(fresh,settings,existing).amount)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
+        if (!saved?.reference || saved.amount_cents!==cents(option.amount) || cents(option.stage==='deposit'&&body.guided===true?offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).deposit_outstanding:offerPaymentPlan(fresh,liveSettings,existing,currentAgreement,identity,identitySettings).totals.balance_due)!==saved.amount_cents) return Response.json({error:'Offer changed. Reload before continuing.'},{status:409});
         if(fresh.acorn_reference!==saved.reference) await offers.updateMany({id:offer.id,acorn_financing:saved},{$set:{acorn_reference:saved.reference}});
         return Response.json({application_url:acornApplicationUrl(option.amount,saved.reference),widget:{dealer_id:'GLDIK',amount:Math.ceil(option.amount),reference:saved.reference}});
       }
