@@ -1,3 +1,4 @@
+import { parseAcornNoOffers, applyAcornNoOffersEmail } from '../../shared/acornEmail.ts';
 import { staffOrAutomation } from '../../shared/staffOrAutomation.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import {
@@ -6,6 +7,7 @@ import {
   listFolders,
   listMessages,
   getMessageDetail,
+  getMessageHeaders,
   parseAddress,
   parseAttachment,
   htmlToText,
@@ -269,6 +271,15 @@ export default async function(req) {
               link_number: '',
               is_linked: false,
             });
+            if(direction==='inbound' && msgMs>0) {
+              const mail={id:created?.id,message_id:messageId,account_address:accountAddress,direction,from_email:fromParsed.email,subject,body_text:bodyText,received_at:receivedAt};
+              if(parseAcornNoOffers(mail)){
+                try {
+                  const headers=await getMessageHeaders(token,accountId,folderId,messageId);
+                  await applyAcornNoOffersEmail(base44,mail,headers);
+                }catch(_){errors.push('Acorn email verification unavailable; staff review required.');}
+              }
+            }
             newCount++;
             if (msgMs > folderMaxMs) folderMaxMs = msgMs;
             newEmails.push({

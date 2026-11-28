@@ -147,6 +147,14 @@ export async function getMessageDetail(token, accountId, folderId, messageId) {
   return d || data?.message || data || {};
 }
 
+export async function getMessageHeaders(token,accountId,folderId,messageId) {
+  const url=`${ZOHO_MAIL_API}/accounts/${encodeURIComponent(accountId)}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}/header?raw=true`;
+  const res=await fetch(url,{headers:authHeaders(token)});
+  if(!res.ok)return '';
+  const data=await res.json();
+  return typeof data?.data?.headerContent==='string'?data.data.headerContent:'';
+}
+
 export async function sendMessage(token, accountId, payload) {
   const resp = await fetch(`${ZOHO_MAIL_API}/accounts/${accountId}/messages`, {
     method: "POST",

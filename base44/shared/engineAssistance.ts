@@ -296,7 +296,7 @@ export function acornOption(offer:any, settings:any, loan:any=null) {
   // A staff-reviewed full-balance attempt can remain valid after a deposit
   // reduces the balance. Never infer that the lender declined a smaller amount.
   const current=existing?.amount_cents>=cents(amount)?existing:null;
-  const verified=['staff_verified','acorn_postback'].includes(current?.status_source);
+  const verified=['staff_verified','acorn_postback','zoho_verified'].includes(current?.status_source);
   return {eligible,amount,reference:current?.reference||'',requested_amount:current?current.amount_cents/100:null,status:current?.status||'not_started',status_source:current?.status_source||'',review_complete:!eligible||(verified&&ACORN_FALLBACK_STATUSES.includes(current?.status))};
 }
 export function acornApplicationUrl(amount:number,reference:string) {
