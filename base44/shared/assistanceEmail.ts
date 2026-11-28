@@ -243,7 +243,7 @@ export async function notifyAcornStatusChange(base44:any, offer:any, previousSta
   const record=offer?.acorn_financing;
   const status=record?.status;
   if(!record?.reference||!offer?.share_token||!offer?.application_id||status===previousStatus||
-    !['offers_received','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||
+    !['offers_received','approved','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||
     !['staff_verified','acorn_postback','zoho_verified'].includes(record.status_source)) return null;
   const entities=base44.asServiceRole.entities;
   const app=(await entities.EngineAssistanceApplication.filter({id:offer.application_id}))?.[0];

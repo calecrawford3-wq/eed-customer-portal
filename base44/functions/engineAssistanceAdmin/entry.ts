@@ -586,7 +586,7 @@ export default async function (req) {
       const offer=await loadOffer(str(data.offer_id,60));
       const record=offer?.acorn_financing;
       const status=str(data.status,40), evidence=str(data.evidence,500), applicationReference=str(data.application_reference,100);
-      if (!record?.reference || !['pending','offers_received','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||evidence.length<10||(!applicationReference&&!['not_completed','technical_issue'].includes(status))) return Response.json({error:'An existing Acorn referral, application reference and verified evidence are required.'},{status:400});
+      if (!record?.reference || !['pending','offers_received','approved','no_offers','funded','no_suitable_offers','insufficient_amount','not_completed','technical_issue'].includes(status)||evidence.length<10||(!applicationReference&&!['not_completed','technical_issue'].includes(status))) return Response.json({error:'An existing Acorn referral, application reference and verified evidence are required.'},{status:400});
       let verifiedEvidence=evidence;
       if(data.email_id){
         const email=rows(await base44.asServiceRole.entities.Email.filter({id:str(data.email_id,60)}))[0];

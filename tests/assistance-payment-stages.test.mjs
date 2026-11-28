@@ -459,3 +459,19 @@ test('already imported Acorn email is retried, updates only a unique matched off
  assert.equal(h.a.computeOfferTotals(offer).balance_due,1000);
  assert.equal((await a.retryAcornNotifications(b,async()=>header,now+600000)).checked,0);
 });
+test('Acorn verified status customer notice is generic, sent once and never records payment',async()=>{
+ const h=assistance(),email=h.load(path.resolve('base44/shared/assistanceEmail.ts'));
+ h.state.rows.EngineAssistanceApplication=[{id:h.offer.application_id,email:'borrower@example.invalid'}];
+ h.offer.acorn_financing={reference:'eed-test',status:'no_offers',status_source:'zoho_verified'};
+ const calls=[];const deliver=async(b,o)=>{calls.push(o);return {status:'sent'}};
+ await Promise.all([email.notifyAcornStatusChange(h.base44,h.offer,'opened',deliver),email.notifyAcornStatusChange(h.base44,h.offer,'opened',deliver)]);
+ assert.equal(calls.length,1);
+ const content=email.acornStatusEmailContent({offer:h.offer});
+ assert.match(content.subject,/status has been updated/);
+ assert.ok(!content.html.includes('no_offers'));
+ h.offer.acorn_financing.status='approved';h.offer.acorn_financing.status_source='staff_verified';
+ await email.notifyAcornStatusChange(h.base44,h.offer,'no_offers',deliver);
+ assert.equal(calls.length,2);
+ assert.equal(h.a.computeOfferTotals(h.offer).balance_due,1000);
+ assert.equal(h.a.acornOption(h.offer,{...h.settings,acorn_enabled:true}).review_complete,false);
+});

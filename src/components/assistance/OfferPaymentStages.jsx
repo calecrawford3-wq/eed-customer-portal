@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 export default function OfferPaymentStages({ offer, paying, onCheckout, onClose, onRequest, onCancel, onReport, onSaveReview, onAcornLaunch, onAcornRefresh }) {
-  const [choice,setChoice]=useState("");
+  const [selectedChoice,setChoice]=useState("");
+  const choice=selectedChoice || (offer.acorn?.reference ? "finance" : "");
   const [consent, setConsent] = useState(false);
   const [closing, setClosing] = useState(false);
   const [lender, setLender] = useState("");
@@ -30,8 +31,8 @@ export default function OfferPaymentStages({ offer, paying, onCheckout, onClose,
       <Button className="w-full min-h-11" disabled={busy || !offer.pathways?.pay_in_full?.enabled} onClick={()=>onCheckout("pay_in_full",false)}>Pay {formatMoney(offer.balance_due)}</Button>
     </div>}
     {choice==="finance" && <>
-      {offer.acorn?.eligible && <AcornFinancingOption key={offer.acorn?.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onRefresh={onAcornRefresh}/>}
-      {!showAlternatives && <p className="text-sm text-slate-600">Other financing options become available if Acorn cannot provide suitable financing for your build. Your status will update once confirmation is received.</p>}
+      {offer.acorn?.eligible && <AcornFinancingOption key={offer.acorn?.amount} option={offer.acorn} busy={busy} onLaunch={onAcornLaunch} onRefresh={onAcornRefresh} onPay={()=>onCheckout("pay_in_full",false)} payEnabled={offer.pathways?.pay_in_full?.enabled}/>}
+      {!showAlternatives && !["approved","funded"].includes(offer.acorn?.status) && <p className="text-sm text-slate-600">Other financing options become available if Acorn cannot provide suitable financing for your build. Your status will update once confirmation is received.</p>}
       {showAlternatives && <>
     <div className="border-t pt-3 space-y-2">
       <h3 className="font-semibold text-sm">Third-party financing</h3>
