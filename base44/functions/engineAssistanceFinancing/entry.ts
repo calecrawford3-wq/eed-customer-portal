@@ -369,7 +369,7 @@ export default async function (req) {
         payment_plan: 'none',
         internal_financed_amount: 0,
         audit_trail: appendAudit(offer, 'Customer', 'internal_financing_canceled', 'Customer withdrew the in-house financing request'),
-      } });
+      });
       if (offer.payment_route === 'internal') await releaseRoute(base44, offer);
       return Response.json({ loan: publicLoan(updated) });
     }
