@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import OfferPaymentStages from "@/components/assistance/OfferPaymentStages";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
@@ -27,6 +28,10 @@ export default function EngineAssistanceOffer() {
   const [paying, setPaying] = useState("");
   const [actionBusy, setActionBusy] = useState("");
   const [banner, setBanner] = useState("");
+  const [returnModal,setReturnModal]=useState(null);
+  const [returnOutcome,setReturnOutcome]=useState("");
+  const [returnSaving,setReturnSaving]=useState(false);
+  const checkedReturns=useRef(new Set());
   const [acornModal,setAcornModal]=useState(null);
   const [acornExpanded,setAcornExpanded]=useState(false);
   const acornFrame=useRef(null);
@@ -114,7 +119,7 @@ export default function EngineAssistanceOffer() {
   const checkout = async (pathway, consent, lender) => {
     setPaying(pathway);
     try {
-      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, replace_existing: true });
+      const res = await base44.functions.invoke("startEngineAssistanceCheckout", { token, pathway, consent: consent === true, lender, guided: !!lender, replace_existing: true });
       if (res.data?.error) throw new Error(res.data.error);
       if (res.data?.checkout_url) window.location.href = res.data.checkout_url;
       else throw new Error("Checkout could not be started");
@@ -124,6 +129,37 @@ export default function EngineAssistanceOffer() {
     } finally {
       setPaying("");
     }
+  };
+
+  const reviewCheckoutReturn=async(sessionId,force=false)=>{
+    if(!sessionId||(!force&&checkedReturns.current.has(sessionId)))return;
+    checkedReturns.current.add(sessionId);
+    try{
+      const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"checkout_return",session_id:sessionId});
+      if(res.data?.error)throw new Error(res.data.error);
+      if(res.data?.reported)return;
+      setReturnOutcome("");
+      setReturnModal({...res.data,saved:false});
+    }catch(error){
+      checkedReturns.current.delete(sessionId);
+      if(force)toast.error(error?.response?.data?.error||error.message);
+    }
+  };
+  useEffect(()=>{
+    const session=offer?.pending_lender_return?.session_id;
+    const success=params.get("payment")==="success"?params.get("session_id"):null;
+    if(session||success)reviewCheckoutReturn(session||success);
+  },[offer?.pending_lender_return?.session_id,params,token]);
+  const saveReturnOutcome=async()=>{
+    if(!returnModal||!returnOutcome||returnSaving)return;
+    setReturnSaving(true);
+    try{
+      const res=await base44.functions.invoke("engineAssistanceFinancing",{token,action:"report_lender_outcome",session_id:returnModal.session_id,lender:returnModal.lender,outcome:returnOutcome});
+      if(res.data?.error)throw new Error(res.data.error);
+      await refetch();
+      setReturnModal(m=>m?{...m,saved:true}:null);
+    }catch(error){toast.error(error?.response?.data?.error||error.message||"Outcome could not be saved");}
+    finally{setReturnSaving(false);}
   };
 
   // On returning from the lender, refresh the saved status without guessing
@@ -296,6 +332,7 @@ export default function EngineAssistanceOffer() {
               if (offer.checkout_open && !await runFinancing("close_checkout")) return;
               setRequestRemainder(true);
             }}
+            onReviewReturn={()=>reviewCheckoutReturn(offer.pending_lender_return?.session_id,true)}
             onAcornLaunch={openAcorn}
             onAcornRefresh={refetch}
             onReport={async (lender,outcome)=>{
@@ -334,6 +371,24 @@ export default function EngineAssistanceOffer() {
             />
           </JourneyErrorBoundary>
         )}
+
+        <Dialog open={!!returnModal} onOpenChange={open=>{if(!open&&(returnModal?.saved||returnModal?.paid_or_pending))setReturnModal(null);}}>
+         <DialogContent className="w-[calc(100%-24px)] max-w-md max-h-[90dvh] overflow-y-auto rounded-xl" onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(!returnModal?.saved&&!returnModal?.paid_or_pending)e.preventDefault();}}>
+          {returnModal&&<>
+           <DialogHeader className="pr-6"><DialogTitle>{returnModal.paid_or_pending?"Payment confirmation":returnModal.saved?"Financing review updated":"What did "+returnModal.label+" decide?"}</DialogTitle><DialogDescription>{formatMoney(returnModal.amount)} · {returnModal.pathway==="deposit_lender"?"Deposit":returnModal.pathway==="remainder_affirm"?"Remaining balance":"Full balance"}</DialogDescription></DialogHeader>
+           {!returnModal.saved&&!returnModal.paid_or_pending&&<>
+            <p className="text-sm">Select what happened during your lender checkout. You can choose not to disclose a credit decision.</p>
+            <select className="border rounded-lg p-3 w-full text-sm" value={returnOutcome} onChange={e=>setReturnOutcome(e.target.value)}><option value="">Choose outcome</option><option value="declined">Not approved</option><option value="insufficient_amount">Approved for less than requested</option><option value="approved_not_accepted">Approved, but did not accept</option><option value="unsuitable_terms">Terms were unsuitable</option><option value="technical_issue">Technical issue</option><option value="not_completed">Did not complete application</option><option value="prefer_not_to_say">Prefer not to say</option></select>
+            <Button className="w-full" disabled={!returnOutcome||returnSaving} onClick={saveReturnOutcome}>{returnSaving?"Saving…":"Save and continue"}</Button>
+           </>}
+           {returnModal.paid_or_pending&&!offer.deposit_verified&&!offer.paid&&<p className="text-sm">Waiting for verified payment confirmation. Do not start another checkout yet.</p>}
+           {(returnModal.saved||(returnModal.paid_or_pending&&returnModal.pathway==="deposit_lender"&&offer.deposit_verified))&&<>
+            {offer.financing_guide?.next&&(offer.financing_guide.continuation!=null||offer.acorn?.review_complete!==false)?<div className="rounded-lg border p-3 space-y-2"><p className="text-xs text-slate-500">Next financing option</p><p className="font-semibold">{offer.financing_guide.next.label} · {formatMoney(offer.financing_guide.amount)}</p><Button className="w-full" disabled={!!paying} onClick={()=>checkout(offer.financing_guide.stage==="deposit"?"deposit_lender":offer.financing_guide.stage==="remainder"?"remainder_affirm":"finance_full",true,offer.financing_guide.next.type)}>Continue to {offer.financing_guide.next.label}</Button></div>:<p className="text-sm">Return to your offer to review the next available payment option.</p>}
+           </>}
+           {(returnModal.saved||returnModal.paid_or_pending)&&<Button variant="outline" onClick={()=>setReturnModal(null)}>Return to offer</Button>}
+          </>}
+         </DialogContent>
+        </Dialog>
 
         <Dialog open={!!acornModal} onOpenChange={open=>{if(!open){setAcornModal(null);setAcornExpanded(false);refetch();}}}>
           <DialogContent className={`w-[calc(100%-24px)] max-h-[90dvh] rounded-2xl flex flex-col overflow-y-auto p-4 gap-3 bg-white text-slate-900 ${acornExpanded?"max-w-[740px] h-[88dvh]":"max-w-[440px]"}`} onInteractOutside={e=>e.preventDefault()}>
